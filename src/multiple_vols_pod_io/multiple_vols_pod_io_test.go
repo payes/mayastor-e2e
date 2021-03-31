@@ -21,7 +21,7 @@ var defTimeoutSecs = "120s"
 
 func TestMultipleVolumeIO(t *testing.T) {
 	// Initialise test and set class and file names for reports
-	k8stest.InitTesting(t, "Multiple volumes single pod IO tests", "multiple-volume-pod-io")
+	k8stest.InitTesting(t, "Multiple volumes single pod IO tests", "multiple_vols_pod_io")
 }
 
 func multipleVolumeIOTest(replicas int, volumeCount int, protocol common.ShareProto, volumeType common.VolumeType, binding storageV1.VolumeBindingMode) {

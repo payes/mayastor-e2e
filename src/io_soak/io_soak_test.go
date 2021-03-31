@@ -1,6 +1,6 @@
 // JIRA: MQ-25
 // JIRA: MQ-26
-package io_soak
+package io_soak_test
 
 import (
 	"fmt"
@@ -24,7 +24,7 @@ var jobs []IoSoakJob
 
 func TestIOSoak(t *testing.T) {
 	// Initialise test and set class and file names for reports
-	k8stest.InitTesting(t, "IO soak test, NVMe-oF TCP and iSCSI", "io-soak")
+	k8stest.InitTesting(t, "IO soak test, NVMe-oF TCP and iSCSI", "io_soak")
 }
 
 func monitor() error {

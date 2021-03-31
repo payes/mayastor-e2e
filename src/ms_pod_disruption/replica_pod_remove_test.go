@@ -16,7 +16,7 @@ const gStorageClass = "mayastor-nvmf-pod-remove-test-sc"
 
 func TestMayastorPodLoss(t *testing.T) {
 	// Initialise test and set class and file names for reports
-	k8stest.InitTesting(t, "Replica pod removal tests", "replica-pod-remove")
+	k8stest.InitTesting(t, "Replica pod removal tests", "ms_pod_disruption")
 }
 
 var _ = Describe("Mayastor replica pod removal test", func() {

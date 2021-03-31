@@ -207,7 +207,7 @@ func stressTestPVC(iters int, runFio bool) {
 
 func TestPVCStress(t *testing.T) {
 	// Initialise test and set class and file names for reports
-	k8stest.InitTesting(t, "PVC Stress Test Suite", "pvc-stress")
+	k8stest.InitTesting(t, "PVC Stress Test Suite", "pvc_stress_fio")
 }
 
 var _ = Describe("Mayastor PVC Stress test", func() {

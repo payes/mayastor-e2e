@@ -24,7 +24,7 @@ var defTimeoutSecs = "120s"
 
 func TestBasicVolumeIO(t *testing.T) {
 	// Initialise test and set class and file names for reports
-	k8stest.InitTesting(t, "Basic volume IO tests, NVMe-oF TCP and iSCSI", "basic-volume-io")
+	k8stest.InitTesting(t, "Basic volume IO tests, NVMe-oF TCP and iSCSI", "basic_volume_io")
 }
 
 func basicVolumeIOTest(protocol common.ShareProto, volumeType common.VolumeType, mode storageV1.VolumeBindingMode) {
