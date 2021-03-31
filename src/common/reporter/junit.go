@@ -1,7 +1,7 @@
 package reporter
 
 import (
-	"e2e-basic/common/e2e_config"
+	"mayastor-e2e/common/e2e_config"
 
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/ginkgo/reporters"

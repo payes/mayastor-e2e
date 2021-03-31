@@ -1,4 +1,4 @@
-module e2e-basic
+module mayastor-e2e
 
 go 1.15
 

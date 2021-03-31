@@ -1,9 +1,9 @@
 package basic_test
 
 import (
-	"e2e-basic/common"
-	"e2e-basic/common/e2e_config"
-	"e2e-basic/common/locations"
+	"mayastor-e2e/common"
+	"mayastor-e2e/common/e2e_config"
+	"mayastor-e2e/common/locations"
 	"os/exec"
 	"testing"
 	"time"

@@ -9,8 +9,8 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	"e2e-basic/common/loki"
-	"e2e-basic/common/reporter"
+	"mayastor-e2e/common/loki"
+	"mayastor-e2e/common/reporter"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

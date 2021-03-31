@@ -1,7 +1,7 @@
 package basic_test
 
 import (
-	"e2e-basic/common"
+	"mayastor-e2e/common"
 	"testing"
 
 	. "github.com/onsi/ginkgo"

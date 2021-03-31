@@ -1,7 +1,7 @@
 package io_soak
 
 import (
-	"e2e-basic/common"
+	"mayastor-e2e/common"
 	"k8s.io/api/core/v1"
 )
 

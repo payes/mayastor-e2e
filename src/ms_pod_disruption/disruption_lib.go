@@ -1,7 +1,7 @@
 package ms_pod_disruption
 
 import (
-	"e2e-basic/common"
+	"mayastor-e2e/common"
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 

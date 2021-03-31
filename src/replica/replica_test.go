@@ -3,7 +3,7 @@ package replica_test
 import (
 	"testing"
 
-	"e2e-basic/common"
+	"mayastor-e2e/common"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

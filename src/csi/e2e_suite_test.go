@@ -17,8 +17,8 @@ limitations under the License.
 package e2e
 
 import (
-	"e2e-basic/common/e2e_config"
-	rep "e2e-basic/common/reporter"
+	"mayastor-e2e/common/e2e_config"
+	rep "mayastor-e2e/common/reporter"
 
 	"flag"
 	"fmt"

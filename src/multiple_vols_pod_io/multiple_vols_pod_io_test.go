@@ -1,8 +1,8 @@
 package multiple_vols_pod_io_test
 
 import (
-	"e2e-basic/common"
-	"e2e-basic/common/e2e_config"
+	"mayastor-e2e/common"
+	"mayastor-e2e/common/e2e_config"
 	"fmt"
 	"strings"
 	"testing"

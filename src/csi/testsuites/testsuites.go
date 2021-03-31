@@ -17,7 +17,7 @@ limitations under the License.
 package testsuites
 
 import (
-	"e2e-basic/common/e2e_config"
+	"mayastor-e2e/common/e2e_config"
 
 	"context"
 	"encoding/json"

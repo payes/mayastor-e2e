@@ -20,9 +20,9 @@ import (
 	"fmt"
 	"strings"
 
-	"e2e-basic/common/e2e_config"
-	"e2e-basic/csi/driver"
-	"e2e-basic/csi/testsuites"
+	"mayastor-e2e/common/e2e_config"
+	"mayastor-e2e/csi/driver"
+	"mayastor-e2e/csi/testsuites"
 
 	"github.com/onsi/ginkgo"
 	v1 "k8s.io/api/core/v1"

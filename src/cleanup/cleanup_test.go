@@ -1,8 +1,8 @@
 package cleanup
 
 import (
-	"e2e-basic/common"
-	rep "e2e-basic/common/reporter"
+	"mayastor-e2e/common"
+	rep "mayastor-e2e/common/reporter"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

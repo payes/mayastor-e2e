@@ -17,7 +17,7 @@ limitations under the License.
 package testsuites
 
 import (
-	"e2e-basic/csi/driver"
+	"mayastor-e2e/csi/driver"
 	"github.com/onsi/ginkgo"
 	v1 "k8s.io/api/core/v1"
 	clientset "k8s.io/client-go/kubernetes"

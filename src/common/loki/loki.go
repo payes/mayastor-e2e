@@ -2,7 +2,7 @@ package loki
 
 import (
 	"bytes"
-	"e2e-basic/common/e2e_config"
+	"mayastor-e2e/common/e2e_config"
 	"encoding/json"
 	"net/http"
 	"os"
