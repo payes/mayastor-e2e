@@ -2,6 +2,7 @@ package ms_pod_disruption
 
 import (
 	"mayastor-e2e/common"
+	"mayastor-e2e/common/k8stest"
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -31,16 +32,16 @@ type DisruptionEnv struct {
 
 // prevent mayastor pod from running on the given node
 func SuppressMayastorPodOn(nodeName string) {
-	common.UnlabelNode(nodeName, engineLabel)
-	err := common.WaitForPodNotRunningOnNode(mayastorRegexp, common.NSMayastor, nodeName, podUnscheduleTimeoutSecs)
+	k8stest.UnlabelNode(nodeName, engineLabel)
+	err := k8stest.WaitForPodNotRunningOnNode(mayastorRegexp, common.NSMayastor, nodeName, podUnscheduleTimeoutSecs)
 	Expect(err).ToNot(HaveOccurred())
 }
 
 // allow mayastor pod to run on the given node
 func UnsuppressMayastorPodOn(nodeName string) {
 	// add the mayastor label to the node
-	common.LabelNode(nodeName, engineLabel, mayastorLabel)
-	err := common.WaitForPodRunningOnNode(mayastorRegexp, common.NSMayastor, nodeName, podRescheduleTimeoutSecs)
+	k8stest.LabelNode(nodeName, engineLabel, mayastorLabel)
+	err := k8stest.WaitForPodRunningOnNode(mayastorRegexp, common.NSMayastor, nodeName, podRescheduleTimeoutSecs)
 	Expect(err).ToNot(HaveOccurred())
 }
 
@@ -55,10 +56,10 @@ func (env *DisruptionEnv) UnsuppressMayastorPod() {
 // return the node of the replica to remove,
 // and a vector of the mayastor nodes not in the volume
 func getNodes(uuid string) (string, []string) {
-	nodeList, err := common.GetNodeLocs()
+	nodeList, err := k8stest.GetNodeLocs()
 	Expect(err).ToNot(HaveOccurred())
 
-	nexus, replicaNodes := common.GetMsvNodes(uuid)
+	nexus, replicaNodes := k8stest.GetMsvNodes(uuid)
 	Expect(nexus).NotTo(Equal(""))
 
 	toRemove := ""
@@ -110,18 +111,18 @@ func (env *DisruptionEnv) PodLossTest() {
 	logf.Log.Info("waiting for pod removal to affect the nexus", "timeout", disconnectionTimeoutSecs)
 	Eventually(func() string {
 		logf.Log.Info("running fio against the volume")
-		_, err := common.RunFio(env.fioPodName, 5, common.FioFsFilename, common.DefaultFioSizeMb)
+		_, err := k8stest.RunFio(env.fioPodName, 5, common.FioFsFilename, common.DefaultFioSizeMb)
 		Expect(err).ToNot(HaveOccurred())
-		return common.GetMsvState(env.uuid)
+		return k8stest.GetMsvState(env.uuid)
 	},
 		disconnectionTimeoutSecs, // timeout
 		"1s",                     // polling interval
 	).Should(Equal("degraded"))
 
-	logf.Log.Info("volume condition", "state", common.GetMsvState(env.uuid))
+	logf.Log.Info("volume condition", "state", k8stest.GetMsvState(env.uuid))
 
 	logf.Log.Info("running fio against the degraded volume")
-	_, err := common.RunFio(env.fioPodName, 20, common.FioFsFilename, common.DefaultFioSizeMb)
+	_, err := k8stest.RunFio(env.fioPodName, 20, common.FioFsFilename, common.DefaultFioSizeMb)
 	Expect(err).ToNot(HaveOccurred())
 
 	// re-enable mayastor on all unused nodes
@@ -132,18 +133,18 @@ func (env *DisruptionEnv) PodLossTest() {
 	logf.Log.Info("waiting for the volume to be repaired", "timeout", repairTimeoutSecs)
 	Eventually(func() string {
 		logf.Log.Info("running fio while volume is being repaired")
-		_, err := common.RunFio(env.fioPodName, 5, common.FioFsFilename, common.DefaultFioSizeMb)
+		_, err := k8stest.RunFio(env.fioPodName, 5, common.FioFsFilename, common.DefaultFioSizeMb)
 		Expect(err).ToNot(HaveOccurred())
-		return common.GetMsvState(env.uuid)
+		return k8stest.GetMsvState(env.uuid)
 	},
 		repairTimeoutSecs, // timeout
 		"1s",              // polling interval
 	).Should(Equal("healthy"))
 
-	logf.Log.Info("volume condition", "state", common.GetMsvState(env.uuid))
+	logf.Log.Info("volume condition", "state", k8stest.GetMsvState(env.uuid))
 
 	logf.Log.Info("running fio against the repaired volume")
-	_, err = common.RunFio(env.fioPodName, 20, common.FioFsFilename, common.DefaultFioSizeMb)
+	_, err = k8stest.RunFio(env.fioPodName, 20, common.FioFsFilename, common.DefaultFioSizeMb)
 	Expect(err).ToNot(HaveOccurred())
 
 	logf.Log.Info("enabling mayastor pod", "node", env.replicaToRemove)
@@ -158,16 +159,16 @@ func Setup(pvcName string, storageClassName string, fioPodName string) Disruptio
 
 	env.volToDelete = pvcName
 	env.storageClass = storageClassName
-	env.uuid = common.MkPVC(common.DefaultVolumeSizeMb, pvcName, storageClassName, common.VolFileSystem, common.NSDefault)
+	env.uuid = k8stest.MkPVC(common.DefaultVolumeSizeMb, pvcName, storageClassName, common.VolFileSystem, common.NSDefault)
 
-	podObj := common.CreateFioPodDef(fioPodName, pvcName, common.VolFileSystem, common.NSDefault)
-	_, err := common.CreatePod(podObj, common.NSDefault)
+	podObj := k8stest.CreateFioPodDef(fioPodName, pvcName, common.VolFileSystem, common.NSDefault)
+	_, err := k8stest.CreatePod(podObj, common.NSDefault)
 	Expect(err).ToNot(HaveOccurred())
 
 	env.fioPodName = fioPodName
 	logf.Log.Info("waiting for pod", "name", env.fioPodName)
 	Eventually(func() bool {
-		return common.IsPodRunning(env.fioPodName, common.NSDefault)
+		return k8stest.IsPodRunning(env.fioPodName, common.NSDefault)
 	},
 		defTimeoutSecs, // timeout
 		"1s",           // polling interval
@@ -187,11 +188,11 @@ func (env *DisruptionEnv) Teardown() {
 		UnsuppressMayastorPodOn(node)
 	}
 	if env.fioPodName != "" {
-		err = common.DeletePod(env.fioPodName, common.NSDefault)
+		err = k8stest.DeletePod(env.fioPodName, common.NSDefault)
 		env.fioPodName = ""
 	}
 	if env.volToDelete != "" {
-		common.RmPVC(env.volToDelete, env.storageClass, common.NSDefault)
+		k8stest.RmPVC(env.volToDelete, env.storageClass, common.NSDefault)
 		env.volToDelete = ""
 	}
 	Expect(err).ToNot(HaveOccurred())

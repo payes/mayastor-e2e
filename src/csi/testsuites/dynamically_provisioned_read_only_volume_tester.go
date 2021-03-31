@@ -19,12 +19,12 @@ package testsuites
 import (
 	"fmt"
 
-	"mayastor-e2e/csi/driver"
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
 	v1 "k8s.io/api/core/v1"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
+	"mayastor-e2e/csi/driver"
 )
 
 // DynamicallyProvisionedReadOnlyVolumeTest will provision required StorageClass(es), PVC(s) and Pod(s)

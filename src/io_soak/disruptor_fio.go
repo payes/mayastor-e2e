@@ -3,6 +3,7 @@ package io_soak
 import (
 	"mayastor-e2e/common"
 	"mayastor-e2e/common/e2e_config"
+	"mayastor-e2e/common/k8stest"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"fmt"
@@ -29,15 +30,15 @@ type FioDisruptorJob struct {
 }
 
 func (job FioDisruptorJob) makeVolume() {
-	job.volUUID = common.MkPVC(common.DefaultVolumeSizeMb, job.volName, job.scName, common.VolRawBlock, NSDisrupt)
+	job.volUUID = k8stest.MkPVC(common.DefaultVolumeSizeMb, job.volName, job.scName, common.VolRawBlock, NSDisrupt)
 }
 
 func (job FioDisruptorJob) removeVolume() {
-	common.RmPVC(job.volName, job.scName, NSDisrupt)
+	k8stest.RmPVC(job.volName, job.scName, NSDisrupt)
 }
 
 func (job FioDisruptorJob) makeTestPod(selector map[string]string) (*coreV1.Pod, error) {
-	pod := common.CreateFioPodDef(job.podName, job.volName, common.VolRawBlock, NSDisrupt)
+	pod := k8stest.CreateFioPodDef(job.podName, job.volName, common.VolRawBlock, NSDisrupt)
 	pod.Spec.NodeSelector = selector
 	pod.Spec.RestartPolicy = coreV1.RestartPolicyAlways
 
@@ -54,12 +55,12 @@ func (job FioDisruptorJob) makeTestPod(selector map[string]string) (*coreV1.Pod,
 	args = append(args, GetIOSoakFioArgs()...)
 	pod.Spec.Containers[0].Args = args
 
-	pod, err := common.CreatePod(pod, NSDisrupt)
+	pod, err := k8stest.CreatePod(pod, NSDisrupt)
 	return pod, err
 }
 
 func (job FioDisruptorJob) removeTestPod() error {
-	return common.DeletePod(job.podName, NSDisrupt)
+	return k8stest.DeletePod(job.podName, NSDisrupt)
 }
 
 func (job FioDisruptorJob) getPodName() string {
@@ -86,7 +87,7 @@ func DisruptorsInit(protocols []common.ShareProto, replicas int) {
 	for _, proto := range protocols {
 		scName := fmt.Sprintf("iosoak-disruptor-%s", proto)
 		logf.Log.Info("Creating", "storage class", scName)
-		err := common.MkStorageClass(scName, replicas, proto, common.NSDefault)
+		err := k8stest.MkStorageClass(scName, replicas, proto, common.NSDefault)
 		Expect(err).ToNot(HaveOccurred())
 		disruptorScNames = append(disruptorScNames, scName)
 	}
@@ -94,7 +95,7 @@ func DisruptorsInit(protocols []common.ShareProto, replicas int) {
 
 func DisruptorsDeinit() {
 	for _, scName := range disruptorScNames {
-		err := common.RmStorageClass(scName)
+		err := k8stest.RmStorageClass(scName)
 		Expect(err).ToNot(HaveOccurred())
 	}
 }
@@ -102,7 +103,7 @@ func DisruptorsDeinit() {
 func MakeDisruptors() {
 	config := e2e_config.GetConfig().IOSoakTest.Disrupt
 	count := config.PodCount
-	err := common.MkNamespace(NSDisrupt)
+	err := k8stest.MkNamespace(NSDisrupt)
 	Expect(err).ToNot(HaveOccurred(), "Create namespace %s", NSDisrupt)
 
 	idx := 1
@@ -147,7 +148,7 @@ func MakeDisruptors() {
 		allReady = true
 		for _, job := range disruptorJobs {
 			if !job.ready {
-				job.ready = common.IsPodRunning(job.getPodName(), NSDisrupt)
+				job.ready = k8stest.IsPodRunning(job.getPodName(), NSDisrupt)
 			}
 			allReady = allReady && job.ready
 		}
@@ -167,6 +168,6 @@ func DestroyDisruptors() {
 		job.removeVolume()
 	}
 
-	err := common.RmNamespace(NSDisrupt)
+	err := k8stest.RmNamespace(NSDisrupt)
 	Expect(err).ToNot(HaveOccurred(), "Delete namespace %s", NSDisrupt)
 }

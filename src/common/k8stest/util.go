@@ -1,8 +1,9 @@
-package common
+package k8stest
 
 import (
 	"context"
 	"errors"
+	"mayastor-e2e/common"
 	"os/exec"
 	"regexp"
 	"strconv"
@@ -18,38 +19,6 @@ import (
 
 	. "github.com/onsi/gomega"
 )
-
-const NSE2EPrefix = "e2e-maya"
-const NSDefault = "default"
-const NSMayastor = "mayastor"
-const CSIProvisioner = "io.openebs.csi-mayastor"
-const DefaultVolumeSizeMb = 64
-const DefaultFioSizeMb = 50
-
-type ShareProto string
-
-const (
-	ShareProtoNvmf  ShareProto = "nvmf"
-	ShareProtoIscsi ShareProto = "iscsi"
-)
-
-type VolumeType int
-
-const (
-	VolFileSystem VolumeType = iota
-	VolRawBlock   VolumeType = iota
-)
-
-func (volType VolumeType) String() string {
-	switch volType {
-	case VolFileSystem:
-		return "FileSystem"
-	case VolRawBlock:
-		return "RawBlock"
-	default:
-		return "Unknown"
-	}
-}
 
 // Helper for passing yaml from the specified directory to kubectl
 func KubeCtlApplyYaml(filename string, dir string) {
@@ -70,14 +39,14 @@ func KubeCtlDeleteYaml(filename string, dir string) {
 }
 
 // create a storage class
-func MakeStorageClass(scName string, scReplicas int, protocol ShareProto, nameSpace string, bindingMode *storagev1.VolumeBindingMode) error {
+func MakeStorageClass(scName string, scReplicas int, protocol common.ShareProto, nameSpace string, bindingMode *storagev1.VolumeBindingMode) error {
 	logf.Log.Info("Creating storage class", "name", scName, "replicas", scReplicas, "protocol", protocol, "bindingMode", bindingMode)
 	createOpts := &storagev1.StorageClass{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      scName,
 			Namespace: nameSpace,
 		},
-		Provisioner: CSIProvisioner,
+		Provisioner: common.CSIProvisioner,
 	}
 	createOpts.Parameters = make(map[string]string)
 	createOpts.Parameters["protocol"] = string(protocol)
@@ -93,7 +62,7 @@ func MakeStorageClass(scName string, scReplicas int, protocol ShareProto, nameSp
 }
 
 // create a storage class with default volume binding mode i.e. not specified
-func MkStorageClass(scName string, scReplicas int, protocol ShareProto, nameSpace string) error {
+func MkStorageClass(scName string, scReplicas int, protocol common.ShareProto, nameSpace string) error {
 	return MakeStorageClass(scName, scReplicas, protocol, nameSpace, nil)
 }
 
@@ -109,8 +78,8 @@ func CheckForStorageClasses() (bool, error) {
 	found := false
 	ScApi := gTestEnv.KubeInt.StorageV1().StorageClasses
 	scs, err := ScApi().List(context.TODO(), metav1.ListOptions{})
-	for _,sc := range scs.Items {
-		if sc.Provisioner == CSIProvisioner {
+	for _, sc := range scs.Items {
+		if sc.Provisioner == common.CSIProvisioner {
 			found = true
 		}
 	}
@@ -274,7 +243,7 @@ func PodPresentOnNode(podNameRegexp string, namespace string, nodeName string) b
 
 func mayastorReadyPodCount() int {
 	var mayastorDaemonSet appsV1.DaemonSet
-	if gTestEnv.K8sClient.Get(context.TODO(), types.NamespacedName{Name: "mayastor", Namespace: NSMayastor}, &mayastorDaemonSet) != nil {
+	if gTestEnv.K8sClient.Get(context.TODO(), types.NamespacedName{Name: "mayastor", Namespace: common.NSMayastor}, &mayastorDaemonSet) != nil {
 		logf.Log.Info("Failed to get mayastor DaemonSet")
 		return -1
 	}
@@ -284,7 +253,7 @@ func mayastorReadyPodCount() int {
 
 func moacReady() bool {
 	var moacDeployment appsV1.Deployment
-	if gTestEnv.K8sClient.Get(context.TODO(), types.NamespacedName{Name: "moac", Namespace: NSMayastor}, &moacDeployment) != nil {
+	if gTestEnv.K8sClient.Get(context.TODO(), types.NamespacedName{Name: "moac", Namespace: common.NSMayastor}, &moacDeployment) != nil {
 		logf.Log.Info("Failed to get MOAC deployment")
 		return false
 	}

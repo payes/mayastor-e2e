@@ -1,9 +1,10 @@
-package common
+package k8stest
 
 // Utility functions for Persistent Volume Claims and Persistent Volumes
 import (
 	"context"
 	"fmt"
+	"mayastor-e2e/common"
 	"strings"
 
 	. "github.com/onsi/gomega"
@@ -97,7 +98,7 @@ func GetPvStatusPhase(volname string) (phase corev1.PersistentVolumePhase) {
 //	1. The PVC status transitions to bound,
 //	2. The associated PV is created and its status transitions bound
 //	3. The associated MV is created and has a State "healthy"
-func MkPVC(volSizeMb int, volName string, scName string, volType VolumeType, nameSpace string) string {
+func MkPVC(volSizeMb int, volName string, scName string, volType common.VolumeType, nameSpace string) string {
 	logf.Log.Info("Creating", "volume", volName, "storageClass", scName, "volume type", volType)
 	volSizeMbStr := fmt.Sprintf("%dMi", volSizeMb)
 	// PVC create options
@@ -117,7 +118,7 @@ func MkPVC(volSizeMb int, volName string, scName string, volType VolumeType, nam
 		},
 	}
 
-	if volType == VolRawBlock {
+	if volType == common.VolRawBlock {
 		var blockVolumeMode = corev1.PersistentVolumeBlock
 		createOpts.Spec.VolumeMode = &blockVolumeMode
 	}
@@ -254,7 +255,7 @@ func CheckForPVCs() (bool, error) {
 	nameSpaces, err := gTestEnv.KubeInt.CoreV1().Namespaces().List(context.TODO(), metav1.ListOptions{})
 	if err == nil {
 		for _, ns := range nameSpaces.Items {
-			if strings.HasPrefix(ns.Name, NSE2EPrefix) || ns.Name == NSDefault {
+			if strings.HasPrefix(ns.Name, common.NSE2EPrefix) || ns.Name == common.NSDefault {
 				pvcs, err := gTestEnv.KubeInt.CoreV1().PersistentVolumeClaims(ns.Name).List(context.TODO(), metav1.ListOptions{})
 				if err == nil && pvcs != nil && len(pvcs.Items) != 0 {
 					logf.Log.Info("CheckForVolumeResources: found PersistentVolumeClaims",

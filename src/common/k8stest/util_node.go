@@ -1,13 +1,15 @@
-package common
+package k8stest
 
 // Utility functions for manipulation of nodes.
 import (
 	"context"
 	"errors"
 	"fmt"
-	. "github.com/onsi/gomega"
-	corev1 "k8s.io/api/core/v1"
 	"os/exec"
+
+	. "github.com/onsi/gomega"
+
+	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 

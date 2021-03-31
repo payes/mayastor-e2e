@@ -4,6 +4,7 @@ package pvc_stress_fio_test
 import (
 	"mayastor-e2e/common"
 	"mayastor-e2e/common/e2e_config"
+	"mayastor-e2e/common/k8stest"
 
 	"fmt"
 	"testing"
@@ -47,7 +48,7 @@ var volNames []volSc
 func testPVC(volName string, protocol common.ShareProto, runFio bool) {
 	logf.Log.Info("testPVC", "volume", volName, "protocol", protocol, "run FIO", runFio)
 	scName := "pvc-stress-test-" + string(protocol)
-	err := common.MkStorageClass(scName, e2e_config.GetConfig().BasicVolumeIO.Replicas, protocol, common.NSDefault)
+	err := k8stest.MkStorageClass(scName, e2e_config.GetConfig().BasicVolumeIO.Replicas, protocol, common.NSDefault)
 	Expect(err).ToNot(HaveOccurred(), "Creating storage class %s", scName)
 	// PVC create options
 	createOpts := &coreV1.PersistentVolumeClaim{
@@ -66,11 +67,11 @@ func testPVC(volName string, protocol common.ShareProto, runFio bool) {
 		},
 	}
 	// Create the PVC.
-	_, createErr := common.CreatePVC(createOpts, common.NSDefault)
+	_, createErr := k8stest.CreatePVC(createOpts, common.NSDefault)
 	Expect(createErr).To(BeNil())
 
 	// Confirm the PVC has been created.
-	pvc, getPvcErr := common.GetPVC(volName, common.NSDefault)
+	pvc, getPvcErr := k8stest.GetPVC(volName, common.NSDefault)
 	Expect(getPvcErr).To(BeNil())
 	Expect(pvc).ToNot(BeNil())
 
@@ -80,20 +81,20 @@ func testPVC(volName string, protocol common.ShareProto, runFio bool) {
 
 	// Wait for the PVC to be bound.
 	Eventually(func() coreV1.PersistentVolumeClaimPhase {
-		return common.GetPvcStatusPhase(volName, common.NSDefault)
+		return k8stest.GetPvcStatusPhase(volName, common.NSDefault)
 	},
 		defTimeoutSecs, // timeout
 		"1s",           // polling interval
 	).Should(Equal(coreV1.ClaimBound))
 
 	// Refresh the PVC contents, so that we can get the PV name.
-	pvc, getPvcErr = common.GetPVC(volName, common.NSDefault)
+	pvc, getPvcErr = k8stest.GetPVC(volName, common.NSDefault)
 	Expect(getPvcErr).To(BeNil())
 	Expect(pvc).ToNot(BeNil())
 
 	// Wait for the PV to be provisioned
 	Eventually(func() *coreV1.PersistentVolume {
-		pv, getPvErr := common.GetPV(pvc.Spec.VolumeName)
+		pv, getPvErr := k8stest.GetPV(pvc.Spec.VolumeName)
 		if getPvErr != nil {
 			return nil
 		}
@@ -106,15 +107,15 @@ func testPVC(volName string, protocol common.ShareProto, runFio bool) {
 
 	// Wait for the PV to be bound.
 	Eventually(func() coreV1.PersistentVolumePhase {
-		return common.GetPvStatusPhase(pvc.Spec.VolumeName)
+		return k8stest.GetPvStatusPhase(pvc.Spec.VolumeName)
 	},
 		defTimeoutSecs, // timeout
 		"1s",           // polling interval
 	).Should(Equal(coreV1.VolumeBound))
 
 	// Wait for the MSV to be provisioned
-	Eventually(func() *common.MayastorVolStatus {
-		return common.GetMSV(string(pvc.ObjectMeta.UID))
+	Eventually(func() *k8stest.MayastorVolStatus {
+		return k8stest.GetMSV(string(pvc.ObjectMeta.UID))
 	},
 		defTimeoutSecs, //timeout
 		"1s",           // polling interval
@@ -122,7 +123,7 @@ func testPVC(volName string, protocol common.ShareProto, runFio bool) {
 
 	// Wait for the MSV to be healthy
 	Eventually(func() string {
-		return common.GetMsvState(string(pvc.ObjectMeta.UID))
+		return k8stest.GetMsvState(string(pvc.ObjectMeta.UID))
 	},
 		defTimeoutSecs, // timeout
 		"1s",           // polling interval
@@ -131,7 +132,7 @@ func testPVC(volName string, protocol common.ShareProto, runFio bool) {
 	if runFio {
 		// Create the fio Pod
 		fioPodName := "fio-" + volName
-		pod, err := common.CreateFioPod(fioPodName, volName, common.VolFileSystem, common.NSDefault)
+		pod, err := k8stest.CreateFioPod(fioPodName, volName, common.VolFileSystem, common.NSDefault)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(pod).ToNot(BeNil())
 
@@ -140,18 +141,18 @@ func testPVC(volName string, protocol common.ShareProto, runFio bool) {
 
 		// Wait for the fio Pod to transition to running
 		Eventually(func() bool {
-			return common.IsPodRunning(fioPodName, common.NSDefault)
+			return k8stest.IsPodRunning(fioPodName, common.NSDefault)
 		},
 			defTimeoutSecs,
 			"1s",
 		).Should(Equal(true))
 
 		// Run the fio test
-		_, err = common.RunFio(fioPodName, 5, common.FioFsFilename, common.DefaultFioSizeMb)
+		_, err = k8stest.RunFio(fioPodName, 5, common.FioFsFilename, common.DefaultFioSizeMb)
 		Expect(err).ToNot(HaveOccurred())
 
 		// Delete the fio pod
-		err = common.DeletePod(fioPodName, common.NSDefault)
+		err = k8stest.DeletePod(fioPodName, common.NSDefault)
 		Expect(err).ToNot(HaveOccurred())
 
 		// cleanup
@@ -159,12 +160,12 @@ func testPVC(volName string, protocol common.ShareProto, runFio bool) {
 	}
 
 	// Delete the PVC
-	deleteErr := common.DeletePVC(volName, common.NSDefault)
+	deleteErr := k8stest.DeletePVC(volName, common.NSDefault)
 	Expect(deleteErr).To(BeNil())
 
 	// Wait for the PVC to be deleted.
 	Eventually(func() bool {
-		return common.IsPVCDeleted(volName, common.NSDefault)
+		return k8stest.IsPVCDeleted(volName, common.NSDefault)
 	},
 		"120s", // timeout
 		"1s",   // polling interval
@@ -172,7 +173,7 @@ func testPVC(volName string, protocol common.ShareProto, runFio bool) {
 
 	// Wait for the PV to be deleted.
 	Eventually(func() bool {
-		return common.IsPVDeleted(pvc.Spec.VolumeName)
+		return k8stest.IsPVDeleted(pvc.Spec.VolumeName)
 	},
 		defTimeoutSecs, // timeout
 		"1s",           // polling interval
@@ -180,7 +181,7 @@ func testPVC(volName string, protocol common.ShareProto, runFio bool) {
 
 	// Wait for the MSV to be deleted.
 	Eventually(func() bool {
-		return common.IsMSVDeleted(string(pvc.ObjectMeta.UID))
+		return k8stest.IsMSVDeleted(string(pvc.ObjectMeta.UID))
 	},
 		defTimeoutSecs, // timeout
 		"1s",           // polling interval
@@ -188,7 +189,7 @@ func testPVC(volName string, protocol common.ShareProto, runFio bool) {
 
 	// cleanup
 	volNames = volNames[:len(volNames)-1]
-	err = common.RmStorageClass(scName)
+	err = k8stest.RmStorageClass(scName)
 	Expect(err).ToNot(HaveOccurred(), "Deleting storage class %s", scName)
 }
 
@@ -206,20 +207,20 @@ func stressTestPVC(iters int, runFio bool) {
 
 func TestPVCStress(t *testing.T) {
 	// Initialise test and set class and file names for reports
-	common.InitTesting(t, "PVC Stress Test Suite", "pvc-stress")
+	k8stest.InitTesting(t, "PVC Stress Test Suite", "pvc-stress")
 }
 
 var _ = Describe("Mayastor PVC Stress test", func() {
 
 	BeforeEach(func() {
 		// Check ready to run
-		err := common.BeforeEachCheck()
+		err := k8stest.BeforeEachCheck()
 		Expect(err).ToNot(HaveOccurred())
 	})
 
 	AfterEach(func() {
 		// Check resource leakage
-		err := common.AfterEachCheck()
+		err := k8stest.AfterEachCheck()
 		Expect(err).ToNot(HaveOccurred())
 	})
 
@@ -233,7 +234,7 @@ var _ = Describe("Mayastor PVC Stress test", func() {
 })
 
 var _ = BeforeSuite(func(done Done) {
-	common.SetupTestEnv()
+	k8stest.SetupTestEnv()
 	e2eCfg := e2e_config.GetConfig()
 	cdIterations = e2eCfg.PVCStress.CdCycles
 	crudIterations = e2eCfg.PVCStress.CrudCycles
@@ -247,5 +248,5 @@ var _ = AfterSuite(func() {
 	// NB This only tears down the local structures for talking to the cluster,
 	// not the kubernetes cluster itself.
 	By("tearing down the test environment")
-	common.TeardownTestEnv()
+	k8stest.TeardownTestEnv()
 })

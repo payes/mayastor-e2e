@@ -1,7 +1,7 @@
 package cleanup
 
 import (
-	"mayastor-e2e/common"
+	"mayastor-e2e/common/k8stest"
 	rep "mayastor-e2e/common/reporter"
 
 	. "github.com/onsi/ginkgo"
@@ -19,7 +19,7 @@ func TestCleanUpCluster(t *testing.T) {
 
 var _ = Describe("Mayastor setup", func() {
 	It("should clean up test artefacts in the cluster", func() {
-		cleaned := common.CleanUp()
+		cleaned := k8stest.CleanUp()
 		//		Expect(cleaned).To(BeTrue())
 		logf.Log.Info("", "cleaned", cleaned)
 	})
@@ -27,7 +27,7 @@ var _ = Describe("Mayastor setup", func() {
 
 var _ = BeforeSuite(func(done Done) {
 	logf.SetLogger(zap.New(zap.UseDevMode(true), zap.WriteTo(GinkgoWriter)))
-	common.SetupTestEnv()
+	k8stest.SetupTestEnv()
 
 	close(done)
 }, 60)
@@ -36,5 +36,5 @@ var _ = AfterSuite(func() {
 	// NB This only tears down the local structures for talking to the cluster,
 	// not the kubernetes cluster itself.
 	By("tearing down the test environment")
-	common.TeardownTestEnv()
+	k8stest.TeardownTestEnv()
 })

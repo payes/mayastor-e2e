@@ -1,8 +1,8 @@
 package io_soak
 
 import (
-	"mayastor-e2e/common"
 	"k8s.io/api/core/v1"
+	"mayastor-e2e/common"
 )
 
 const NSDisrupt = common.NSE2EPrefix + "-iosoak-disrupt"

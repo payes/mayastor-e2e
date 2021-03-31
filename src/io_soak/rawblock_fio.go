@@ -3,6 +3,7 @@ package io_soak
 import (
 	"mayastor-e2e/common"
 	"mayastor-e2e/common/e2e_config"
+	"mayastor-e2e/common/k8stest"
 
 	"fmt"
 	"time"
@@ -22,15 +23,15 @@ type FioRawBlockSoakJob struct {
 }
 
 func (job FioRawBlockSoakJob) makeVolume() {
-	job.volUUID = common.MkPVC(common.DefaultVolumeSizeMb, job.volName, job.scName, common.VolRawBlock, common.NSDefault)
+	job.volUUID = k8stest.MkPVC(common.DefaultVolumeSizeMb, job.volName, job.scName, common.VolRawBlock, common.NSDefault)
 }
 
 func (job FioRawBlockSoakJob) removeVolume() {
-	common.RmPVC(job.volName, job.scName, common.NSDefault)
+	k8stest.RmPVC(job.volName, job.scName, common.NSDefault)
 }
 
 func (job FioRawBlockSoakJob) makeTestPod(selector map[string]string) (*coreV1.Pod, error) {
-	pod := common.CreateFioPodDef(job.podName, job.volName, common.VolRawBlock, common.NSDefault)
+	pod := k8stest.CreateFioPodDef(job.podName, job.volName, common.VolRawBlock, common.NSDefault)
 	pod.Spec.NodeSelector = selector
 
 	e2eCfg := e2e_config.GetConfig()
@@ -47,12 +48,12 @@ func (job FioRawBlockSoakJob) makeTestPod(selector map[string]string) (*coreV1.P
 	args = append(args, GetIOSoakFioArgs()...)
 	pod.Spec.Containers[0].Args = args
 
-	pod, err := common.CreatePod(pod, common.NSDefault)
+	pod, err := k8stest.CreatePod(pod, common.NSDefault)
 	return pod, err
 }
 
 func (job FioRawBlockSoakJob) removeTestPod() error {
-	return common.DeletePod(job.podName, common.NSDefault)
+	return k8stest.DeletePod(job.podName, common.NSDefault)
 }
 
 func (job FioRawBlockSoakJob) getPodName() string {

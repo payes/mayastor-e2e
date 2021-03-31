@@ -1,4 +1,4 @@
-package common
+package k8stest
 
 import (
 	"context"
@@ -7,8 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-
+	"mayastor-e2e/common"
 	"mayastor-e2e/common/loki"
 	"mayastor-e2e/common/reporter"
 
@@ -21,12 +20,12 @@ import (
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
 type TestEnvironment struct {
@@ -161,7 +160,7 @@ func ResourceCheck() error {
 		Version:  "v1alpha1",
 		Resource: "mayastorvolumes",
 	}
-	msvs, err := gTestEnv.DynamicClient.Resource(msvGVR).Namespace(NSMayastor).List(context.TODO(), metaV1.ListOptions{})
+	msvs, err := gTestEnv.DynamicClient.Resource(msvGVR).Namespace(common.NSMayastor).List(context.TODO(), metaV1.ListOptions{})
 	if err != nil {
 		errorMsg += fmt.Sprintf("%s %v", errorMsg, err)
 	}
@@ -170,7 +169,7 @@ func ResourceCheck() error {
 	}
 
 	// Check that Mayastor pods are healthy no restarts or fails.
-	err = CheckTestPodsHealth(NSMayastor)
+	err = CheckTestPodsHealth(common.NSMayastor)
 	if err != nil {
 		errorMsg += fmt.Sprintf("%s %v", errorMsg, err)
 	}

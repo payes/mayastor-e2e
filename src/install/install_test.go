@@ -1,14 +1,15 @@
 package basic_test
 
 import (
-	"mayastor-e2e/common"
-	"mayastor-e2e/common/e2e_config"
-	"mayastor-e2e/common/locations"
-	"time"
-
 	"fmt"
 	"os/exec"
 	"testing"
+	"time"
+
+	"mayastor-e2e/common"
+	"mayastor-e2e/common/e2e_config"
+	"mayastor-e2e/common/k8stest"
+	"mayastor-e2e/common/locations"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -70,7 +71,7 @@ func createPools(e2eCfg *e2e_config.E2EConfig) {
 	} else if len(poolDevice) != 0 {
 		// Use the generated file to create pools as per the devices
 		// NO check is made on the status of pools
-		common.KubeCtlApplyYaml("pool.yaml", locations.GetGeneratedYamlsDir())
+		k8stest.KubeCtlApplyYaml("pool.yaml", locations.GetGeneratedYamlsDir())
 	} else {
 		Expect(false).To(BeTrue(), "Neither pool yaml files nor pool device specified")
 	}
@@ -92,7 +93,7 @@ func installMayastor() {
 	imageTag := e2eCfg.ImageTag
 	registry := e2eCfg.Registry
 
-	nodes, err := common.GetNodeLocs()
+	nodes, err := k8stest.GetNodeLocs()
 	Expect(err).ToNot(HaveOccurred())
 
 	var mayastorNodes []string
@@ -112,16 +113,16 @@ func installMayastor() {
 	deployDir := locations.GetMayastorDeployDir()
 	yamlsDir := locations.GetGeneratedYamlsDir()
 
-	err = common.MkNamespace(common.NSMayastor)
+	err = k8stest.MkNamespace(common.NSMayastor)
 	Expect(err).ToNot(HaveOccurred())
-	common.KubeCtlApplyYaml("moac-rbac.yaml", yamlsDir)
-	common.KubeCtlApplyYaml("mayastorpoolcrd.yaml", deployDir)
-	common.KubeCtlApplyYaml("nats-deployment.yaml", yamlsDir)
-	common.KubeCtlApplyYaml("csi-daemonset.yaml", yamlsDir)
-	common.KubeCtlApplyYaml("moac-deployment.yaml", yamlsDir)
-	common.KubeCtlApplyYaml("mayastor-daemonset.yaml", yamlsDir)
+	k8stest.KubeCtlApplyYaml("moac-rbac.yaml", yamlsDir)
+	k8stest.KubeCtlApplyYaml("mayastorpoolcrd.yaml", deployDir)
+	k8stest.KubeCtlApplyYaml("nats-deployment.yaml", yamlsDir)
+	k8stest.KubeCtlApplyYaml("csi-daemonset.yaml", yamlsDir)
+	k8stest.KubeCtlApplyYaml("moac-deployment.yaml", yamlsDir)
+	k8stest.KubeCtlApplyYaml("mayastor-daemonset.yaml", yamlsDir)
 
-	ready, err := common.MayastorReady(2, 540)
+	ready, err := k8stest.MayastorReady(2, 540)
 	Expect(err).ToNot(HaveOccurred())
 	Expect(ready).To(BeTrue())
 
@@ -133,7 +134,8 @@ func installMayastor() {
 	const timoSleepSecs = 10
 	for ix := 0; ix < timoSecs/timoSleepSecs; ix++ {
 		time.Sleep(timoSleepSecs * time.Second)
-		err = common.CheckAllPoolsAreOnline(); if err == nil {
+		err = k8stest.CheckAllPoolsAreOnline()
+		if err == nil {
 			break
 		}
 	}
@@ -143,7 +145,7 @@ func installMayastor() {
 
 func TestInstallSuite(t *testing.T) {
 	// Initialise test and set class and file names for reports
-	common.InitTesting(t, "Basic Install Suite", "install")
+	k8stest.InitTesting(t, "Basic Install Suite", "install")
 }
 
 var _ = Describe("Mayastor setup", func() {
@@ -153,12 +155,12 @@ var _ = Describe("Mayastor setup", func() {
 })
 
 var _ = BeforeSuite(func(done Done) {
-	common.SetupTestEnv()
+	k8stest.SetupTestEnv()
 
 	close(done)
 }, 60)
 
 var _ = AfterSuite(func() {
 	By("tearing down the test environment")
-	common.TeardownTestEnvNoCleanup()
+	k8stest.TeardownTestEnvNoCleanup()
 })

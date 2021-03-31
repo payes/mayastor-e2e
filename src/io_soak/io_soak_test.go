@@ -3,18 +3,19 @@
 package io_soak
 
 import (
-	"mayastor-e2e/common"
-	"mayastor-e2e/common/e2e_config"
-	corev1 "k8s.io/api/core/v1"
-
 	"fmt"
 	"sort"
 	"testing"
 	"time"
 
+	"mayastor-e2e/common"
+	"mayastor-e2e/common/e2e_config"
+	"mayastor-e2e/common/k8stest"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	coreV1 "k8s.io/api/core/v1"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -23,7 +24,7 @@ var jobs []IoSoakJob
 
 func TestIOSoak(t *testing.T) {
 	// Initialise test and set class and file names for reports
-	common.InitTesting(t, "IO soak test, NVMe-oF TCP and iSCSI", "io-soak")
+	k8stest.InitTesting(t, "IO soak test, NVMe-oF TCP and iSCSI", "io-soak")
 }
 
 func monitor() error {
@@ -41,25 +42,25 @@ func monitor() error {
 	for ix := 0; len(activeJobMap) != 0 && len(failedJobs) == 0; ix += 1 {
 		time.Sleep(1 * time.Second)
 
-		err = common.CheckTestPodsHealth(common.NSMayastor)
+		err = k8stest.CheckTestPodsHealth(common.NSMayastor)
 		if err != nil {
 			logf.Log.Info("IOSoakTest monitor", "namespace", common.NSMayastor, "error", err)
 			break
 		}
 
-		err = common.CheckTestPodsHealth(common.NSDefault)
+		err = k8stest.CheckTestPodsHealth(common.NSDefault)
 		if err != nil {
 			logf.Log.Info("IOSoakTest monitor", "namespace", common.NSDefault, "error", err)
 			break
 		}
 
-		err = common.CheckAllMsvsAreHealthy()
+		err = k8stest.CheckAllMsvsAreHealthy()
 		if err != nil {
 			logf.Log.Info("IOSoakTest monitor Mayastor volumes check", "error", err)
 			break
 		}
 
-		err = common.CheckAllPoolsAreOnline()
+		err = k8stest.CheckAllPoolsAreOnline()
 		if err != nil {
 			logf.Log.Info("IOSoakTest monitor Mayastor pools check", "error", err)
 			break
@@ -77,28 +78,28 @@ func monitor() error {
 		podsRunning := 0
 
 		for _, podName := range podNames {
-			res, err := common.CheckPodCompleted(podName, common.NSDefault)
+			res, err := k8stest.CheckPodCompleted(podName, common.NSDefault)
 			if err != nil {
 				logf.Log.Info("Failed to access pod status", "podName", podName, "error", err)
 				break
 			} else {
 				switch res {
-				case corev1.PodPending:
+				case coreV1.PodPending:
 					logf.Log.Info("Unexpected! pod status pending", "podName", podName)
-				case corev1.PodRunning:
+				case coreV1.PodRunning:
 					podsRunning += 1
-				case corev1.PodSucceeded:
+				case coreV1.PodSucceeded:
 					logf.Log.Info("Pod completed successfully", "podName", podName)
 					delete(activeJobMap, podName)
 					podsSucceeded += 1
-				case corev1.PodFailed:
+				case coreV1.PodFailed:
 
 					logf.Log.Info("Pod completed with failures",
 						"Job", activeJobMap[podName].describe())
 					delete(activeJobMap, podName)
 					failedJobs = append(failedJobs, podName)
 					podsFailed += 1
-				case corev1.PodUnknown:
+				case coreV1.PodUnknown:
 					logf.Log.Info("Unexpected! pod status is unknown", "podName", podName)
 				}
 			}
@@ -121,7 +122,7 @@ func monitor() error {
 /// replicas - number of replicas for each volume
 /// loadFactor - number of volumes for each mayastor instance
 func IOSoakTest(protocols []common.ShareProto, replicas int, loadFactor int, duration time.Duration, disruptorCount int) {
-	nodeList, err := common.GetNodeLocs()
+	nodeList, err := k8stest.GetNodeLocs()
 	Expect(err).ToNot(HaveOccurred())
 
 	var nodes []string
@@ -142,7 +143,7 @@ func IOSoakTest(protocols []common.ShareProto, replicas int, loadFactor int, dur
 
 	for i, node := range nodes {
 		if i%2 == 0 {
-			common.LabelNode(node, NodeSelectorKey, NodeSelectorAppValue)
+			k8stest.LabelNode(node, NodeSelectorKey, NodeSelectorAppValue)
 		}
 	}
 
@@ -152,7 +153,7 @@ func IOSoakTest(protocols []common.ShareProto, replicas int, loadFactor int, dur
 	for _, proto := range protocols {
 		scName := fmt.Sprintf("io-soak-%s", proto)
 		logf.Log.Info("Creating", "storage class", scName)
-		err = common.MkStorageClass(scName, replicas, proto, common.NSDefault)
+		err = k8stest.MkStorageClass(scName, replicas, proto, common.NSDefault)
 		Expect(err).ToNot(HaveOccurred())
 		scNames = append(scNames, scName)
 	}
@@ -209,7 +210,7 @@ func IOSoakTest(protocols []common.ShareProto, replicas int, loadFactor int, dur
 		allReady = true
 		readyCount := 0
 		for _, job := range jobs {
-			ready := common.IsPodRunning(job.getPodName(), common.NSDefault)
+			ready := k8stest.IsPodRunning(job.getPodName(), common.NSDefault)
 			if ready {
 				readyCount += 1
 			}
@@ -222,7 +223,7 @@ func IOSoakTest(protocols []common.ShareProto, replicas int, loadFactor int, dur
 
 	if !allReady {
 		for _, job := range jobs {
-			if !common.IsPodRunning(job.getPodName(), common.NSDefault) {
+			if !k8stest.IsPodRunning(job.getPodName(), common.NSDefault) {
 				logf.Log.Info("Not ready",
 					"Job", job.describe(),
 				)
@@ -252,13 +253,13 @@ func IOSoakTest(protocols []common.ShareProto, replicas int, loadFactor int, dur
 
 	logf.Log.Info("All runs complete, deleting storage classes")
 	for _, scName := range scNames {
-		err = common.RmStorageClass(scName)
+		err = k8stest.RmStorageClass(scName)
 		Expect(err).ToNot(HaveOccurred())
 	}
 
 	for i, node := range nodes {
 		if i%2 == 0 {
-			common.UnlabelNode(node, NodeSelectorKey)
+			k8stest.UnlabelNode(node, NodeSelectorKey)
 		}
 	}
 }
@@ -267,13 +268,13 @@ var _ = Describe("Mayastor Volume IO soak test", func() {
 
 	BeforeEach(func() {
 		// Check ready to run
-		err := common.BeforeEachCheck()
+		err := k8stest.BeforeEachCheck()
 		Expect(err).ToNot(HaveOccurred())
 	})
 
 	AfterEach(func() {
 		// Check resource leakage.
-		err := common.AfterEachCheck()
+		err := k8stest.AfterEachCheck()
 		Expect(err).ToNot(HaveOccurred())
 	})
 
@@ -299,7 +300,7 @@ var _ = Describe("Mayastor Volume IO soak test", func() {
 })
 
 var _ = BeforeSuite(func(done Done) {
-	common.SetupTestEnv()
+	k8stest.SetupTestEnv()
 
 	close(done)
 }, 60)
@@ -307,5 +308,5 @@ var _ = BeforeSuite(func(done Done) {
 var _ = AfterSuite(func() {
 	// NB This only tears down the local structures for talking to the cluster,
 	// not the kubernetes cluster itself.	By("tearing down the test environment")
-	common.TeardownTestEnv()
+	k8stest.TeardownTestEnv()
 })

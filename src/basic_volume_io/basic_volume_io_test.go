@@ -3,9 +3,10 @@
 package basic_volume_io_test
 
 import (
+	"fmt"
 	"mayastor-e2e/common"
 	"mayastor-e2e/common/e2e_config"
-	"fmt"
+	"mayastor-e2e/common/k8stest"
 	"strings"
 	"testing"
 	"time"
@@ -22,25 +23,25 @@ var defTimeoutSecs = "120s"
 
 func TestBasicVolumeIO(t *testing.T) {
 	// Initialise test and set class and file names for reports
-	common.InitTesting(t, "Basic volume IO tests, NVMe-oF TCP and iSCSI", "basic-volume-io")
+	k8stest.InitTesting(t, "Basic volume IO tests, NVMe-oF TCP and iSCSI", "basic-volume-io")
 }
 
 func basicVolumeIOTest(protocol common.ShareProto, volumeType common.VolumeType, mode storageV1.VolumeBindingMode) {
 	params := e2e_config.GetConfig().BasicVolumeIO
 	logf.Log.Info("Test", "parameters", params)
 	scName := strings.ToLower(fmt.Sprintf("basic-vol-io-repl-%d-%s-%s-%s", params.Replicas, string(protocol), volumeType, mode))
-	err := common.MakeStorageClass(scName, params.Replicas, protocol, common.NSDefault, &mode)
+	err := k8stest.MakeStorageClass(scName, params.Replicas, protocol, common.NSDefault, &mode)
 	Expect(err).ToNot(HaveOccurred(), "Creating storage class %s", scName)
 
 	volName := strings.ToLower(fmt.Sprintf("basic-vol-io-repl-%d-%s-%s-%s", params.Replicas, string(protocol), volumeType, mode))
 
 	// Create the volume
-	uid := common.MkPVC(params.VolSizeMb, volName, scName, volumeType, common.NSDefault)
+	uid := k8stest.MkPVC(params.VolSizeMb, volName, scName, volumeType, common.NSDefault)
 	logf.Log.Info("Volume", "uid", uid)
 
 	// Create the fio Pod
 	fioPodName := "fio-" + volName
-	pod := common.CreateFioPodDef(fioPodName, volName, volumeType, common.NSDefault)
+	pod := k8stest.CreateFioPodDef(fioPodName, volName, volumeType, common.NSDefault)
 	Expect(pod).ToNot(BeNil())
 
 	var args = []string{
@@ -57,13 +58,13 @@ func basicVolumeIOTest(protocol common.ShareProto, volumeType common.VolumeType,
 	logf.Log.Info("fio", "arguments", args)
 	pod.Spec.Containers[0].Args = args
 
-	pod, err = common.CreatePod(pod, common.NSDefault)
+	pod, err = k8stest.CreatePod(pod, common.NSDefault)
 	Expect(err).ToNot(HaveOccurred())
 	Expect(pod).ToNot(BeNil())
 
 	// Wait for the fio Pod to transition to running
 	Eventually(func() bool {
-		return common.IsPodRunning(fioPodName, common.NSDefault)
+		return k8stest.IsPodRunning(fioPodName, common.NSDefault)
 	},
 		defTimeoutSecs,
 		"1s",
@@ -79,7 +80,7 @@ func basicVolumeIOTest(protocol common.ShareProto, volumeType common.VolumeType,
 		}
 		time.Sleep(1 * time.Second)
 		tSecs += 1
-		phase, err = common.CheckPodCompleted(fioPodName, common.NSDefault)
+		phase, err = k8stest.CheckPodCompleted(fioPodName, common.NSDefault)
 		Expect(err).To(BeNil(), "CheckPodComplete got error %s", err)
 		if phase != coreV1.PodRunning {
 			break
@@ -89,13 +90,13 @@ func basicVolumeIOTest(protocol common.ShareProto, volumeType common.VolumeType,
 	logf.Log.Info("fio completed", "duration", tSecs)
 
 	// Delete the fio pod
-	err = common.DeletePod(fioPodName, common.NSDefault)
+	err = k8stest.DeletePod(fioPodName, common.NSDefault)
 	Expect(err).ToNot(HaveOccurred())
 
 	// Delete the volume
-	common.RmPVC(volName, scName, common.NSDefault)
+	k8stest.RmPVC(volName, scName, common.NSDefault)
 
-	err = common.RmStorageClass(scName)
+	err = k8stest.RmStorageClass(scName)
 	Expect(err).ToNot(HaveOccurred(), "Deleting storage class %s", scName)
 }
 
@@ -103,13 +104,13 @@ var _ = Describe("Mayastor Volume IO test", func() {
 
 	BeforeEach(func() {
 		// Check ready to run
-		err := common.BeforeEachCheck()
+		err := k8stest.BeforeEachCheck()
 		Expect(err).ToNot(HaveOccurred())
 	})
 
 	AfterEach(func() {
 		// Check resource leakage.
-		err := common.AfterEachCheck()
+		err := k8stest.AfterEachCheck()
 		Expect(err).ToNot(HaveOccurred())
 	})
 
@@ -136,7 +137,7 @@ var _ = Describe("Mayastor Volume IO test", func() {
 })
 
 var _ = BeforeSuite(func(done Done) {
-	common.SetupTestEnv()
+	k8stest.SetupTestEnv()
 
 	close(done)
 }, 60)
@@ -144,5 +145,5 @@ var _ = BeforeSuite(func(done Done) {
 var _ = AfterSuite(func() {
 	// NB This only tears down the local structures for talking to the cluster,
 	// not the kubernetes cluster itself.	By("tearing down the test environment")
-	common.TeardownTestEnv()
+	k8stest.TeardownTestEnv()
 })

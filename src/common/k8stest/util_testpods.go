@@ -1,10 +1,11 @@
-package common
+package k8stest
 
 // Utility functions for test pods.
 import (
 	"context"
 	"errors"
 	"fmt"
+	"mayastor-e2e/common"
 	"os/exec"
 	"strings"
 
@@ -15,29 +16,6 @@ import (
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
-
-//  These variables match the settings used in createFioPodDef
-const FioFsMountPoint = "/volume"
-const FioBlockFilename = "/dev/sdm"
-const FioFsFilename = FioFsMountPoint + "/fiotestfile"
-
-// default fio arguments for E2E fio runs
-var fioArgs = []string{
-	"--name=benchtest",
-	"--direct=1",
-	"--rw=randrw",
-	"--ioengine=libaio",
-	"--bs=4k",
-	"--iodepth=16",
-	"--numjobs=1",
-	"--verify=crc32",
-	"--verify_fatal=1",
-	"--verify_async=2",
-}
-
-func GetFioArgs() []string {
-	return fioArgs
-}
 
 // FIXME: this function runs fio with a bunch of parameters which are not configurable.
 // sizeMb should be 0 for fio to use the entire block device
@@ -116,17 +94,17 @@ func DeletePod(podName string, nameSpace string) error {
 /// Create a test fio pod in default namespace, no options and no context
 /// for filesystem,  mayastor volume is mounted on /volume
 /// for rawblock, mayastor volume is mounted on /dev/sdm
-func CreateFioPodDef(podName string, volName string, volType VolumeType, nameSpace string) *corev1.Pod {
+func CreateFioPodDef(podName string, volName string, volType common.VolumeType, nameSpace string) *corev1.Pod {
 	volMounts := []corev1.VolumeMount{
 		{
 			Name:      "ms-volume",
-			MountPath: FioFsMountPoint,
+			MountPath: common.FioFsMountPoint,
 		},
 	}
 	volDevices := []corev1.VolumeDevice{
 		{
 			Name:       "ms-volume",
-			DevicePath: FioBlockFilename,
+			DevicePath: common.FioBlockFilename,
 		},
 	}
 
@@ -157,7 +135,7 @@ func CreateFioPodDef(podName string, volName string, volType VolumeType, nameSpa
 			},
 		},
 	}
-	if volType == VolRawBlock {
+	if volType == common.VolRawBlock {
 		podDef.Spec.Containers[0].VolumeDevices = volDevices
 	} else {
 		podDef.Spec.Containers[0].VolumeMounts = volMounts
@@ -167,10 +145,10 @@ func CreateFioPodDef(podName string, volName string, volType VolumeType, nameSpa
 
 /// Create a test fio pod in default namespace, no options and no context
 /// mayastor volume is mounted on /volume
-func CreateFioPod(podName string, volName string, volType VolumeType, nameSpace string) (*corev1.Pod, error) {
+func CreateFioPod(podName string, volName string, volType common.VolumeType, nameSpace string) (*corev1.Pod, error) {
 	logf.Log.Info("Creating fio pod definition", "name", podName, "volume type", volType)
 	podDef := CreateFioPodDef(podName, volName, volType, nameSpace)
-	return CreatePod(podDef, NSDefault)
+	return CreatePod(podDef, common.NSDefault)
 }
 
 // Check if any test pods exist in the default and e2e related namespaces .
@@ -181,7 +159,7 @@ func CheckForTestPods() (bool, error) {
 	nameSpaces, err := gTestEnv.KubeInt.CoreV1().Namespaces().List(context.TODO(), metav1.ListOptions{})
 	if err == nil {
 		for _, ns := range nameSpaces.Items {
-			if strings.HasPrefix(ns.Name, NSE2EPrefix) || ns.Name == NSDefault {
+			if strings.HasPrefix(ns.Name, common.NSE2EPrefix) || ns.Name == common.NSDefault {
 				pods, err := gTestEnv.KubeInt.CoreV1().Pods(ns.Name).List(context.TODO(), metav1.ListOptions{})
 				if err == nil && pods != nil && len(pods.Items) != 0 {
 					logf.Log.Info("CheckForTestPods",

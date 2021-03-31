@@ -1,13 +1,16 @@
 package e2e_config
 
 import (
+	"mayastor-e2e/common"
+
 	"fmt"
-	"github.com/ilyakaznacheev/cleanenv"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"os"
 	"path"
 	"sync"
+
+	"github.com/ilyakaznacheev/cleanenv"
 )
 
 // E2EConfig is a application configuration structure
@@ -80,10 +83,6 @@ type E2EConfig struct {
 var once sync.Once
 var e2eConfig E2EConfig
 
-// Relative path to the configuration directory WRT e2e root
-const configDir = "/configurations"
-const defaultConfigFileRelPath = configDir + "/ci_e2e_config.yaml"
-
 func configFileExists(path string) bool {
 	if _, err := os.Stat(path); err == nil {
 		return true
@@ -120,13 +119,13 @@ func GetConfig() E2EConfig {
 				if !okE2eRootDir {
 					panic("E2E root directory not defined - define via e2e_root_dir environment variable")
 				}
-				configFile = path.Clean(e2eRootDir + configDir + "/" + value)
+				configFile = path.Clean(e2eRootDir + common.ConfigDir + "/" + value)
 			}
 		} else {
 			if !okE2eRootDir {
 				panic("E2E root directory not defined - define via e2e_root_dir environment variable")
 			}
-			configFile = path.Clean(e2eRootDir + defaultConfigFileRelPath)
+			configFile = path.Clean(e2eRootDir + common.DefaultConfigFileRelPath)
 		}
 		fmt.Printf("Using configuration file %s\n", configFile)
 		err = cleanenv.ReadConfig(configFile, &e2eConfig)

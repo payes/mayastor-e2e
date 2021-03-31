@@ -1,9 +1,10 @@
 package multiple_vols_pod_io_test
 
 import (
+	"fmt"
 	"mayastor-e2e/common"
 	"mayastor-e2e/common/e2e_config"
-	"fmt"
+	"mayastor-e2e/common/k8stest"
 	"strings"
 	"testing"
 
@@ -19,13 +20,13 @@ var defTimeoutSecs = "120s"
 
 func TestMultipleVolumeIO(t *testing.T) {
 	// Initialise test and set class and file names for reports
-	common.InitTesting(t, "Multiple volumes single pod IO tests", "multiple-volume-pod-io")
+	k8stest.InitTesting(t, "Multiple volumes single pod IO tests", "multiple-volume-pod-io")
 }
 
 func multipleVolumeIOTest(replicas int, volumeCount int, protocol common.ShareProto, volumeType common.VolumeType, binding storageV1.VolumeBindingMode) {
 	logf.Log.Info("MultipleVolumeIOTest", "replicas", replicas, "volumeCount", volumeCount, "protocol", protocol, "volumeType", volumeType, "binding", binding)
 	scName := strings.ToLower(fmt.Sprintf("msv-repl-%d-%s-%s-%s", replicas, string(protocol), volumeType, binding))
-	err := common.MakeStorageClass(scName, replicas, protocol, common.NSDefault, &binding)
+	err := k8stest.MakeStorageClass(scName, replicas, protocol, common.NSDefault, &binding)
 	Expect(err).ToNot(HaveOccurred(), "Creating storage class %s", scName)
 
 	var volNames []string
@@ -37,7 +38,7 @@ func multipleVolumeIOTest(replicas int, volumeCount int, protocol common.SharePr
 	// Create the volumes and associated bits
 	for ix := 1; ix <= volumeCount; ix += 1 {
 		volName := fmt.Sprintf("ms-vol-%s-%d", protocol, ix)
-		uid := common.MkPVC(common.DefaultVolumeSizeMb, volName, scName, volumeType, common.NSDefault)
+		uid := k8stest.MkPVC(common.DefaultVolumeSizeMb, volName, scName, volumeType, common.NSDefault)
 		logf.Log.Info("Volume", "uid", uid)
 		volNames = append(volNames, volName)
 
@@ -73,7 +74,7 @@ func multipleVolumeIOTest(replicas int, volumeCount int, protocol common.SharePr
 	// Create the fio Pod
 	fioPodName := "fio-multi-vol"
 	var fioSize int
-	pod := common.CreateFioPodDef(fioPodName, "aa", volumeType, common.NSDefault)
+	pod := k8stest.CreateFioPodDef(fioPodName, "aa", volumeType, common.NSDefault)
 	pod.Spec.Volumes = volumes
 	switch volumeType {
 	case common.VolFileSystem:
@@ -84,33 +85,33 @@ func multipleVolumeIOTest(replicas int, volumeCount int, protocol common.SharePr
 		fioSize = 0
 	}
 
-	pod, err = common.CreatePod(pod, common.NSDefault)
+	pod, err = k8stest.CreatePod(pod, common.NSDefault)
 	Expect(err).ToNot(HaveOccurred())
 	Expect(pod).ToNot(BeNil())
 
 	// Wait for the fio Pod to transition to running
 	Eventually(func() bool {
-		return common.IsPodRunning(fioPodName, common.NSDefault)
+		return k8stest.IsPodRunning(fioPodName, common.NSDefault)
 	},
 		defTimeoutSecs,
 		"1s",
 	).Should(Equal(true))
 
 	for _, fioFile := range fioFiles {
-		_, err := common.RunFio(fioPodName, 20, fioFile, fioSize)
+		_, err := k8stest.RunFio(fioPodName, 20, fioFile, fioSize)
 		Expect(err).ToNot(HaveOccurred())
 	}
 
 	// Delete the fio pod
-	err = common.DeletePod(fioPodName, common.NSDefault)
+	err = k8stest.DeletePod(fioPodName, common.NSDefault)
 	Expect(err).ToNot(HaveOccurred())
 
 	// Delete the volumes
 	for _, volName := range volNames {
-		common.RmPVC(volName, scName, common.NSDefault)
+		k8stest.RmPVC(volName, scName, common.NSDefault)
 	}
 
-	err = common.RmStorageClass(scName)
+	err = k8stest.RmStorageClass(scName)
 	Expect(err).ToNot(HaveOccurred(), "Deleting storage class %s", scName)
 }
 
@@ -118,13 +119,13 @@ var _ = Describe("Mayastor Volume IO test", func() {
 
 	BeforeEach(func() {
 		// Check ready to run
-		err := common.BeforeEachCheck()
+		err := k8stest.BeforeEachCheck()
 		Expect(err).ToNot(HaveOccurred())
 	})
 
 	AfterEach(func() {
 		// Check resource leakage.
-		err := common.AfterEachCheck()
+		err := k8stest.AfterEachCheck()
 		Expect(err).ToNot(HaveOccurred())
 	})
 
@@ -169,7 +170,7 @@ var _ = Describe("Mayastor Volume IO test", func() {
 })
 
 var _ = BeforeSuite(func(done Done) {
-	common.SetupTestEnv()
+	k8stest.SetupTestEnv()
 
 	close(done)
 }, 60)
@@ -177,5 +178,5 @@ var _ = BeforeSuite(func(done Done) {
 var _ = AfterSuite(func() {
 	// NB This only tears down the local structures for talking to the cluster,
 	// not the kubernetes cluster itself.	By("tearing down the test environment")
-	common.TeardownTestEnv()
+	k8stest.TeardownTestEnv()
 })

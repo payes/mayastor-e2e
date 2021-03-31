@@ -1,7 +1,7 @@
 package basic_test
 
 import (
-	"mayastor-e2e/common"
+	"mayastor-e2e/common/k8stest"
 	"testing"
 
 	. "github.com/onsi/ginkgo"
@@ -13,7 +13,7 @@ import (
 // running a 3rd party test.
 func resourceCheck() {
 
-	err := common.ResourceCheck()
+	err := k8stest.ResourceCheck()
 	if err != nil {
 		logf.Log.Info("Failed resource check.", "error", err)
 	}
@@ -23,7 +23,7 @@ func resourceCheck() {
 
 func TestResourceCheck(t *testing.T) {
 	// Initialise test and set class and file names for reports
-	common.InitTesting(t, "Resource Check Suite", "resource_check")
+	k8stest.InitTesting(t, "Resource Check Suite", "resource_check")
 }
 
 var _ = Describe("Mayastor resource check", func() {
@@ -33,7 +33,7 @@ var _ = Describe("Mayastor resource check", func() {
 })
 
 var _ = BeforeSuite(func(done Done) {
-	common.SetupTestEnv()
+	k8stest.SetupTestEnv()
 
 	close(done)
 }, 60)
@@ -42,5 +42,5 @@ var _ = AfterSuite(func() {
 	// NB This only tears down the local structures for talking to the cluster,
 	// not the kubernetes cluster itself.
 	By("tearing down the test environment")
-	common.TeardownTestEnv()
+	k8stest.TeardownTestEnv()
 })

@@ -4,9 +4,10 @@ package locations
 // more generic and data driven.
 
 import (
-	"mayastor-e2e/common/e2e_config"
 	"os"
 	"path"
+
+	"mayastor-e2e/common/e2e_config"
 
 	. "github.com/onsi/gomega"
 )
