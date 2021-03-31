@@ -1,14 +1,14 @@
 package e2e_config
 
 import (
-	"mayastor-e2e/common"
-
 	"fmt"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"os"
 	"path"
 	"sync"
+
+	"mayastor-e2e/common"
 
 	"github.com/ilyakaznacheev/cleanenv"
 )

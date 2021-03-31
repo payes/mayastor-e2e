@@ -1,12 +1,12 @@
 package io_soak
 
 import (
+	"fmt"
+	"time"
+
 	"mayastor-e2e/common"
 	"mayastor-e2e/common/e2e_config"
 	"mayastor-e2e/common/k8stest"
-
-	"fmt"
-	"time"
 
 	coreV1 "k8s.io/api/core/v1"
 )

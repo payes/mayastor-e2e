@@ -9,7 +9,7 @@ import (
 
 	"mayastor-e2e/common"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -21,7 +21,7 @@ func DeleteAllPods(nameSpace string) (int, error) {
 	logf.Log.Info("DeleteAllPods")
 	numPods := 0
 
-	pods, err := gTestEnv.KubeInt.CoreV1().Pods(nameSpace).List(context.TODO(), metav1.ListOptions{})
+	pods, err := gTestEnv.KubeInt.CoreV1().Pods(nameSpace).List(context.TODO(), metaV1.ListOptions{})
 	if err != nil {
 		logf.Log.Info("DeleteAllPods: list pods failed.", "error", err)
 	} else {
@@ -29,7 +29,7 @@ func DeleteAllPods(nameSpace string) (int, error) {
 		logf.Log.Info("DeleteAllPods: found", "pods", numPods)
 		for _, pod := range pods.Items {
 			logf.Log.Info("DeleteAllPods: Deleting", "pod", pod.Name)
-			delErr := gTestEnv.KubeInt.CoreV1().Pods(nameSpace).Delete(context.TODO(), pod.Name, metav1.DeleteOptions{GracePeriodSeconds: &ZeroInt64})
+			delErr := gTestEnv.KubeInt.CoreV1().Pods(nameSpace).Delete(context.TODO(), pod.Name, metaV1.DeleteOptions{GracePeriodSeconds: &ZeroInt64})
 			if delErr != nil {
 				logf.Log.Info("DeleteAllPods: failed to delete the pod", "podName", pod.Name, "error", delErr)
 			}
@@ -44,13 +44,13 @@ func DeleteAllPvcs(nameSpace string) (int, error) {
 	logf.Log.Info("DeleteAllPvcs")
 
 	// Delete all PVCs found
-	pvcs, err := gTestEnv.KubeInt.CoreV1().PersistentVolumeClaims(nameSpace).List(context.TODO(), metav1.ListOptions{})
+	pvcs, err := gTestEnv.KubeInt.CoreV1().PersistentVolumeClaims(nameSpace).List(context.TODO(), metaV1.ListOptions{})
 	if err != nil {
 		logf.Log.Info("DeleteAllPvcs: list PersistentVolumeClaims failed.", "error", err)
 	} else if len(pvcs.Items) != 0 {
 		for _, pvc := range pvcs.Items {
 			logf.Log.Info("DeleteAllPvcs: deleting", "PersistentVolumeClaim", pvc.Name)
-			delErr := gTestEnv.KubeInt.CoreV1().PersistentVolumeClaims(nameSpace).Delete(context.TODO(), pvc.Name, metav1.DeleteOptions{GracePeriodSeconds: &ZeroInt64})
+			delErr := gTestEnv.KubeInt.CoreV1().PersistentVolumeClaims(nameSpace).Delete(context.TODO(), pvc.Name, metaV1.DeleteOptions{GracePeriodSeconds: &ZeroInt64})
 			if delErr != nil {
 				logf.Log.Info("DeleteAllPvcs: failed to delete", "PersistentVolumeClaim", pvc.Name, "error", delErr)
 			}
@@ -60,7 +60,7 @@ func DeleteAllPvcs(nameSpace string) (int, error) {
 	// Wait 2 minutes for PVCS to be deleted
 	numPvcs := 0
 	for attempts := 0; attempts < 120; attempts++ {
-		pvcs, err := gTestEnv.KubeInt.CoreV1().PersistentVolumeClaims(nameSpace).List(context.TODO(), metav1.ListOptions{})
+		pvcs, err := gTestEnv.KubeInt.CoreV1().PersistentVolumeClaims(nameSpace).List(context.TODO(), metaV1.ListOptions{})
 		if err == nil {
 			numPvcs = len(pvcs.Items)
 			if numPvcs == 0 {
@@ -78,7 +78,7 @@ func DeleteAllPvcs(nameSpace string) (int, error) {
 func DeleteAllPvs() (int, error) {
 	// Delete all PVs found
 	// First remove all finalizers
-	pvs, err := gTestEnv.KubeInt.CoreV1().PersistentVolumes().List(context.TODO(), metav1.ListOptions{})
+	pvs, err := gTestEnv.KubeInt.CoreV1().PersistentVolumes().List(context.TODO(), metaV1.ListOptions{})
 	if err != nil {
 		logf.Log.Info("DeleteAllPvs: list PersistentVolumes failed.", "error", err)
 	} else if len(pvs.Items) != 0 {
@@ -89,7 +89,7 @@ func DeleteAllPvs() (int, error) {
 				logf.Log.Info("DeleteAllPvs: deleting finalizer for",
 					"PersistentVolume", pv.Name, "finalizers", finalizers)
 				pv.SetFinalizers(empty)
-				_, _ = gTestEnv.KubeInt.CoreV1().PersistentVolumes().Update(context.TODO(), &pv, metav1.UpdateOptions{})
+				_, _ = gTestEnv.KubeInt.CoreV1().PersistentVolumes().Update(context.TODO(), &pv, metaV1.UpdateOptions{})
 			}
 		}
 	}
@@ -97,7 +97,7 @@ func DeleteAllPvs() (int, error) {
 	// then wait for up to 2 minute for resources to be cleared
 	numPvs := 0
 	for attempts := 0; attempts < 120; attempts++ {
-		pvs, err := gTestEnv.KubeInt.CoreV1().PersistentVolumes().List(context.TODO(), metav1.ListOptions{})
+		pvs, err := gTestEnv.KubeInt.CoreV1().PersistentVolumes().List(context.TODO(), metaV1.ListOptions{})
 		if err == nil {
 			numPvs = len(pvs.Items)
 			if numPvs == 0 {
@@ -108,14 +108,14 @@ func DeleteAllPvs() (int, error) {
 	}
 
 	// Then delete the PVs
-	pvs, err = gTestEnv.KubeInt.CoreV1().PersistentVolumes().List(context.TODO(), metav1.ListOptions{})
+	pvs, err = gTestEnv.KubeInt.CoreV1().PersistentVolumes().List(context.TODO(), metaV1.ListOptions{})
 	if err != nil {
 		logf.Log.Info("DeleteAllPvs: list PersistentVolumes failed.", "error", err)
 	} else if len(pvs.Items) != 0 {
 		for _, pv := range pvs.Items {
 			logf.Log.Info("DeleteAllPvs: deleting PersistentVolume",
 				"PersistentVolume", pv.Name)
-			if delErr := gTestEnv.KubeInt.CoreV1().PersistentVolumes().Delete(context.TODO(), pv.Name, metav1.DeleteOptions{GracePeriodSeconds: &ZeroInt64}); delErr != nil {
+			if delErr := gTestEnv.KubeInt.CoreV1().PersistentVolumes().Delete(context.TODO(), pv.Name, metaV1.DeleteOptions{GracePeriodSeconds: &ZeroInt64}); delErr != nil {
 				logf.Log.Info("DeleteAllPvs: failed to delete PersistentVolume",
 					"PersistentVolume", pv.Name, "error", delErr)
 			}
@@ -124,7 +124,7 @@ func DeleteAllPvs() (int, error) {
 	// Wait 2 minutes for resources to be deleted
 	numPvs = 0
 	for attempts := 0; attempts < 120; attempts++ {
-		pvs, err := gTestEnv.KubeInt.CoreV1().PersistentVolumes().List(context.TODO(), metav1.ListOptions{})
+		pvs, err := gTestEnv.KubeInt.CoreV1().PersistentVolumes().List(context.TODO(), metaV1.ListOptions{})
 		if err == nil {
 			numPvs = len(pvs.Items)
 			if numPvs == 0 {
@@ -147,7 +147,7 @@ func DeleteAllMsvs() (int, error) {
 		Resource: "mayastorvolumes",
 	}
 
-	msvs, err := gTestEnv.DynamicClient.Resource(msvGVR).Namespace(common.NSMayastor).List(context.TODO(), metav1.ListOptions{})
+	msvs, err := gTestEnv.DynamicClient.Resource(msvGVR).Namespace(common.NSMayastor).List(context.TODO(), metaV1.ListOptions{})
 	if err != nil {
 		// This function may be called by AfterSuite by uninstall test so listing MSVs may fail correctly
 		logf.Log.Info("DeleteAllMsvs: list MSVs failed.", "Error", err)
@@ -164,7 +164,7 @@ func DeleteAllMsvs() (int, error) {
 	numMsvs := 0
 	// Wait 2 minutes for resources to be deleted
 	for attempts := 0; attempts < 120; attempts++ {
-		msvs, err := gTestEnv.DynamicClient.Resource(msvGVR).Namespace(common.NSMayastor).List(context.TODO(), metav1.ListOptions{})
+		msvs, err := gTestEnv.DynamicClient.Resource(msvGVR).Namespace(common.NSMayastor).List(context.TODO(), metaV1.ListOptions{})
 		if err == nil && msvs != nil {
 			numMsvs = len(msvs.Items)
 			if numMsvs == 0 {
@@ -188,7 +188,7 @@ func DeleteAllPoolFinalizers() (bool, error) {
 		Resource: "mayastorpools",
 	}
 
-	pools, err := gTestEnv.DynamicClient.Resource(poolGVR).Namespace(common.NSMayastor).List(context.TODO(), metav1.ListOptions{})
+	pools, err := gTestEnv.DynamicClient.Resource(poolGVR).Namespace(common.NSMayastor).List(context.TODO(), metaV1.ListOptions{})
 	if err != nil {
 		logf.Log.Info("DeleteAllPoolFinalisers: list MSPs failed.", "Error", err)
 		return false, err
@@ -200,7 +200,7 @@ func DeleteAllPoolFinalizers() (bool, error) {
 			if finalizers != nil {
 				logf.Log.Info("Removing all finalizers", "pool", pool.GetName(), "finalizer", finalizers)
 				pool.SetFinalizers(empty)
-				_, err = gTestEnv.DynamicClient.Resource(poolGVR).Namespace(common.NSMayastor).Update(context.TODO(), &pool, metav1.UpdateOptions{})
+				_, err = gTestEnv.DynamicClient.Resource(poolGVR).Namespace(common.NSMayastor).Update(context.TODO(), &pool, metaV1.UpdateOptions{})
 				if err != nil {
 					deleteErr = err
 					logf.Log.Info("Pool update finalizer", "error", err)
@@ -220,7 +220,7 @@ func DeleteAllPools() bool {
 		Resource: "mayastorpools",
 	}
 
-	pools, err := gTestEnv.DynamicClient.Resource(poolGVR).Namespace(common.NSMayastor).List(context.TODO(), metav1.ListOptions{})
+	pools, err := gTestEnv.DynamicClient.Resource(poolGVR).Namespace(common.NSMayastor).List(context.TODO(), metaV1.ListOptions{})
 	if err != nil {
 		// This function may be called by AfterSuite by uninstall test so listing MSVs may fail correctly
 		logf.Log.Info("DeleteAllPools: list MSPs failed.", "Error", err)
@@ -229,7 +229,7 @@ func DeleteAllPools() bool {
 		logf.Log.Info("DeleteAllPools: deleting MayastorPools")
 		for _, pool := range pools.Items {
 			logf.Log.Info("DeleteAllPools: deleting", "pool", pool.GetName())
-			err = gTestEnv.DynamicClient.Resource(poolGVR).Namespace(common.NSMayastor).Delete(context.TODO(), pool.GetName(), metav1.DeleteOptions{GracePeriodSeconds: &ZeroInt64})
+			err = gTestEnv.DynamicClient.Resource(poolGVR).Namespace(common.NSMayastor).Delete(context.TODO(), pool.GetName(), metaV1.DeleteOptions{GracePeriodSeconds: &ZeroInt64})
 			if err != nil {
 				logf.Log.Info("DeleteAllPools: failed to delete pool", pool.GetName(), "error", err)
 			}
@@ -239,7 +239,7 @@ func DeleteAllPools() bool {
 	numPools := 0
 	// Wait 2 minutes for resources to be deleted
 	for attempts := 0; attempts < 120; attempts++ {
-		pools, err := gTestEnv.DynamicClient.Resource(poolGVR).Namespace(common.NSMayastor).List(context.TODO(), metav1.ListOptions{})
+		pools, err := gTestEnv.DynamicClient.Resource(poolGVR).Namespace(common.NSMayastor).List(context.TODO(), metaV1.ListOptions{})
 		if err == nil && pools != nil {
 			numPools = len(pools.Items)
 		}
@@ -259,7 +259,7 @@ func DeleteAllPools() bool {
 //  >=0 definitive number of mayastor pods
 // < 0 indeterminate
 func MayastorUndeletedPodCount() int {
-	ns, err := gTestEnv.KubeInt.CoreV1().Namespaces().Get(context.TODO(), common.NSMayastor, metav1.GetOptions{})
+	ns, err := gTestEnv.KubeInt.CoreV1().Namespaces().Get(context.TODO(), common.NSMayastor, metaV1.GetOptions{})
 	if err != nil {
 		logf.Log.Info("MayastorUndeletedPodCount: get namespace", "error", err)
 		//FIXME: if the error is namespace not found return 0
@@ -269,7 +269,7 @@ func MayastorUndeletedPodCount() int {
 		// No namespace => no mayastor pods
 		return 0
 	}
-	pods, err := gTestEnv.KubeInt.CoreV1().Pods(common.NSMayastor).List(context.TODO(), metav1.ListOptions{})
+	pods, err := gTestEnv.KubeInt.CoreV1().Pods(common.NSMayastor).List(context.TODO(), metaV1.ListOptions{})
 	if err != nil {
 		logf.Log.Info("MayastorUndeletedPodCount: list pods failed.", "error", err)
 		return -1
@@ -284,7 +284,7 @@ func ForceDeleteMayastorPods() (bool, int, error) {
 	podsDeleted := false
 
 	logf.Log.Info("EnsureMayastorDeleted")
-	pods, err := gTestEnv.KubeInt.CoreV1().Pods(common.NSMayastor).List(context.TODO(), metav1.ListOptions{})
+	pods, err := gTestEnv.KubeInt.CoreV1().Pods(common.NSMayastor).List(context.TODO(), metaV1.ListOptions{})
 	if err != nil {
 		logf.Log.Info("EnsureMayastorDeleted: list pods failed.", "error", err)
 		return podsDeleted, 0, err
@@ -307,7 +307,7 @@ func ForceDeleteMayastorPods() (bool, int, error) {
 	podCount := 0
 	// We have made the best effort to cleanup, give things time to settle.
 	for attempts := 0; attempts < 60 && MayastorUndeletedPodCount() != 0; attempts++ {
-		pods, err = gTestEnv.KubeInt.CoreV1().Pods(common.NSMayastor).List(context.TODO(), metav1.ListOptions{})
+		pods, err = gTestEnv.KubeInt.CoreV1().Pods(common.NSMayastor).List(context.TODO(), metaV1.ListOptions{})
 		if err == nil {
 			podCount = len(pods.Items)
 			if podCount == 0 {
@@ -329,7 +329,7 @@ func CleanUp() bool {
 	podCount := 0
 	pvcCount := 0
 
-	nameSpaces, err := gTestEnv.KubeInt.CoreV1().Namespaces().List(context.TODO(), metav1.ListOptions{})
+	nameSpaces, err := gTestEnv.KubeInt.CoreV1().Namespaces().List(context.TODO(), metaV1.ListOptions{})
 	if err == nil {
 		for _, ns := range nameSpaces.Items {
 			if strings.HasPrefix(ns.Name, common.NSE2EPrefix) || ns.Name == common.NSDefault {
@@ -370,12 +370,12 @@ func CleanUp() bool {
 		"delPoolFinalizeErr", delPoolFinalizeErr,
 	)
 
-	scList, err := gTestEnv.KubeInt.StorageV1().StorageClasses().List(context.TODO(), metav1.ListOptions{})
+	scList, err := gTestEnv.KubeInt.StorageV1().StorageClasses().List(context.TODO(), metaV1.ListOptions{})
 	if err == nil {
 		for _, sc := range scList.Items {
 			if sc.Provisioner == "io.openebs.csi-mayastor" {
 				logf.Log.Info("Deleting", "storageClass", sc.Name)
-				_ = gTestEnv.KubeInt.StorageV1().StorageClasses().Delete(context.TODO(), sc.Name, metav1.DeleteOptions{GracePeriodSeconds: &ZeroInt64})
+				_ = gTestEnv.KubeInt.StorageV1().StorageClasses().Delete(context.TODO(), sc.Name, metaV1.DeleteOptions{GracePeriodSeconds: &ZeroInt64})
 			}
 		}
 	} else {

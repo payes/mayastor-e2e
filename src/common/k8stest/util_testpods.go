@@ -5,13 +5,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"mayastor-e2e/common"
 	"os/exec"
 	"strings"
 
-	corev1 "k8s.io/api/core/v1"
+	"mayastor-e2e/common"
+
+	coreV1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -72,7 +73,7 @@ func RunFio(podName string, duration int, filename string, sizeMb int, args ...s
 }
 
 func IsPodRunning(podName string, nameSpace string) bool {
-	var pod corev1.Pod
+	var pod coreV1.Pod
 	if gTestEnv.K8sClient.Get(context.TODO(), types.NamespacedName{Name: podName, Namespace: nameSpace}, &pod) != nil {
 		return false
 	}
@@ -80,54 +81,54 @@ func IsPodRunning(podName string, nameSpace string) bool {
 }
 
 /// Create a Pod in default namespace, no options and no context
-func CreatePod(podDef *corev1.Pod, nameSpace string) (*corev1.Pod, error) {
+func CreatePod(podDef *coreV1.Pod, nameSpace string) (*coreV1.Pod, error) {
 	logf.Log.Info("Creating", "pod", podDef.Name)
-	return gTestEnv.KubeInt.CoreV1().Pods(nameSpace).Create(context.TODO(), podDef, metav1.CreateOptions{})
+	return gTestEnv.KubeInt.CoreV1().Pods(nameSpace).Create(context.TODO(), podDef, metaV1.CreateOptions{})
 }
 
 /// Delete a Pod in default namespace, no options and no context
 func DeletePod(podName string, nameSpace string) error {
 	logf.Log.Info("Deleting", "pod", podName)
-	return gTestEnv.KubeInt.CoreV1().Pods(nameSpace).Delete(context.TODO(), podName, metav1.DeleteOptions{})
+	return gTestEnv.KubeInt.CoreV1().Pods(nameSpace).Delete(context.TODO(), podName, metaV1.DeleteOptions{})
 }
 
 /// Create a test fio pod in default namespace, no options and no context
 /// for filesystem,  mayastor volume is mounted on /volume
 /// for rawblock, mayastor volume is mounted on /dev/sdm
-func CreateFioPodDef(podName string, volName string, volType common.VolumeType, nameSpace string) *corev1.Pod {
-	volMounts := []corev1.VolumeMount{
+func CreateFioPodDef(podName string, volName string, volType common.VolumeType, nameSpace string) *coreV1.Pod {
+	volMounts := []coreV1.VolumeMount{
 		{
 			Name:      "ms-volume",
 			MountPath: common.FioFsMountPoint,
 		},
 	}
-	volDevices := []corev1.VolumeDevice{
+	volDevices := []coreV1.VolumeDevice{
 		{
 			Name:       "ms-volume",
 			DevicePath: common.FioBlockFilename,
 		},
 	}
 
-	podDef := corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
+	podDef := coreV1.Pod{
+		ObjectMeta: metaV1.ObjectMeta{
 			Name:      podName,
 			Namespace: nameSpace,
 			Labels:    map[string]string{"app": "fio"},
 		},
-		Spec: corev1.PodSpec{
-			RestartPolicy: corev1.RestartPolicyNever,
-			Containers: []corev1.Container{
+		Spec: coreV1.PodSpec{
+			RestartPolicy: coreV1.RestartPolicyNever,
+			Containers: []coreV1.Container{
 				{
 					Name:  podName,
 					Image: "mayadata/e2e-fio",
 					Args:  []string{"sleep", "1000000"},
 				},
 			},
-			Volumes: []corev1.Volume{
+			Volumes: []coreV1.Volume{
 				{
 					Name: "ms-volume",
-					VolumeSource: corev1.VolumeSource{
-						PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					VolumeSource: coreV1.VolumeSource{
+						PersistentVolumeClaim: &coreV1.PersistentVolumeClaimVolumeSource{
 							ClaimName: volName,
 						},
 					},
@@ -145,7 +146,7 @@ func CreateFioPodDef(podName string, volName string, volType common.VolumeType, 
 
 /// Create a test fio pod in default namespace, no options and no context
 /// mayastor volume is mounted on /volume
-func CreateFioPod(podName string, volName string, volType common.VolumeType, nameSpace string) (*corev1.Pod, error) {
+func CreateFioPod(podName string, volName string, volType common.VolumeType, nameSpace string) (*coreV1.Pod, error) {
 	logf.Log.Info("Creating fio pod definition", "name", podName, "volume type", volType)
 	podDef := CreateFioPodDef(podName, volName, volType, nameSpace)
 	return CreatePod(podDef, common.NSDefault)
@@ -156,11 +157,11 @@ func CheckForTestPods() (bool, error) {
 	logf.Log.Info("CheckForTestPods")
 	foundPods := false
 
-	nameSpaces, err := gTestEnv.KubeInt.CoreV1().Namespaces().List(context.TODO(), metav1.ListOptions{})
+	nameSpaces, err := gTestEnv.KubeInt.CoreV1().Namespaces().List(context.TODO(), metaV1.ListOptions{})
 	if err == nil {
 		for _, ns := range nameSpaces.Items {
 			if strings.HasPrefix(ns.Name, common.NSE2EPrefix) || ns.Name == common.NSDefault {
-				pods, err := gTestEnv.KubeInt.CoreV1().Pods(ns.Name).List(context.TODO(), metav1.ListOptions{})
+				pods, err := gTestEnv.KubeInt.CoreV1().Pods(ns.Name).List(context.TODO(), metaV1.ListOptions{})
 				if err == nil && pods != nil && len(pods.Items) != 0 {
 					logf.Log.Info("CheckForTestPods",
 						"Pods", pods.Items)
@@ -177,7 +178,7 @@ func CheckForTestPods() (bool, error) {
 func CheckTestPodsHealth(namespace string) error {
 	podApi := gTestEnv.KubeInt.CoreV1().Pods
 	var errorStrings []string
-	podList, err := podApi(namespace).List(context.TODO(), metav1.ListOptions{})
+	podList, err := podApi(namespace).List(context.TODO(), metaV1.ListOptions{})
 	if err != nil {
 		return errors.New("failed to list pods")
 	}
@@ -189,7 +190,7 @@ func CheckTestPodsHealth(namespace string) error {
 				logf.Log.Info(pod.Name, "restarts", containerStatus.RestartCount)
 				errorStrings = append(errorStrings, fmt.Sprintf("%s restarted %d times", pod.Name, containerStatus.RestartCount))
 			}
-			if pod.Status.Phase == corev1.PodFailed || pod.Status.Phase == corev1.PodUnknown {
+			if pod.Status.Phase == coreV1.PodFailed || pod.Status.Phase == coreV1.PodUnknown {
 				logf.Log.Info(pod.Name, "phase", pod.Status.Phase)
 				errorStrings = append(errorStrings, fmt.Sprintf("%s phase is %v", pod.Name, pod.Status.Phase))
 			}
@@ -202,11 +203,11 @@ func CheckTestPodsHealth(namespace string) error {
 	return nil
 }
 
-func CheckPodCompleted(podName string, nameSpace string) (corev1.PodPhase, error) {
+func CheckPodCompleted(podName string, nameSpace string) (coreV1.PodPhase, error) {
 	podApi := gTestEnv.KubeInt.CoreV1().Pods
-	pod, err := podApi(nameSpace).Get(context.TODO(), podName, metav1.GetOptions{})
+	pod, err := podApi(nameSpace).Get(context.TODO(), podName, metaV1.GetOptions{})
 	if err != nil {
-		return corev1.PodUnknown, err
+		return coreV1.PodUnknown, err
 	}
 	return pod.Status.Phase, err
 }

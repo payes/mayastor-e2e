@@ -3,12 +3,13 @@ package loki
 import (
 	"bytes"
 	"encoding/json"
-	"mayastor-e2e/common/e2e_config"
 	"net/http"
 	"os"
 	"strconv"
 	"sync"
 	"time"
+
+	"mayastor-e2e/common/e2e_config"
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )

@@ -1,13 +1,13 @@
 package io_soak
 
 import (
+	"fmt"
+	"time"
+
 	"mayastor-e2e/common"
 	"mayastor-e2e/common/e2e_config"
 	"mayastor-e2e/common/k8stest"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-
-	"fmt"
-	"time"
 
 	. "github.com/onsi/gomega"
 

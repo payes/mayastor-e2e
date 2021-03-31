@@ -1,11 +1,13 @@
 package basic_test
 
 import (
-	"mayastor-e2e/common/k8stest"
 	"testing"
+
+	"mayastor-e2e/common/k8stest"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 

@@ -1,13 +1,14 @@
 package basic_test
 
 import (
+	"os/exec"
+	"testing"
+	"time"
+
 	"mayastor-e2e/common"
 	"mayastor-e2e/common/e2e_config"
 	"mayastor-e2e/common/k8stest"
 	"mayastor-e2e/common/locations"
-	"os/exec"
-	"testing"
-	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

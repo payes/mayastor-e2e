@@ -1,10 +1,10 @@
 package ms_pod_disruption
 
 import (
+	"testing"
+
 	"mayastor-e2e/common"
 	"mayastor-e2e/common/k8stest"
-
-	"testing"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

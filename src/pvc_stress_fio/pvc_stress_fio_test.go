@@ -2,12 +2,12 @@
 package pvc_stress_fio_test
 
 import (
+	"fmt"
+	"testing"
+
 	"mayastor-e2e/common"
 	"mayastor-e2e/common/e2e_config"
 	"mayastor-e2e/common/k8stest"
-
-	"fmt"
-	"testing"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

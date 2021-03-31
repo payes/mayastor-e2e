@@ -4,12 +4,13 @@ package basic_volume_io_test
 
 import (
 	"fmt"
-	"mayastor-e2e/common"
-	"mayastor-e2e/common/e2e_config"
-	"mayastor-e2e/common/k8stest"
 	"strings"
 	"testing"
 	"time"
+
+	"mayastor-e2e/common"
+	"mayastor-e2e/common/e2e_config"
+	"mayastor-e2e/common/k8stest"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

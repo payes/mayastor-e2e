@@ -4,9 +4,9 @@ import (
 	"mayastor-e2e/common"
 	"mayastor-e2e/common/k8stest"
 
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
 	. "github.com/onsi/gomega"
+
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const (

@@ -1,10 +1,10 @@
 package basic_rebuild_test
 
 import (
-	"mayastor-e2e/common/k8stest"
 	"testing"
 
 	"mayastor-e2e/common"
+	"mayastor-e2e/common/k8stest"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

@@ -9,7 +9,7 @@ import (
 
 	. "github.com/onsi/gomega"
 
-	corev1 "k8s.io/api/core/v1"
+	coreV1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -22,7 +22,7 @@ type NodeLocation struct {
 
 // returns vector of populated NodeLocation structs
 func GetNodeLocs() ([]NodeLocation, error) {
-	nodeList := corev1.NodeList{}
+	nodeList := coreV1.NodeList{}
 
 	if gTestEnv.K8sClient.List(context.TODO(), &nodeList, &client.ListOptions{}) != nil {
 		return nil, errors.New("failed to list nodes")
@@ -42,10 +42,10 @@ func GetNodeLocs() ([]NodeLocation, error) {
 			}
 		}
 		for _, addr := range k8snode.Status.Addresses {
-			if addr.Type == corev1.NodeInternalIP {
+			if addr.Type == coreV1.NodeInternalIP {
 				addrstr = addr.Address
 			}
-			if addr.Type == corev1.NodeHostName {
+			if addr.Type == coreV1.NodeHostName {
 				namestr = addr.Address
 			}
 		}

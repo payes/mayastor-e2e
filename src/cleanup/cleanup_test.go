@@ -1,12 +1,13 @@
 package cleanup
 
 import (
+	"testing"
+
 	"mayastor-e2e/common/k8stest"
 	rep "mayastor-e2e/common/reporter"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"testing"
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"

@@ -2,11 +2,12 @@ package multiple_vols_pod_io_test
 
 import (
 	"fmt"
+	"strings"
+	"testing"
+
 	"mayastor-e2e/common"
 	"mayastor-e2e/common/e2e_config"
 	"mayastor-e2e/common/k8stest"
-	"strings"
-	"testing"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

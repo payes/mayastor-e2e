@@ -9,7 +9,7 @@ import (
 
 	. "github.com/onsi/gomega"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"mayastor-e2e/common"
@@ -29,7 +29,7 @@ func GetMSV(uuid string) *MayastorVolStatus {
 		Version:  "v1alpha1",
 		Resource: "mayastorvolumes",
 	}
-	msv, err := gTestEnv.DynamicClient.Resource(msvGVR).Namespace(common.NSMayastor).Get(context.TODO(), uuid, metav1.GetOptions{})
+	msv, err := gTestEnv.DynamicClient.Resource(msvGVR).Namespace(common.NSMayastor).Get(context.TODO(), uuid, metaV1.GetOptions{})
 	if err != nil {
 		fmt.Println(err)
 		return nil
@@ -96,7 +96,7 @@ func IsMSVDeleted(uuid string) bool {
 		Resource: "mayastorvolumes",
 	}
 
-	msv, err := gTestEnv.DynamicClient.Resource(msvGVR).Namespace(common.NSMayastor).Get(context.TODO(), uuid, metav1.GetOptions{})
+	msv, err := gTestEnv.DynamicClient.Resource(msvGVR).Namespace(common.NSMayastor).Get(context.TODO(), uuid, metaV1.GetOptions{})
 
 	if err != nil {
 		// Unfortunately there is no associated error code so we resort to string comparison
@@ -118,7 +118,7 @@ func DeleteMSV(uuid string) error {
 		Resource: "mayastorvolumes",
 	}
 
-	err := gTestEnv.DynamicClient.Resource(msvGVR).Namespace(common.NSMayastor).Delete(context.TODO(), uuid, metav1.DeleteOptions{})
+	err := gTestEnv.DynamicClient.Resource(msvGVR).Namespace(common.NSMayastor).Delete(context.TODO(), uuid, metaV1.DeleteOptions{})
 	return err
 }
 
@@ -149,7 +149,7 @@ func getMsvGvr() schema.GroupVersionResource {
 // Get the k8s MSV CRD
 func getMsv(uuid string) (*unstructured.Unstructured, error) {
 	msvGVR := getMsvGvr()
-	return gTestEnv.DynamicClient.Resource(msvGVR).Namespace(common.NSMayastor).Get(context.TODO(), uuid, metav1.GetOptions{})
+	return gTestEnv.DynamicClient.Resource(msvGVR).Namespace(common.NSMayastor).Get(context.TODO(), uuid, metaV1.GetOptions{})
 }
 
 func retrieveFieldValue(uns *unstructured.Unstructured, fields ...string) (interface{}, error) {
@@ -225,7 +225,7 @@ func UpdateNumReplicas(uuid string, numReplicas int64) error {
 
 	// Update the k8s MSV object.
 	msvGVR := getMsvGvr()
-	_, err = gTestEnv.DynamicClient.Resource(msvGVR).Namespace(common.NSMayastor).Update(context.TODO(), msv, metav1.UpdateOptions{})
+	_, err = gTestEnv.DynamicClient.Resource(msvGVR).Namespace(common.NSMayastor).Update(context.TODO(), msv, metaV1.UpdateOptions{})
 	if err != nil {
 		return fmt.Errorf("Failed to update MSV: %v", err)
 	}
@@ -322,7 +322,7 @@ func CheckForMSVs() (bool, error) {
 		Resource: "mayastorvolumes",
 	}
 
-	msvs, err := gTestEnv.DynamicClient.Resource(msvGVR).Namespace(common.NSMayastor).List(context.TODO(), metav1.ListOptions{})
+	msvs, err := gTestEnv.DynamicClient.Resource(msvGVR).Namespace(common.NSMayastor).List(context.TODO(), metaV1.ListOptions{})
 	if err == nil && msvs != nil && len(msvs.Items) != 0 {
 		logf.Log.Info("CheckForVolumeResources: found MayastorVolumes",
 			"MayastorVolumes", msvs.Items)
@@ -340,7 +340,7 @@ func CheckAllMsvsAreHealthy() error {
 
 	allHealthy := true
 	retrieveErrors := false
-	msvs, err := gTestEnv.DynamicClient.Resource(msvGVR).Namespace(common.NSMayastor).List(context.TODO(), metav1.ListOptions{})
+	msvs, err := gTestEnv.DynamicClient.Resource(msvGVR).Namespace(common.NSMayastor).List(context.TODO(), metaV1.ListOptions{})
 	if err == nil && msvs != nil && len(msvs.Items) != 0 {
 		for _, msv := range msvs.Items {
 			msvName, _ := retrieveFieldStringValue(&msv, "metadata", "name")
@@ -375,7 +375,7 @@ func CheckAllPoolsAreOnline() error {
 
 	allHealthy := true
 	retrieveErrors := false
-	pools, err := gTestEnv.DynamicClient.Resource(msvGVR).Namespace(common.NSMayastor).List(context.TODO(), metav1.ListOptions{})
+	pools, err := gTestEnv.DynamicClient.Resource(msvGVR).Namespace(common.NSMayastor).List(context.TODO(), metaV1.ListOptions{})
 	if err == nil && pools != nil && len(pools.Items) != 0 {
 		for _, pool := range pools.Items {
 			poolName, _ := retrieveFieldStringValue(&pool, "metadata", "name")

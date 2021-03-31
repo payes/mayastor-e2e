@@ -3,21 +3,22 @@ package k8stest
 import (
 	"context"
 	"errors"
-	"mayastor-e2e/common"
 	"os/exec"
 	"regexp"
 	"strconv"
 	"time"
 
-	appsV1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
-	storagev1 "k8s.io/api/storage/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"mayastor-e2e/common"
 
 	. "github.com/onsi/gomega"
+
+	appsV1 "k8s.io/api/apps/v1"
+	coreV1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
+	storagev1 "k8s.io/api/storage/v1"
+	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // Helper for passing yaml from the specified directory to kubectl
@@ -42,7 +43,7 @@ func KubeCtlDeleteYaml(filename string, dir string) {
 func MakeStorageClass(scName string, scReplicas int, protocol common.ShareProto, nameSpace string, bindingMode *storagev1.VolumeBindingMode) error {
 	logf.Log.Info("Creating storage class", "name", scName, "replicas", scReplicas, "protocol", protocol, "bindingMode", bindingMode)
 	createOpts := &storagev1.StorageClass{
-		ObjectMeta: metav1.ObjectMeta{
+		ObjectMeta: metaV1.ObjectMeta{
 			Name:      scName,
 			Namespace: nameSpace,
 		},
@@ -57,7 +58,7 @@ func MakeStorageClass(scName string, scReplicas int, protocol common.ShareProto,
 	}
 
 	ScApi := gTestEnv.KubeInt.StorageV1().StorageClasses
-	_, createErr := ScApi().Create(context.TODO(), createOpts, metav1.CreateOptions{})
+	_, createErr := ScApi().Create(context.TODO(), createOpts, metaV1.CreateOptions{})
 	return createErr
 }
 
@@ -70,14 +71,14 @@ func MkStorageClass(scName string, scReplicas int, protocol common.ShareProto, n
 func RmStorageClass(scName string) error {
 	logf.Log.Info("Deleting storage class", "name", scName)
 	ScApi := gTestEnv.KubeInt.StorageV1().StorageClasses
-	deleteErr := ScApi().Delete(context.TODO(), scName, metav1.DeleteOptions{})
+	deleteErr := ScApi().Delete(context.TODO(), scName, metaV1.DeleteOptions{})
 	return deleteErr
 }
 
 func CheckForStorageClasses() (bool, error) {
 	found := false
 	ScApi := gTestEnv.KubeInt.StorageV1().StorageClasses
-	scs, err := ScApi().List(context.TODO(), metav1.ListOptions{})
+	scs, err := ScApi().List(context.TODO(), metaV1.ListOptions{})
 	for _, sc := range scs.Items {
 		if sc.Provisioner == common.CSIProvisioner {
 			found = true
@@ -88,19 +89,19 @@ func CheckForStorageClasses() (bool, error) {
 
 func MkNamespace(nameSpace string) error {
 	logf.Log.Info("Creating", "namespace", nameSpace)
-	nsSpec := corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: nameSpace}}
-	_, err := gTestEnv.KubeInt.CoreV1().Namespaces().Create(context.TODO(), &nsSpec, metav1.CreateOptions{})
+	nsSpec := coreV1.Namespace{ObjectMeta: metaV1.ObjectMeta{Name: nameSpace}}
+	_, err := gTestEnv.KubeInt.CoreV1().Namespaces().Create(context.TODO(), &nsSpec, metaV1.CreateOptions{})
 	return err
 }
 
 func RmNamespace(nameSpace string) error {
 	logf.Log.Info("Deleting", "namespace", nameSpace)
-	err := gTestEnv.KubeInt.CoreV1().Namespaces().Delete(context.TODO(), nameSpace, metav1.DeleteOptions{})
+	err := gTestEnv.KubeInt.CoreV1().Namespaces().Delete(context.TODO(), nameSpace, metaV1.DeleteOptions{})
 	return err
 }
 
 // Add a node selector to the given pod definition
-func ApplyNodeSelectorToPodObject(pod *corev1.Pod, label string, value string) {
+func ApplyNodeSelectorToPodObject(pod *coreV1.Pod, label string, value string) {
 	if pod.Spec.NodeSelector == nil {
 		pod.Spec.NodeSelector = make(map[string]string)
 	}
@@ -110,24 +111,24 @@ func ApplyNodeSelectorToPodObject(pod *corev1.Pod, label string, value string) {
 // Add a node selector to the deployment spec and apply
 func ApplyNodeSelectorToDeployment(deploymentName string, namespace string, label string, value string) {
 	depApi := gTestEnv.KubeInt.AppsV1().Deployments
-	deployment, err := depApi(namespace).Get(context.TODO(), deploymentName, metav1.GetOptions{})
+	deployment, err := depApi(namespace).Get(context.TODO(), deploymentName, metaV1.GetOptions{})
 	Expect(err).ToNot(HaveOccurred())
 	if deployment.Spec.Template.Spec.NodeSelector == nil {
 		deployment.Spec.Template.Spec.NodeSelector = make(map[string]string)
 	}
 	deployment.Spec.Template.Spec.NodeSelector[label] = value
-	_, err = depApi(namespace).Update(context.TODO(), deployment, metav1.UpdateOptions{})
+	_, err = depApi(namespace).Update(context.TODO(), deployment, metaV1.UpdateOptions{})
 	Expect(err).ToNot(HaveOccurred())
 }
 
 // Remove all node selectors from the deployment spec and apply
 func RemoveAllNodeSelectorsFromDeployment(deploymentName string, namespace string) {
 	depApi := gTestEnv.KubeInt.AppsV1().Deployments
-	deployment, err := depApi(namespace).Get(context.TODO(), deploymentName, metav1.GetOptions{})
+	deployment, err := depApi(namespace).Get(context.TODO(), deploymentName, metaV1.GetOptions{})
 	Expect(err).ToNot(HaveOccurred())
 	if deployment.Spec.Template.Spec.NodeSelector != nil {
 		deployment.Spec.Template.Spec.NodeSelector = nil
-		_, err = depApi(namespace).Update(context.TODO(), deployment, metav1.UpdateOptions{})
+		_, err = depApi(namespace).Update(context.TODO(), deployment, metaV1.UpdateOptions{})
 	}
 	Expect(err).ToNot(HaveOccurred())
 }
@@ -140,10 +141,10 @@ func SetDeploymentReplication(deploymentName string, namespace string, replicas 
 	// this is to cater for a race condition, occasionally seen,
 	// when the deployment is changed between Get and Update
 	for attempts := 0; attempts < 10; attempts++ {
-		deployment, err := depAPI(namespace).Get(context.TODO(), deploymentName, metav1.GetOptions{})
+		deployment, err := depAPI(namespace).Get(context.TODO(), deploymentName, metaV1.GetOptions{})
 		Expect(err).ToNot(HaveOccurred())
 		deployment.Spec.Replicas = replicas
-		deployment, err = depAPI(namespace).Update(context.TODO(), deployment, metav1.UpdateOptions{})
+		deployment, err = depAPI(namespace).Update(context.TODO(), deployment, metaV1.UpdateOptions{})
 		if err == nil {
 			break
 		}
@@ -163,7 +164,7 @@ func WaitForPodAbsentFromNode(podNameRegexp string, namespace string, nodeName s
 	for i := 0; i < timeoutSeconds && podAbsent == false; i++ {
 		podAbsent = true
 		time.Sleep(time.Second)
-		podList, err := podApi(namespace).List(context.TODO(), metav1.ListOptions{})
+		podList, err := podApi(namespace).List(context.TODO(), metaV1.ListOptions{})
 		if err != nil {
 			return errors.New("failed to list pods")
 		}
@@ -186,7 +187,7 @@ func WaitForPodAbsentFromNode(podNameRegexp string, namespace string, nodeName s
 func getPodStatus(podNameRegexp string, namespace string, nodeName string) *v1.PodPhase {
 	var validID = regexp.MustCompile(podNameRegexp)
 	podAPI := gTestEnv.KubeInt.CoreV1().Pods
-	podList, err := podAPI(namespace).List(context.TODO(), metav1.ListOptions{})
+	podList, err := podAPI(namespace).List(context.TODO(), metaV1.ListOptions{})
 	Expect(err).ToNot(HaveOccurred())
 	for _, pod := range podList.Items {
 		if pod.Spec.NodeName == nodeName && validID.MatchString(pod.Name) {
@@ -228,7 +229,7 @@ func WaitForPodNotRunningOnNode(podNameRegexp string, namespace string, nodeName
 func PodPresentOnNode(podNameRegexp string, namespace string, nodeName string) bool {
 	var validID = regexp.MustCompile(podNameRegexp)
 	podApi := gTestEnv.KubeInt.CoreV1().Pods
-	podList, err := podApi(namespace).List(context.TODO(), metav1.ListOptions{})
+	podList, err := podApi(namespace).List(context.TODO(), metaV1.ListOptions{})
 	Expect(err).ToNot(HaveOccurred())
 
 	for _, pod := range podList.Items {
@@ -276,7 +277,7 @@ func moacReady() bool {
 
 	for _, condition := range moacDeployment.Status.Conditions {
 		if condition.Type == appsV1.DeploymentAvailable {
-			if condition.Status == corev1.ConditionTrue {
+			if condition.Status == coreV1.ConditionTrue {
 				logf.Log.Info("MOAC is Available")
 				return true
 			}
