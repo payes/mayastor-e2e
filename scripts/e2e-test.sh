@@ -3,9 +3,10 @@
 set -eu
 
 SCRIPTDIR=$(dirname "$(realpath "$0")")
-TESTDIR=$(realpath "$SCRIPTDIR/../test/e2e")
-REPORTSDIR=$(realpath "$SCRIPTDIR/..")
+E2EROOT=$(realpath "$SCRIPTDIR/..")
+TESTDIR=$(realpath "$SCRIPTDIR/../src")
 ARTIFACTSDIR=$(realpath "$SCRIPTDIR/../artifacts")
+#reportsdir=$(realpath "$SCRIPTDIR/..")
 
 # List and Sequence of tests.
 #tests="install basic_volume_io csi replica rebuild node_disconnect/replica_pod_remove uninstall"
@@ -41,6 +42,7 @@ on_fail="stop"
 uninstall_cleanup="n"
 generate_logs=0
 logsdir="$ARTIFACTSDIR/logs"
+resportsdir="$ARTIFACTSDIR/reports"
 mayastor_root_dir=""
 
 help() {
@@ -57,7 +59,7 @@ Options:
              node_disconnect/replica_pod_remove uninstall
   --profile <continuous|extended|ondemand>
                             Run the tests corresponding to the profile (default: run all tests)
-  --reportsdir <path>       Path to use for junit xml test reports (default: repo root)
+  --resportsdir <path>       Path to use for junit xml test reports (default: repo root)
   --logs                    Generate logs and cluster state dump at the end of successful test run,
                             prior to uninstall.
   --logsdir <path>          Location to generate logs (default: emit to stdout).
@@ -99,7 +101,7 @@ while [ "$#" -gt 0 ]; do
       ;;
     -R|--reportsdir)
       shift
-      REPORTSDIR="$1"
+      resportsdir="$1"
       ;;
     -h|--help)
       help
@@ -183,7 +185,7 @@ if [ -n "$tag" ]; then
 fi
 
 export e2e_docker_registry="$registry" # can be empty string
-export e2e_root_dir="$TESTDIR"
+export e2e_root_dir="$E2EROOT"
 
 if [ -n "$custom_tests" ]; then
   if [ "$profile" != "default" ]; then
@@ -217,7 +219,7 @@ case "$profile" in
     ;;
 esac
 
-export e2e_reports_dir="$REPORTSDIR"
+export e2e_reports_dir="$resportsdir"
 if [ ! -d "$e2e_reports_dir" ] ; then
     echo "Reports directory $e2e_reports_dir does not exist"
     exit $EXITV_REPORTS_DIR_NOT_EXIST
@@ -230,6 +232,8 @@ else
 fi
 
 mkdir -p "$ARTIFACTSDIR"
+mkdir -p "$resportsdir"
+mkdir -p "$logsdir"
 
 test_failed=0
 
