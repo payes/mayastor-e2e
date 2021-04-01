@@ -1,4 +1,4 @@
-package basic_rebuild_test
+package rebuild_test
 
 import (
 	"testing"

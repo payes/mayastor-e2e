@@ -1,4 +1,4 @@
-package basic_test
+package uninstall_test
 
 import (
 	"os/exec"

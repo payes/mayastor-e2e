@@ -1,4 +1,4 @@
-package io_soak
+package io_soak_test
 
 import (
 	"fmt"
