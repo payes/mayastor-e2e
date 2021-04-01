@@ -159,8 +159,10 @@ func GetConfig() E2EConfig {
 		}
 
 		cfgBytes, _ := yaml.Marshal(e2eConfig)
-		cfgUsedFile := path.Clean(e2eConfig.MayastorRootDir + "/artifacts/e2e_config-" + e2eConfig.ConfigName + "-used.yaml")
-		_ = ioutil.WriteFile(cfgUsedFile, cfgBytes, 0644)
+		cfgUsedFile := path.Clean(e2eConfig.E2eRootDir + "/artifacts/e2e_config-" + e2eConfig.ConfigName + "-used.yaml")
+		err = ioutil.WriteFile(cfgUsedFile, cfgBytes, 0644); if err == nil {
+			fmt.Printf("Resolved config written to %s\n", cfgUsedFile)
+		}
 	})
 
 	return e2eConfig
