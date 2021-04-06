@@ -1,4 +1,4 @@
-package rebuild_test
+package rebuild
 
 import (
 	"testing"

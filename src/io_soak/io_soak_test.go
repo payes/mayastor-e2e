@@ -1,6 +1,6 @@
 // JIRA: MQ-25
 // JIRA: MQ-26
-package io_soak_test
+package io_soak
 
 import (
 	"fmt"

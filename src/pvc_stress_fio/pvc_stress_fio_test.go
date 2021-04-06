@@ -1,5 +1,5 @@
 // JIRA: CAS-500
-package pvc_stress_fio_test
+package pvc_stress_fio
 
 import (
 	"fmt"

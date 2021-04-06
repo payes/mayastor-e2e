@@ -10,7 +10,6 @@ import (
 	"mayastor-e2e/common"
 
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -141,11 +140,7 @@ func DeleteAllPvs() (int, error) {
 func DeleteAllMsvs() (int, error) {
 	// If after deleting PVCs and PVs Mayastor volumes are leftover
 	// try cleaning them up explicitly
-	msvGVR := schema.GroupVersionResource{
-		Group:    "openebs.io",
-		Version:  "v1alpha1",
-		Resource: "mayastorvolumes",
-	}
+	msvGVR := GetMsVolGVR()
 
 	msvs, err := gTestEnv.DynamicClient.Resource(msvGVR).Namespace(common.NSMayastor).List(context.TODO(), metaV1.ListOptions{})
 	if err != nil {
@@ -182,11 +177,7 @@ func DeleteAllPoolFinalizers() (bool, error) {
 	deletedFinalizer := false
 	var deleteErr error
 
-	poolGVR := schema.GroupVersionResource{
-		Group:    "openebs.io",
-		Version:  "v1alpha1",
-		Resource: "mayastorpools",
-	}
+	poolGVR := GetMsPoolGVR()
 
 	pools, err := gTestEnv.DynamicClient.Resource(poolGVR).Namespace(common.NSMayastor).List(context.TODO(), metaV1.ListOptions{})
 	if err != nil {
@@ -214,11 +205,7 @@ func DeleteAllPoolFinalizers() (bool, error) {
 }
 
 func DeleteAllPools() bool {
-	poolGVR := schema.GroupVersionResource{
-		Group:    "openebs.io",
-		Version:  "v1alpha1",
-		Resource: "mayastorpools",
-	}
+	poolGVR := GetMsPoolGVR()
 
 	pools, err := gTestEnv.DynamicClient.Resource(poolGVR).Namespace(common.NSMayastor).List(context.TODO(), metaV1.ListOptions{})
 	if err != nil {

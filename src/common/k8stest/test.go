@@ -15,7 +15,6 @@ import (
 	. "github.com/onsi/gomega"
 
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/deprecated/scheme"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
@@ -155,11 +154,7 @@ func ResourceCheck() error {
 	}
 
 	// Mayastor volumes
-	msvGVR := schema.GroupVersionResource{
-		Group:    "openebs.io",
-		Version:  "v1alpha1",
-		Resource: "mayastorvolumes",
-	}
+	msvGVR := GetMsVolGVR()
 	msvs, err := gTestEnv.DynamicClient.Resource(msvGVR).Namespace(common.NSMayastor).List(context.TODO(), metaV1.ListOptions{})
 	if err != nil {
 		errorMsg += fmt.Sprintf("%s %v", errorMsg, err)

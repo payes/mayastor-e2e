@@ -1,4 +1,4 @@
-package multiple_vols_pod_io_test
+package multiple_vols_pod_io
 
 import (
 	"fmt"

@@ -7,12 +7,13 @@ import (
 	"reflect"
 	"strings"
 
+	"mayastor-e2e/common"
+
 	. "github.com/onsi/gomega"
 
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"mayastor-e2e/common"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -24,11 +25,7 @@ type MayastorVolStatus struct {
 }
 
 func GetMSV(uuid string) *MayastorVolStatus {
-	msvGVR := schema.GroupVersionResource{
-		Group:    "openebs.io",
-		Version:  "v1alpha1",
-		Resource: "mayastorvolumes",
-	}
+	msvGVR := GetMsVolGVR()
 	msv, err := gTestEnv.DynamicClient.Resource(msvGVR).Namespace(common.NSMayastor).Get(context.TODO(), uuid, metaV1.GetOptions{})
 	if err != nil {
 		fmt.Println(err)
@@ -90,12 +87,7 @@ func GetMSV(uuid string) *MayastorVolStatus {
 // Check for a deleted Mayastor Volume,
 // the object does not exist if deleted
 func IsMSVDeleted(uuid string) bool {
-	msvGVR := schema.GroupVersionResource{
-		Group:    "openebs.io",
-		Version:  "v1alpha1",
-		Resource: "mayastorvolumes",
-	}
-
+	msvGVR := GetMsVolGVR()
 	msv, err := gTestEnv.DynamicClient.Resource(msvGVR).Namespace(common.NSMayastor).Get(context.TODO(), uuid, metaV1.GetOptions{})
 
 	if err != nil {
@@ -112,12 +104,7 @@ func IsMSVDeleted(uuid string) bool {
 }
 
 func DeleteMSV(uuid string) error {
-	msvGVR := schema.GroupVersionResource{
-		Group:    "openebs.io",
-		Version:  "v1alpha1",
-		Resource: "mayastorvolumes",
-	}
-
+	msvGVR := GetMsVolGVR()
 	err := gTestEnv.DynamicClient.Resource(msvGVR).Namespace(common.NSMayastor).Delete(context.TODO(), uuid, metaV1.DeleteOptions{})
 	return err
 }
@@ -138,17 +125,26 @@ func GetMsvNodes(uuid string) (string, []string) {
 }
 
 // Return a group version resource for a MSV
-func getMsvGvr() schema.GroupVersionResource {
+func GetMsVolGVR() schema.GroupVersionResource {
 	return schema.GroupVersionResource{
-		Group:    "openebs.io",
-		Version:  "v1alpha1",
+		Group:    common.CRDGroupName,
+		Version:  common.CRDVolumeGroupVersion,
 		Resource: "mayastorvolumes",
+	}
+}
+
+// Return a group version resource for a MSV
+func GetMsPoolGVR() schema.GroupVersionResource {
+	return schema.GroupVersionResource{
+		Group:    common.CRDGroupName,
+		Version:  common.CRDPoolGroupVersion,
+		Resource: "mayastorpools",
 	}
 }
 
 // Get the k8s MSV CRD
 func getMsv(uuid string) (*unstructured.Unstructured, error) {
-	msvGVR := getMsvGvr()
+	msvGVR := GetMsVolGVR()
 	return gTestEnv.DynamicClient.Resource(msvGVR).Namespace(common.NSMayastor).Get(context.TODO(), uuid, metaV1.GetOptions{})
 }
 
@@ -224,7 +220,7 @@ func UpdateNumReplicas(uuid string, numReplicas int64) error {
 	}
 
 	// Update the k8s MSV object.
-	msvGVR := getMsvGvr()
+	msvGVR := GetMsVolGVR()
 	_, err = gTestEnv.DynamicClient.Resource(msvGVR).Namespace(common.NSMayastor).Update(context.TODO(), msv, metaV1.UpdateOptions{})
 	if err != nil {
 		return fmt.Errorf("Failed to update MSV: %v", err)
@@ -316,12 +312,7 @@ func CheckForMSVs() (bool, error) {
 	logf.Log.Info("CheckForMSVs")
 	foundResources := false
 
-	msvGVR := schema.GroupVersionResource{
-		Group:    "openebs.io",
-		Version:  "v1alpha1",
-		Resource: "mayastorvolumes",
-	}
-
+	msvGVR := GetMsVolGVR()
 	msvs, err := gTestEnv.DynamicClient.Resource(msvGVR).Namespace(common.NSMayastor).List(context.TODO(), metaV1.ListOptions{})
 	if err == nil && msvs != nil && len(msvs.Items) != 0 {
 		logf.Log.Info("CheckForVolumeResources: found MayastorVolumes",
@@ -332,11 +323,7 @@ func CheckForMSVs() (bool, error) {
 }
 
 func CheckAllMsvsAreHealthy() error {
-	msvGVR := schema.GroupVersionResource{
-		Group:    "openebs.io",
-		Version:  "v1alpha1",
-		Resource: "mayastorvolumes",
-	}
+	msvGVR := GetMsVolGVR()
 
 	allHealthy := true
 	retrieveErrors := false
@@ -367,15 +354,11 @@ func CheckAllMsvsAreHealthy() error {
 }
 
 func CheckAllPoolsAreOnline() error {
-	msvGVR := schema.GroupVersionResource{
-		Group:    "openebs.io",
-		Version:  "v1alpha1",
-		Resource: "mayastorpools",
-	}
+	mspGVR := GetMsPoolGVR()
 
 	allHealthy := true
 	retrieveErrors := false
-	pools, err := gTestEnv.DynamicClient.Resource(msvGVR).Namespace(common.NSMayastor).List(context.TODO(), metaV1.ListOptions{})
+	pools, err := gTestEnv.DynamicClient.Resource(mspGVR).Namespace(common.NSMayastor).List(context.TODO(), metaV1.ListOptions{})
 	if err == nil && pools != nil && len(pools.Items) != 0 {
 		for _, pool := range pools.Items {
 			poolName, _ := retrieveFieldStringValue(&pool, "metadata", "name")

@@ -1,4 +1,4 @@
-package io_soak_test
+package io_soak
 
 import (
 	"mayastor-e2e/common"
