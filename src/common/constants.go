@@ -15,3 +15,8 @@ const FioFsFilename = FioFsMountPoint + "/fiotestfile"
 // Relative path to the configuration directory WRT e2e root
 const ConfigDir = "/configurations"
 const DefaultConfigFileRelPath = ConfigDir + "/mayastor_ci_hcloud_e2e_config.yaml"
+
+//CRD
+const CRDGroupName = "openebs.io"
+const CRDVolumeGroupVersion = "v1alpha1"
+const CRDPoolGroupVersion = "v1alpha1"

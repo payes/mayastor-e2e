@@ -1,6 +1,6 @@
 // JIRA: CAS-505
 // JIRA: CAS-506
-package basic_volume_io_test
+package basic_volume_io
 
 import (
 	"fmt"

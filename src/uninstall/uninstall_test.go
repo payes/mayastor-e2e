@@ -1,4 +1,4 @@
-package uninstall_test
+package uninstall
 
 import (
 	"os/exec"

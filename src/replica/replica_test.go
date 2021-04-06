@@ -1,4 +1,4 @@
-package replica_test
+package replica
 
 import (
 	"testing"

@@ -1,4 +1,4 @@
-package resource_check_test
+package resource_check
 
 import (
 	"testing"
