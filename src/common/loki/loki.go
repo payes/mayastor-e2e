@@ -43,7 +43,7 @@ func SendLokiMarker(text string) {
 		}
 	})
 
-	if g_enabled == false {
+	if !g_enabled {
 		return
 	}
 

@@ -144,7 +144,7 @@ func SetDeploymentReplication(deploymentName string, namespace string, replicas 
 		deployment, err := depAPI(namespace).Get(context.TODO(), deploymentName, metaV1.GetOptions{})
 		Expect(err).ToNot(HaveOccurred())
 		deployment.Spec.Replicas = replicas
-		deployment, err = depAPI(namespace).Update(context.TODO(), deployment, metaV1.UpdateOptions{})
+		_, err = depAPI(namespace).Update(context.TODO(), deployment, metaV1.UpdateOptions{})
 		if err == nil {
 			break
 		}
@@ -161,7 +161,7 @@ func WaitForPodAbsentFromNode(podNameRegexp string, namespace string, nodeName s
 
 	podApi := gTestEnv.KubeInt.CoreV1().Pods
 
-	for i := 0; i < timeoutSeconds && podAbsent == false; i++ {
+	for i := 0; i < timeoutSeconds && !podAbsent; i++ {
 		podAbsent = true
 		time.Sleep(time.Second)
 		podList, err := podApi(namespace).List(context.TODO(), metaV1.ListOptions{})
@@ -177,7 +177,7 @@ func WaitForPodAbsentFromNode(podNameRegexp string, namespace string, nodeName s
 			}
 		}
 	}
-	if podAbsent == false {
+	if !podAbsent {
 		return errors.New("timed out waiting for pod")
 	}
 	return nil
