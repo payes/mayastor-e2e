@@ -16,9 +16,9 @@ const (
 	podRescheduleTimeoutSecs = 180
 	repairTimeoutSecs        = "180s"
 	mayastorRegexp           = "^mayastor-.....$"
-	moacRegexp               = "^moac-..........-.....$"
-	engineLabel              = "openebs.io/engine"
-	mayastorLabel            = "mayastor"
+	//	moacRegexp               = "^moac-..........-.....$"
+	engineLabel   = "openebs.io/engine"
+	mayastorLabel = "mayastor"
 )
 
 type DisruptionEnv struct {

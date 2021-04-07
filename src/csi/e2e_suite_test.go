@@ -44,12 +44,15 @@ var (
 	}
 )
 
+/* Disabled for mayastor, higher level scripts check of POD restarts.
+   checks for pod restart after every test it runs.
 type testCmd struct {
 	command  string
 	args     []string
 	startLog string
 	endLog   string
 }
+*/
 
 var _ = ginkgo.BeforeSuite(func() {
 	// k8s.io/kubernetes/test/e2e/framework requires env KUBECONFIG to be set

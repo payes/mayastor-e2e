@@ -1,4 +1,8 @@
-# Mayastor E2E 
+# Mayastor E2E
+This repository contains the scripts and source files for end-to-end testing of Mayastor
+
+On first checkout run `pre-commit install` this will enable running of pre-commit checks when committing changes.
+You may need to install `pre-commit` on the host system.
 
 ## Directories
 * src - source for go tests
@@ -47,7 +51,7 @@ docker_insecure_registry    = "52.58.174.24:5000"
 ### Create local cluster
 
 Many possibilities here. You could use libvirt based cluster created by
-terraform (in terraform/ in this repo). 
+terraform (in terraform/ in this repo).
 
 # Running the tests
 
