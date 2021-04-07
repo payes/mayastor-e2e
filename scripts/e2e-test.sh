@@ -24,7 +24,6 @@ CONTINUOUS_TESTS="install basic_volume_io csi resource_check replica rebuild io_
 EXITV_OK=0
 EXITV_INVALID_OPTION=1
 EXITV_MISSING_OPTION=2
-EXITV_REPORTS_DIR_NOT_EXIST=3
 EXITV_FAILED=4
 EXITV_FAILED_CLUSTER_OK=255
 
@@ -220,10 +219,6 @@ case "$profile" in
 esac
 
 export e2e_reports_dir="$resportsdir"
-if [ ! -d "$e2e_reports_dir" ] ; then
-    echo "Reports directory $e2e_reports_dir does not exist"
-    exit $EXITV_REPORTS_DIR_NOT_EXIST
-fi
 
 if [ "$uninstall_cleanup" == 'n' ] ; then
     export e2e_uninstall_cleanup=0
