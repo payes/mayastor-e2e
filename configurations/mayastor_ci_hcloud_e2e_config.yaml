@@ -1,6 +1,6 @@
 # configuration/parameters for CI/CD e2e test runs
 configName: CI
-pvcstress:
+pvcStress:
   replicas: 1
   cdCycles: 100
   crudCycles: 10
@@ -12,13 +12,13 @@ ioSoakTest:
   loadFactor: 10
   protocols:
   - nvmf
+  # fioStartDelay units are seconds
+  fioStartDelay: 90
   disrupt:
     # Number of disruptor pods
     podCount: 3
     # faultAfter units are seconds
     faultAfter: 51
-  # fioStartDelay units are seconds
-  fioStartDelay: 90
   # thinkTime units are microseconds
   fioDutyCycles:
   - thinkTime: 500000
