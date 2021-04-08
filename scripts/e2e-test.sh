@@ -19,6 +19,7 @@ DEFAULT_TESTS="install basic_volume_io csi resource_check replica rebuild ms_pod
 ONDEMAND_TESTS="install basic_volume_io csi resource_check uninstall"
 EXTENDED_TESTS="install basic_volume_io csi resource_check replica rebuild io_soak ms_pod_disruption uninstall"
 CONTINUOUS_TESTS="install basic_volume_io csi resource_check replica rebuild io_soak ms_pod_disruption uninstall"
+SELF_CI_TESTS="install basic_volume_io csi resource_check replica rebuild io_soak multiple_vols_pod_io pvc_stress_fio ms_pod_disruption uninstall"
 
 #exit values
 EXITV_OK=0
@@ -31,8 +32,8 @@ EXITV_FAILED_CLUSTER_OK=255
 #  test configuration state variables
 build_number=
 device=
-registry=
-tag="ci"
+registry="ci-registry.mayastor-ci.mayadata.io"
+tag="nightly"
 #  script state variables
 tests=""
 custom_tests=""
@@ -51,12 +52,12 @@ Usage: $0 [OPTIONS]
 Options:
   --build_number <number>   Build number, for use when sending Loki markers
   --device <path>           Device path to use for storage pools.
-  --registry <host[:port]>  Registry to pull the mayastor images from.
-  --tag <name>              Docker image tag of mayastor images (default "ci")
+  --registry <host[:port]>  Registry to pull the mayastor images from. (default: "ci-registry.mayastor-ci.mayadata.io")
+  --tag <name>              Docker image tag of mayastor images (default "nightly")
   --tests <list of tests>   Lists of tests to run, delimited by spaces (default: "$tests")
         Note: the last 2 tests should be (if they are to be run)
              node_disconnect/replica_pod_remove uninstall
-  --profile <continuous|extended|ondemand>
+  --profile <continuous|extended|ondemand|self_ci>
                             Run the tests corresponding to the profile (default: run all tests)
   --resportsdir <path>       Path to use for junit xml test reports (default: repo root)
   --logs                    Generate logs and cluster state dump at the end of successful test run,
@@ -210,6 +211,11 @@ case "$profile" in
     ;;
   default)
     tests="$DEFAULT_TESTS"
+    ;;
+  selfci|self_ci)
+    tests="$SELF_CI_TESTS"
+    echo "Overriding config file to e2e_ci_config.yaml"
+    export e2e_config_file="e2e_ci_config.yaml"
     ;;
   *)
     echo "Unknown profile: $profile"

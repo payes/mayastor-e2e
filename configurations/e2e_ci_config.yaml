@@ -4,11 +4,11 @@
 configName: e2e_ci
 pvcStress:
   replicas: 1
-  cdCycles: 10
-  crudCycles: 10
+  cdCycles: 1
+  crudCycles: 1
 ioSoakTest:
   replicas: 1
-  duration: 6m
+  duration: 3m
   # loadFactor is number of volumes for each mayastor instance
   # volumes for disruptor pods are allocated from within this "pool"
   loadFactor: 10
@@ -44,11 +44,12 @@ uninstall:
 basicVolumeIO:
   replicas: 1
   # timeout units are seconds
-  fioTimeout: 60
+  fioTimeout: 10
   # volSizeMb units are MiB
-  volSizeMb: 500
+  volSizeMb: 64
   # fsVolSizeMb units are MiB
-  fsVolSizeMb: 450
+  fsVolSizeMb: 50
 multiVolumesPodIO:
   volumeCount: 6
-  replicas: 2
+  replicas: 1
+  duration: 5s
