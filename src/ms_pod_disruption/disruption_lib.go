@@ -127,7 +127,7 @@ func (env *DisruptionEnv) PodLossTest() {
 
 	// re-enable mayastor on all unused nodes
 	for _, node := range env.unusedNodes {
-		logf.Log.Info("suppressing mayastor on unused node", "node", node)
+		logf.Log.Info("unsuppressing mayastor on unused node", "node", node)
 		UnsuppressMayastorPodOn(node)
 	}
 	logf.Log.Info("waiting for the volume to be repaired", "timeout", repairTimeoutSecs)
