@@ -73,14 +73,11 @@ The go package used to read (and write) configuration files supports the followi
 3. `toml`
 
 The mayastor e2e project uses `yaml` exclusively.
-If a configuration is not specified the configuration is defaulted to the `CI/CD` configuration file
-`./configurations/mayastor_ci_hcloud_e2e_config.yaml.
+If a configuration is not specified the configuration is defaulted to the mayastor `CI/CD` configuration file
+`./configurations/mayastor_ci_hcloud_e2e_config.yaml`.
 
 The contents of the configuration are described in the file
 `./common/e2e_config/e2e_config.go` and is subject to change.
-
-The location of the default configuration file is *ALWAYS* defined relative to the root of the `e2e` directory as
-`/configurations` and the name of file is `ci_e2e_config.yaml`
 
 Other configuration files may be located in the same directory.
 
