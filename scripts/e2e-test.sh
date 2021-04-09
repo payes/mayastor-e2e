@@ -214,8 +214,8 @@ case "$profile" in
     ;;
   selfci|self_ci)
     tests="$SELF_CI_TESTS"
-    echo "Overriding config file to e2e_ci_config.yaml"
-    export e2e_config_file="e2e_ci_config.yaml"
+    echo "Overriding config file to selfci_config.yaml"
+    export e2e_config_file="selfci_config.yaml"
     ;;
   *)
     echo "Unknown profile: $profile"
