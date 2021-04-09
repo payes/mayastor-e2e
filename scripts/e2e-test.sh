@@ -264,6 +264,9 @@ contains() {
     [[ $1 =~ (^|[[:space:]])$2($|[[:space:]]) ]] && return 0  || return 1
 }
 
+#preprocess tests so that command line can use commas as delimiters
+tests=${tests//,/ }
+
 echo "Environment:"
 echo "    e2e_mayastor_root_dir=$e2e_mayastor_root_dir"
 echo "    e2e_build_number=$e2e_build_number"
