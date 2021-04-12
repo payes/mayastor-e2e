@@ -249,33 +249,30 @@ pipeline {
   // (which happens when running cron job and branch != develop) then we don't
   // want to set commit status in github (jenkins will implicitly set it to
   // success).
-  //post {
-  //  always {
-  //    node(null) {
-  //      script {
-  //        // If no tests were run then we should neither be updating commit
-  //        // status in github nor send any slack messages
-  //        if (currentBuild.result != null) {
-  //          // Do not update the commit status for continuous tests
-  //          if (params.e2e_continuous == false) {
-  //            step([
-  //              $class: 'GitHubCommitStatusSetter',
-  //              errorHandlers: [[$class: "ChangingBuildStatusErrorHandler", result: "UNSTABLE"]],
-  //              contextSource: [
-  //                $class: 'ManuallyEnteredCommitContextSource',
-  //                context: 'continuous-integration/jenkins/branch'
-  //              ],
-  //              statusResultSource: [
-  //                $class: 'ConditionalStatusResultSource',
-  //                results: [
-  //                  [$class: 'AnyBuildResult', message: 'Pipeline result', state: currentBuild.getResult()]
-  //                ]
-  //              ]
-  //            ])
-  //          }
-  //        }
-  //      }
-  //    }
-  //  }
-  //}
+  post {
+    always {
+      node(null) {
+        script {
+          // If no tests were run then we should neither be updating commit
+          // status in github nor send any slack messages
+          if (currentBuild.result != null) {
+            step([
+              $class: 'GitHubCommitStatusSetter',
+              errorHandlers: [[$class: "ChangingBuildStatusErrorHandler", result: "UNSTABLE"]],
+              contextSource: [
+                $class: 'ManuallyEnteredCommitContextSource',
+                context: 'continuous-integration/jenkins/branch'
+              ],
+              statusResultSource: [
+                $class: 'ConditionalStatusResultSource',
+                results: [
+                  [$class: 'AnyBuildResult', message: 'Pipeline result', state: currentBuild.getResult()]
+                ]
+              ]
+            ])
+          }
+        }
+      }
+    }//always
+  }
 }
