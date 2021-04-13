@@ -79,95 +79,78 @@ function cluster-describe {
     kubectl -n mayastor describe daemonsets
 }
 
-function podHasRestarts {
-    rst=$(kubectl -n mayastor get pods "$1" | grep -v NAME | awk '{print $4}')
-
-    # Adjust the return value, to yield readable statements, like:
-    # if podHasRestarts $podname ; then
-    #     handle_restarted_pods
-    # fi
-    if [ $((rst)) -ne 0 ]; then
-        return 0
-    else
-        return 1
-    fi
-}
-
-# args filename kubectlargs
-# filename == "" -> stdout
+# args destdir previous namespace podname containername
+# destdir == "" -> stdout
+# previous == "" -> current logs else -> previous logs
 function kubectlEmitLogs {
-    fname=$1
-    shift
+    destdir=$1
+    previous=$2
+    ns=$3
+    podname=$4
+    containername=$5
 
-    if [ -n "$fname" ]; then
-        kubectl -n mayastor logs "$@" >& "$fname"
+    if [ -z "$ns" ] || [ -z "$podname" ] || [ -z "$containername" ]  ; then
+        echo "ERROR calling kubectlEmitLogs"
+        return
+    fi
+ 
+    if [ -z "$previous" ] ; then
+        logfile="$destdir/$podname.$containername.log"
+        msg="# $podname $containername ----------------------------"
+        cmd="kubectl -n $ns logs $podname $containername" 
     else
-        kubectl -n mayastor logs "$@"
+        logfile="$destdir/$podname.$containername.previous.log"
+        msg="# $podname $containername previous -------------------"
+        cmd="kubectl -n $ns logs -p $podname $containername" 
+    fi
+
+    if [ -n "$destdir" ]; then
+        $cmd >& "$logfile"
+    else
+        echo "$msg"
+        $cmd
     fi
 }
 
-# args = destdir podname containername
+# args = namespace destdir podname
 # if $destdir != "" then log files are generate in $destdir
 #   with the name of the pod and container.
 function emitPodContainerLogs {
-    destdir=$1
-    podname=$2
-    containername=$3
+    ns=$1
+    destdir=$2
+    podname=$3
 
-    if [ -z "$podname" ] || [ -z "$containername" ]; then
+    if [ -z "$podname" ] || [ -z "$ns" ]; then
         echo "ERROR calling emitPodContainerLogs"
         return
     fi
 
-    if podHasRestarts "$podname" ; then
-        if [ -z "$destdir" ]; then
-            echo "# $podname $containername previous -------------------"
-            logfile=""
-        else
-            logfile="$destdir/$podname.$containername.previous.log"
+    restarts=$(kubectl -n "$ns" get pods "$podname" | grep -v NAME | awk '{print $4}')
+    containernames=$(kubectl -n "$ns" get pods "$pod" -o jsonpath="{.spec.containers[*].name}")
+    for containername in $containernames
+    do
+        if [ "$restarts" != "0" ]; then
+            kubectlEmitLogs "$destdir" "1" "$ns" "$podname" "$containername"
         fi
 
-        kubectlEmitLogs "$logfile" -p "$podname" "$containername"
-    fi
-
-    if [ -z "$destdir" ]; then
-        echo "# $podname $containername ----------------------------"
-        logfile=""
-    else
-        logfile="$destdir/$podname.$containername.log"
-    fi
-
-    kubectlEmitLogs "$logfile" "$podname" "$containername"
-}
-
-# arg1 = destdir or "" for stdout
-function getLogsMayastorCSI {
-    mayastor_csipods=$(kubectl -n mayastor get pods | grep mayastor-csi | sed -e 's/ .*//')
-    for pod in $mayastor_csipods
-    do
-        # emitPodContainerLogs destdir podname containername
-        emitPodContainerLogs "$1" "$pod" mayastor-csi
-        emitPodContainerLogs "$1" "$pod" csi-driver-registrar
+        kubectlEmitLogs "$destdir" "" "$ns" "$podname" "$containername"
     done
 }
 
-# arg1 = destdir or "" for stdout
-function getLogsMayastor {
-    mayastor_pods=$(kubectl -n mayastor get pods | grep mayastor | grep -v mayastor-csi | sed -e 's/ .*//')
-    for pod in $mayastor_pods
-    do
-        # emitPodContainerLogs destdir podname containername
-        emitPodContainerLogs "$1" "$pod" mayastor
-    done
-}
+# $1 = namespace
+function getPodLogs {
+    ns=$1
 
-# arg1 = destdir or "" for stdout
-function getLogsMOAC {
-    moacpod=$(kubectl -n mayastor get pods | grep moac | sed -e 's/ .*//')
-    # emitPodContainerLogs destdir podname containername
-    emitPodContainerLogs "$1" "$moacpod" moac
-    emitPodContainerLogs "$1" "$moacpod" csi-provisioner
-    emitPodContainerLogs "$1" "$moacpod" csi-attacher
+    if [ -z "$ns" ]; then
+        echo "ERROR calling getPodLogs"
+        return
+    fi
+
+    pods=$(kubectl -n "$ns" get pods | grep -v NAME | sed -e 's/ .*//')
+    for pod in $pods
+    do
+        emitPodContainerLogs "$ns" "$2" "$pod"
+    done
 }
 
 # $1 = podlogs, 0 => do not generate pod logs
@@ -185,9 +168,8 @@ function getLogs {
     fi
 
     if [ "$podlogs" -ne 0 ]; then
-        getLogsMOAC "$dest"
-        getLogsMayastor "$dest"
-        getLogsMayastorCSI "$dest"
+        getPodLogs mayastor "$dest"
+        getPodLogs default "$dest"
     fi
 
     if [ -n "$dest" ];
