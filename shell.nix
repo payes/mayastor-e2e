@@ -44,6 +44,7 @@ mkShell {
   ;
 
   shellHook = ''
+    pre-commit install
     pre-commit install --hook commit-msg
   '';
 }
