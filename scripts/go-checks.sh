@@ -10,8 +10,10 @@ if [ "$1" == "-n" ]; then
     shift
 fi
 
-# go fmt
-unformatted=$(gofmt -l "$@")
+if [ -n "$*" ]; then
+    # go fmt
+    unformatted=$(gofmt -l "$@")
+fi
 
 if [ $reformat -ne 0 ]; then
     for file in $unformatted; do
@@ -37,7 +39,7 @@ if golangci-lint > /dev/null 2>&1 ; then
 #        :
 #    done
 # so we run it on the whole go src tree
-    if ! golangci-lint run ; then
+    if ! golangci-lint run -v ; then
         exitv=1
     fi
 else
