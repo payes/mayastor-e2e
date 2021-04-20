@@ -53,6 +53,7 @@ Options:
   --build_number <number>   Build number, for use when sending Loki markers
   --device <path>           Device path to use for storage pools.
   --registry <host[:port]>  Registry to pull the mayastor images from. (default: "ci-registry.mayastor-ci.mayadata.io")
+                            'dockerhub' means use DockerHub
   --tag <name>              Docker image tag of mayastor images (default "nightly")
   --tests <list of tests>   Lists of tests to run, delimited by spaces (default: "$tests")
         Note: the last 2 tests should be (if they are to be run)
@@ -89,7 +90,11 @@ while [ "$#" -gt 0 ]; do
       ;;
     -r|--registry)
       shift
-      registry=$1
+      if [[ "$1" == 'dockerhub' ]]; then
+          registry=''
+      else
+          registry=$1
+      fi
       ;;
     -t|--tag)
       shift
