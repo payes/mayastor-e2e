@@ -17,7 +17,7 @@ ARTIFACTSDIR=$(realpath "$SCRIPTDIR/../artifacts")
 #
 DEFAULT_TESTS="install basic_volume_io csi resource_check replica rebuild ms_pod_disruption uninstall"
 ONDEMAND_TESTS="install basic_volume_io csi resource_check uninstall"
-EXTENDED_TESTS="install basic_volume_io csi resource_check replica rebuild io_soak ms_pod_disruption uninstall"
+EXTENDED_TESTS="install basic_volume_io csi resource_check rebuild io_soak ms_pod_disruption uninstall" # replica removed
 CONTINUOUS_TESTS="install basic_volume_io csi resource_check replica rebuild io_soak ms_pod_disruption uninstall"
 SELF_CI_TESTS="install basic_volume_io csi resource_check replica rebuild io_soak multiple_vols_pod_io pvc_stress_fio ms_pod_disruption uninstall"
 
@@ -53,6 +53,7 @@ Options:
   --build_number <number>   Build number, for use when sending Loki markers
   --device <path>           Device path to use for storage pools.
   --registry <host[:port]>  Registry to pull the mayastor images from. (default: "ci-registry.mayastor-ci.mayadata.io")
+                            'dockerhub' means use DockerHub
   --tag <name>              Docker image tag of mayastor images (default "nightly")
   --tests <list of tests>   Lists of tests to run, delimited by spaces (default: "$tests")
         Note: the last 2 tests should be (if they are to be run)
@@ -68,7 +69,7 @@ Options:
   --uninstall_cleanup <y|n> On uninstall cleanup for reusable cluster. default($uninstall_cleanup)
   --config                  config name or configuration file default(test/e2e/configurations/ci_e2e_config.yaml)
   --mayastor                path to the mayastor source tree to use for testing.
-                            This is required so that the install test uses the yaml files as defined for that 
+                            This is required so that the install test uses the yaml files as defined for that
                             revision of mayastor under test.
 
 Examples:
@@ -89,7 +90,11 @@ while [ "$#" -gt 0 ]; do
       ;;
     -r|--registry)
       shift
-      registry=$1
+      if [[ "$1" == 'dockerhub' ]]; then
+          registry=''
+      else
+          registry=$1
+      fi
       ;;
     -t|--tag)
       shift
@@ -171,7 +176,7 @@ if [ -z "$mayastor_root_dir" ]; then
     echo "Root directory for mayastor is required"
     exit $EXITV_MISSING_OPTION
 fi
-export e2e_mayastor_root_dir=$mayastor_root_dir 
+export e2e_mayastor_root_dir=$mayastor_root_dir
 
 if [ -z "$device" ]; then
   echo "Device for storage pools must be specified"
