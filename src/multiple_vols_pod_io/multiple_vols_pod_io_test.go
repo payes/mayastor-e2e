@@ -136,25 +136,23 @@ var _ = Describe("Mayastor Volume IO test", func() {
 	Expect(err).ToNot(HaveOccurred(), "Duration configuration string format is invalid.")
 
 	logf.Log.Info("MultipleVolumeIO test", "configuration", cfg)
+	/*
+		 It("should verify mayastor can process IO on multiple filesystem volumes with 1 replica mounted on a single pod with immediate binding", func() {
+				multipleVolumeIOTest(1, cfg.VolumeCount, common.ShareProtoNvmf, common.VolFileSystem, storageV1.VolumeBindingImmediate, duration)
+		  })
 
-	// TODO: enable all test cases.
+		It("should verify mayastor can process IO on multiple raw block volumes with 1 replica mounted on a single pod with immediate binding", func() {
+				multipleVolumeIOTest(1, cfg.VolumeCount, common.ShareProtoNvmf, common.VolRawBlock, storageV1.VolumeBindingImmediate, duration)
+		})
 
-	// It("should verify mayastor can process IO on multiple filesystem volumes with 1 replica mounted on a single pod with immediate binding", func() {
-	//		multipleVolumeIOTest(1, cfg.VolumeCount, common.ShareProtoNvmf, common.VolFileSystem, storageV1.VolumeBindingImmediate)
-	//  })
+		It("should verify mayastor can process IO on multiple filesystem volumes with 1 replica mounted on a single pod with late binding", func() {
+				multipleVolumeIOTest(1, cfg.VolumeCount, common.ShareProtoNvmf, common.VolFileSystem, storageV1.VolumeBindingWaitForFirstConsumer, duration)
+		})
 
-	//	It("should verify mayastor can process IO on multiple raw block volumes with 1 replica mounted on a single pod with immediate binding", func() {
-	//		multipleVolumeIOTest(1, cfg.VolumeCount, common.ShareProtoNvmf, common.VolRawBlock, storageV1.VolumeBindingImmediate)
-	//	})
-
-	//	It("should verify mayastor can process IO on multiple filesystem volumes with 1 replica mounted on a single pod with late binding", func() {
-	//		multipleVolumeIOTest(1, cfg.VolumeCount, common.ShareProtoNvmf, common.VolFileSystem, storageV1.VolumeBindingWaitForFirstConsumer)
-	//	})
-
-	//	It("should verify mayastor can process IO on multiple raw block volumes with 1 replica mounted on a single pod with late binding", func() {
-	//		multipleVolumeIOTest(1, cfg.VolumeCount, common.ShareProtoNvmf, common.VolRawBlock, storageV1.VolumeBindingWaitForFirstConsumer)
-	//	})
-
+		It("should verify mayastor can process IO on multiple raw block volumes with 1 replica mounted on a single pod with late binding", func() {
+				multipleVolumeIOTest(1, cfg.VolumeCount, common.ShareProtoNvmf, common.VolRawBlock, storageV1.VolumeBindingWaitForFirstConsumer, duration)
+		})
+	*/
 	It("should verify mayastor can process IO on multiple filesystem volumes with multiple replicas mounted on a single pod with immediate binding", func() {
 		multipleVolumeIOTest(cfg.MultipleReplicaCount, cfg.VolumeCount, common.ShareProtoNvmf, common.VolFileSystem, storageV1.VolumeBindingImmediate, duration)
 	})
@@ -163,14 +161,13 @@ var _ = Describe("Mayastor Volume IO test", func() {
 		multipleVolumeIOTest(cfg.MultipleReplicaCount, cfg.VolumeCount, common.ShareProtoNvmf, common.VolRawBlock, storageV1.VolumeBindingImmediate, duration)
 	})
 
-	//	It("should verify mayastor can process IO on multiple filesystem volumes with multiple replicas mounted on a single pod with late binding", func() {
-	//		multipleVolumeIOTest(cfg.MultipleReplicaCount, cfg.VolumeCount, common.ShareProtoNvmf, common.VolFileSystem, storageV1.VolumeBindingWaitForFirstConsumer)
-	//	})
+	It("should verify mayastor can process IO on multiple filesystem volumes with multiple replicas mounted on a single pod with late binding", func() {
+		multipleVolumeIOTest(cfg.MultipleReplicaCount, cfg.VolumeCount, common.ShareProtoNvmf, common.VolFileSystem, storageV1.VolumeBindingWaitForFirstConsumer, duration)
+	})
 
-	//	It("should verify mayastor can process IO on multiple raw block volumes with multiple replicas mounted on a single pod with late binding", func() {
-	//		multipleVolumeIOTest(cfg.MultipleReplicaCount, cfg.VolumeCount, common.ShareProtoNvmf, common.VolRawBlock, storageV1.VolumeBindingWaitForFirstConsumer)
-	//	})
-
+	It("should verify mayastor can process IO on multiple raw block volumes with multiple replicas mounted on a single pod with late binding", func() {
+		multipleVolumeIOTest(cfg.MultipleReplicaCount, cfg.VolumeCount, common.ShareProtoNvmf, common.VolRawBlock, storageV1.VolumeBindingWaitForFirstConsumer, duration)
+	})
 })
 
 var _ = BeforeSuite(func(done Done) {
