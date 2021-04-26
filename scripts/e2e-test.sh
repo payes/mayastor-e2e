@@ -64,8 +64,10 @@ Options:
   --logs                    Generate logs and cluster state dump at the end of successful test run,
                             prior to uninstall.
   --logsdir <path>          Location to generate logs (default: emit to stdout).
-  --onfail <stop|uninstall> On fail, stop immediately or uninstall default($on_fail)
+  --onfail <stop|uninstall|continue>
+                            On fail, stop immediately,uninstall or continue default($on_fail)
                             Behaviour for "uninstall" only differs if uninstall is in the list of tests (the default).
+                            If set to "continue" on failure, all resources are cleanedup and mayastor is re-installed.
   --uninstall_cleanup <y|n> On uninstall cleanup for reusable cluster. default($uninstall_cleanup)
   --config                  config name or configuration file default(test/e2e/configurations/ci_e2e_config.yaml)
   --mayastor                path to the mayastor source tree to use for testing.
