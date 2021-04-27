@@ -3,25 +3,25 @@ package cleanup
 import (
 	"testing"
 
-	"mayastor-e2e/common/k8stest"
-	rep "mayastor-e2e/common/reporter"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"mayastor-e2e/common/k8stest"
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
+// This is run as a test but is really a utility to restore
+// the cluster to usable state.
 func TestCleanUpCluster(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecsWithDefaultAndCustomReporters(t, "Clean up cluster", rep.GetReporters("uninstall"))
+	RunSpecs(t, "Clean up cluster")
 }
 
 var _ = Describe("Mayastor setup", func() {
 	It("should clean up test artefacts in the cluster", func() {
 		cleaned := k8stest.CleanUp()
-		//		Expect(cleaned).To(BeTrue())
+		Expect(cleaned).To(BeTrue())
 		logf.Log.Info("", "cleaned", cleaned)
 	})
 })

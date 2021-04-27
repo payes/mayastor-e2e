@@ -216,6 +216,10 @@ func DeleteAllPools() bool {
 		logf.Log.Info("DeleteAllPools: deleting MayastorPools")
 		for _, pool := range pools.Items {
 			logf.Log.Info("DeleteAllPools: deleting", "pool", pool.GetName())
+			finalizers := pool.GetFinalizers()
+			if finalizers != nil {
+				logf.Log.Info("DeleteAllPools: found finalizers on pool ", "pool", pool.GetName(), "finalizers", finalizers)
+			}
 			err = gTestEnv.DynamicClient.Resource(poolGVR).Namespace(common.NSMayastor).Delete(context.TODO(), pool.GetName(), metaV1.DeleteOptions{GracePeriodSeconds: &ZeroInt64})
 			if err != nil {
 				logf.Log.Info("DeleteAllPools: failed to delete pool", pool.GetName(), "error", err)
@@ -378,11 +382,15 @@ func CleanUp() bool {
 		}
 	}
 
+	err = EnsureNodeLabels()
+	if err != nil {
+		errs = append(errs, err)
+	}
+
 	// log all the errors
 	for _, err := range errs {
 		logf.Log.Info("", "error", err)
 	}
 
-	// For now ignore delMsvErr, until we figure out how to ignore "no resource of this type" errors
-	return (podCount+pvcCount+pvCount+msvCount) == 0 && len(errs) == 0
+	return len(errs) == 0
 }

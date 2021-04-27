@@ -19,7 +19,7 @@ DEFAULT_TESTS="install basic_volume_io csi resource_check replica rebuild ms_pod
 ONDEMAND_TESTS="install basic_volume_io csi resource_check uninstall"
 EXTENDED_TESTS="install basic_volume_io csi resource_check rebuild io_soak ms_pod_disruption uninstall" # replica removed
 CONTINUOUS_TESTS="install basic_volume_io csi resource_check rebuild io_soak ms_pod_disruption uninstall" # replica removed
-SELF_CI_TESTS="install basic_volume_io csi resource_check rebuild io_soak multiple_vols_pod_io pvc_stress_fio ms_pod_disruption uninstall" # replica removed
+SELF_CI_TESTS="install basic_volume_io csi resource_check io_soak multiple_vols_pod_io pvc_stress_fio ms_pod_disruption uninstall" # replica removed, # rebuild removed
 
 #exit values
 EXITV_OK=0
@@ -56,16 +56,19 @@ Options:
                             'dockerhub' means use DockerHub
   --tag <name>              Docker image tag of mayastor images (default "nightly")
   --tests <list of tests>   Lists of tests to run, delimited by spaces (default: "$tests")
-        Note: the last 2 tests should be (if they are to be run)
-             node_disconnect/replica_pod_remove uninstall
+                            Note: the last 2 tests should be (if they are to be run)
+                                - ms_pod_disruption
+                                - uninstall
   --profile <continuous|extended|ondemand|self_ci>
                             Run the tests corresponding to the profile (default: run all tests)
   --resportsdir <path>       Path to use for junit xml test reports (default: repo root)
   --logs                    Generate logs and cluster state dump at the end of successful test run,
                             prior to uninstall.
   --logsdir <path>          Location to generate logs (default: emit to stdout).
-  --onfail <stop|uninstall> On fail, stop immediately or uninstall default($on_fail)
+  --onfail <stop|uninstall|continue>
+                            On fail, stop immediately,uninstall or continue default($on_fail)
                             Behaviour for "uninstall" only differs if uninstall is in the list of tests (the default).
+                            If set to "continue" on failure, all resources are cleaned up and mayastor is re-installed.
   --uninstall_cleanup <y|n> On uninstall cleanup for reusable cluster. default($uninstall_cleanup)
   --config                  config name or configuration file default(test/e2e/configurations/ci_e2e_config.yaml)
   --mayastor                path to the mayastor source tree to use for testing.
@@ -137,6 +140,9 @@ while [ "$#" -gt 0 ]; do
                 on_fail=$1
                 ;;
             stop)
+                on_fail=$1
+                ;;
+            continue)
                 on_fail=$1
                 ;;
             *)
@@ -264,6 +270,20 @@ function runGoTest {
     return 0
 }
 
+function emitLogs {
+    if [ -z "$1" ]; then
+        logPath="$logsdir"
+    else
+        logPath="$logsdir/$1"
+    fi
+    mkdir -p "$logPath"
+    if ! "$SCRIPTDIR/e2e-cluster-dump.sh" --destdir "$logPath" ; then
+        # ignore failures in the dump script
+        :
+    fi
+    unset logPath
+}
+
 # Check if $2 is in $1
 contains() {
     [[ $1 =~ (^|[[:space:]])$2($|[[:space:]]) ]] && return 0  || return 1
@@ -296,31 +316,32 @@ for testname in $tests; do
       if ! runGoTest "$testname" ; then
           echo "Test \"$testname\" FAILED!"
           test_failed=1
-          break
+          emitLogs "$testname"
+          if [ "$on_fail" == "continue" ] && [ "$testname" != "install" ] ; then
+              # continue is only possible if install was successful
+              echo "Attempting to continue....., cleanup"
+              if ! runGoTest "cleanup" ; then
+                  echo "\"cleanup\" failed"
+                  exit $EXITV_FAILED
+              fi
+              echo "Mayastor pods were restarted.. re-installing"
+              if ! runGoTest "uninstall"; then
+                  echo "uninstall failed, abandoning attempt to continue"
+                  echo $EXITV_FAILED
+              fi
+              if ! runGoTest "install"; then
+                  echo "(re)install failed, abandoning attempt to continue"
+                  echo $EXITV_FAILED
+              fi
+          else
+              break
+          fi
       fi
-
-      if ! ("$SCRIPTDIR/e2e_check_pod_restarts.sh") ; then
-          echo "Test \"$testname\" FAILED! mayastor pods were restarted."
-          test_failed=1
-          generate_logs=1
-          break
-      fi
-
   fi
 done
 
 if [ "$generate_logs" -ne 0 ]; then
-    if [ -n "$logsdir" ]; then
-        if ! "$SCRIPTDIR/e2e-cluster-dump.sh" --destdir "$logsdir" ; then
-            # ignore failures in the dump script
-            :
-        fi
-    else
-        if ! "$SCRIPTDIR/e2e-cluster-dump.sh" ; then
-            # ignore failures in the dump script
-            :
-        fi
-    fi
+    emitLogs ""
 fi
 
 if [ "$test_failed" -ne 0 ] && [ "$on_fail" == "stop" ]; then
@@ -333,6 +354,7 @@ if contains "$tests" "uninstall" ; then
     if ! runGoTest "uninstall" ; then
         echo "Test \"uninstall\" FAILED!"
         test_failed=1
+        emitLogs "uninstall"
     elif  [ "$test_failed" -ne 0 ] ; then
         # tests failed, but uninstall was successful
         # so cluster is reusable

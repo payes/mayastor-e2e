@@ -11,7 +11,7 @@ ioSoakTest:
   duration: 3m
   # loadFactor is number of volumes for each mayastor instance
   # volumes for disruptor pods are allocated from within this "pool"
-  loadFactor: 10
+  loadFactor: 3
   protocols:
   - nvmf
   # fioStartDelay units are seconds
@@ -44,7 +44,7 @@ uninstall:
 basicVolumeIO:
   replicas: 1
   # timeout units are seconds
-  fioTimeout: 10
+  fioTimeout: 20
   # volSizeMb units are MiB
   volSizeMb: 64
   # fsVolSizeMb units are MiB
@@ -52,4 +52,4 @@ basicVolumeIO:
 multiVolumesPodIO:
   volumeCount: 6
   replicas: 1
-  duration: 5s
+  duration: 2s
