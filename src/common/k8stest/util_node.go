@@ -82,3 +82,22 @@ func UnlabelNode(nodename string, label string) {
 	_, err := cmd.CombinedOutput()
 	Expect(err).ToNot(HaveOccurred())
 }
+
+// EnsureNodeLabels  add the label openebs.io/engine=mayastor to  all worker nodes so that K8s runs mayastor on them
+// returns error is accessing the list of nodes fails.
+func EnsureNodeLabels() error {
+	const (
+		engineLabel   = "openebs.io/engine"
+		mayastorLabel = "mayastor"
+	)
+	nodes, err := GetNodeLocs()
+	if err != nil {
+		return err
+	}
+	for _, node := range nodes {
+		if !node.MasterNode {
+			LabelNode(node.NodeName, engineLabel, mayastorLabel)
+		}
+	}
+	return nil
+}

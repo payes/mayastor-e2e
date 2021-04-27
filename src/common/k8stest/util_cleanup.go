@@ -382,6 +382,11 @@ func CleanUp() bool {
 		}
 	}
 
+	err = EnsureNodeLabels()
+	if err != nil {
+		errs = append(errs, err)
+	}
+
 	// log all the errors
 	for _, err := range errs {
 		logf.Log.Info("", "error", err)
