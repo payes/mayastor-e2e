@@ -56,8 +56,9 @@ Options:
                             'dockerhub' means use DockerHub
   --tag <name>              Docker image tag of mayastor images (default "nightly")
   --tests <list of tests>   Lists of tests to run, delimited by spaces (default: "$tests")
-        Note: the last 2 tests should be (if they are to be run)
-             node_disconnect/replica_pod_remove uninstall
+                            Note: the last 2 tests should be (if they are to be run)
+                                - ms_pod_disruption
+                                - uninstall
   --profile <continuous|extended|ondemand|self_ci>
                             Run the tests corresponding to the profile (default: run all tests)
   --resportsdir <path>       Path to use for junit xml test reports (default: repo root)
@@ -67,7 +68,7 @@ Options:
   --onfail <stop|uninstall|continue>
                             On fail, stop immediately,uninstall or continue default($on_fail)
                             Behaviour for "uninstall" only differs if uninstall is in the list of tests (the default).
-                            If set to "continue" on failure, all resources are cleanedup and mayastor is re-installed.
+                            If set to "continue" on failure, all resources are cleaned up and mayastor is re-installed.
   --uninstall_cleanup <y|n> On uninstall cleanup for reusable cluster. default($uninstall_cleanup)
   --config                  config name or configuration file default(test/e2e/configurations/ci_e2e_config.yaml)
   --mayastor                path to the mayastor source tree to use for testing.
