@@ -8,17 +8,22 @@ const DefaultVolumeSizeMb = 64
 const DefaultFioSizeMb = 50
 
 //  These variables match the settings used in createFioPodDef
+
 const FioFsMountPoint = "/volume"
 const FioBlockFilename = "/dev/sdm"
 const FioFsFilename = FioFsMountPoint + "/fiotestfile"
 
-// Relative path to the configuration directory WRT e2e root
+// ConfigDir  Relative path to the configuration directory WRT e2e root.
 const ConfigDir = "/configurations"
+
+// DefaultConfigFileRelPath  Relative path to default configuration file.
 const DefaultConfigFileRelPath = ConfigDir + "/mayastor_ci_hcloud_e2e_config.yaml"
 
-//CRD
+//Custom Resources
 const CRDGroupName = "openebs.io"
-const CRDVolumeGroupVersion = "v1alpha1"
 const CRDPoolGroupVersion = "v1alpha1"
 const CRDPoolsResourceName = "mayastorpools"
-const CRDVolsResourceName = "mayastorvolumes"
+const CRDVolumeGroupVersion = "v1alpha1"
+const CRDVolumesResourceName = "mayastorvolumes"
+const CRDNodeGroupVersion = "v1alpha1"
+const CRDNodesResourceName = "mayastornodes"

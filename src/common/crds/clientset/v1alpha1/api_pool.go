@@ -8,6 +8,8 @@ import (
 	"k8s.io/client-go/rest"
 )
 
+// Pool API
+
 type MayastorPoolV1Alpha1Interface interface {
 	MayastorPools() MayastorPoolInterface
 }
@@ -16,7 +18,7 @@ type MayastorPoolV1Alpha1Client struct {
 	restClient rest.Interface
 }
 
-func NewForConfig(c *rest.Config) (*MayastorPoolV1Alpha1Client, error) {
+func MspNewForConfig(c *rest.Config) (*MayastorPoolV1Alpha1Client, error) {
 	config := *c
 	config.ContentConfig.GroupVersion = &schema.GroupVersion{Group: common.CRDGroupName, Version: common.CRDPoolGroupVersion}
 	config.APIPath = "/apis"
