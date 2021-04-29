@@ -30,7 +30,7 @@ EXITV_FAILED_CLUSTER_OK=255
 
 # Global state variables
 #  test configuration state variables
-build_number=
+loki_run_id=
 device=
 registry="ci-registry.mayastor-ci.mayadata.io"
 tag="nightly"
@@ -51,6 +51,7 @@ Usage: $0 [OPTIONS]
 
 Options:
   --build_number <number>   Build number, for use when sending Loki markers
+  --loki_run_id <Loki run id>  ID string, for use when sending Loki markers
   --device <path>           Device path to use for storage pools.
   --registry <host[:port]>  Registry to pull the mayastor images from. (default: "ci-registry.mayastor-ci.mayadata.io")
                             'dockerhub' means use DockerHub
@@ -115,9 +116,13 @@ while [ "$#" -gt 0 ]; do
       help
       exit $EXITV_OK
       ;;
-    --build_number)
+    --build_number) # TODO remove this option
       shift
-      build_number="$1"
+      loki_run_id="$1"
+      ;;
+    --loki_run_id)
+      shift
+      loki_run_id="$1"
       ;;
     --logs)
       generate_logs=1
@@ -176,7 +181,7 @@ while [ "$#" -gt 0 ]; do
   shift
 done
 
-export e2e_build_number="$build_number" # can be empty string
+export loki_run_id="$loki_run_id" # can be empty string
 
 if [ -z "$mayastor_root_dir" ]; then
     echo "Root directory for mayastor is required"
@@ -294,7 +299,7 @@ tests=${tests//,/ }
 
 echo "Environment:"
 echo "    e2e_mayastor_root_dir=$e2e_mayastor_root_dir"
-echo "    e2e_build_number=$e2e_build_number"
+echo "    loki_run_id=$loki_run_id"
 echo "    e2e_root_dir=$e2e_root_dir"
 echo "    e2e_pool_device=$e2e_pool_device"
 echo "    e2e_image_tag=$e2e_image_tag"
