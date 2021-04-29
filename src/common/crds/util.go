@@ -51,7 +51,7 @@ func init() {
 
 // == Maystor Pool  ======================
 
-func CreatePool(poolName string, node string, disks []string) error {
+func CreatePool(poolName string, node string, disks []string) (*v1alpha1Api.MayastorPool, error) {
 	msp := v1alpha1Api.MayastorPool{
 		TypeMeta: metaV1.TypeMeta{Kind: "MayastorPool"},
 		ObjectMeta: metaV1.ObjectMeta{
@@ -63,8 +63,8 @@ func CreatePool(poolName string, node string, disks []string) error {
 			Disks: disks,
 		},
 	}
-	_, err := poolClientSet.MayastorPools().Create(context.TODO(), &msp, metaV1.CreateOptions{})
-	return err
+	mspOut, err := poolClientSet.MayastorPools().Create(context.TODO(), &msp, metaV1.CreateOptions{})
+	return mspOut, err
 }
 
 func GetPool(poolName string) (v1alpha1Api.MayastorPool, error) {
@@ -76,9 +76,9 @@ func GetPool(poolName string) (v1alpha1Api.MayastorPool, error) {
 	return msp, err
 }
 
-func UpdatePool(msp v1alpha1Api.MayastorPool) error {
-	_, err := poolClientSet.MayastorPools().Update(context.TODO(), &msp, metaV1.UpdateOptions{})
-	return err
+func UpdatePool(mspIn v1alpha1Api.MayastorPool) (*v1alpha1Api.MayastorPool, error) {
+	mspOut, err := poolClientSet.MayastorPools().Update(context.TODO(), &mspIn, metaV1.UpdateOptions{})
+	return mspOut, err
 }
 
 func DeletePool(poolName string) error {
@@ -97,12 +97,12 @@ func ListPools() ([]v1alpha1Api.MayastorPool, error) {
 // == Maystor Nodes ======================
 
 func GetNode(nodeName string) (v1alpha1Api.MayastorNode, error) {
-	msp := v1alpha1Api.MayastorNode{}
+	msn := v1alpha1Api.MayastorNode{}
 	res, err := nodeClientSet.MayastorNodes().Get(context.TODO(), nodeName, metaV1.GetOptions{})
 	if res != nil && err == nil {
-		msp = *res
+		msn = *res
 	}
-	return msp, err
+	return msn, err
 }
 
 func ListNodes() ([]v1alpha1Api.MayastorNode, error) {
@@ -123,17 +123,17 @@ func DeleteNode(nodeName string) error {
 //  MOAC/Mayastor creates Mayastor Volumes, create use case?
 
 func GetVolume(volName string) (v1alpha1Api.MayastorVolume, error) {
-	msp := v1alpha1Api.MayastorVolume{}
+	msv := v1alpha1Api.MayastorVolume{}
 	res, err := volClientSet.MayastorVolumes().Get(context.TODO(), volName, metaV1.GetOptions{})
 	if res != nil && err == nil {
-		msp = *res
+		msv = *res
 	}
-	return msp, err
+	return msv, err
 }
 
-func UpdateVolume(msp v1alpha1Api.MayastorVolume) error {
-	_, err := volClientSet.MayastorVolumes().Update(context.TODO(), &msp, metaV1.UpdateOptions{})
-	return err
+func UpdateVolume(msvIn v1alpha1Api.MayastorVolume) (*v1alpha1Api.MayastorVolume, error) {
+	msvOut, err := volClientSet.MayastorVolumes().Update(context.TODO(), &msvIn, metaV1.UpdateOptions{})
+	return msvOut, err
 }
 
 func DeleteVolume(volName string) error {
