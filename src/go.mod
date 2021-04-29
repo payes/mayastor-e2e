@@ -3,7 +3,8 @@ module mayastor-e2e
 go 1.15
 
 require (
-	github.com/container-storage-interface/spec v1.2.0
+	github.com/container-storage-interface/spec v1.2.0 // indirect
+	github.com/gorilla/mux v1.7.3
 	github.com/ilyakaznacheev/cleanenv v1.2.5
 	github.com/onsi/ginkgo v1.14.1
 	github.com/onsi/gomega v1.10.2
