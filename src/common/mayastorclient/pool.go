@@ -87,12 +87,3 @@ func ListPools(addrs []string) ([]MayastorPool, error) {
 	}
 	return poolInfos, accErr
 }
-
-// ListPoolsInCluster enumerate the set of mayastor pools present in the cluster
-func ListPoolsInCluster() ([]MayastorPool, error) {
-	nodeAddrs, err := getClusterMayastorNodeIPAddrs()
-	if err == nil {
-		return ListPools(nodeAddrs)
-	}
-	return []MayastorPool{}, err
-}

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"mayastor-e2e/common"
+	"mayastor-e2e/common/mayastorclient"
 
 	. "github.com/onsi/gomega"
 
@@ -310,4 +311,58 @@ func MayastorReady(sleepTime int, duration int) (bool, error) {
 	}
 
 	return ready, nil
+}
+
+func getClusterMayastorNodeIPAddrs() ([]string, error) {
+	var nodeAddrs []string
+	nodes, err := GetNodeLocs()
+	if err != nil {
+		return nodeAddrs, err
+	}
+
+	for _, node := range nodes {
+		if node.MayastorNode {
+			nodeAddrs = append(nodeAddrs, node.IPAddress)
+		}
+	}
+	return nodeAddrs, err
+}
+
+// ListPoolsInCluster use mayastorclient to enumerate the set of mayastor pools present in the cluster
+func ListPoolsInCluster() ([]mayastorclient.MayastorPool, error) {
+	nodeAddrs, err := getClusterMayastorNodeIPAddrs()
+	if err == nil {
+		return mayastorclient.ListPools(nodeAddrs)
+	}
+	return []mayastorclient.MayastorPool{}, err
+}
+
+// ListNexusesInCluster use mayastorclient to enumerate the set of mayastor nexuses present in the cluster
+func ListNexusesInCluster() ([]mayastorclient.MayastorNexus, error) {
+	nodeAddrs, err := getClusterMayastorNodeIPAddrs()
+	if err == nil {
+		return mayastorclient.ListNexuses(nodeAddrs)
+	}
+	return []mayastorclient.MayastorNexus{}, err
+}
+
+// ListReplicasInCluster use mayastorclient to enumerate the set of mayastor replicas present in the cluster
+func ListReplicasInCluster() ([]mayastorclient.MayastorReplica, error) {
+	nodeAddrs, err := getClusterMayastorNodeIPAddrs()
+	if err == nil {
+		return mayastorclient.ListReplicas(nodeAddrs)
+	}
+	return []mayastorclient.MayastorReplica{}, err
+}
+
+// GetPoolUsageInCluster use mayastorclient to enumerate the set of pools and sum up the pool usage in the cluster
+func GetPoolUsageInCluster() (uint64, error) {
+	var poolUsage uint64
+	pools, err := ListPoolsInCluster()
+	if err == nil {
+		for _, pool := range pools {
+			poolUsage += pool.Used
+		}
+	}
+	return poolUsage, err
 }

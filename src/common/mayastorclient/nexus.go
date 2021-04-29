@@ -125,12 +125,3 @@ func FaultNexusChild(address string, Uuid string, Uri string) error {
 	}
 	return err
 }
-
-// ListNexusesInCluster enumerate the set of mayastor nexuses present in the cluster
-func ListNexusesInCluster() ([]MayastorNexus, error) {
-	nodeAddrs, err := getClusterMayastorNodeIPAddrs()
-	if err == nil {
-		return ListNexuses(nodeAddrs)
-	}
-	return []MayastorNexus{}, err
-}

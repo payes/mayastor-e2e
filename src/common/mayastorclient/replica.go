@@ -87,12 +87,3 @@ func ListReplicas(addrs []string) ([]MayastorReplica, error) {
 	}
 	return replicaInfos, accErr
 }
-
-// ListReplicasInCluster enumerate the set of mayastor replicas present in the cluster
-func ListReplicasInCluster() ([]MayastorReplica, error) {
-	nodeAddrs, err := getClusterMayastorNodeIPAddrs()
-	if err == nil {
-		return ListReplicas(nodeAddrs)
-	}
-	return []MayastorReplica{}, err
-}
