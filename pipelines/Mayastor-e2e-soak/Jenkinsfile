@@ -13,7 +13,7 @@ def k8s_job=""
 e2e_image_tag='nightly'
 e2e_local_registry=true
 e2e_reports_dir='artifacts/reports/'
-e2e_test_profile = 'ondemand'
+e2e_test_profile = 'soak'
 
 run_linter=true
 
@@ -62,7 +62,7 @@ String loki_run_id = job_base_name + "-" + env.BRANCH_NAME + "-" + env.BUILD_NUM
 pipeline {
   agent none
   options {
-    timeout(time: 3, unit: 'HOURS')
+    timeout(time: 48, unit: 'HOURS')
   }
 
   stages {

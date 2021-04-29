@@ -66,7 +66,7 @@ String loki_run_id = job_base_name + "-" + env.BRANCH_NAME + "-" + env.BUILD_NUM
 pipeline {
   agent none
   options {
-    timeout(time: 48, unit: 'HOURS')
+    timeout(time: 3, unit: 'HOURS')
   }
 
   stages {
