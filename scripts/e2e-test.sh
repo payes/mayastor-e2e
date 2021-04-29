@@ -20,6 +20,8 @@ ONDEMAND_TESTS="install basic_volume_io csi resource_check uninstall"
 EXTENDED_TESTS="install basic_volume_io csi resource_check rebuild io_soak multiple_vols_pod_io ms_pod_disruption uninstall" # replica removed
 CONTINUOUS_TESTS="install basic_volume_io csi resource_check rebuild io_soak ms_pod_disruption uninstall" # replica removed
 SELF_CI_TESTS="install basic_volume_io csi resource_check io_soak multiple_vols_pod_io pvc_stress_fio ms_pod_disruption uninstall" # replica removed, # rebuild removed
+SOAK_TESTS="install io_soak uninstall"
+
 
 #exit values
 EXITV_OK=0
@@ -60,7 +62,7 @@ Options:
                             Note: the last 2 tests should be (if they are to be run)
                                 - ms_pod_disruption
                                 - uninstall
-  --profile <continuous|extended|ondemand|self_ci>
+  --profile <continuous|extended|ondemand|self_ci|soak>
                             Run the tests corresponding to the profile (default: run all tests)
   --resportsdir <path>       Path to use for junit xml test reports (default: repo root)
   --logs                    Generate logs and cluster state dump at the end of successful test run,
@@ -232,6 +234,11 @@ case "$profile" in
     tests="$SELF_CI_TESTS"
     echo "Overriding config file to selfci_config.yaml"
     export e2e_config_file="selfci_config.yaml"
+    ;;
+  soak)
+    tests="$SOAK_TESTS"
+    echo "Overriding config file to soak_config.yaml"
+    export e2e_config_file="soak_config.yaml"
     ;;
   *)
     echo "Unknown profile: $profile"
