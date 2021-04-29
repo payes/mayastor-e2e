@@ -1,0 +1,34 @@
+# This configuration is for soak testing mayastor
+# Only the soak test is run, but for a much longer duration
+configName: e2e_soak
+ioSoakTest:
+  replicas: 1
+  duration: 12h
+  # loadFactor is number of volumes for each mayastor instance
+  # volumes for disruptor pods are allocated from within this "pool"
+  loadFactor: 3
+  protocols:
+  - nvmf
+  # fioStartDelay units are seconds
+  fioStartDelay: 90
+  disrupt:
+    # Number of disruptor pods
+    podCount: 3
+    # faultAfter units are seconds
+    faultAfter: 51
+  # thinkTime units are microseconds
+  fioDutyCycles:
+  - thinkTime: 500000
+    thinkTimeBlocks: 1000
+  - thinkTime: 750000
+    thinkTimeBlocks: 1000
+  - thinkTime: 1250000
+    thinkTimeBlocks: 2000
+  - thinkTime: 1500000
+    thinkTimeBlocks: 3000
+  - thinkTime: 1750000
+    thinkTimeBlocks: 3000
+  - thinkTime: 2000000
+    thinkTimeBlocks: 4000
+uninstall:
+  cleanup: 0

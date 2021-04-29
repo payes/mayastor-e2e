@@ -19,7 +19,7 @@ run_linter=true
 
 xray_send_report=true
 xray_projectkey='MQ'
-xray_self_ci_testplan='MQ-482'
+xray_soak_testplan='MQ-698'
 xray_test_execution_type='10059'
 
 // In the case of multi-branch pipelines, the pipeline
@@ -36,10 +36,6 @@ def getJobBaseName() {
 
 def getTag() {
   return e2e_image_tag
-}
-
-def getTestPlan() {
-  return xray_self_ci_testplan
 }
 
 // Install Loki on the cluster
@@ -66,33 +62,10 @@ String loki_run_id = job_base_name + "-" + env.BRANCH_NAME + "-" + env.BUILD_NUM
 pipeline {
   agent none
   options {
-    timeout(time: 48, unit: 'HOURS')
+    timeout(time: 3, unit: 'HOURS')
   }
 
   stages {
-    stage('init') {
-      agent { label 'nixos-mayastor' }
-      steps {
-        step([
-          $class: 'GitHubSetCommitStatusBuilder',
-          contextSource: [
-            $class: 'ManuallyEnteredCommitContextSource',
-            context: 'continuous-integration/jenkins/branch'
-          ],
-          statusMessage: [ content: 'Pipeline started' ]
-        ])
-      }
-    }
-    stage('linter') {
-      agent { label 'nixos-mayastor' }
-      when {
-        beforeAgent true
-        expression { run_linter == true }
-      }
-      steps {
-        sh 'nix-shell --run "./scripts/go-checks.sh -n"'
-      }
-    }
     stage('test') {
       stages {
         stage('build e2e cluster') {
@@ -196,7 +169,7 @@ pipeline {
               junit "${e2e_reports_dir}/*.xml"
               script {
                 if (xray_send_report == true) {
-                  def xray_testplan = getTestPlan()
+                  def xray_testplan = xray_soak_testplan
                   def tag = getTag()
                   step([
                     $class: 'XrayImportBuilder',
@@ -247,35 +220,4 @@ pipeline {
       }//stages
     }//stage 'test'
   }//stages
-
-  // The main motivation for post block is that if all stages were skipped
-  // (which happens when running cron job and branch != develop) then we don't
-  // want to set commit status in github (jenkins will implicitly set it to
-  // success).
-  post {
-    always {
-      node(null) {
-        script {
-          // If no tests were run then we should neither be updating commit
-          // status in github nor send any slack messages
-          if (currentBuild.result != null) {
-            step([
-              $class: 'GitHubCommitStatusSetter',
-              errorHandlers: [[$class: "ChangingBuildStatusErrorHandler", result: "UNSTABLE"]],
-              contextSource: [
-                $class: 'ManuallyEnteredCommitContextSource',
-                context: 'continuous-integration/jenkins/branch'
-              ],
-              statusResultSource: [
-                $class: 'ConditionalStatusResultSource',
-                results: [
-                  [$class: 'AnyBuildResult', message: 'Pipeline result', state: currentBuild.getResult()]
-                ]
-              ]
-            ])
-          }
-        }
-      }
-    }//always
-  }
 }
