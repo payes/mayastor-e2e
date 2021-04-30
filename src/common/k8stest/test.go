@@ -38,7 +38,7 @@ type TestEnvironment struct {
 
 var gTestEnv TestEnvironment
 
-// Initialise testing and setup class name + report filename.
+// InitTesting initialise testing and setup class name + report filename.
 func InitTesting(t *testing.T, classname string, reportname string) {
 	RegisterFailHandler(Fail)
 	RunSpecsWithDefaultAndCustomReporters(t, classname, reporter.GetReporters(reportname))
@@ -110,7 +110,7 @@ func TeardownTestEnv() {
 	TeardownTestEnvNoCleanup()
 }
 
-// placeholder function for now
+// AfterSuiteCleanup  placeholder function for now
 // To aid postmortem analysis for the most common CI use case
 // namely cluster is retained aon failure, we do nothing
 // For other situations behaviour should be configurable
@@ -118,14 +118,16 @@ func AfterSuiteCleanup() {
 	logf.Log.Info("AfterSuiteCleanup")
 }
 
-// Fit for purpose checks
+// ResourceCheck  Fit for purpose checks
 // - No pods
 // - No PVCs
 // - No PVs
 // - No MSVs
 // - Mayastor pods are all healthy
 // - All mayastor pools are online
-// - TODO: mayastor pools usage is 0
+// - mayastor pools usage is 0
+// - No nexuses
+// - No replicas
 func ResourceCheck() error {
 	var errorMsg = ""
 
@@ -180,10 +182,32 @@ func ResourceCheck() error {
 	err = CheckAllPoolsAreOnline()
 	if err != nil {
 		errorMsg += fmt.Sprintf("%s %v", errorMsg, err)
-		logf.Log.Info("BeforeEachCheck: not all pools are online")
+		logf.Log.Info("ResourceCheck: not all pools are online")
 	}
 
-	// TODO Check pools usage is 0
+	poolUsage, err := GetPoolUsageInCluster()
+	if err != nil {
+		errorMsg += fmt.Sprintf("%s %v", errorMsg, err)
+		logf.Log.Info("ResourceEachCheck: failed to retrieve pools usage")
+	}
+	logf.Log.Info("ResourceCheck:", "poolUsage", poolUsage)
+	Expect(poolUsage).To(BeZero(), "pool usage reported via mayastor client is %d", poolUsage)
+
+	nexuses, err := ListNexusesInCluster()
+	if err != nil {
+		errorMsg += fmt.Sprintf("%s %v", errorMsg, err)
+		logf.Log.Info("ResourceEachCheck: failed to retrieve list of nexuses")
+	}
+	logf.Log.Info("ResourceCheck:", "num nexuses", len(nexuses))
+	Expect(len(nexuses)).To(BeZero(), "count of nexuses reported via mayastor client is %d", len(nexuses))
+
+	replicas, err := ListReplicasInCluster()
+	if err != nil {
+		errorMsg += fmt.Sprintf("%s %v", errorMsg, err)
+		logf.Log.Info("ResourceEachCheck: failed to retrieve list of replicas")
+	}
+	logf.Log.Info("ResourceCheck:", "num replicas", len(replicas))
+	Expect(len(replicas)).To(BeZero(), "count of replicas reported via mayastor client is %d", len(nexuses))
 
 	if len(errorMsg) != 0 {
 		return errors.New(errorMsg)
@@ -191,9 +215,7 @@ func ResourceCheck() error {
 	return nil
 }
 
-// The before and after each check are very similar, however functionally
-//	BeforeEachCheck asserts that the state of mayastor resources is fit for the test to run
-//  AfterEachCheck asserts that the state of mayastor resources has been restored.
+//BeforeEachCheck asserts that the state of mayastor resources is fit for the test to run
 func BeforeEachCheck() error {
 	logf.Log.Info("BeforeEachCheck")
 	err := ResourceCheck()
@@ -203,6 +225,7 @@ func BeforeEachCheck() error {
 	return err
 }
 
+// AfterEachCheck asserts that the state of mayastor resources has been restored.
 func AfterEachCheck() error {
 	logf.Log.Info("AfterEachCheck")
 	err := ResourceCheck()

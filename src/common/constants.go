@@ -1,5 +1,6 @@
 package common
 
+const NSE2EAgent = "e2e-agent"
 const NSE2EPrefix = "e2e-maya"
 const NSDefault = "default"
 const NSMayastor = "mayastor"

@@ -76,6 +76,7 @@ func teardownMayastor() {
 
 	logf.Log.Info("Cleanup done, Uninstalling mayastor")
 	yamlsDir := locations.GetGeneratedYamlsDir()
+
 	// Deletes can stall indefinitely, try to mitigate this
 	// by running the deletes on different threads
 	go k8stest.KubeCtlDeleteYaml("csi-daemonset.yaml", yamlsDir)
@@ -109,6 +110,9 @@ func teardownMayastor() {
 	// MOAC implicitly creates these CRDs, should we delete?
 	deleteCRD("mayastornodes.openebs.io")
 	deleteCRD("mayastorvolumes.openebs.io")
+
+	k8stest.KubeCtlDeleteYaml("e2e-agent.yaml", locations.GetE2EAgentPath())
+	_ = k8stest.RmNamespace(common.NSE2EAgent)
 
 	if cleanup {
 		// Attempt to forcefully delete mayastor pods
