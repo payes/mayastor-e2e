@@ -1,6 +1,6 @@
 package v1alpha1
 
-import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+import metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 type MayastorPoolSpec struct {
 	Node  string   `json:"node"`
@@ -16,16 +16,16 @@ type MayastorPoolStatus struct {
 }
 
 type MayastorPool struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
+	metaV1.TypeMeta   `json:",inline"`
+	metaV1.ObjectMeta `json:"metadata,omitempty"`
 
 	Spec   MayastorPoolSpec   `json:"spec"`
 	Status MayastorPoolStatus `json:"status"`
 }
 
 type MayastorPoolList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
+	metaV1.TypeMeta `json:",inline"`
+	metaV1.ListMeta `json:"metadata,omitempty"`
 
 	Items []MayastorPool `json:"items"`
 }
