@@ -160,9 +160,14 @@ func ResourceCheck() error {
 	msvs, err := gTestEnv.DynamicClient.Resource(msvGVR).Namespace(common.NSMayastor).List(context.TODO(), metaV1.ListOptions{})
 	if err != nil {
 		errorMsg += fmt.Sprintf("%s %v", errorMsg, err)
-	}
-	if len(msvs.Items) != 0 {
-		errorMsg += " found MayastorVolumes"
+	} else {
+		if msvs != nil {
+			if len(msvs.Items) != 0 {
+				errorMsg += " found MayastorVolumes"
+			}
+		} else {
+			logf.Log.Info("Listing MSVs returned nil array")
+		}
 	}
 
 	// Check that Mayastor pods are healthy no restarts or fails.
