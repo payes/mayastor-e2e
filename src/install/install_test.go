@@ -113,9 +113,7 @@ func installMayastor() {
 	deployDir := locations.GetMayastorDeployDir()
 	yamlsDir := locations.GetGeneratedYamlsDir()
 
-	err = k8stest.MkNamespace(common.NSE2EAgent)
-	Expect(err).ToNot(HaveOccurred())
-	k8stest.KubeCtlApplyYaml("e2e-agent.yaml", locations.GetE2EAgentPath())
+	k8stest.EnsureE2EAgent()
 
 	err = k8stest.MkNamespace(common.NSMayastor)
 	Expect(err).ToNot(HaveOccurred())

@@ -125,6 +125,7 @@ func AfterSuiteCleanup() {
 // - No MSVs
 // - Mayastor pods are all healthy
 // - All mayastor pools are online
+// and if e2e-agent is available
 // - mayastor pools usage is 0
 // - No nexuses
 // - No replicas
@@ -190,29 +191,34 @@ func ResourceCheck() error {
 		logf.Log.Info("ResourceCheck: not all pools are online")
 	}
 
-	poolUsage, err := GetPoolUsageInCluster()
-	if err != nil {
-		errorMsg += fmt.Sprintf("%s %v", errorMsg, err)
-		logf.Log.Info("ResourceEachCheck: failed to retrieve pools usage")
-	}
-	logf.Log.Info("ResourceCheck:", "poolUsage", poolUsage)
-	Expect(poolUsage).To(BeZero(), "pool usage reported via mayastor client is %d", poolUsage)
+	// gRPC calls can only be executed successfully is the e2e-agent daemonSet has been deployed successfully.
+	if EnsureE2EAgent() {
+		poolUsage, err := GetPoolUsageInCluster()
+		if err != nil {
+			errorMsg += fmt.Sprintf("%s %v", errorMsg, err)
+			logf.Log.Info("ResourceEachCheck: failed to retrieve pools usage")
+		}
+		logf.Log.Info("ResourceCheck:", "poolUsage", poolUsage)
+		Expect(poolUsage).To(BeZero(), "pool usage reported via mayastor client is %d", poolUsage)
 
-	nexuses, err := ListNexusesInCluster()
-	if err != nil {
-		errorMsg += fmt.Sprintf("%s %v", errorMsg, err)
-		logf.Log.Info("ResourceEachCheck: failed to retrieve list of nexuses")
-	}
-	logf.Log.Info("ResourceCheck:", "num nexuses", len(nexuses))
-	Expect(len(nexuses)).To(BeZero(), "count of nexuses reported via mayastor client is %d", len(nexuses))
+		nexuses, err := ListNexusesInCluster()
+		if err != nil {
+			errorMsg += fmt.Sprintf("%s %v", errorMsg, err)
+			logf.Log.Info("ResourceEachCheck: failed to retrieve list of nexuses")
+		}
+		logf.Log.Info("ResourceCheck:", "num nexuses", len(nexuses))
+		Expect(len(nexuses)).To(BeZero(), "count of nexuses reported via mayastor client is %d", len(nexuses))
 
-	replicas, err := ListReplicasInCluster()
-	if err != nil {
-		errorMsg += fmt.Sprintf("%s %v", errorMsg, err)
-		logf.Log.Info("ResourceEachCheck: failed to retrieve list of replicas")
+		replicas, err := ListReplicasInCluster()
+		if err != nil {
+			errorMsg += fmt.Sprintf("%s %v", errorMsg, err)
+			logf.Log.Info("ResourceEachCheck: failed to retrieve list of replicas")
+		}
+		logf.Log.Info("ResourceCheck:", "num replicas", len(replicas))
+		Expect(len(replicas)).To(BeZero(), "count of replicas reported via mayastor client is %d", len(nexuses))
+	} else {
+		logf.Log.Info("WARNING: the e2e-agent has not been deployed successfully, all checks cannot be run")
 	}
-	logf.Log.Info("ResourceCheck:", "num replicas", len(replicas))
-	Expect(len(replicas)).To(BeZero(), "count of replicas reported via mayastor client is %d", len(nexuses))
 
 	if len(errorMsg) != 0 {
 		return errors.New(errorMsg)

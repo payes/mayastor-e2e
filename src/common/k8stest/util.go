@@ -95,6 +95,15 @@ func MkNamespace(nameSpace string) error {
 	return err
 }
 
+//EnsureNamespace ensure that a namespace exists, creates namespace if not found.
+func EnsureNamespace(nameSpace string) error {
+	_, err := gTestEnv.KubeInt.CoreV1().Namespaces().Get(context.TODO(), nameSpace, metaV1.GetOptions{})
+	if err == nil {
+		return nil
+	}
+	return MkNamespace(nameSpace)
+}
+
 func RmNamespace(nameSpace string) error {
 	logf.Log.Info("Deleting", "namespace", nameSpace)
 	err := gTestEnv.KubeInt.CoreV1().Namespaces().Delete(context.TODO(), nameSpace, metaV1.DeleteOptions{})

@@ -111,9 +111,6 @@ func teardownMayastor() {
 	deleteCRD("mayastornodes.openebs.io")
 	deleteCRD("mayastorvolumes.openebs.io")
 
-	k8stest.KubeCtlDeleteYaml("e2e-agent.yaml", locations.GetE2EAgentPath())
-	_ = k8stest.RmNamespace(common.NSE2EAgent)
-
 	if cleanup {
 		// Attempt to forcefully delete mayastor pods
 		deleted, podCount, err := k8stest.ForceDeleteMayastorPods()
