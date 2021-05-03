@@ -76,6 +76,10 @@ func GetMSV(uuid string) *MayastorVolStatus {
 				}
 			}
 		}
+		// pending means still being created
+		if msVol.State == "pending" {
+			return nil
+		}
 		// Note: msVol.Node can be unassigned here if the volume is not mounted
 		Expect(msVol.State).NotTo(Equal(""))
 		Expect(len(msVol.Replicas)).To(BeNumerically(">", 0))
