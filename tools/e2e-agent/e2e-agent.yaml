@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: test-vars
-  namespace: default
+  namespace: e2e-agent
 data:
   REST_PORT: "10000"
   MAYASTOR_PORT: "10124"
@@ -12,22 +12,23 @@ data:
 kind: DaemonSet
 apiVersion: apps/v1
 metadata:
-  name: rest
+  name: e2e-rest-agent
   labels:
-    app: rest
+    app: e2e-rest-agent
+  namespace: e2e-agent
 spec:
   selector:
     matchLabels:
-        app: rest
+        app: e2e-rest-agent
   template:
     metadata:
       labels:
-        app: rest
+        app: e2e-rest-agent
     spec:
       priorityClassName: system-node-critical
       hostNetwork: true
       containers:
-        - name: rest
+        - name: e2e-rest-agent
           env:
           - name: MY_POD_IP
             valueFrom:

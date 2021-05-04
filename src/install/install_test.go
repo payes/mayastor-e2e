@@ -113,6 +113,8 @@ func installMayastor() {
 	deployDir := locations.GetMayastorDeployDir()
 	yamlsDir := locations.GetGeneratedYamlsDir()
 
+	k8stest.EnsureE2EAgent()
+
 	err = k8stest.MkNamespace(common.NSMayastor)
 	Expect(err).ToNot(HaveOccurred())
 	k8stest.KubeCtlApplyYaml("moac-rbac.yaml", yamlsDir)

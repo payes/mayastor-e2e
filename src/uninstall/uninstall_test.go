@@ -76,6 +76,7 @@ func teardownMayastor() {
 
 	logf.Log.Info("Cleanup done, Uninstalling mayastor")
 	yamlsDir := locations.GetGeneratedYamlsDir()
+
 	// Deletes can stall indefinitely, try to mitigate this
 	// by running the deletes on different threads
 	go k8stest.KubeCtlDeleteYaml("csi-daemonset.yaml", yamlsDir)
