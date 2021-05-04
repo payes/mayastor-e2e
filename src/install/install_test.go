@@ -47,36 +47,6 @@ func generateYamlFiles(imageTag string, mayastorNodes []string, e2eCfg *e2e_conf
 	Expect(err).ToNot(HaveOccurred(), "%s", out)
 }
 
-// create pools for the cluster
-//
-// TODO: Ideally there should be one way how to create pools without using
-// two env variables to do a similar thing.
-func createPools(e2eCfg *e2e_config.E2EConfig) {
-	poolYamlFiles := e2eCfg.PoolYamlFiles
-	poolDevice := e2eCfg.PoolDevice
-	// TODO: It is an error if configuration specifies both
-	//	- pool device
-	//	- pool yaml files,
-	// this simple code does not resolve that use case.
-	if len(poolYamlFiles) != 0 {
-		// Apply the list of externally defined pool yaml files
-		// NO check is made on the status of pools
-		for _, poolYaml := range poolYamlFiles {
-			logf.Log.Info("applying ", "yaml", poolYaml)
-			bashCmd := "kubectl apply -f " + poolYaml
-			cmd := exec.Command("bash", "-c", bashCmd)
-			out, err := cmd.CombinedOutput()
-			Expect(err).ToNot(HaveOccurred(), "%s", out)
-		}
-	} else if len(poolDevice) != 0 {
-		// Use the generated file to create pools as per the devices
-		// NO check is made on the status of pools
-		k8stest.KubeCtlApplyYaml("pool.yaml", locations.GetGeneratedYamlsDir())
-	} else {
-		Expect(false).To(BeTrue(), "Neither pool yaml files nor pool device specified")
-	}
-}
-
 // Install mayastor on the cluster under test.
 // We deliberately call out to kubectl, rather than constructing the client-go
 // objects, so that we can verify the local deploy yaml files are correct.
@@ -128,8 +98,8 @@ func installMayastor() {
 	Expect(err).ToNot(HaveOccurred())
 	Expect(ready).To(BeTrue())
 
-	// Now create pools on all nodes.
-	createPools(&e2eCfg)
+	// Now create configured pools on all nodes.
+	k8stest.CreateConfiguredPools()
 
 	// Wait for pools to be online
 	const timoSecs = 120
