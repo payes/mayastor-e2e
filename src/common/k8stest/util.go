@@ -3,6 +3,8 @@ package k8stest
 import (
 	"context"
 	"errors"
+	"mayastor-e2e/common/e2e_config"
+	"mayastor-e2e/common/locations"
 	"os/exec"
 	"regexp"
 	"strconv"
@@ -374,4 +376,42 @@ func GetPoolUsageInCluster() (uint64, error) {
 		}
 	}
 	return poolUsage, err
+}
+
+// CreateConfiguredPools (re)create pools as defined by the configuration.
+func CreateConfiguredPools() {
+	e2eCfg := e2e_config.GetConfig()
+	poolYamlFiles := e2eCfg.PoolYamlFiles
+	poolDevice := e2eCfg.PoolDevice
+	// TODO: It is an error if configuration specifies both
+	//	- pool device
+	//	- pool yaml files,
+	// this simple code does not resolve that use case.
+	if len(poolYamlFiles) != 0 {
+		// Apply the list of externally defined pool yaml files
+		// NO check is made on the status of pools
+		for _, poolYaml := range poolYamlFiles {
+			logf.Log.Info("applying ", "yaml", poolYaml)
+			bashCmd := "kubectl apply -f " + poolYaml
+			cmd := exec.Command("bash", "-c", bashCmd)
+			out, err := cmd.CombinedOutput()
+			Expect(err).ToNot(HaveOccurred(), "%s", out)
+		}
+	} else if len(poolDevice) != 0 {
+		// Use the generated file to create pools as per the devices
+		// NO check is made on the status of pools
+		KubeCtlApplyYaml("pool.yaml", locations.GetGeneratedYamlsDir())
+	} else {
+		Expect(false).To(BeTrue(), "Neither pool yaml files nor pool device specified")
+	}
+}
+
+// RestoreConfiguredPools (re)create pools as defined by the configuration.
+// As part of the tests we may modify the pools, in such test cases
+// the test should delete all pools and recreate the configured set of pools.
+func RestoreConfiguredPools() {
+	logf.Log.Info("RestoreConfiguredPools: delete all pools and re-create configured pools.")
+	deletedAllPools := DeleteAllPools()
+	Expect(deletedAllPools).To(BeTrue())
+	CreateConfiguredPools()
 }
