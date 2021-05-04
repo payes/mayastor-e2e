@@ -3,6 +3,7 @@ package mayastorpool_schema
 import (
 	"strings"
 	"testing"
+	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -17,30 +18,58 @@ var defTimeoutSecs = "120s"
 
 func TestMayastorPoolSchema(t *testing.T) {
 	// Initialise test and set class and file names for reports
-	k8stest.InitTesting(t, "MayastorPool Schema Test, NVMe-oF TCP and iSCSI", "mayastorpool_schema")
+	k8stest.InitTesting(t, "MayastorPool Schema Test", "mayastorpool_schema")
 }
 
 func mayastorPoolSchemaTest() {
-	pools, _ := crds.ListPools()
+	pools, err := crds.ListPools()
+	Expect(err).ToNot(HaveOccurred())
 	logf.Log.Info("Creating Mayastor Pool without specifying a device schema")
 	for _, pool := range pools {
 		err := crds.DeletePool(pool.Name)
 		Expect(err).ToNot(HaveOccurred())
 		err = crds.CreatePool(pool.Name, pool.Spec.Node, pool.Spec.Disks)
 		Expect(err).ToNot(HaveOccurred())
+	}
+	// Wait for pools to be online
+	const timoSecs = 60
+	const timoSleepSecs = 5
+	for ix := 0; ix < timoSecs/timoSleepSecs; ix++ {
+		time.Sleep(timoSleepSecs * time.Second)
+		err := k8stest.CheckAllPoolsAreOnline()
+		if err == nil {
+			break
+		}
+	}
+	Expect(err).To(BeNil(), "One or more pools are offline")
+	logf.Log.Info("Verifying Mayastor Pool device schema")
+	pools, err = crds.ListPools()
+	Expect(err).ToNot(HaveOccurred())
+	for _, pool := range pools {
 		Eventually(func() bool {
-			return strings.Contains(pool.Status.Disks[0], "uring")
+			return strings.Contains(pool.Status.Disks[0], "aio")
 		},
 		).Should(Equal(true))
-		logf.Log.Info("Verified Mayastor Pool device schema")
-		logf.Log.Info("Creating Mayastor Pool with device schema aio")
+	}
+	logf.Log.Info("Creating Mayastor Pool with device schema aio")
+	for _, pool := range pools {
 		diskPath := make([]string, 1)
-		err = crds.DeletePool(pool.Name)
+		err := crds.DeletePool(pool.Name)
 		Expect(err).ToNot(HaveOccurred())
 		diskPath[0] = "aio://" + pool.Spec.Disks[0]
 		err = crds.CreatePool(pool.Name, pool.Spec.Node, diskPath)
 		Expect(err).ToNot(HaveOccurred())
 	}
+	// Wait for pools to be online
+	for ix := 0; ix < timoSecs/timoSleepSecs; ix++ {
+		time.Sleep(timoSleepSecs * time.Second)
+		err := k8stest.CheckAllPoolsAreOnline()
+		if err == nil {
+			break
+		}
+	}
+	Expect(err).To(BeNil(), "One or more pools are offline")
+	logf.Log.Info("Verifying Mayastor Pool with device schema aio")
 	pools, _ = crds.ListPools()
 	for _, pool := range pools {
 		Eventually(func() bool {
@@ -50,22 +79,21 @@ func mayastorPoolSchemaTest() {
 			"1s",
 		).Should(Equal(true))
 	}
-	logf.Log.Info("Verified Mayastor Pool with device schema aio")
 }
 
-var _ = Describe("Mayastor Pool schema tesr IO", func() {
+var _ = Describe("Mayastor Pool schema test IO", func() {
 
-	// BeforeEach(func() {
-	// 	// Check ready to run
-	// 	err := k8stest.BeforeEachCheck()
-	// 	Expect(err).ToNot(HaveOccurred())
-	// })
+	BeforeEach(func() {
+		// Check ready to run
+		err := k8stest.BeforeEachCheck()
+		Expect(err).ToNot(HaveOccurred())
+	})
 
-	// AfterEach(func() {
-	// 	// Check resource leakage.
-	// 	err := k8stest.AfterEachCheck()
-	// 	Expect(err).ToNot(HaveOccurred())
-	// })
+	AfterEach(func() {
+		// Check resource leakage.
+		err := k8stest.AfterEachCheck()
+		Expect(err).ToNot(HaveOccurred())
+	})
 
 	It("should verify MayastorPool schema", func() {
 		mayastorPoolSchemaTest()
