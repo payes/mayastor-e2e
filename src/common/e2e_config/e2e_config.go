@@ -16,6 +16,8 @@ import (
 // E2EConfig is a application configuration structure
 type E2EConfig struct {
 	ConfigName string `yaml:"configName"`
+	// E2ePlatform indicates where the e2e is currently being run from
+	E2ePlatform string `yaml:"platform"`
 	// Generic configuration files used for CI and automation should not define MayastorRootDir and E2eRootDir
 	MayastorRootDir string `yaml:"mayastorRootDir" env:"e2e_mayastor_root_dir"`
 	E2eRootDir      string `yaml:"e2eRootDir" env:"e2e_root_dir"`
@@ -73,9 +75,9 @@ type E2EConfig struct {
 		FsVolSizeMb int `yaml:"fsVolSizeMb" env-default:"900"`
 	} `yaml:"basicVolumeIO"`
 	MultipleVolumesPodIO struct {
-		VolumeCount          int `yaml:"volumeCount" env-default:"2"`
-		MultipleReplicaCount int `yaml:"replicas" env-default:"2"`
-		Duration string `yaml:"duration" env-default:"30s"`
+		VolumeCount          int    `yaml:"volumeCount" env-default:"2"`
+		MultipleReplicaCount int    `yaml:"replicas" env-default:"2"`
+		Duration             string `yaml:"duration" env-default:"30s"`
 	} `yaml:"multiVolumesPodIO"`
 	// Run configuration
 	ReportsDir string `yaml:"reportsDir" env:"e2e_reports_dir"`
@@ -161,7 +163,8 @@ func GetConfig() E2EConfig {
 
 		cfgBytes, _ := yaml.Marshal(e2eConfig)
 		cfgUsedFile := path.Clean(e2eConfig.E2eRootDir + "/artifacts/e2e_config-" + e2eConfig.ConfigName + "-used.yaml")
-		err = ioutil.WriteFile(cfgUsedFile, cfgBytes, 0644); if err == nil {
+		err = ioutil.WriteFile(cfgUsedFile, cfgBytes, 0644)
+		if err == nil {
 			fmt.Printf("Resolved config written to %s\n", cfgUsedFile)
 		}
 	})

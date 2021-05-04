@@ -1,5 +1,6 @@
 # configuration/parameters for CI/CD e2e test runs
 configName: CI
+platform: Hetzner
 pvcStress:
   replicas: 1
   cdCycles: 100
