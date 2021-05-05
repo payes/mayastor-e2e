@@ -14,8 +14,6 @@ import (
 	"mayastor-e2e/common/k8stest"
 )
 
-var defTimeoutSecs = "120s"
-
 func TestMayastorPoolSchema(t *testing.T) {
 	// Initialise test and set class and file names for reports
 	k8stest.InitTesting(t, "MayastorPool Schema Test", "mayastorpool_schema")
@@ -35,7 +33,7 @@ func mayastorPoolSchemaTest(schema string) {
 			break
 		} else {
 			diskPath := make([]string, 1)
-			diskPath[0] = "aio://" + pool.Spec.Disks[0]
+			diskPath[0] = schema + "://" + pool.Spec.Disks[0]
 			_, err = crds.CreatePool(pool.Name, pool.Spec.Node, diskPath)
 			Expect(err).ToNot(HaveOccurred())
 		}
@@ -55,7 +53,11 @@ func mayastorPoolSchemaTest(schema string) {
 
 	for _, pool := range pools {
 		Eventually(func() bool {
-			return strings.Contains(pool.Status.Disks[0], "aio")
+			if schema == "default" {
+				return strings.Contains(pool.Status.Disks[0], "aio")
+			} else {
+				return strings.Contains(pool.Status.Disks[0], schema)
+			}
 		},
 		).Should(Equal(true))
 	}
@@ -84,6 +86,9 @@ var _ = Describe("Mayastor Pool schema test IO", func() {
 	})
 	It("should verify MayastorPool schema with aio schema", func() {
 		mayastorPoolSchemaTest("aio")
+	})
+	It("should verify MayastorPool schema with uring schema", func() {
+		mayastorPoolSchemaTest("uring")
 	})
 })
 
