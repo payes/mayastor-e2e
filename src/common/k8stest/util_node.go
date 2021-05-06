@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"mayastor-e2e/common"
 	"os/exec"
 
 	. "github.com/onsi/gomega"
@@ -63,6 +64,21 @@ func GetNodeLocs() ([]NodeLocation, error) {
 	return NodeLocs, nil
 }
 
+func GetMayastorNodeNames() ([]string, error) {
+	var nodeNames []string
+	nodes, err := GetNodeLocs()
+	if err != nil {
+		return nodeNames, err
+	}
+
+	for _, node := range nodes {
+		if node.MayastorNode {
+			nodeNames = append(nodeNames, node.NodeName)
+		}
+	}
+	return nodeNames, err
+}
+
 // TODO remove dependency on kubectl
 // label is a string in the form "key=value"
 // function still succeeds if label already present
@@ -86,17 +102,13 @@ func UnlabelNode(nodename string, label string) {
 // EnsureNodeLabels  add the label openebs.io/engine=mayastor to  all worker nodes so that K8s runs mayastor on them
 // returns error is accessing the list of nodes fails.
 func EnsureNodeLabels() error {
-	const (
-		engineLabel   = "openebs.io/engine"
-		mayastorLabel = "mayastor"
-	)
 	nodes, err := GetNodeLocs()
 	if err != nil {
 		return err
 	}
 	for _, node := range nodes {
 		if !node.MasterNode {
-			LabelNode(node.NodeName, engineLabel, mayastorLabel)
+			LabelNode(node.NodeName, common.MayastorEngineLabel, common.MayastorEngineLabelValue)
 		}
 	}
 	return nil

@@ -424,3 +424,15 @@ func RestoreConfiguredPools() error {
 	}
 	return CheckAllPoolsAreOnline()
 }
+
+func WaitForPoolsToBeOnline(timeoutSeconds int) error {
+	const sleepTime = 5
+	for ix := 1; ix < (timeoutSeconds+sleepTime)/sleepTime; ix++ {
+		time.Sleep(sleepTime * time.Second)
+		err := CheckAllPoolsAreOnline()
+		if err == nil {
+			return nil
+		}
+	}
+	return CheckAllPoolsAreOnline()
+}

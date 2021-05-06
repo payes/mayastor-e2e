@@ -80,6 +80,16 @@ type E2EConfig struct {
 		MultipleReplicaCount int    `yaml:"replicas" env-default:"2"`
 		Duration             string `yaml:"duration" env-default:"30s"`
 	} `yaml:"multiVolumesPodIO"`
+
+	// This is an advisory setting for individual tests
+	// If set to true - typically during test development - tests with multiple It clauses should defer asserts till after
+	// resources have been cleaned up . This behaviour makes it possible to have useful runs for all It clauses.
+	// Typically set to false for CI test execution - no cleanup after first failure, as a result subsequent It clauses
+	// in the test will fail the BeforeEach check, rendering post-mortem checks on the cluster more useful.
+	// It may be set to true for when we want maximum test coverage, and post-mortem analysis is a secondary requirement.
+	// NOTE: Only some tests support this feature.
+	DeferredAssert bool `yaml:"deferredAssert" env-default:"false" env:"e2e_defer_asserts" `
+
 	// Run configuration
 	ReportsDir      string `yaml:"reportsDir" env:"e2e_reports_dir"`
 	MsPodDisruption struct {
