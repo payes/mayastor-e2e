@@ -409,9 +409,18 @@ func CreateConfiguredPools() {
 // RestoreConfiguredPools (re)create pools as defined by the configuration.
 // As part of the tests we may modify the pools, in such test cases
 // the test should delete all pools and recreate the configured set of pools.
-func RestoreConfiguredPools() {
+func RestoreConfiguredPools() error {
 	logf.Log.Info("RestoreConfiguredPools: delete all pools and re-create configured pools.")
 	deletedAllPools := DeleteAllPools()
 	Expect(deletedAllPools).To(BeTrue())
 	CreateConfiguredPools()
+	const sleepTime = 5
+	for ix := 1; ix < 120/sleepTime; ix++ {
+		time.Sleep(sleepTime * time.Second)
+		err := CheckAllPoolsAreOnline()
+		if err == nil {
+			break
+		}
+	}
+	return CheckAllPoolsAreOnline()
 }

@@ -46,7 +46,8 @@ var _ = Describe("Mayastor Pool Modification test", func() {
 			Expect(err).To(BeNil(), "GetPool failed for %s", pool.Name)
 			Expect(reflect.DeepEqual(pool.Status, poolAgain.Status)).To(BeTrue(), "pool status was modified on failed pool update %v", poolAgain.Status)
 		}
-		k8stest.RestoreConfiguredPools()
+		err = k8stest.RestoreConfiguredPools()
+		Expect(err).To(BeNil(), "Not all pools are online after restoration")
 	})
 
 	It("should fail to change status when pool spec node is modified", func() {
@@ -69,7 +70,8 @@ var _ = Describe("Mayastor Pool Modification test", func() {
 			Expect(err).To(BeNil(), "GetPool failed for %s", pool.Name)
 			Expect(reflect.DeepEqual(pool.Status, poolAgain.Status)).To(BeTrue(), "pool status was modified on failed pool update %v", poolAgain.Status)
 		}
-		k8stest.RestoreConfiguredPools()
+		err = k8stest.RestoreConfiguredPools()
+		Expect(err).To(BeNil(), "Not all pools are online after restoration")
 	})
 })
 

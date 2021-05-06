@@ -22,7 +22,8 @@ var _ = Describe("Mayastor setup", func() {
 	It("should clean up test artefacts in the cluster", func() {
 		cleaned := k8stest.CleanUp()
 		Expect(cleaned).To(BeTrue())
-		k8stest.RestoreConfiguredPools()
+		err := k8stest.RestoreConfiguredPools()
+		Expect(err).To(BeNil(), "Not all pools are online after restoration")
 		logf.Log.Info("", "cleaned", cleaned)
 	})
 })
