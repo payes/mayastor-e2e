@@ -10,10 +10,10 @@ def e2e_environment="hcloud-kubeadm"
 // Global variable to pass current k8s job between stages
 def k8s_job=""
 
-e2e_image_tag='nightly'
+e2e_image_tag='selfci'
 e2e_local_registry=true
 e2e_reports_dir='artifacts/reports/'
-e2e_test_profile = 'ondemand'
+e2e_test_profile = 'selfci'
 
 run_linter=true
 
