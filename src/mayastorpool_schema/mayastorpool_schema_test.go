@@ -64,7 +64,8 @@ func mayastorPoolSchemaTest(schema string) {
 	// RestoreConfiguredPools (re)create pools as defined by the configuration.
 	// As part of the tests we may modify the pools, in such test cases
 	// the test should delete all pools and recreate the configured set of pools.
-	k8stest.RestoreConfiguredPools()
+	err = k8stest.RestoreConfiguredPools()
+	Expect(err).To(BeNil(), "Not all pools are online after restoration")
 }
 
 var _ = Describe("Mayastor Pool schema test IO", func() {
