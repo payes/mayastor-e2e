@@ -22,7 +22,6 @@ CONTINUOUS_TESTS="install basic_volume_io csi resource_check rebuild io_soak ms_
 SELF_CI_TESTS="install basic_volume_io resource_check pvc_stress_fio pool_modify uninstall" # Removes: replica, rebuild, csi, io_soak, multiple_vols_pod_io
 SOAK_TESTS="install io_soak uninstall"
 
-
 #exit values
 EXITV_OK=0
 EXITV_INVALID_OPTION=1

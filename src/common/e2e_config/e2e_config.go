@@ -2,11 +2,12 @@ package e2e_config
 
 import (
 	"fmt"
-	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"os"
 	"path"
 	"sync"
+
+	"gopkg.in/yaml.v2"
 
 	"mayastor-e2e/common"
 
@@ -80,7 +81,17 @@ type E2EConfig struct {
 		Duration             string `yaml:"duration" env-default:"30s"`
 	} `yaml:"multiVolumesPodIO"`
 	// Run configuration
-	ReportsDir string `yaml:"reportsDir" env:"e2e_reports_dir"`
+	ReportsDir      string `yaml:"reportsDir" env:"e2e_reports_dir"`
+	MsPodDisruption struct {
+		VolMb                    int `yaml:"volMb" env-default:"4096"`
+		RemoveThinkTime          int `yaml:"removeThinkTime" env-default:"10"`
+		RepairThinkTime          int `yaml:"repairThinkTime" env-default:"30"`
+		ThinkTimeBlocks          int `yaml:"thinkTimeBlocks" env-default:"10"`
+		UnscheduleDelay          int `yaml:"unscheduleDelay" env-default:"10"`
+		RescheduleDelay          int `yaml:"rescheduleDelay" env-default:"10"`
+		PodUnscheduleTimeoutSecs int `yaml:"podUnscheduleTimeoutSecs" env-default:"100"`
+		PodRescheduleTimeoutSecs int `yaml:"podRnscheduleTimeoutSecs" env-default:"180"`
+	}
 }
 
 var once sync.Once
