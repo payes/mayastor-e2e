@@ -7,6 +7,7 @@ const NSMayastor = "mayastor"
 const CSIProvisioner = "io.openebs.csi-mayastor"
 const DefaultVolumeSizeMb = 64
 const DefaultFioSizeMb = 50
+const DefaultReplicaCount = 1
 
 //  These variables match the settings used in createFioPodDef
 
@@ -28,3 +29,8 @@ const CRDVolumeGroupVersion = "v1alpha1"
 const CRDVolumesResourceName = "mayastorvolumes"
 const CRDNodeGroupVersion = "v1alpha1"
 const CRDNodesResourceName = "mayastornodes"
+
+// Storageclass parameter keys
+const ScProtocol = "protocol"
+const ScFsType = "fsType"
+const ScReplicas = "repl"

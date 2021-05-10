@@ -7,6 +7,14 @@ const (
 	ShareProtoIscsi ShareProto = "iscsi"
 )
 
+type FileSystemType string
+
+const (
+	NoneFsType FileSystemType = ""
+	Ext4FsType FileSystemType = "ext4"
+	XfsFsType  FileSystemType = "xfs"
+)
+
 type VolumeType int
 
 const (
