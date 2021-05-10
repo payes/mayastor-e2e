@@ -261,7 +261,7 @@ var _ = Describe("Nexus location tests", func() {
 	})
 
 	It("should verify that when consumer pod is de-scheduled, nexus is destroyed but replicas remain, 2 replicas, local=true", func() {
-		descheduledTestPod(1, true)
+		descheduledTestPod(2, true)
 	})
 
 	It("should verify that when consumer pod is de-scheduled, nexus is destroyed but replicas remain, 2 replicas, local=false", func() {
