@@ -294,16 +294,8 @@ var _ = Describe("Nexus location tests", func() {
 		remotelyProvisionedVolume(1, true)
 	})
 
-	It("should verify volume is not published if consumer pod is scheduled on a node not running Mayastor, 1 replica, local=false ", func() {
-		remotelyProvisionedVolume(1, false)
-	})
-
 	It("should verify volume is not published if consumer pod is scheduled on a node not running Mayastor, 2 replicas, local=true ", func() {
 		remotelyProvisionedVolume(2, true)
-	})
-
-	It("should verify volume is not published if consumer pod is scheduled on a node not running Mayastor, 1 replicas, local=false ", func() {
-		remotelyProvisionedVolume(2, false)
 	})
 })
 
