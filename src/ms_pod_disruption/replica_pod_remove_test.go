@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	defTimeoutSecs = "90s"
+	defTimeoutSecs = "180s"
 	mayastorRegexp = "^mayastor-.....$"
 	engineLabel    = "openebs.io/engine"
 	mayastorLabel  = "mayastor"
@@ -172,8 +172,10 @@ func setup(pvcName string, storageClassName string, fioPodName string) Disruptio
 func (env *DisruptionEnv) teardown() {
 	var err error
 
-	env.unsuppressMayastorPodOn(env.replicaToRemove, 0)
-
+	if env.replicaToRemove != "" {
+		env.unsuppressMayastorPodOn(env.replicaToRemove, 0)
+		env.replicaToRemove = ""
+	}
 	for _, node := range env.unusedNodes {
 		env.unsuppressMayastorPodOn(node, 0)
 	}
@@ -434,10 +436,10 @@ var _ = Describe("Mayastor replica pod removal test", func() {
 	})
 
 	It("should verify nvmf nexus behaviour when a mayastor pod is removed", func() {
-		sc := "mayastor-nvmf-pod-remove-test-sc-2"
+		sc := "sc-ms-pod-remove-test-write-continuously"
 		err := k8stest.MkStorageClass(sc, 2, common.ShareProtoNvmf, common.NSDefault)
 		Expect(err).ToNot(HaveOccurred(), "%v", err)
-		env = setup("loss-test-pvc-2", sc, "fio-pod-remove-test-2")
+		env = setup("pvc-ms-pod-remove-test-write-continuously", sc, "fio-ms-pod-remove-test-write-continuously")
 		env.PodLossTestWriteContinuously()
 	})
 })
