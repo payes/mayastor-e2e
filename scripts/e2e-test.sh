@@ -19,7 +19,7 @@ DEFAULT_TESTS="install basic_volume_io csi resource_check replica rebuild ms_pod
 ONDEMAND_TESTS="install basic_volume_io csi resource_check uninstall"
 EXTENDED_TESTS="install basic_volume_io csi resource_check rebuild io_soak multiple_vols_pod_io pool_modify ms_pod_disruption uninstall" # replica removed
 CONTINUOUS_TESTS="install basic_volume_io csi resource_check rebuild io_soak ms_pod_disruption uninstall" # replica removed
-SELF_CI_TESTS="install basic_volume_io csi resource_check io_soak multiple_vols_pod_io pvc_stress_fio pool_modify uninstall" # replica removed, # rebuild removed
+SELF_CI_TESTS="install basic_volume_io resource_check io_soak multiple_vols_pod_io pvc_stress_fio pool_modify uninstall" # replica removed, # rebuild removed # csi  removed
 SOAK_TESTS="install io_soak uninstall"
 
 
