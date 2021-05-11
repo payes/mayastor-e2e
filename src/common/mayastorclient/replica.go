@@ -22,6 +22,12 @@ type MayastorReplica struct {
 	Uri   string                            `protobuf:"bytes,6,opt,name=uri,proto3" json:"uri,omitempty"`                                         // uri usable by nexus to access it
 }
 
+type MayastorReplicaArray []MayastorReplica
+
+func (msr MayastorReplicaArray) Len() int           { return len(msr) }
+func (msr MayastorReplicaArray) Less(i, j int) bool { return msr[i].Uuid < msr[j].Uuid }
+func (msr MayastorReplicaArray) Swap(i, j int)      { msr[i], msr[j] = msr[j], msr[i] }
+
 func (msr MayastorReplica) String() string {
 	return fmt.Sprintf("Uuid=%s; Pool=%s; Thin=%v; Size=%d; Share=%s; Uri=%s;",
 		msr.Uuid, msr.Pool, msr.Thin, msr.Size, msr.Share, msr.Uri)

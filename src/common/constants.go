@@ -34,3 +34,9 @@ const CRDNodesResourceName = "mayastornodes"
 const ScProtocol = "protocol"
 const ScFsType = "fsType"
 const ScReplicas = "repl"
+const ScLocal = "local"
+
+// Labels
+
+const MayastorEngineLabel = "openebs.io/engine"
+const MayastorEngineLabelValue = "mayastor"
