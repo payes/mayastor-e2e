@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"mayastor-e2e/common/e2e_config"
 	"testing"
 	"time"
 
@@ -38,15 +39,24 @@ type TestEnvironment struct {
 
 var gTestEnv TestEnvironment
 
+// FIXME: because of dependency issues this function is called early and from multiple locations, to ensure the namespace is set under all conditions.
+func ensureMayastorNamespaceSetup() {
+	common.NSMayastor = e2e_config.GetConfig().MayastorNamespace
+	fmt.Printf("Mayastor namespace set to \"%s\"\n", common.NSMayastor)
+}
+
 // InitTesting initialise testing and setup class name + report filename.
 func InitTesting(t *testing.T, classname string, reportname string) {
 	RegisterFailHandler(Fail)
+	ensureMayastorNamespaceSetup()
 	RunSpecsWithDefaultAndCustomReporters(t, classname, reporter.GetReporters(reportname))
 	loki.SendLokiMarker("Start of test " + classname)
 }
 
 func SetupTestEnv() {
 	logf.SetLogger(zap.New(zap.UseDevMode(true), zap.WriteTo(GinkgoWriter)))
+	ensureMayastorNamespaceSetup()
+
 	By("bootstrapping test environment")
 	var err error
 

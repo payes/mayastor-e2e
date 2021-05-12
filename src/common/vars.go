@@ -14,6 +14,8 @@ var fioArgs = []string{
 	"--verify_async=2",
 }
 
+var NSMayastor = "mayastor"
+
 func GetFioArgs() []string {
 	return fioArgs
 }

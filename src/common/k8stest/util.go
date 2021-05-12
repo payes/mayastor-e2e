@@ -410,17 +410,23 @@ func CreateConfiguredPools() {
 // As part of the tests we may modify the pools, in such test cases
 // the test should delete all pools and recreate the configured set of pools.
 func RestoreConfiguredPools() error {
-	logf.Log.Info("RestoreConfiguredPools: delete all pools and re-create configured pools.")
-	deletedAllPools := DeleteAllPools()
-	Expect(deletedAllPools).To(BeTrue())
-	CreateConfiguredPools()
-	const sleepTime = 5
-	for ix := 1; ix < 120/sleepTime; ix++ {
-		time.Sleep(sleepTime * time.Second)
-		err := CheckAllPoolsAreOnline()
-		if err == nil {
-			break
+	cannotRestorePools := e2e_config.GetConfig().CannotRestorePools
+	logf.Log.Info("RestoreConfiguredPools: delete all pools and re-create configured pools.", "cannotRestorePools", cannotRestorePools)
+	// FIXME: On some test deployments we are unable to recreate the pools yet.
+	if !cannotRestorePools {
+		deletedAllPools := DeleteAllPools()
+		Expect(deletedAllPools).To(BeTrue())
+		CreateConfiguredPools()
+		const sleepTime = 5
+		for ix := 1; ix < 120/sleepTime; ix++ {
+			time.Sleep(sleepTime * time.Second)
+			err := CheckAllPoolsAreOnline()
+			if err == nil {
+				break
+			}
 		}
+	} else {
+		logf.Log.Info("RestoreConfiguredPools: pools not restored, configuration does not support this feature.")
 	}
 	return CheckAllPoolsAreOnline()
 }

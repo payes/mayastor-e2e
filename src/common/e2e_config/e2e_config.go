@@ -31,6 +31,17 @@ type E2EConfig struct {
 	ImageTag      string   `yaml:"imageTag" env:"e2e_image_tag" env-default:"ci"`
 	PoolDevice    string   `yaml:"poolDevice" env:"e2e_pool_device"`
 	PoolYamlFiles []string `yaml:"poolYamlFiles" env:"e2e_pool_yaml_files"`
+	// Add HostNetwork: true to the spec of test pods.
+	HostNetworkingRequired bool `yaml:"hostNetworkingRequired" env-default:"false"`
+	// FIXME: Inverted logic to work around a bug where if env-default:true, the value is not overridden to false when read
+	// from config file :-(
+	CannotRestorePools bool `yaml:"cannotRestorePools" env-default:"false"`
+	// Some deployments use a different namespace
+	MayastorNamespace string `yaml:"mayastorNamespace" env-default:"mayastor"`
+	// Some deployments use a different namespace
+	FilteredMayastorPodCheck int `yaml:"filteredMayastorPodCheck" env-default:"0"`
+	// FIXME: temporary for volterra Do not use e2e-agent
+	DisableE2EAgent bool `yaml:"disableE2EAgent" env-default:"false"`
 	// Individual Test parameters
 	PVCStress struct {
 		Replicas   int `yaml:"replicas" env-default:"1"`
