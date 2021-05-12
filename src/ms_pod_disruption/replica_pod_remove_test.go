@@ -49,7 +49,7 @@ var env DisruptionEnv
 // and the non-nexus node hosting a replica.
 func (env *DisruptionEnv) getNodes() {
 	nodeList, err := k8stest.GetNodeLocs()
-	Expect(err).ToNot(HaveOccurred(), err)
+	Expect(err).ToNot(HaveOccurred(), "%v", err)
 
 	nexus, replicaNodes := k8stest.GetMsvNodes(env.uuid)
 	Expect(nexus).NotTo(Equal(""), "Nexus not found")
@@ -101,7 +101,7 @@ func (env *DisruptionEnv) getNodes() {
 // instances equals the number of replicas we will use
 func (env *DisruptionEnv) suppressSpareNodes() {
 	nodeList, err := k8stest.GetNodeLocs()
-	Expect(err).ToNot(HaveOccurred(), err)
+	Expect(err).ToNot(HaveOccurred(), "%v", err)
 
 	maxReplicas := 2
 	mayastorInstances := 0
@@ -146,7 +146,7 @@ func setup(pvcName string, storageClassName string, fioPodName string) Disruptio
 
 	podObj := k8stest.CreateFioPodDef(fioPodName, pvcName, common.VolRawBlock, common.NSDefault)
 	_, err := k8stest.CreatePod(podObj, common.NSDefault)
-	Expect(err).ToNot(HaveOccurred(), err)
+	Expect(err).ToNot(HaveOccurred(), "%v", err)
 
 	env.fioPodName = fioPodName
 	logf.Log.Info("waiting for pod", "name", env.fioPodName)
@@ -172,7 +172,7 @@ func (env *DisruptionEnv) teardown() {
 	}
 	if env.fioPodName != "" {
 		err := k8stest.DeletePod(env.fioPodName, common.NSDefault)
-		Expect(err).ToNot(HaveOccurred(), err)
+		Expect(err).ToNot(HaveOccurred(), "%v", err)
 		env.fioPodName = ""
 	}
 	if env.volToDelete != "" {
@@ -181,7 +181,7 @@ func (env *DisruptionEnv) teardown() {
 	}
 	if env.storageClass != "" {
 		err = k8stest.RmStorageClass(env.storageClass)
-		Expect(err).ToNot(HaveOccurred(), err)
+		Expect(err).ToNot(HaveOccurred(), "%v", err)
 		env.storageClass = ""
 	}
 }
@@ -193,7 +193,7 @@ func (env *DisruptionEnv) suppressMayastorPodOn(nodeName string, delay int) {
 	logf.Log.Info("suppressing mayastor pod", "node", nodeName)
 	k8stest.UnlabelNode(nodeName, engineLabel)
 	err := k8stest.WaitForPodNotRunningOnNode(mayastorRegexp, common.NSMayastor, nodeName, env.podUnscheduleTimeoutSecs)
-	Expect(err).ToNot(HaveOccurred(), err)
+	Expect(err).ToNot(HaveOccurred(), "%v", err)
 }
 
 // Allow mayastor pod to run on the given node.
@@ -204,7 +204,7 @@ func (env *DisruptionEnv) unsuppressMayastorPodOn(nodeName string, delay int) {
 	logf.Log.Info("restoring mayastor pod", "node", nodeName)
 	k8stest.LabelNode(nodeName, engineLabel, mayastorLabel)
 	err := k8stest.WaitForPodRunningOnNode(mayastorRegexp, common.NSMayastor, nodeName, env.podRescheduleTimeoutSecs)
-	Expect(err).ToNot(HaveOccurred(), err)
+	Expect(err).ToNot(HaveOccurred(), "%v", err)
 }
 
 // Fault the replica hosted on the nexus node
@@ -213,7 +213,7 @@ func (env *DisruptionEnv) faultNexusChild(delay int) {
 	time.Sleep(time.Duration(delay) * time.Second)
 	logf.Log.Info("faulting the nexus replica")
 	err := mayastorclient.FaultNexusChild(env.nexusIP, env.uuid, env.nexusLocalRep)
-	Expect(err).ToNot(HaveOccurred(), err)
+	Expect(err).ToNot(HaveOccurred(), "%v", err)
 }
 
 // Run fio against the device, finish when all blocks are accessed
@@ -357,7 +357,7 @@ func (env *DisruptionEnv) PodLossTestDataCopy() {
 	// This step writes exactly once to each block
 	logf.Log.Info("writing and verifying the volume")
 	err := fioWriteAndVerify(env.fioPodName, "crc32")
-	Expect(err).ToNot(HaveOccurred(), err)
+	Expect(err).ToNot(HaveOccurred(), "%v", err)
 
 	// 2) remove one non-nexus replica by unscheduling the mayastor pod
 	logf.Log.Info("about to suppress mayastor on one replica")
@@ -376,7 +376,7 @@ func (env *DisruptionEnv) PodLossTestDataCopy() {
 
 	logf.Log.Info("verifying the degraded volume")
 	err = fioVerify(env.fioPodName, "crc32")
-	Expect(err).ToNot(HaveOccurred(), err)
+	Expect(err).ToNot(HaveOccurred(), "%v", err)
 
 	// 4) re-enable mayastor on one unused node
 	logf.Log.Info("replacing the original replica")
@@ -393,7 +393,7 @@ func (env *DisruptionEnv) PodLossTestDataCopy() {
 
 	logf.Log.Info("verifying the repaired volume")
 	err = fioVerify(env.fioPodName, "crc32")
-	Expect(err).ToNot(HaveOccurred(), err)
+	Expect(err).ToNot(HaveOccurred(), "%v", err)
 
 	// 6) disable the nexus local replica
 	env.faultNexusChild(0)
@@ -409,7 +409,7 @@ func (env *DisruptionEnv) PodLossTestDataCopy() {
 
 	logf.Log.Info("verifying the degraded volume")
 	err = fioVerify(env.fioPodName, "crc32")
-	Expect(err).ToNot(HaveOccurred(), err)
+	Expect(err).ToNot(HaveOccurred(), "%v", err)
 
 	logf.Log.Info("restoring the original replica")
 	env.unsuppressMayastorPodOn(env.replicaToRemove, 0)
@@ -445,7 +445,7 @@ func (env *DisruptionEnv) PodLossTestWriteContinuously() {
 
 	logf.Log.Info("writing to the volume")
 	err := env.fioWriteOnly(env.fioPodName, "crc32", env.removeThinkTime)
-	Expect(err).ToNot(HaveOccurred(), err)
+	Expect(err).ToNot(HaveOccurred(), "%v", err)
 
 	// 2) Verify that the volume has become degraded and the data is correct
 	// We make the assumption that the volume has had enough time to become faulted
@@ -456,7 +456,7 @@ func (env *DisruptionEnv) PodLossTestWriteContinuously() {
 	// and verification is performed
 	logf.Log.Info("verifying the degraded volume")
 	err = fioVerify(env.fioPodName, "crc32")
-	Expect(err).ToNot(HaveOccurred(), err)
+	Expect(err).ToNot(HaveOccurred(), "%v", err)
 
 	// 3) Write pattern-2 while adding a new replica to the volume while
 	// re-enable mayastor on one unused node
@@ -468,7 +468,7 @@ func (env *DisruptionEnv) PodLossTestWriteContinuously() {
 	// because the stored checksum will still be crc32
 	logf.Log.Info("writing to the volume")
 	err = env.fioWriteOnly(env.fioPodName, "md5", env.repairThinkTime)
-	Expect(err).ToNot(HaveOccurred(), err)
+	Expect(err).ToNot(HaveOccurred(), "%v", err)
 
 	// 4) Verify that the volume becomes healthy and the data is correct
 	// We make the assumption that the volume has had enough time to be repaired
@@ -478,7 +478,7 @@ func (env *DisruptionEnv) PodLossTestWriteContinuously() {
 	// Verify the data just written.
 	logf.Log.Info("verifying the repaired volume")
 	err = fioVerify(env.fioPodName, "md5")
-	Expect(err).ToNot(HaveOccurred(), err)
+	Expect(err).ToNot(HaveOccurred(), "%v", err)
 
 	// 5) Write pattern-3 while faulting the replica on the nexus node
 	// remove the replica from the nexus
@@ -488,7 +488,7 @@ func (env *DisruptionEnv) PodLossTestWriteContinuously() {
 	// and no verification is performed at this point
 	logf.Log.Info("writing to the volume")
 	err = env.fioWriteOnly(env.fioPodName, "sha1", env.removeThinkTime)
-	Expect(err).ToNot(HaveOccurred(), err)
+	Expect(err).ToNot(HaveOccurred(), "%v", err)
 
 	// 6) Verify that the volume becomes degraded and the data is correct
 	// We make the assumption that the volume has had enough time to become faulted
@@ -499,7 +499,7 @@ func (env *DisruptionEnv) PodLossTestWriteContinuously() {
 	// This step reads each block once
 	logf.Log.Info("verifying the degraded volume")
 	err = fioVerify(env.fioPodName, "sha1")
-	Expect(err).ToNot(HaveOccurred(), err)
+	Expect(err).ToNot(HaveOccurred(), "%v", err)
 
 	logf.Log.Info("restoring the original replica")
 	env.unsuppressMayastorPodOn(env.replicaToRemove, 0)
@@ -517,7 +517,7 @@ func (env *DisruptionEnv) PodLossTestWriteContinuously() {
 	// verification will fail because it contains the wrong data.
 	logf.Log.Info("verifying the repaired volume")
 	err = fioVerify(env.fioPodName, "sha1")
-	Expect(err).ToNot(HaveOccurred(), err)
+	Expect(err).ToNot(HaveOccurred(), "%v", err)
 }
 
 func TestMayastorPodLoss(t *testing.T) {
@@ -530,20 +530,20 @@ var _ = Describe("Mayastor replica pod removal test", func() {
 	BeforeEach(func() {
 		// Check ready to run
 		err := k8stest.BeforeEachCheck()
-		Expect(err).ToNot(HaveOccurred(), err)
+		Expect(err).ToNot(HaveOccurred(), "%v", err)
 	})
 
 	AfterEach(func() {
 		env.teardown() // removes fio pod and volume
 		// Check resource leakage.
 		err := k8stest.AfterEachCheck()
-		Expect(err).ToNot(HaveOccurred(), err)
+		Expect(err).ToNot(HaveOccurred(), "%v", err)
 	})
 
 	It("should verify nexus data is copied when a mayastor pod is removed", func() {
 		sc := "mayastor-nvmf-pod-remove-test-sc-1"
 		err := k8stest.MkStorageClass(sc, 2, common.ShareProtoNvmf, common.NSDefault)
-		Expect(err).ToNot(HaveOccurred(), err)
+		Expect(err).ToNot(HaveOccurred(), "%v", err)
 		env = setup("loss-test-pvc-1", sc, "fio-pod-remove-test-1")
 		env.PodLossTestDataCopy()
 	})
@@ -551,7 +551,7 @@ var _ = Describe("Mayastor replica pod removal test", func() {
 	It("should verify nvmf nexus behaviour when a mayastor pod is removed", func() {
 		sc := "mayastor-nvmf-pod-remove-test-sc-2"
 		err := k8stest.MkStorageClass(sc, 2, common.ShareProtoNvmf, common.NSDefault)
-		Expect(err).ToNot(HaveOccurred(), err)
+		Expect(err).ToNot(HaveOccurred(), "%v", err)
 		env = setup("loss-test-pvc-2", sc, "fio-pod-remove-test-2")
 		env.PodLossTestWriteContinuously()
 	})
