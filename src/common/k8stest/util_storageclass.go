@@ -81,10 +81,6 @@ func (b *ScBuilder) WithReplicas(value int) *ScBuilder {
 
 // WithFileType sets the fsType parameter of storageclass with provided argument.
 func (b *ScBuilder) WithFileSystemType(value common.FileSystemType) *ScBuilder {
-	if len(value) == 0 {
-		b.errs = append(b.errs, errors.New("failed to build storageclass: missing storageclass fsType"))
-		return b
-	}
 	if b.sc.object.Parameters == nil {
 		b.sc.object.Parameters = map[string]string{}
 	}
@@ -94,14 +90,19 @@ func (b *ScBuilder) WithFileSystemType(value common.FileSystemType) *ScBuilder {
 
 // WithProtocol sets the protocol parameter of storageclass with provided argument.
 func (b *ScBuilder) WithProtocol(value common.ShareProto) *ScBuilder {
-	if len(value) == 0 {
-		b.errs = append(b.errs, errors.New("failed to build storageclass: missing storageclass protocol"))
-		return b
-	}
 	if b.sc.object.Parameters == nil {
 		b.sc.object.Parameters = map[string]string{}
 	}
 	b.sc.object.Parameters[string(common.ScProtocol)] = string(value)
+	return b
+}
+
+// WithProtocol sets the protocol parameter of storageclass with provided argument.
+func (b *ScBuilder) WithLocal(value bool) *ScBuilder {
+	if b.sc.object.Parameters == nil {
+		b.sc.object.Parameters = map[string]string{}
+	}
+	b.sc.object.Parameters[string(common.ScLocal)] = strconv.FormatBool(value)
 	return b
 }
 
