@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"mayastor-e2e/common/e2e_config"
 	"os/exec"
 	"strings"
 	"time"
@@ -161,6 +162,9 @@ func CreateFioPodDef(podName string, volName string, volType common.VolumeType, 
 			},
 		},
 	}
+	if e2e_config.GetConfig().HostNetworkingRequired {
+		podDef.Spec.HostNetwork = true
+	}
 	if volType == common.VolRawBlock {
 		podDef.Spec.Containers[0].VolumeDevices = volDevices
 	} else {
@@ -199,6 +203,20 @@ func CheckForTestPods() (bool, error) {
 	return foundPods, err
 }
 
+// isPodHealthCheckCandidate checks config setting and namespace settings to workout if a health check on pdd is required,
+// essentially this is a filter function.
+// For now this is a very simple filter function, to  handle the case where, mayastor pods share the namespace with other
+// pods whose health status has no bearing mayastor functionality.
+func isPodHealthCheckCandidate(podName string, namespace string) bool {
+	if namespace == common.NSMayastor && e2e_config.GetConfig().FilteredMayastorPodCheck != 0 {
+		if strings.HasPrefix(podName, "moac") || strings.HasPrefix(podName, "mayastor") {
+			return true
+		}
+		return false
+	}
+	return true
+}
+
 // Check test pods in a namespace for restarts and failed/unknown state
 func CheckTestPodsHealth(namespace string) error {
 	podApi := gTestEnv.KubeInt.CoreV1().Pods
@@ -209,6 +227,9 @@ func CheckTestPodsHealth(namespace string) error {
 	}
 
 	for _, pod := range podList.Items {
+		if !isPodHealthCheckCandidate(pod.Name, namespace) {
+			continue
+		}
 		containerStatuses := pod.Status.ContainerStatuses
 		for _, containerStatus := range containerStatuses {
 			if containerStatus.RestartCount != 0 {
@@ -229,12 +250,16 @@ func CheckTestPodsHealth(namespace string) error {
 }
 
 func CheckPodCompleted(podName string, nameSpace string) (coreV1.PodPhase, error) {
-	podApi := gTestEnv.KubeInt.CoreV1().Pods
-	pod, err := podApi(nameSpace).Get(context.TODO(), podName, metaV1.GetOptions{})
-	if err != nil {
-		return coreV1.PodUnknown, err
-	}
-	return pod.Status.Phase, err
+
+	// Keeping this commented out code for the time being.
+	//	podApi := gTestEnv.KubeInt.CoreV1().Pods
+	//	pod, err := podApi(nameSpace).Get(context.TODO(), podName, metaV1.GetOptions{})
+	//	if err != nil {
+	//		return coreV1.PodUnknown, err
+	//	}
+	//	return pod.Status.Phase, err
+	//
+	return CheckPodContainerCompleted(podName, nameSpace)
 }
 
 // GetPodHostIp retrieve the IP address  of the node hosting a pod
@@ -245,4 +270,27 @@ func GetPodHostIp(podName string, nameSpace string) (string, error) {
 		return "", err
 	}
 	return pod.Status.HostIP, err
+}
+
+func CheckPodContainerCompleted(podName string, nameSpace string) (coreV1.PodPhase, error) {
+	podApi := gTestEnv.KubeInt.CoreV1().Pods
+	pod, err := podApi(nameSpace).Get(context.TODO(), podName, metaV1.GetOptions{})
+	if err != nil {
+		return coreV1.PodUnknown, err
+	}
+	containerStatuses := pod.Status.ContainerStatuses
+	for _, containerStatus := range containerStatuses {
+		if containerStatus.Name == podName {
+			if !containerStatus.Ready {
+				if containerStatus.State.Terminated.Reason == "Completed" {
+					if containerStatus.State.Terminated.ExitCode == 0 {
+						return coreV1.PodSucceeded, nil
+					} else {
+						return coreV1.PodFailed, nil
+					}
+				}
+			}
+		}
+	}
+	return pod.Status.Phase, err
 }

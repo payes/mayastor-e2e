@@ -6,6 +6,7 @@ import (
 	appsV1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"mayastor-e2e/common"
+	"mayastor-e2e/common/e2e_config"
 	"mayastor-e2e/common/locations"
 	"time"
 )
@@ -22,6 +23,10 @@ func e2eReadyPodCount() int {
 // does nothing, otherwise creates the e2e agent namespace and deploys the daemonSet.
 // asserts if creating the namespace fails. This function can be called repeatedly.
 func EnsureE2EAgent() bool {
+	//FIXME: temporary for volterra
+	if e2e_config.GetConfig().DisableE2EAgent {
+		return false
+	}
 	err := EnsureNamespace(common.NSE2EAgent)
 	gomega.Expect(err).To(gomega.BeNil())
 

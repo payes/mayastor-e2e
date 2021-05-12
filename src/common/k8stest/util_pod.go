@@ -5,6 +5,7 @@ import (
 	// volume "github.com/openebs/maya/pkg/kubernetes/volume/v1alpha1"
 
 	"mayastor-e2e/common"
+	"mayastor-e2e/common/e2e_config"
 
 	errors "github.com/pkg/errors"
 	coreV1 "k8s.io/api/core/v1"
@@ -240,6 +241,9 @@ func (b *PodBuilder) WithVolumeDeviceOrMount(volType common.VolumeType) *PodBuil
 
 // Build returns the Pod API instance
 func (b *PodBuilder) Build() (*corev1.Pod, error) {
+	if e2e_config.GetConfig().HostNetworkingRequired {
+		b.pod.object.Spec.HostNetwork = true
+	}
 	if len(b.errs) > 0 {
 		return nil, errors.Errorf("%+v", b.errs)
 	}

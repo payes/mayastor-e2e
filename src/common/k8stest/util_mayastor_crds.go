@@ -28,7 +28,7 @@ func GetMSV(uuid string) *MayastorVolStatus {
 	msvGVR := GetMsVolGVR()
 	msv, err := gTestEnv.DynamicClient.Resource(msvGVR).Namespace(common.NSMayastor).Get(context.TODO(), uuid, metaV1.GetOptions{})
 	if err != nil {
-		fmt.Println(err)
+		logf.Log.Info("GetMSV", "error", err)
 		return nil
 	}
 	if msv == nil {
@@ -36,7 +36,7 @@ func GetMSV(uuid string) *MayastorVolStatus {
 	}
 	status, found, err := unstructured.NestedFieldCopy(msv.Object, "status")
 	if err != nil {
-		fmt.Println(err)
+		logf.Log.Info("GetMSV", "error", err)
 		return nil
 	}
 

@@ -41,13 +41,19 @@ func DeleteAllPods(nameSpace string) (int, error) {
 // returns ok -> operations succeeded, resources undeleted, delete resources failed
 func DeleteAllPvcs(nameSpace string) (int, error) {
 	logf.Log.Info("DeleteAllPvcs")
-
+	mayastorStorageClasses, err := getMayastorScMap()
+	if err != nil {
+		return -1, err
+	}
 	// Delete all PVCs found
 	pvcs, err := gTestEnv.KubeInt.CoreV1().PersistentVolumeClaims(nameSpace).List(context.TODO(), metaV1.ListOptions{})
 	if err != nil {
 		logf.Log.Info("DeleteAllPvcs: list PersistentVolumeClaims failed.", "error", err)
 	} else if len(pvcs.Items) != 0 {
 		for _, pvc := range pvcs.Items {
+			if !mayastorStorageClasses[*pvc.Spec.StorageClassName] {
+				continue
+			}
 			logf.Log.Info("DeleteAllPvcs: deleting", "PersistentVolumeClaim", pvc.Name)
 			delErr := gTestEnv.KubeInt.CoreV1().PersistentVolumeClaims(nameSpace).Delete(context.TODO(), pvc.Name, metaV1.DeleteOptions{GracePeriodSeconds: &ZeroInt64})
 			if delErr != nil {
@@ -59,9 +65,15 @@ func DeleteAllPvcs(nameSpace string) (int, error) {
 	// Wait 2 minutes for PVCS to be deleted
 	numPvcs := 0
 	for attempts := 0; attempts < 120; attempts++ {
+		numPvcs = 0
 		pvcs, err := gTestEnv.KubeInt.CoreV1().PersistentVolumeClaims(nameSpace).List(context.TODO(), metaV1.ListOptions{})
 		if err == nil {
-			numPvcs = len(pvcs.Items)
+			for _, pvc := range pvcs.Items {
+				if !mayastorStorageClasses[*pvc.Spec.StorageClassName] {
+					continue
+				}
+				numPvcs += 1
+			}
 			if numPvcs == 0 {
 				break
 			}
@@ -75,6 +87,10 @@ func DeleteAllPvcs(nameSpace string) (int, error) {
 
 // Make best attempt to delete PersistentVolumes
 func DeleteAllPvs() (int, error) {
+	mayastorStorageClasses, err := getMayastorScMap()
+	if err != nil {
+		return -1, err
+	}
 	// Delete all PVs found
 	// First remove all finalizers
 	pvs, err := gTestEnv.KubeInt.CoreV1().PersistentVolumes().List(context.TODO(), metaV1.ListOptions{})
@@ -83,6 +99,9 @@ func DeleteAllPvs() (int, error) {
 	} else if len(pvs.Items) != 0 {
 		empty := make([]string, 0)
 		for _, pv := range pvs.Items {
+			if !mayastorStorageClasses[pv.Spec.StorageClassName] {
+				continue
+			}
 			finalizers := pv.GetFinalizers()
 			if len(finalizers) != 0 {
 				logf.Log.Info("DeleteAllPvs: deleting finalizer for",
@@ -96,9 +115,15 @@ func DeleteAllPvs() (int, error) {
 	// then wait for up to 2 minute for resources to be cleared
 	numPvs := 0
 	for attempts := 0; attempts < 120; attempts++ {
+		numPvs = 0
 		pvs, err := gTestEnv.KubeInt.CoreV1().PersistentVolumes().List(context.TODO(), metaV1.ListOptions{})
 		if err == nil {
-			numPvs = len(pvs.Items)
+			for _, pv := range pvs.Items {
+				if !mayastorStorageClasses[pv.Spec.StorageClassName] {
+					continue
+				}
+				numPvs += 1
+			}
 			if numPvs == 0 {
 				break
 			}
@@ -112,6 +137,9 @@ func DeleteAllPvs() (int, error) {
 		logf.Log.Info("DeleteAllPvs: list PersistentVolumes failed.", "error", err)
 	} else if len(pvs.Items) != 0 {
 		for _, pv := range pvs.Items {
+			if !mayastorStorageClasses[pv.Spec.StorageClassName] {
+				continue
+			}
 			logf.Log.Info("DeleteAllPvs: deleting PersistentVolume",
 				"PersistentVolume", pv.Name)
 			if delErr := gTestEnv.KubeInt.CoreV1().PersistentVolumes().Delete(context.TODO(), pv.Name, metaV1.DeleteOptions{GracePeriodSeconds: &ZeroInt64}); delErr != nil {
@@ -121,11 +149,16 @@ func DeleteAllPvs() (int, error) {
 		}
 	}
 	// Wait 2 minutes for resources to be deleted
-	numPvs = 0
 	for attempts := 0; attempts < 120; attempts++ {
+		numPvs = 0
 		pvs, err := gTestEnv.KubeInt.CoreV1().PersistentVolumes().List(context.TODO(), metaV1.ListOptions{})
 		if err == nil {
-			numPvs = len(pvs.Items)
+			for _, pv := range pvs.Items {
+				if !mayastorStorageClasses[pv.Spec.StorageClassName] {
+					continue
+				}
+				numPvs += 1
+			}
 			if numPvs == 0 {
 				break
 			}
@@ -278,9 +311,9 @@ func ForceDeleteMayastorPods() (bool, int, error) {
 	pods, err := gTestEnv.KubeInt.CoreV1().Pods(common.NSMayastor).List(context.TODO(), metaV1.ListOptions{})
 	if err != nil {
 		logf.Log.Info("EnsureMayastorDeleted: list pods failed.", "error", err)
-		return podsDeleted, 0, err
+		return false, 0, err
 	} else if len(pods.Items) == 0 {
-		return podsDeleted, 0, nil
+		return false, 0, nil
 	}
 
 	logf.Log.Info("EnsureMayastorDeleted: MayastorPods found.", "Count", len(pods.Items))

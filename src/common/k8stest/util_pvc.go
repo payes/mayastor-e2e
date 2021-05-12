@@ -249,9 +249,28 @@ func GetPV(volName string) (*v1.PersistentVolume, error) {
 	return gTestEnv.KubeInt.CoreV1().PersistentVolumes().Get(context.TODO(), volName, metaV1.GetOptions{})
 }
 
+func getMayastorScMap() (map[string]bool, error) {
+	mayastorStorageClasses := make(map[string]bool)
+	ScApi := gTestEnv.KubeInt.StorageV1().StorageClasses
+	scs, err := ScApi().List(context.TODO(), metaV1.ListOptions{})
+	if err == nil {
+		for _, sc := range scs.Items {
+			if sc.Provisioner == common.CSIProvisioner {
+				mayastorStorageClasses[sc.Name] = true
+			}
+		}
+	}
+	return mayastorStorageClasses, err
+}
+
 func CheckForPVCs() (bool, error) {
 	logf.Log.Info("CheckForPVCs")
 	foundResources := false
+
+	mayastorStorageClasses, err := getMayastorScMap()
+	if err != nil {
+		return false, err
+	}
 
 	nameSpaces, err := gTestEnv.KubeInt.CoreV1().Namespaces().List(context.TODO(), metaV1.ListOptions{})
 	if err == nil {
@@ -259,9 +278,14 @@ func CheckForPVCs() (bool, error) {
 			if strings.HasPrefix(ns.Name, common.NSE2EPrefix) || ns.Name == common.NSDefault {
 				pvcs, err := gTestEnv.KubeInt.CoreV1().PersistentVolumeClaims(ns.Name).List(context.TODO(), metaV1.ListOptions{})
 				if err == nil && pvcs != nil && len(pvcs.Items) != 0 {
-					logf.Log.Info("CheckForVolumeResources: found PersistentVolumeClaims",
-						"PersistentVolumeClaims", pvcs.Items)
-					foundResources = true
+					for _, pvc := range pvcs.Items {
+						if !mayastorStorageClasses[*pvc.Spec.StorageClassName] {
+							continue
+						}
+						logf.Log.Info("CheckForVolumeResources: found PersistentVolumeClaims",
+							"PersistentVolumeClaim", pvc)
+						foundResources = true
+					}
 				}
 			}
 		}
@@ -274,11 +298,21 @@ func CheckForPVs() (bool, error) {
 	logf.Log.Info("CheckForPVs")
 	foundResources := false
 
+	mayastorStorageClasses, err := getMayastorScMap()
+	if err != nil {
+		return false, err
+	}
+
 	pvs, err := gTestEnv.KubeInt.CoreV1().PersistentVolumes().List(context.TODO(), metaV1.ListOptions{})
 	if err == nil && pvs != nil && len(pvs.Items) != 0 {
-		logf.Log.Info("CheckForVolumeResources: found PersistentVolumes",
-			"PersistentVolumes", pvs.Items)
-		foundResources = true
+		for _, pv := range pvs.Items {
+			if !mayastorStorageClasses[pv.Spec.StorageClassName] {
+				continue
+			}
+			logf.Log.Info("CheckForVolumeResources: found PersistentVolumes",
+				"PersistentVolume", pv)
+			foundResources = true
+		}
 	}
 	return foundResources, err
 }

@@ -3,7 +3,6 @@ package common
 const NSE2EAgent = "e2e-agent"
 const NSE2EPrefix = "e2e-maya"
 const NSDefault = "default"
-const NSMayastor = "mayastor"
 const CSIProvisioner = "io.openebs.csi-mayastor"
 const DefaultVolumeSizeMb = 64
 const DefaultFioSizeMb = 50
