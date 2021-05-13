@@ -9,10 +9,11 @@ import (
 
 	"gopkg.in/yaml.v2"
 
-	"mayastor-e2e/common"
-
 	"github.com/ilyakaznacheev/cleanenv"
 )
+
+const ConfigDir = "/configurations"
+const DefaultConfigFileRelPath = ConfigDir + "/mayastor_ci_hcloud_e2e_config.yaml"
 
 // E2EConfig is a application configuration structure
 type E2EConfig struct {
@@ -154,13 +155,13 @@ func GetConfig() E2EConfig {
 				if !okE2eRootDir {
 					panic("E2E root directory not defined - define via e2e_root_dir environment variable")
 				}
-				configFile = path.Clean(e2eRootDir + common.ConfigDir + "/" + value)
+				configFile = path.Clean(e2eRootDir + ConfigDir + "/" + value)
 			}
 		} else {
 			if !okE2eRootDir {
 				panic("E2E root directory not defined - define via e2e_root_dir environment variable")
 			}
-			configFile = path.Clean(e2eRootDir + common.DefaultConfigFileRelPath)
+			configFile = path.Clean(e2eRootDir + DefaultConfigFileRelPath)
 		}
 		fmt.Printf("Using configuration file %s\n", configFile)
 		err = cleanenv.ReadConfig(configFile, &e2eConfig)

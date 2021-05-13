@@ -32,7 +32,7 @@ func (c *msnClient) Get(ctxt context.Context, name string, opts metav1.GetOption
 	result := v1alpha12.MayastorNode{}
 	err := c.restClient.
 		Get().
-		Namespace(common.NSMayastor).
+		Namespace(common.NSMayastor()).
 		Resource(common.CRDNodesResourceName).
 		Name(name).
 		VersionedParams(&opts, scheme.ParameterCodec).
@@ -47,7 +47,7 @@ func (c *msnClient) List(ctxt context.Context, opts metav1.ListOptions) (*v1alph
 	result := v1alpha12.MayastorNodeList{}
 	err := c.restClient.
 		Get().
-		Namespace(common.NSMayastor).
+		Namespace(common.NSMayastor()).
 		Resource(common.CRDNodesResourceName).
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Do(ctxt).
@@ -60,7 +60,7 @@ func (c *msnClient) List(ctxt context.Context, opts metav1.ListOptions) (*v1alph
 func (c *msnClient) Delete(ctxt context.Context, name string, opts metav1.DeleteOptions) error {
 	return c.restClient.
 		Delete().
-		Namespace(common.NSMayastor).
+		Namespace(common.NSMayastor()).
 		Resource(common.CRDNodesResourceName).
 		Name(name).
 		Body(&opts).
@@ -77,7 +77,7 @@ func (c *msnClient) Watch(ctxt context.Context, opts metav1.ListOptions) (watch.
 	opts.Watch = true
 	return c.restClient.
 		Get().
-		Namespace(common.NSMayastor).
+		Namespace(common.NSMayastor()).
 		Resource(common.CRDNodesResourceName).
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
