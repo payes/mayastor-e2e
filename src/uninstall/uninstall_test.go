@@ -24,7 +24,7 @@ func deleteCRD(crdName string) {
 
 // Create mayastor namespace
 func deleteNamespace() {
-	cmd := exec.Command("kubectl", "delete", "namespace", common.NSMayastor)
+	cmd := exec.Command("kubectl", "delete", "namespace", common.NSMayastor())
 	out, err := cmd.CombinedOutput()
 	Expect(err).ToNot(HaveOccurred(), "%s", out)
 }

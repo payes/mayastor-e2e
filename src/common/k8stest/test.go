@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"mayastor-e2e/common/e2e_config"
 	"testing"
 	"time"
 
@@ -39,23 +38,17 @@ type TestEnvironment struct {
 
 var gTestEnv TestEnvironment
 
-// FIXME: because of dependency issues this function is called early and from multiple locations, to ensure the namespace is set under all conditions.
-func ensureMayastorNamespaceSetup() {
-	common.NSMayastor = e2e_config.GetConfig().MayastorNamespace
-	fmt.Printf("Mayastor namespace set to \"%s\"\n", common.NSMayastor)
-}
-
 // InitTesting initialise testing and setup class name + report filename.
 func InitTesting(t *testing.T, classname string, reportname string) {
 	RegisterFailHandler(Fail)
-	ensureMayastorNamespaceSetup()
+	fmt.Printf("Mayastor namespace is \"%s\"\n", common.NSMayastor())
 	RunSpecsWithDefaultAndCustomReporters(t, classname, reporter.GetReporters(reportname))
 	loki.SendLokiMarker("Start of test " + classname)
 }
 
 func SetupTestEnv() {
 	logf.SetLogger(zap.New(zap.UseDevMode(true), zap.WriteTo(GinkgoWriter)))
-	ensureMayastorNamespaceSetup()
+	fmt.Printf("Mayastor namespace is \"%s\"\n", common.NSMayastor())
 
 	By("bootstrapping test environment")
 	var err error
@@ -168,7 +161,7 @@ func ResourceCheck() error {
 
 	// Mayastor volumes
 	msvGVR := GetMsVolGVR()
-	msvs, err := gTestEnv.DynamicClient.Resource(msvGVR).Namespace(common.NSMayastor).List(context.TODO(), metaV1.ListOptions{})
+	msvs, err := gTestEnv.DynamicClient.Resource(msvGVR).Namespace(common.NSMayastor()).List(context.TODO(), metaV1.ListOptions{})
 	if err != nil {
 		errorMsg += fmt.Sprintf("%s %v", errorMsg, err)
 	} else {
@@ -182,7 +175,7 @@ func ResourceCheck() error {
 	}
 
 	// Check that Mayastor pods are healthy no restarts or fails.
-	err = CheckTestPodsHealth(common.NSMayastor)
+	err = CheckTestPodsHealth(common.NSMayastor())
 	if err != nil {
 		errorMsg += fmt.Sprintf("%s %v", errorMsg, err)
 	}

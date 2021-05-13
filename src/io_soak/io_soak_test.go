@@ -42,9 +42,9 @@ func monitor() error {
 	for ix := 0; len(activeJobMap) != 0 && len(failedJobs) == 0; ix += 1 {
 		time.Sleep(1 * time.Second)
 
-		err = k8stest.CheckTestPodsHealth(common.NSMayastor)
+		err = k8stest.CheckTestPodsHealth(common.NSMayastor())
 		if err != nil {
-			logf.Log.Info("IOSoakTest monitor", "namespace", common.NSMayastor, "error", err)
+			logf.Log.Info("IOSoakTest monitor", "namespace", common.NSMayastor(), "error", err)
 			break
 		}
 

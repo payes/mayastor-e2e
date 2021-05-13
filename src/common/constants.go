@@ -15,10 +15,10 @@ const FioBlockFilename = "/dev/sdm"
 const FioFsFilename = FioFsMountPoint + "/fiotestfile"
 
 // ConfigDir  Relative path to the configuration directory WRT e2e root.
-const ConfigDir = "/configurations"
+// See common/e2e_config/e2e_config.go
 
 // DefaultConfigFileRelPath  Relative path to default configuration file.
-const DefaultConfigFileRelPath = ConfigDir + "/mayastor_ci_hcloud_e2e_config.yaml"
+// See common/e2e_config/e2e_config.go
 
 //Custom Resources
 const CRDGroupName = "openebs.io"

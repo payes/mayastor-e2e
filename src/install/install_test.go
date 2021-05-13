@@ -85,7 +85,7 @@ func installMayastor() {
 
 	k8stest.EnsureE2EAgent()
 
-	err = k8stest.MkNamespace(common.NSMayastor)
+	err = k8stest.MkNamespace(common.NSMayastor())
 	Expect(err).ToNot(HaveOccurred())
 	k8stest.KubeCtlApplyYaml("moac-rbac.yaml", yamlsDir)
 	k8stest.KubeCtlApplyYaml("mayastorpoolcrd.yaml", deployDir)
