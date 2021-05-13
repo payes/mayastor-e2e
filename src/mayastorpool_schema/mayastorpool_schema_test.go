@@ -52,6 +52,7 @@ func mayastorPoolSchemaTest(schema string) {
 	Expect(err).ToNot(HaveOccurred())
 
 	for _, pool := range pools {
+		Expect(len(pool.Status.Disks) == 1).To(BeTrue(), "unexpected pool disks %v", pool.Status.Disks)
 		Eventually(func() bool {
 			if schema == "default" {
 				return strings.Contains(pool.Status.Disks[0], "aio")
