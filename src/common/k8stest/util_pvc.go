@@ -119,7 +119,11 @@ func MkPVC(volSizeMb int, volName string, scName string, volType common.VolumeTy
 		},
 	}
 
-	if volType == common.VolRawBlock {
+	switch volType {
+	case common.VolFileSystem:
+		var fileSystemVolumeMode = coreV1.PersistentVolumeFilesystem
+		createOpts.Spec.VolumeMode = &fileSystemVolumeMode
+	case common.VolRawBlock:
 		var blockVolumeMode = coreV1.PersistentVolumeBlock
 		createOpts.Spec.VolumeMode = &blockVolumeMode
 	}
