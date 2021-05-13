@@ -56,7 +56,7 @@ func CreatePool(poolName string, node string, disks []string) (*v1alpha1Api.Maya
 		TypeMeta: metaV1.TypeMeta{Kind: "MayastorPool"},
 		ObjectMeta: metaV1.ObjectMeta{
 			Name:      poolName,
-			Namespace: common.NSMayastor,
+			Namespace: common.NSMayastor(),
 		},
 		Spec: v1alpha1Api.MayastorPoolSpec{
 			Node:  node,

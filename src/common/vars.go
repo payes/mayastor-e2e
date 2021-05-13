@@ -1,5 +1,14 @@
 package common
 
+import "mayastor-e2e/common/e2e_config"
+
+var nsMayastor = e2e_config.GetConfig().MayastorNamespace
+
+// NSMayastor return the name of the namespace in which Mayastor is installed
+func NSMayastor() string {
+	return nsMayastor
+}
+
 // default fio arguments for E2E fio runs
 var fioArgs = []string{
 	"--name=benchtest",
@@ -14,8 +23,7 @@ var fioArgs = []string{
 	"--verify_async=2",
 }
 
-var NSMayastor = "mayastor"
-
+// GetFioArgs return the default argument set for fio - for use with Mayastor
 func GetFioArgs() []string {
 	return fioArgs
 }

@@ -256,7 +256,7 @@ func PodPresentOnNode(podNameRegexp string, namespace string, nodeName string) b
 
 func mayastorReadyPodCount() int {
 	var mayastorDaemonSet appsV1.DaemonSet
-	if gTestEnv.K8sClient.Get(context.TODO(), types.NamespacedName{Name: "mayastor", Namespace: common.NSMayastor}, &mayastorDaemonSet) != nil {
+	if gTestEnv.K8sClient.Get(context.TODO(), types.NamespacedName{Name: "mayastor", Namespace: common.NSMayastor()}, &mayastorDaemonSet) != nil {
 		logf.Log.Info("Failed to get mayastor DaemonSet")
 		return -1
 	}
@@ -266,7 +266,7 @@ func mayastorReadyPodCount() int {
 
 func moacReady() bool {
 	var moacDeployment appsV1.Deployment
-	if gTestEnv.K8sClient.Get(context.TODO(), types.NamespacedName{Name: "moac", Namespace: common.NSMayastor}, &moacDeployment) != nil {
+	if gTestEnv.K8sClient.Get(context.TODO(), types.NamespacedName{Name: "moac", Namespace: common.NSMayastor()}, &moacDeployment) != nil {
 		logf.Log.Info("Failed to get MOAC deployment")
 		return false
 	}

@@ -34,7 +34,7 @@ func (c *mspClient) Create(ctxt context.Context, mayastorpool *v1alpha12.Mayasto
 	result := v1alpha12.MayastorPool{}
 	err := c.restClient.
 		Post().
-		Namespace(common.NSMayastor).
+		Namespace(common.NSMayastor()).
 		Resource(common.CRDPoolsResourceName).
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(mayastorpool).
@@ -49,7 +49,7 @@ func (c *mspClient) Get(ctxt context.Context, name string, opts metav1.GetOption
 	result := v1alpha12.MayastorPool{}
 	err := c.restClient.
 		Get().
-		Namespace(common.NSMayastor).
+		Namespace(common.NSMayastor()).
 		Resource(common.CRDPoolsResourceName).
 		Name(name).
 		VersionedParams(&opts, scheme.ParameterCodec).
@@ -64,7 +64,7 @@ func (c *mspClient) List(ctxt context.Context, opts metav1.ListOptions) (*v1alph
 	result := v1alpha12.MayastorPoolList{}
 	err := c.restClient.
 		Get().
-		Namespace(common.NSMayastor).
+		Namespace(common.NSMayastor()).
 		Resource(common.CRDPoolsResourceName).
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Do(ctxt).
@@ -78,7 +78,7 @@ func (c *mspClient) Update(ctxt context.Context, mayastorpool *v1alpha12.Mayasto
 	result := v1alpha12.MayastorPool{}
 	err := c.restClient.
 		Put().
-		Namespace(common.NSMayastor).
+		Namespace(common.NSMayastor()).
 		Resource(common.CRDPoolsResourceName).
 		Name(mayastorpool.Name).
 		VersionedParams(&opts, scheme.ParameterCodec).
@@ -93,7 +93,7 @@ func (c *mspClient) Update(ctxt context.Context, mayastorpool *v1alpha12.Mayasto
 func (c *mspClient) Delete(ctxt context.Context, name string, opts metav1.DeleteOptions) error {
 	return c.restClient.
 		Delete().
-		Namespace(common.NSMayastor).
+		Namespace(common.NSMayastor()).
 		Resource(common.CRDPoolsResourceName).
 		Name(name).
 		Body(&opts).
@@ -110,7 +110,7 @@ func (c *mspClient) Watch(ctxt context.Context, opts metav1.ListOptions) (watch.
 	opts.Watch = true
 	return c.restClient.
 		Get().
-		Namespace(common.NSMayastor).
+		Namespace(common.NSMayastor()).
 		Resource(common.CRDPoolsResourceName).
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).

@@ -35,7 +35,7 @@ func (c *msvClient) Create(ctxt context.Context, mayastorvolume *v1alpha12.Mayas
 	result := v1alpha12.MayastorVolume{}
 	err := c.restClient.
 		Post().
-		Namespace(common.NSMayastor).
+		Namespace(common.NSMayastor()).
 		Resource(common.CRDVolumesResourceName).
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(mayastorvolume).
@@ -51,7 +51,7 @@ func (c *msvClient) Get(ctxt context.Context, name string, opts metav1.GetOption
 	result := v1alpha12.MayastorVolume{}
 	err := c.restClient.
 		Get().
-		Namespace(common.NSMayastor).
+		Namespace(common.NSMayastor()).
 		Resource(common.CRDVolumesResourceName).
 		Name(name).
 		VersionedParams(&opts, scheme.ParameterCodec).
@@ -66,7 +66,7 @@ func (c *msvClient) List(ctxt context.Context, opts metav1.ListOptions) (*v1alph
 	result := v1alpha12.MayastorVolumeList{}
 	err := c.restClient.
 		Get().
-		Namespace(common.NSMayastor).
+		Namespace(common.NSMayastor()).
 		Resource(common.CRDVolumesResourceName).
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Do(ctxt).
@@ -80,7 +80,7 @@ func (c *msvClient) Update(ctxt context.Context, mayastorvolume *v1alpha12.Mayas
 	result := v1alpha12.MayastorVolume{}
 	err := c.restClient.
 		Put().
-		Namespace(common.NSMayastor).
+		Namespace(common.NSMayastor()).
 		Resource(common.CRDVolumesResourceName).
 		Name(mayastorvolume.Name).
 		VersionedParams(&opts, scheme.ParameterCodec).
@@ -95,7 +95,7 @@ func (c *msvClient) Update(ctxt context.Context, mayastorvolume *v1alpha12.Mayas
 func (c *msvClient) Delete(ctxt context.Context, name string, opts metav1.DeleteOptions) error {
 	return c.restClient.
 		Delete().
-		Namespace(common.NSMayastor).
+		Namespace(common.NSMayastor()).
 		Resource(common.CRDVolumesResourceName).
 		Name(name).
 		Body(&opts).
@@ -112,7 +112,7 @@ func (c *msvClient) Watch(ctxt context.Context, opts metav1.ListOptions) (watch.
 	opts.Watch = true
 	return c.restClient.
 		Get().
-		Namespace(common.NSMayastor).
+		Namespace(common.NSMayastor()).
 		Resource(common.CRDVolumesResourceName).
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).

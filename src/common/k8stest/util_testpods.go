@@ -208,7 +208,7 @@ func CheckForTestPods() (bool, error) {
 // For now this is a very simple filter function, to  handle the case where, mayastor pods share the namespace with other
 // pods whose health status has no bearing mayastor functionality.
 func isPodHealthCheckCandidate(podName string, namespace string) bool {
-	if namespace == common.NSMayastor && e2e_config.GetConfig().FilteredMayastorPodCheck != 0 {
+	if namespace == common.NSMayastor() && e2e_config.GetConfig().FilteredMayastorPodCheck != 0 {
 		if strings.HasPrefix(podName, "moac") || strings.HasPrefix(podName, "mayastor") {
 			return true
 		}
