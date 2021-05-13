@@ -74,6 +74,23 @@ func listReplica(address string) ([]MayastorReplica, error) {
 	return replicaInfos, err
 }
 
+func rmReplica(address string, uuid string) error {
+	logf.Log.Info("rmReplica", "address", address, "UUID", uuid)
+	addrPort := fmt.Sprintf("%s:%d", address, mayastorPort)
+	conn, err := grpc.Dial(addrPort, grpc.WithInsecure())
+	if err != nil {
+		logf.Log.Info("rmReplicas", "error", err)
+		return err
+	}
+	c := mayastorGrpc.NewMayastorClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	req := mayastorGrpc.DestroyReplicaRequest{Uuid: uuid}
+	_, err = c.DestroyReplica(ctx, &req)
+	return err
+}
+
 // ListReplicas given a list of node ip addresses, enumerate the set of replicas on mayastor using gRPC on each of those nodes
 // returns accumulated errors if gRPC communication failed.
 func ListReplicas(addrs []string) ([]MayastorReplica, error) {
@@ -92,4 +109,26 @@ func ListReplicas(addrs []string) ([]MayastorReplica, error) {
 		}
 	}
 	return replicaInfos, accErr
+}
+
+// RmReplicas given a list of node ip addresses, delete the set of replicas on mayastor using gRPC on each of those nodes
+// returns errors if gRPC communication failed.
+func RmReplicas(addrs []string) error {
+	var accErr error
+	for _, address := range addrs {
+		replicaInfos, err := listReplica(address)
+		if err == nil {
+			for _, replicaInfo := range replicaInfos {
+				err = rmReplica(address, replicaInfo.Uuid)
+			}
+		}
+		if err != nil {
+			if accErr != nil {
+				accErr = fmt.Errorf("%v;%v", accErr, err)
+			} else {
+				accErr = err
+			}
+		}
+	}
+	return accErr
 }
