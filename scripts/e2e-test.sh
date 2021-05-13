@@ -17,9 +17,9 @@ ARTIFACTSDIR=$(realpath "$SCRIPTDIR/../artifacts")
 #
 DEFAULT_TESTS="install basic_volume_io csi resource_check replica rebuild ms_pod_disruption uninstall"
 ONDEMAND_TESTS="install basic_volume_io csi resource_check uninstall"
-EXTENDED_TESTS="install basic_volume_io csi resource_check rebuild io_soak multiple_vols_pod_io pool_modify mayastorpool_schema ms_pod_disruption pvc_readwriteonce uninstall" # replica removed
-CONTINUOUS_TESTS="install basic_volume_io csi resource_check rebuild io_soak ms_pod_disruption uninstall" # replica removed
-SELF_CI_TESTS="install basic_volume_io csi resource_check pvc_stress_fio io_soak multiple_vols_pod_io uninstall" # Removes: replica, rebuild,
+NIGHTLY_TESTS="install basic_volume_io csi resource_check io_soak multiple_vols_pod_io uninstall"
+CONTINUOUS_TESTS="install basic_volume_io csi resource_check rebuild io_soak ms_pod_disruption uninstall"
+SELF_CI_TESTS="install basic_volume_io csi resource_check pvc_stress_fio io_soak multiple_vols_pod_io uninstall"
 SOAK_TESTS="install io_soak uninstall"
 
 #exit values
@@ -61,7 +61,7 @@ Options:
                             Note: the last 2 tests should be (if they are to be run)
                                 - ms_pod_disruption
                                 - uninstall
-  --profile <continuous|extended|ondemand|self_ci|soak>
+  --profile <continuous|nightly|ondemand|self_ci|soak>
                             Run the tests corresponding to the profile (default: run all tests)
   --resportsdir <path>       Path to use for junit xml test reports (default: repo root)
   --logs                    Generate logs and cluster state dump at the end of successful test run,
@@ -217,8 +217,11 @@ case "$profile" in
   continuous)
     tests="$CONTINUOUS_TESTS"
     ;;
-  extended)
-    tests="$EXTENDED_TESTS"
+  extended) # todo remove this option when Mayastor Jenkinsfile is updated
+    tests="$NIGHTLY_TESTS"
+    ;;
+  nightly)
+    tests="$NIGHTLY_TESTS"
     ;;
   ondemand)
     tests="$ONDEMAND_TESTS"
