@@ -387,7 +387,11 @@ func RestartMayastor(restartTOSecs int, readyTOSecs int, poolsTOSecs int) error 
 	} else {
 		logf.Log.Info("WARNING, E2EAgent not active, unable to clear orphan replicas")
 	}
-	err := RestartMayastorPods(restartTOSecs)
+	err := RestoreConfiguredPools()
+	if err != nil {
+		return fmt.Errorf("RestoreConfiguredPools failed %v", err)
+	}
+	err = RestartMayastorPods(restartTOSecs)
 	if err != nil {
 		return fmt.Errorf("RestartMayastorPods failed %v", err)
 	}
