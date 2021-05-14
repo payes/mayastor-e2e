@@ -55,10 +55,8 @@ func installMayastor() {
 
 	Expect(e2eCfg.ImageTag).ToNot(BeEmpty(),
 		"mayastor image tag not defined")
-	Expect(e2eCfg.PoolDevice != "" || len(e2eCfg.PoolYamlFiles) != 0).To(BeTrue(),
+	Expect(e2eCfg.PoolDevice != "").To(BeTrue(),
 		"configuration error pools are not defined.")
-	Expect(e2eCfg.PoolDevice == "" || len(e2eCfg.PoolYamlFiles) == 0).To(BeTrue(),
-		"Unable to resolve pool definitions if both pool device and pool yaml files are defined")
 
 	imageTag := e2eCfg.ImageTag
 	registry := e2eCfg.Registry

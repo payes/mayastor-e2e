@@ -294,3 +294,118 @@ func CheckPodContainerCompleted(podName string, nameSpace string) (coreV1.PodPha
 	}
 	return pod.Status.Phase, err
 }
+
+func collectMayastorPodNames() ([]string, error) {
+	var podNames []string
+	podApi := gTestEnv.KubeInt.CoreV1().Pods
+	pods, err := podApi(common.NSMayastor()).List(context.TODO(), metaV1.ListOptions{})
+	if err != nil {
+		return podNames, err
+	}
+	for _, pod := range pods.Items {
+		if strings.HasPrefix(pod.Name, "mayastor") {
+			podNames = append(podNames, pod.Name)
+		}
+		if strings.HasPrefix(pod.Name, "moac") {
+			podNames = append(podNames, pod.Name)
+		}
+	}
+	return podNames, nil
+}
+
+// RestartMayastorPods shortcut to reinstalling mayastor, especially useful on platforms
+// like volterra, for example calling this function after patching the installation to
+// use different mayastor images, should allow us to have reasonable confidence that
+// mayastor has been restarted with those images.
+// Deletes all mayastor, mayastor-csi and moac pods,
+// then waits upto 2 minutes for new pods to be provisioned
+// Simply deleting the pods and then waiting for daemonset ready checks do not work due to k8s latencies,
+// for example it has been observed the mayastor-csi pods are deemed ready
+// because they enter terminating state after we've checked for readiness
+// Caller must perform daemonset readiness checks after calling this function.
+func RestartMayastorPods(timeoutSecs int) error {
+	var err error
+	podApi := gTestEnv.KubeInt.CoreV1().Pods
+
+	podNames, err := collectMayastorPodNames()
+	if err != nil {
+		return err
+	}
+
+	for _, podName := range podNames {
+		delErr := podApi(common.NSMayastor()).Delete(context.TODO(), podName, metaV1.DeleteOptions{})
+		if delErr != nil {
+			logf.Log.Info("Failed to delete", "pod", podName, "error", delErr)
+			err = delErr
+		} else {
+			logf.Log.Info("Deleted", "pod", podName)
+		}
+	}
+
+	if err != nil {
+		return err
+	}
+	const sleepTime = 5
+	// Wait (with timeout) for all pods to have restarted
+	// For this to work we rely on the fact that for daemonsets and deployments,
+	// when a pod is deleted, k8s spins up a new pod with a different name.
+	// So the check is comparison between
+	//	1) the list of mayastor pods deleted
+	//	2) a freshly generated list of mayastor pods
+	// - the size of the fresh list >= size of the deleted list
+	// - the names of the pods deleted do not occur in the fresh list
+	for ix := 1; ix < (timeoutSecs+sleepTime-1)/sleepTime; ix++ {
+		newPodNames, err := collectMayastorPodNames()
+		if err == nil {
+			if len(podNames) <= len(newPodNames) {
+				found := false
+				for _, prevPodName := range podNames {
+					for _, newPodName := range newPodNames {
+						found = found || prevPodName == newPodName
+					}
+				}
+				if !found {
+					return nil
+				}
+			}
+			time.Sleep(sleepTime * time.Second)
+		}
+	}
+	return fmt.Errorf("restart failed in some nebulous way! ")
+}
+
+// RestartMayastor this function "restarts" mayastor by
+//	- cleaning up all mayastor resource artefacts,
+//  - deleting all mayastor pods
+func RestartMayastor(restartTOSecs int, readyTOSecs int, poolsTOSecs int) error {
+	CleanUp()
+	if EnsureE2EAgent() {
+		err := RmReplicasInCluster()
+		if err != nil {
+			return fmt.Errorf("RmReplicasInCluster failed %v", err)
+		}
+	} else {
+		logf.Log.Info("WARNING, E2EAgent not active, unable to clear orphan replicas")
+	}
+	err := RestoreConfiguredPools()
+	if err != nil {
+		return fmt.Errorf("RestoreConfiguredPools failed %v", err)
+	}
+	err = RestartMayastorPods(restartTOSecs)
+	if err != nil {
+		return fmt.Errorf("RestartMayastorPods failed %v", err)
+	}
+	ready, err := MayastorReady(5, readyTOSecs)
+	if err != nil {
+		return fmt.Errorf("failure waiting for mayastor to be ready %v", err)
+	}
+	if !ready {
+		return fmt.Errorf("mayastor is not ready after deleting all pods")
+	}
+	err = WaitForPoolsToBeOnline(poolsTOSecs)
+	if err != nil {
+		return fmt.Errorf("not all pools are online after restart %v", err)
+	}
+
+	return nil
+}

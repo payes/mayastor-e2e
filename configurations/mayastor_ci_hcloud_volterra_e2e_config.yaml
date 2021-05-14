@@ -6,7 +6,6 @@ cannotRestorePools: true
 hostNetworkingRequired: true
 mayastorNamespace: ves-system
 filteredMayastorPodCheck: 1
-disableE2EAgent: true
 pvcStress:
   replicas: 1
   cdCycles: 100

@@ -340,18 +340,9 @@ for testname in $tests; do
           if [ "$on_fail" == "continue" ] && [ "$testname" != "install" ] ; then
               # continue is only possible if install was successful
               echo "Attempting to continue....., cleanup"
-              if ! runGoTest "cleanup" ; then
-                  echo "\"cleanup\" failed"
+              if ! runGoTest "tools/restart" ; then
+                  echo "\"restart\" failed"
                   exit $EXITV_FAILED
-              fi
-              echo "Mayastor pods were restarted.. re-installing"
-              if ! runGoTest "uninstall"; then
-                  echo "uninstall failed, abandoning attempt to continue"
-                  echo $EXITV_FAILED
-              fi
-              if ! runGoTest "install"; then
-                  echo "(re)install failed, abandoning attempt to continue"
-                  echo $EXITV_FAILED
               fi
           else
               break
