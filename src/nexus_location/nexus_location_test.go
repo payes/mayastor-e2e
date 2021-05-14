@@ -283,7 +283,7 @@ var _ = Describe("Nexus location tests", func() {
 	AfterEach(func() {
 		//Restore node labels, wait for all pools to transition to online.
 		_ = k8stest.EnsureNodeLabels()
-		err := k8stest.WaitForPoolsToBeOnline(120)
+		err := k8stest.RestoreConfiguredPools()
 		Expect(err).ToNot(HaveOccurred(), "Not all pools are online")
 		// Check resource leakage.
 		err = k8stest.AfterEachCheck()

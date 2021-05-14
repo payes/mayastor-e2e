@@ -2,6 +2,7 @@
 # e2e tests. The main difference from the CI hcloud configuration
 # is the use of 2 replicas instead of 1, where specified.
 configName: e2e_nightly_full
+e2e_defer_asserts: true
 pvcStress:
   replicas: 2
   cdCycles: 100

@@ -18,7 +18,7 @@ ARTIFACTSDIR=$(realpath "$SCRIPTDIR/../artifacts")
 DEFAULT_TESTS="install basic_volume_io csi resource_check replica rebuild ms_pod_disruption uninstall"
 CONTINUOUS_TESTS="install basic_volume_io csi resource_check rebuild io_soak volume_filesystem ms_pod_disruption uninstall"
 NIGHTLY_TESTS="install basic_volume_io csi resource_check io_soak multiple_vols_pod_io uninstall"
-NIGHTLY_FULL_TESTS="install basic_volume_io csi resource_check pvc_stress_fio replica rebuild io_soak multiple_vols_pod_io volume_filesystem ms_pod_disruption uninstall"
+NIGHTLY_FULL_TESTS="install basic_volume_io csi resource_check pvc_stress_fio replica rebuild io_soak multiple_vols_pod_io nexus_location volume_filesystem ms_pod_disruption uninstall"
 ONDEMAND_TESTS="install basic_volume_io csi resource_check uninstall"
 SELF_CI_TESTS="install basic_volume_io csi resource_check pvc_stress_fio io_soak multiple_vols_pod_io ms_pod_restart uninstall"
 SOAK_TESTS="install io_soak uninstall"
@@ -340,18 +340,9 @@ for testname in $tests; do
           if [ "$on_fail" == "continue" ] && [ "$testname" != "install" ] ; then
               # continue is only possible if install was successful
               echo "Attempting to continue....., cleanup"
-              if ! runGoTest "cleanup" ; then
-                  echo "\"cleanup\" failed"
+              if ! runGoTest "tools/restart" ; then
+                  echo "\"restart\" failed"
                   exit $EXITV_FAILED
-              fi
-              echo "Mayastor pods were restarted.. re-installing"
-              if ! runGoTest "uninstall"; then
-                  echo "uninstall failed, abandoning attempt to continue"
-                  echo $EXITV_FAILED
-              fi
-              if ! runGoTest "install"; then
-                  echo "(re)install failed, abandoning attempt to continue"
-                  echo $EXITV_FAILED
               fi
           else
               break
