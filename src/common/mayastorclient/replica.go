@@ -43,7 +43,7 @@ func listReplica(address string) ([]MayastorReplica, error) {
 		return replicaInfos, err
 	}
 	c := mayastorGrpc.NewMayastorClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	response, err := c.ListReplicas(ctx, &null)

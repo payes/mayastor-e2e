@@ -43,7 +43,7 @@ func listNexuses(address string) ([]MayastorNexus, error) {
 		return nexusInfos, err
 	}
 	c := mayastorGrpc.NewMayastorClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	response, err := c.ListNexus(ctx, &null)
@@ -103,7 +103,7 @@ func FaultNexusChild(address string, Uuid string, Uri string) error {
 		return err
 	}
 	c := mayastorGrpc.NewMayastorClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	faultRequest := mayastorGrpc.FaultNexusChildRequest{
