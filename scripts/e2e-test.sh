@@ -16,9 +16,10 @@ ARTIFACTSDIR=$(realpath "$SCRIPTDIR/../artifacts")
 #   2. ms_pod_disruption SHOULD be the last test before uninstall
 #
 DEFAULT_TESTS="install basic_volume_io csi resource_check replica rebuild ms_pod_disruption uninstall"
-ONDEMAND_TESTS="install basic_volume_io csi resource_check uninstall"
-NIGHTLY_TESTS="install basic_volume_io csi resource_check io_soak multiple_vols_pod_io uninstall"
 CONTINUOUS_TESTS="install basic_volume_io csi resource_check rebuild io_soak volume_filesystem ms_pod_disruption uninstall"
+NIGHTLY_TESTS="install basic_volume_io csi resource_check io_soak multiple_vols_pod_io uninstall"
+NIGHTLY_FULL_TESTS="install basic_volume_io csi resource_check pvc_stress_fio replica rebuild io_soak multiple_vols_pod_io volume_filesystem ms_pod_disruption uninstall"
+ONDEMAND_TESTS="install basic_volume_io csi resource_check uninstall"
 SELF_CI_TESTS="install basic_volume_io csi resource_check pvc_stress_fio io_soak multiple_vols_pod_io ms_pod_restart uninstall"
 SOAK_TESTS="install io_soak uninstall"
 
@@ -61,7 +62,7 @@ Options:
                             Note: the last 2 tests should be (if they are to be run)
                                 - ms_pod_disruption
                                 - uninstall
-  --profile <continuous|nightly|ondemand|self_ci|soak>
+  --profile <continuous|nightly|nightly_full|ondemand|self_ci|soak>
                             Run the tests corresponding to the profile (default: run all tests)
   --resportsdir <path>       Path to use for junit xml test reports (default: repo root)
   --logs                    Generate logs and cluster state dump at the end of successful test run,
@@ -222,6 +223,11 @@ case "$profile" in
     ;;
   nightly)
     tests="$NIGHTLY_TESTS"
+    ;;
+  nightlyfull|nightly_full)
+    tests="$NIGHTLY_FULL_TESTS"
+    echo "Overriding config file to nightly_full_config.yaml"
+    export e2e_config_file="nightly_full_config.yaml"
     ;;
   ondemand)
     tests="$ONDEMAND_TESTS"

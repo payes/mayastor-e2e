@@ -1,0 +1,55 @@
+# This configuration is for testing Mayastor nightly with ideally all
+# e2e tests. The main difference from the CI hcloud configuration
+# is the use of 2 replicas instead of 1, where specified.
+configName: e2e_nightly_full
+pvcStress:
+  replicas: 2
+  cdCycles: 100
+  crudCycles: 10
+ioSoakTest:
+  replicas: 2
+  duration: 60m
+  # loadFactor is number of volumes for each mayastor instance
+  # volumes for disruptor pods are allocated from within this "pool"
+  loadFactor: 10
+  protocols:
+  - nvmf
+  # fioStartDelay units are seconds
+  fioStartDelay: 90
+  disrupt:
+    # Number of disruptor pods
+    podCount: 3
+    # faultAfter units are seconds
+    faultAfter: 51
+  # thinkTime units are microseconds
+  fioDutyCycles:
+  - thinkTime: 500000
+    thinkTimeBlocks: 1000
+  - thinkTime: 750000
+    thinkTimeBlocks: 1000
+  - thinkTime: 1250000
+    thinkTimeBlocks: 2000
+  - thinkTime: 1500000
+    thinkTimeBlocks: 3000
+  - thinkTime: 1750000
+    thinkTimeBlocks: 3000
+  - thinkTime: 2000000
+    thinkTimeBlocks: 4000
+csi:
+  replicas: 2
+  smallClaimSize: 50Mi
+  largeClaimSize: 500Mi
+uninstall:
+  cleanup: 0
+basicVolumeIO:
+  replicas: 2
+  # timeout units are seconds
+  fioTimeout: 90
+  # volSizeMb units are MiB
+  volSizeMb: 500
+  # fsVolSizeMb units are MiB
+  fsVolSizeMb: 450
+multiVolumesPodIO:
+  volumeCount: 6
+  replicas: 2
+
