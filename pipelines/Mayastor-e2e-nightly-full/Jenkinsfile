@@ -123,9 +123,9 @@ pipeline {
               withCredentials([
                 usernamePassword(credentialsId: 'GRAFANA_API', usernameVariable: 'grafana_api_user', passwordVariable: 'grafana_api_pw')
               ]) {
-                lokiInstall(tag, loki_run_id)
+                lokiInstall(e2e_image_tag, loki_run_id)
                 sh "nix-shell --run '${cmd}'"
-                lokiUninstall(tag, loki_run_id) // so that, if we keep the cluster, the next Loki instance can use different parameters
+                lokiUninstall(e2e_image_tag, loki_run_id) // so that, if we keep the cluster, the next Loki instance can use different parameters
               }
             }
           }
