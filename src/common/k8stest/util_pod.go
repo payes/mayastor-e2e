@@ -4,12 +4,15 @@ import (
 	// container "github.com/openebs/maya/pkg/kubernetes/container/v1alpha1"
 	// volume "github.com/openebs/maya/pkg/kubernetes/volume/v1alpha1"
 
+	"context"
 	"mayastor-e2e/common"
 	"mayastor-e2e/common/e2e_config"
 
 	errors "github.com/pkg/errors"
 	coreV1 "k8s.io/api/core/v1"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
+	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -248,4 +251,13 @@ func (b *PodBuilder) Build() (*corev1.Pod, error) {
 		return nil, errors.Errorf("%+v", b.errs)
 	}
 	return b.pod.object, nil
+}
+
+// ListPod return lis of pods in the given namespace
+func ListPod(ns string) (*v1.PodList, error) {
+	pods, err := gTestEnv.KubeInt.CoreV1().Pods(ns).List(context.TODO(), metaV1.ListOptions{})
+	if err != nil {
+		return nil, errors.New("failed to list pods")
+	}
+	return pods, nil
 }

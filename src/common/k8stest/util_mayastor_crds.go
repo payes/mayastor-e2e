@@ -387,3 +387,48 @@ func CheckAllPoolsAreOnline() error {
 	}
 	return err
 }
+
+// Replica represents the information stored in the MSV about the replica
+type Replica struct {
+	Node string
+	URI  string
+	Pool string
+}
+
+// GetReplicas returns information about replicas.
+func GetReplicas(uuid string) ([]Replica, error) {
+	logf.Log.Info("CheckForReplicas")
+	replicas, err := getMsvFieldValue(uuid, "status", "replicas")
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get replica with error %v", err)
+	}
+	if replicas == nil {
+		return nil, fmt.Errorf("Failed to find replica")
+	}
+
+	msvReplicas := make([]Replica, 3)
+
+	switch reflect.TypeOf(replicas).Kind() {
+	case reflect.Slice:
+		s := reflect.ValueOf(replicas)
+		for i := 0; i < s.Len(); i++ {
+			replica := s.Index(i).Elem()
+			if replica.Kind() == reflect.Map {
+				for _, key := range replica.MapKeys() {
+					skey := key.Interface().(string)
+					switch skey {
+					case "node":
+						msvReplicas[i].Node = replica.MapIndex(key).Interface().(string)
+					case "uri":
+						msvReplicas[i].URI = replica.MapIndex(key).Interface().(string)
+					case "pool":
+						msvReplicas[i].Pool = replica.MapIndex(key).Interface().(string)
+					}
+
+				}
+			}
+		}
+	}
+
+	return msvReplicas, nil
+}
