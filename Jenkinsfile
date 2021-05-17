@@ -159,42 +159,24 @@ pipeline {
             }
           }
           post {
-            failure {
-              script {
-                withCredentials([string(credentialsId: 'HCLOUD_TOKEN', variable: 'HCLOUD_TOKEN')]) {
-                  e2e_nodes=sh(
-                    script: """
-                      nix-shell -p hcloud --run 'hcloud server list' | grep -e '-${k8s_job.getNumber()} ' | awk '{ print \$2" "\$4 }'
-                    """,
-                    returnStdout: true
-                  ).trim()
-                }
-                // Job name for multi-branch is Mayastor/<branch> however
-                // in URL jenkins requires /job/ in between for url to work
-                urlized_job_name=JOB_NAME.replaceAll("/", "/job/")
-                self_url="${JENKINS_URL}job/${urlized_job_name}/${BUILD_NUMBER}"
-                self_name="${JOB_NAME}#${BUILD_NUMBER}"
-                build_cluster_run_url="${JENKINS_URL}job/${k8s_job.getProjectName()}/${k8s_job.getNumber()}"
-                build_cluster_destroy_url="${JENKINS_URL}job/${e2e_destroy_cluster_job}/buildWithParameters?BUILD=${k8s_job.getProjectName()}%23${k8s_job.getNumber()}"
-                kubeconfig_url="${JENKINS_URL}job/${k8s_job.getProjectName()}/${k8s_job.getNumber()}/artifact/hcloud-kubeadm/modules/k8s/secrets/admin.conf"
-                slackSend(
-                  channel: '#mayastor-e2e',
-                  color: 'danger',
-                  message: "E2E k8s cluster <$build_cluster_run_url|#${k8s_job.getNumber()}> left running due to failure of " +
-                    "<$self_url|$self_name>. Investigate using <$kubeconfig_url|kubeconfig>, or ssh as root to:\n" +
-                    "```$e2e_nodes```\n" +
-                    "And then <$build_cluster_destroy_url|destroy> the cluster.\n" +
-                    "Note: you need to click `proceed` and will get an empty page when using destroy link. " +
-                    "(<https://mayadata.atlassian.net/wiki/spaces/MS/pages/247332965/Test+infrastructure#On-Demand-E2E-K8S-Clusters|doc>)"
-                )
-              }
-            }//failure
-
             always {
               archiveArtifacts 'artifacts/**/*.*'
               // handle junit results on success or failure
               junit "${e2e_reports_dir}/*.xml"
               script {
+                // destroy the cluster
+                build(
+                  job: "${e2e_destroy_cluster_job}",
+                  propagate: true,
+                  wait: true,
+                  parameters: [
+                    [
+                      $class: 'RunParameterValue',
+                      name: "BUILD",
+                      runId:"${k8s_job.getProjectName()}#${k8s_job.getNumber()}"
+                    ]
+                  ]
+                )
                 try {
                   if (xray_send_report == true) {
                     def xray_testplan = getTestPlan()
@@ -225,36 +207,17 @@ pipeline {
                 } catch (err) {
                   echo 'XRay failed'
                   echo err.getMessage()
-                  // TODO send Slack message to inform of XRay failure
-                  //  slackSend(
-                  //    channel: '#mayastor-e2e',
-                  //    color: 'danger',
-                  //    message: "E2E failed to send XRay reports - <$self_url|$self_name>."
-                  //  )
+                  // send Slack message to inform of XRay failure
+                  slackSend(
+                    channel: '#mayastor-e2e',
+                    color: 'danger',
+                    message: "E2E failed to send XRay reports - <$self_url|$self_name>."
+                  )
                 }
               }
             }// always
           }//post
         }//stage 'run e2e'
-        stage('destroy e2e cluster') {
-          agent { label 'nixos' }
-          steps {
-            script {
-              build(
-                job: "${e2e_destroy_cluster_job}",
-                propagate: true,
-                wait: true,
-                parameters: [
-                  [
-                    $class: 'RunParameterValue',
-                    name: "BUILD",
-                    runId:"${k8s_job.getProjectName()}#${k8s_job.getNumber()}"
-                  ]
-                ]
-              )
-            }
-          }
-        }// stage 'destroy cluster'
       }//stages
     }//stage 'test'
   }//stages
