@@ -177,32 +177,42 @@ pipeline {
                     ]
                   ]
                 )
-                // send junit reports to XRay
-                if (xray_send_report == true) {
-                  def xray_testplan = getTestPlan()
-                  def tag = getTag()
-                  step([
-                    $class: 'XrayImportBuilder',
-                    endpointName: '/junit/multipart',
-                    importFilePath: "${e2e_reports_dir}/*.xml",
-                    importToSameExecution: 'true',
-                    projectKey: "${xray_projectkey}",
-                    testPlanKey: "${xray_testplan}",
-                    serverInstance: "${env.JIRASERVERUUID}",
-                    inputInfoSwitcher: 'fileContent',
-                    importInfo: """{
-                      "fields": {
-                        "summary": "Build #${env.BUILD_NUMBER}, branch: ${env.BRANCH_name}, tag: ${tag}",
-                        "project": {
-                          "key": "${xray_projectkey}"
-                        },
-                        "issuetype": {
-                          "id": "${xray_test_execution_type}"
-                        },
-                        "description": "Results for build #${env.BUILD_NUMBER} at ${env.BUILD_URL}"
-                      }
-                    }"""
-                  ])
+                try {
+                  if (xray_send_report == true) {
+                    def xray_testplan = getTestPlan()
+                    def tag = getTag()
+                    step([
+                      $class: 'XrayImportBuilder',
+                      endpointName: '/junit/multipart',
+                      importFilePath: "${e2e_reports_dir}/*.xml",
+                      importToSameExecution: 'true',
+                      projectKey: "${xray_projectkey}",
+                      testPlanKey: "${xray_testplan}",
+                      serverInstance: "${env.JIRASERVERUUID}",
+                      inputInfoSwitcher: 'fileContent',
+                      importInfo: """{
+                        "fields": {
+                          "summary": "Build #${env.BUILD_NUMBER}, branch: ${env.BRANCH_name}, tag: ${tag}",
+                          "project": {
+                            "key": "${xray_projectkey}"
+                          },
+                          "issuetype": {
+                            "id": "${xray_test_execution_type}"
+                          },
+                          "description": "Results for build #${env.BUILD_NUMBER} at ${env.BUILD_URL}"
+                        }
+                      }"""
+                    ])
+                  }
+                } catch (err) {
+                  echo 'XRay failed'
+                  echo err.getMessage()
+                  // send Slack message to inform of XRay failure
+                  slackSend(
+                    channel: '#mayastor-e2e',
+                    color: 'danger',
+                    message: "E2E failed to send XRay reports - <$self_url|$self_name>."
+                  )
                 }
               }
             }// always
