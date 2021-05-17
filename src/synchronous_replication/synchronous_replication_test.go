@@ -200,6 +200,13 @@ func (job srJob) waitVolumeHealthy() {
 	Expect(volCR.Status.State == "healthy").To(BeTrue(), fmt.Sprintf("volume is not healthy %v", volCR.Status))
 }
 
+func (job srJob) assertExpectedReplicas(replicaCount int, failMsg string) {
+	// FIXME: this works on the assumption that the only mayastor volume provisioned is for this test
+	replicas, err := k8stest.ListReplicasInCluster()
+	Expect(err).ToNot(HaveOccurred(), fmt.Sprintf("failed to access the list of replicas %v", err))
+	Expect(len(replicas)).To(BeIdenticalTo(replicaCount), fmt.Sprintf("%s %v", failMsg, replicas))
+}
+
 func TestSynchronousReplication(t *testing.T) {
 	// Initialise test and set class and file names for reports
 	k8stest.InitTesting(t, "Synchronous Replication tests", "synchronous_replication")
@@ -218,6 +225,8 @@ var _ = Describe("Synchronous Replication", func() {
 		Expect(err).ToNot(HaveOccurred())
 	})
 
+	const delay = 30 * time.Second
+
 	It("should increase the replicaCount count on a volume by 1 from 1 to 2, and application IO remains unaffected", func() {
 		job := srJob{
 			spec: srJobSpec{
@@ -226,16 +235,17 @@ var _ = Describe("Synchronous Replication", func() {
 			},
 		}
 		job = job.start("up")
+		job.assertExpectedReplicas(job.spec.replicaCount, "unexpected number of replicas")
 
-		const delaySecs = 30
-		logf.Log.Info("Sleeping ", "seconds", delaySecs)
-		time.Sleep(delaySecs * time.Second)
+		logf.Log.Info("Sleeping ", "time", delay)
+		time.Sleep(delay)
 
 		updReplCount := job.spec.replicaCount + 1
 		logf.Log.Info("Increasing replicaCount count to", "repl", updReplCount)
 		job.updateVolumeCount(updReplCount)
 
 		job.waitPodComplete()
+		job.assertExpectedReplicas(updReplCount, "expected 2 replicas after increase")
 		job.waitVolumeHealthy()
 
 		job.stop()
@@ -249,27 +259,17 @@ var _ = Describe("Synchronous Replication", func() {
 			},
 		}
 		job = job.start("dn")
+		job.assertExpectedReplicas(job.spec.replicaCount, "unexpected number of replicas")
 
-		// FIXME: this works on the assumption that the only mayastor volume provisioned is for this test
-		replicas, err := k8stest.ListReplicasInCluster()
-		Expect(err).ToNot(HaveOccurred(), fmt.Sprintf("failed to access the list of replicas %v", err))
-		Expect(len(replicas)).To(BeIdenticalTo(2), "unexpected number of replicas")
-
-		const delaySecs = 30
-		logf.Log.Info("Sleeping ", "seconds", delaySecs)
-		time.Sleep(delaySecs * time.Second)
+		logf.Log.Info("Sleeping ", "time", delay)
+		time.Sleep(delay)
 
 		updReplCount := job.spec.replicaCount - 1
 		logf.Log.Info("Decreasing replicaCount count to", "repl", updReplCount)
 		job.updateVolumeCount(updReplCount)
 
 		job.waitPodComplete()
-
-		// FIXME: this works on the assumption that the only mayastor volume provisioned, is for this test
-		replicas, err = k8stest.ListReplicasInCluster()
-		Expect(err).ToNot(HaveOccurred(), fmt.Sprintf("failed to access the list of replicas %v", err))
-		Expect(len(replicas)).To(BeIdenticalTo(1), fmt.Sprintf("expected single replicaCount after reduction %v", replicas))
-
+		job.assertExpectedReplicas(updReplCount, "expected 1 replica after reduction")
 		job.waitVolumeHealthy()
 		job.stop()
 	})
