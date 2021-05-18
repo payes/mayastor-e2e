@@ -379,14 +379,6 @@ func RestartMayastorPods(timeoutSecs int) error {
 //  - deleting all mayastor pods
 func RestartMayastor(restartTOSecs int, readyTOSecs int, poolsTOSecs int) error {
 	CleanUp()
-	if EnsureE2EAgent() {
-		err := RmReplicasInCluster()
-		if err != nil {
-			return fmt.Errorf("RmReplicasInCluster failed %v", err)
-		}
-	} else {
-		logf.Log.Info("WARNING, E2EAgent not active, unable to clear orphan replicas")
-	}
 	err := RestoreConfiguredPools()
 	if err != nil {
 		return fmt.Errorf("RestoreConfiguredPools failed %v", err)
@@ -406,6 +398,13 @@ func RestartMayastor(restartTOSecs int, readyTOSecs int, poolsTOSecs int) error 
 	if err != nil {
 		return fmt.Errorf("not all pools are online after restart %v", err)
 	}
-
+	if EnsureE2EAgent() {
+		err := RmReplicasInCluster()
+		if err != nil {
+			return fmt.Errorf("RmReplicasInCluster failed %v", err)
+		}
+	} else {
+		logf.Log.Info("WARNING, E2EAgent not active, unable to clear orphan replicas")
+	}
 	return nil
 }
