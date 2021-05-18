@@ -114,6 +114,7 @@ pipeline {
     booleanParam(defaultValue: true, name: 'delete_cluster_on_failure', description: 'if false, failed tests will leave the cluster running')
     booleanParam(defaultValue: true, name: 'use_ci_registry', description: 'true to use the CI registry, false to pull images from DockerHub')
     string(defaultValue: e2e_image_tag, name: 'image_tag', trim: true, description: 'can also be the short (12-char) commit sha')
+    string(defaultValue: '', name: 'config_path', trim: true, description: 'specify for non-default config file')
   }
   stages {
     stage('test') {
@@ -162,6 +163,9 @@ pipeline {
                 cmd = cmd + " --registry \"" + env.REGISTRY + "\""
               } else {
                 cmd = cmd + " --registry dockerhub"
+              }
+              if (params.config_path != '') {
+                cmd = cmd + "--config \"${params.config_path}\""
               }
 
               withCredentials([
