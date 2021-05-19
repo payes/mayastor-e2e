@@ -47,6 +47,7 @@ pool_modify
 pvc_readwriteonce
 volume_filesystem
 dynamic_provisioning
+ms_pool_delete
 synchronous_replication
 pvc_waitforfirstconsumer
 ms_pod_disruption
@@ -62,6 +63,7 @@ io_soak
 multiple_vols_pod_io
 ms_pod_restart
 pvc_waitforfirstconsumer
+ms_pool_delete
 uninstall
 "
 # removed: pvc_stress_fio temporarily mayastor bugs
