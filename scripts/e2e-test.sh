@@ -57,6 +57,7 @@ install
 basic_volume_io
 csi
 resource_check
+pvc_stress_fio
 io_soak
 multiple_vols_pod_io
 ms_pod_restart
