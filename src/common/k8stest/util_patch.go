@@ -12,7 +12,7 @@ import (
 //		- "mayadata/xxxx:tag"
 //	2) test registry is specified, image is pulled from there
 //		- "ci-registry.mayastor-ci.mayadata.io/mayadata/xxxx:tag"
-// adjust the registry by adding the "/" separator to end for test registry
+// adjust the registry by adding the "/" separator to end of test registry
 func getRegStr(registry string) string {
 	if registry != "" {
 		return registry + "/"
@@ -20,7 +20,7 @@ func getRegStr(registry string) string {
 	return ""
 }
 
-// MayastorDsPatch is used to path mayastor daemonset
+// MayastorDsPatch is used to patch mayastor daemonset
 // registry from where mayastor images are retrieved
 // imageTag will be the type of image ci or develop, etc
 // namespace is the workspace where mayastor pods are deployed
