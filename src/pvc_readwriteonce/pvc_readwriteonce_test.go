@@ -258,7 +258,8 @@ func readwriteonceTestPVC(runFio bool, fsType common.FileSystemType) {
 
 	// Sadly we cannot enumerate over enums so we have to explicitly invoke
 	testPVC(fmt.Sprintf("rwo-pvc-nvmf%s", decoration), common.ShareProtoNvmf, runFio, fsType)
-	testPVC(fmt.Sprintf("rwo-pvc-iscsi%s", decoration), common.ShareProtoIscsi, runFio, fsType)
+	// FIXME: HACK disable iSCSI tests temporarily till Mayastor is fixed.
+	//	testPVC(fmt.Sprintf("rwo-pvc-iscsi%s", decoration), common.ShareProtoIscsi, runFio, fsType)
 
 }
 

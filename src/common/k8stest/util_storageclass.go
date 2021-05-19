@@ -3,6 +3,7 @@ package k8stest
 import (
 	"context"
 	"mayastor-e2e/common"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"strconv"
 
 	"github.com/pkg/errors"
@@ -143,6 +144,7 @@ func (b *ScBuilder) WithVolumeBindingMode(bindingMode storagev1.VolumeBindingMod
 // CreateSc creates storageclass with provided storageclass object
 func CreateSc(obj *storagev1.StorageClass) error {
 	ScApi := gTestEnv.KubeInt.StorageV1().StorageClasses
+	logf.Log.Info("Creating", "StorageClass", obj)
 	_, createErr := ScApi().Create(context.TODO(), obj, metaV1.CreateOptions{})
 	return createErr
 }
