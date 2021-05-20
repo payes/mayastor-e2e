@@ -22,16 +22,16 @@ func patchMayastor() {
 	imageTag := e2eCfg.ImageTag
 	registry := e2eCfg.Registry
 
-	err := k8stest.MayastorDsPatch(registry, imageTag, e2e_config.GetConfig().MayastorNamespace)
+	err := k8stest.MayastorDsPatch(registry, imageTag, e2e_config.GetConfig().Platform.MayastorNamespace)
 	Expect(err).ToNot(HaveOccurred(), "Patching mayastor daemonset failed")
 
-	err = k8stest.MayastorCsiPatch(registry, imageTag, e2e_config.GetConfig().MayastorNamespace)
+	err = k8stest.MayastorCsiPatch(registry, imageTag, e2e_config.GetConfig().Platform.MayastorNamespace)
 	Expect(err).ToNot(HaveOccurred(), "Patching mayastor CSI daemonset failed")
 
-	err = k8stest.MayastorMoacPatch(registry, imageTag, e2e_config.GetConfig().MayastorNamespace)
+	err = k8stest.MayastorMoacPatch(registry, imageTag, e2e_config.GetConfig().Platform.MayastorNamespace)
 	Expect(err).ToNot(HaveOccurred(), "Patching MOAC  failed")
 
-	err = k8stest.RestartMayastor(120, 120, 120)
+	err = k8stest.RestartMayastor(240, 120, 120)
 	Expect(err).ToNot(HaveOccurred(), "Restarting mayastor failed")
 
 	ready, err := k8stest.MayastorReady(2, 540)

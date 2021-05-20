@@ -162,7 +162,7 @@ func CreateFioPodDef(podName string, volName string, volType common.VolumeType, 
 			},
 		},
 	}
-	if e2e_config.GetConfig().HostNetworkingRequired {
+	if e2e_config.GetConfig().Platform.HostNetworkingRequired {
 		podDef.Spec.HostNetwork = true
 	}
 	if volType == common.VolRawBlock {
@@ -208,7 +208,7 @@ func CheckForTestPods() (bool, error) {
 // For now this is a very simple filter function, to  handle the case where, mayastor pods share the namespace with other
 // pods whose health status has no bearing mayastor functionality.
 func isPodHealthCheckCandidate(podName string, namespace string) bool {
-	if namespace == common.NSMayastor() && e2e_config.GetConfig().FilteredMayastorPodCheck != 0 {
+	if namespace == common.NSMayastor() && e2e_config.GetConfig().Platform.FilteredMayastorPodCheck != 0 {
 		if strings.HasPrefix(podName, "moac") || strings.HasPrefix(podName, "mayastor") {
 			return true
 		}
@@ -345,7 +345,7 @@ func RestartMayastorPods(timeoutSecs int) error {
 	if err != nil {
 		return err
 	}
-	const sleepTime = 5
+	const sleepTime = 10
 	// Wait (with timeout) for all pods to have restarted
 	// For this to work we rely on the fact that for daemonsets and deployments,
 	// when a pod is deleted, k8s spins up a new pod with a different name.
@@ -354,50 +354,74 @@ func RestartMayastorPods(timeoutSecs int) error {
 	//	2) a freshly generated list of mayastor pods
 	// - the size of the fresh list >= size of the deleted list
 	// - the names of the pods deleted do not occur in the fresh list
+	logf.Log.Info("Waiting for all pods to restart", "timeoutSecs", timeoutSecs)
 	for ix := 1; ix < (timeoutSecs+sleepTime-1)/sleepTime; ix++ {
+		time.Sleep(sleepTime * time.Second)
 		newPodNames, err := collectMayastorPodNames()
 		if err == nil {
+			logf.Log.Info("Checking restarted pods")
 			if len(podNames) <= len(newPodNames) {
 				found := false
 				for _, prevPodName := range podNames {
 					for _, newPodName := range newPodNames {
 						found = found || prevPodName == newPodName
+						if prevPodName == newPodName {
+							logf.Log.Info("not restarted", "pod", prevPodName)
+						}
 					}
 				}
 				if !found {
 					return nil
 				}
 			}
-			time.Sleep(sleepTime * time.Second)
 		}
 	}
-	return fmt.Errorf("restart failed in some nebulous way! ")
+	return fmt.Errorf("restart failed incomplete error=%v", err)
 }
 
-// RestartMayastor this function "restarts" mayastor by
-//	- cleaning up all mayastor resource artefacts,
-//  - deleting all mayastor pods
-func RestartMayastor(restartTOSecs int, readyTOSecs int, poolsTOSecs int) error {
-	CleanUp()
-	err := RestoreConfiguredPools()
-	if err != nil {
-		return fmt.Errorf("RestoreConfiguredPools failed %v", err)
+func restartMayastor(restartTOSecs int, readyTOSecs int, poolsTOSecs int) error {
+	var err error
+	ready := false
+
+	if EnsureE2EAgent() {
+		_ = RmReplicasInCluster()
 	}
+	CleanUp()
+
 	err = RestartMayastorPods(restartTOSecs)
 	if err != nil {
 		return fmt.Errorf("RestartMayastorPods failed %v", err)
 	}
-	ready, err := MayastorReady(5, readyTOSecs)
+
+	ready, err = MayastorReady(5, readyTOSecs)
 	if err != nil {
 		return fmt.Errorf("failure waiting for mayastor to be ready %v", err)
 	}
 	if !ready {
 		return fmt.Errorf("mayastor is not ready after deleting all pods")
 	}
-	err = WaitForPoolsToBeOnline(poolsTOSecs)
-	if err != nil {
-		return fmt.Errorf("not all pools are online after restart %v", err)
+
+	// Pause to allow things to settle.
+	time.Sleep(30 * time.Second)
+
+	_, _ = DeleteAllPoolFinalizers()
+	_ = DeleteAllPools()
+
+	CreateConfiguredPools()
+	const sleepTime = 10
+	for ix := 0; ix < (poolsTOSecs+sleepTime-1)/sleepTime; ix++ {
+		time.Sleep(sleepTime * time.Second)
+		err = CheckAllPoolsAreOnline()
+		if err == nil {
+			break
+		}
 	}
+
+	err = CheckAllPoolsAreOnline()
+	if err != nil {
+		return fmt.Errorf("Not all pools are online %v", err)
+	}
+
 	if EnsureE2EAgent() {
 		err := RmReplicasInCluster()
 		if err != nil {
@@ -406,5 +430,34 @@ func RestartMayastor(restartTOSecs int, readyTOSecs int, poolsTOSecs int) error 
 	} else {
 		logf.Log.Info("WARNING, E2EAgent not active, unable to clear orphan replicas")
 	}
-	return nil
+	return err
+}
+
+// RestartMayastor this function "restarts" mayastor by
+//	- cleaning up all mayastor resource artefacts,
+//  - deleting all mayastor pods
+func RestartMayastor(restartTOSecs int, readyTOSecs int, poolsTOSecs int) error {
+	var err error
+	// try to restart upto 3 times
+	// chiefly this is a fudge to get restart to work on the volterra platform
+	for retryCount := 3; retryCount > 0; retryCount-- {
+		err = restartMayastor(restartTOSecs, restartTOSecs, poolsTOSecs)
+		if err != nil {
+			time.Sleep(10 * time.Second)
+			logf.Log.Info("Restart failed", "retries", retryCount, "error", err)
+			continue
+		}
+		err = CheckTestPodsHealth(common.NSMayastor())
+		if err != nil {
+			time.Sleep(10 * time.Second)
+			logf.Log.Info("Restarting failed, pods are not healthy", "retries", retryCount, "error", err)
+		}
+		err = ResourceCheck()
+		if err != nil {
+			time.Sleep(10 * time.Second)
+			logf.Log.Info("Restarting failed, resource check failed", "retries", retryCount, "error", err)
+		}
+	}
+
+	return err
 }

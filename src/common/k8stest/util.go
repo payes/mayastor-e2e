@@ -419,7 +419,9 @@ func CreateConfiguredPools() {
 // As part of the tests we may modify the pools, in such test cases
 // the test should delete all pools and recreate the configured set of pools.
 func RestoreConfiguredPools() error {
-
+	var err error
+	_, err = DeleteAllPoolFinalizers()
+	Expect(err).ToNot(HaveOccurred())
 	deletedAllPools := DeleteAllPools()
 	Expect(deletedAllPools).To(BeTrue())
 	CreateConfiguredPools()

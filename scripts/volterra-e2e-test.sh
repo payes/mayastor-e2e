@@ -11,30 +11,27 @@ ARTIFACTSDIR=$(realpath "$SCRIPTDIR/../artifacts")
 # List and Sequence of tests.
 source "$SCRIPTDIR/test_lists.sh"
 DEFAULT_TESTS="
-install $DEFAULT_TEST_LIST uninstall"
+patch_install $DEFAULT_TEST_LIST"
 CONTINUOUS_TESTS="
-install $CONTINUOUS_TEST_LIST uninstall"
+patch_install $CONTINUOUS_TEST_LIST"
 NIGHTLY_TESTS="
-install $NIGHTLY_TEST_LIST uninstall"
+patch_install $NIGHTLY_TEST_LIST"
 NIGHTLY_FULL_TESTS="
-install $NIGHTLY_FULL_TEST_LIST uninstall"
+patch_install $NIGHTLY_FULL_TEST_LIST"
 ONDEMAND_TESTS="
-install $ONDEMAND_TEST_LIST uninstall"
+patch_install $ONDEMAND_TEST_LIST"
 SELF_CI_TESTS="
-install $SELF_CI_TEST_LIST uninstall"
+patch_install $SELF_CI_TEST_LIST"
 SOAK_TESTS="
-install $SOAK_TEST_LIST uninstall"
-
-# removed: pvc_stress_fio temporarily mayastor bugs
+patch_install $SOAK_TEST_LIST"
 
 #exit values
 EXITV_OK=0
 EXITV_INVALID_OPTION=1
 EXITV_MISSING_OPTION=2
 EXITV_FAILED=4
-EXITV_FAILED_CLUSTER_OK=255
 
-platform_config_file="hetzner.yaml"
+platform_config_file="hetzner-volterra.yaml"
 config_file="mayastor_ci_hcloud_e2e_config.yaml"
 
 # Global state variables
@@ -66,22 +63,18 @@ Options:
                             'dockerhub' means use DockerHub
   --tag <name>              Docker image tag of mayastor images (default "nightly")
   --tests <list of tests>   Lists of tests to run, delimited by spaces (default: "$tests")
-                            Note: the last 2 tests should be (if they are to be run)
+                            Note: the last test should be (if they are to be run)
                                 - ms_pod_disruption
-                                - uninstall
   --profile <continuous|nightly|nightly_full|ondemand|self_ci|soak>
                             Run the tests corresponding to the profile (default: run all tests)
   --resportsdir <path>       Path to use for junit xml test reports (default: repo root)
   --logs                    Generate logs and cluster state dump at the end of successful test run,
-                            prior to uninstall.
   --logsdir <path>          Location to generate logs (default: emit to stdout).
-  --onfail <stop|uninstall|continue>
-                            On fail, stop immediately,uninstall or continue default($on_fail)
-                            Behaviour for "uninstall" only differs if uninstall is in the list of tests (the default).
+  --onfail <stop|continue>
+                            On fail, stop immediately,or continue default($on_fail)
                             If set to "continue" on failure, all resources are cleaned up and mayastor is re-installed.
   --uninstall_cleanup <y|n> On uninstall cleanup for reusable cluster. default($uninstall_cleanup)
   --config                  config name or configuration file default($config_file)
-  --platform_config         test platform configuration file default($platform_config_file)
   --mayastor                path to the mayastor source tree to use for testing.
                             This is required so that the install test uses the yaml files as defined for that
                             revision of mayastor under test.
@@ -166,25 +159,9 @@ while [ "$#" -gt 0 ]; do
                 exit $EXITV_INVALID_OPTION
         esac
       ;;
-    --uninstall_cleanup)
-        shift
-        case $1 in
-            y|n)
-                uninstall_cleanup=$1
-                ;;
-            *)
-                echo "invalid option for --uninstall_cleanup"
-                help
-                exit $EXITV_INVALID_OPTION
-        esac
-      ;;
     --config)
         shift
         config_file="$1"
-        ;;
-    --platform_config)
-        shift
-        platform_config_file="$1"
         ;;
     *)
       echo "Unknown option: $1"
@@ -269,12 +246,6 @@ esac
 
 export e2e_reports_dir="$resportsdir"
 
-if [ "$uninstall_cleanup" == 'n' ] ; then
-    export e2e_uninstall_cleanup=0
-else
-    export e2e_uninstall_cleanup=1
-fi
-
 mkdir -p "$ARTIFACTSDIR"
 mkdir -p "$resportsdir"
 mkdir -p "$logsdir"
@@ -321,6 +292,7 @@ contains() {
     [[ $1 =~ (^|[[:space:]])$2($|[[:space:]]) ]] && return 0  || return 1
 }
 
+
 export e2e_config_file="$config_file"
 export e2e_platform_config_file="$platform_config_file"
 
@@ -335,27 +307,25 @@ echo "    e2e_pool_device=$e2e_pool_device"
 echo "    e2e_image_tag=$e2e_image_tag"
 echo "    e2e_docker_registry=$e2e_docker_registry"
 echo "    e2e_reports_dir=$e2e_reports_dir"
-echo "    e2e_uninstall_cleanup=$e2e_uninstall_cleanup"
 echo "    e2e_config_file=$e2e_config_file"
 echo "    e2e_platform_config_file=$e2e_platform_config_file"
 echo ""
 echo "Script control settings:"
 echo "    profile=$profile"
 echo "    on_fail=$on_fail"
-echo "    uninstall_cleanup=$uninstall_cleanup"
 echo "    generate_logs=$generate_logs"
 echo "    logsdir=$logsdir"
 echo ""
 echo "list of tests: $tests"
 for testname in $tests; do
   # defer uninstall till after other tests have been run.
-  if [ "$testname" != "uninstall" ] ;  then
+
       if ! runGoTest "$testname" ; then
           echo "Test \"$testname\" FAILED!"
           test_failed=1
           emitLogs "$testname"
-          if [ "$on_fail" == "continue" ] && [ "$testname" != "install" ] ; then
-              # continue is only possible if install was successful
+          if [ "$on_fail" == "continue" ] && [ "$testname" != "patch_install" ] ; then
+              # continue is only possible if patch_install was successful
               echo "Attempting to continue....., cleanup"
               if ! runGoTest "tools/restart" ; then
                   echo "\"restart\" failed"
@@ -365,7 +335,7 @@ for testname in $tests; do
               break
           fi
       fi
-  fi
+
 done
 
 if [ "$generate_logs" -ne 0 ]; then
@@ -376,21 +346,6 @@ if [ "$test_failed" -ne 0 ] && [ "$on_fail" == "stop" ]; then
     echo "At least one test FAILED!"
     exit $EXITV_FAILED
 fi
-
-# Always run uninstall test if specified
-if contains "$tests" "uninstall" ; then
-    if ! runGoTest "uninstall" ; then
-        echo "Test \"uninstall\" FAILED!"
-        test_failed=1
-        emitLogs "uninstall"
-    elif  [ "$test_failed" -ne 0 ] ; then
-        # tests failed, but uninstall was successful
-        # so cluster is reusable
-        echo "At least one test FAILED! Cluster is usable."
-        exit $EXITV_FAILED_CLUSTER_OK
-    fi
-fi
-
 
 if [ "$test_failed" -ne 0 ] ; then
     echo "At least one test FAILED!"

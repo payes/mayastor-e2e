@@ -24,7 +24,7 @@ func e2eReadyPodCount() int {
 // asserts if creating the namespace fails. This function can be called repeatedly.
 func EnsureE2EAgent() bool {
 	//FIXME: temporary for volterra
-	if e2e_config.GetConfig().DisableE2EAgent {
+	if e2e_config.GetConfig().Platform.DisableE2EAgent {
 		return false
 	}
 	err := EnsureNamespace(common.NSE2EAgent)
