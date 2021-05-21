@@ -8,7 +8,7 @@ import (
 
 func Create() types.Platform {
 	cfg := e2e_config.GetConfig()
-	switch cfg.E2ePlatform {
+	switch cfg.Platform.Name {
 	case "Hetzner":
 		return hcloudClient.New()
 	}

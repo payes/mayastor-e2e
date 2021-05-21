@@ -2,7 +2,7 @@ package common
 
 import "mayastor-e2e/common/e2e_config"
 
-var nsMayastor = e2e_config.GetConfig().MayastorNamespace
+var nsMayastor = e2e_config.GetConfig().Platform.MayastorNamespace
 
 // NSMayastor return the name of the namespace in which Mayastor is installed
 func NSMayastor() string {

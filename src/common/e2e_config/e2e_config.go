@@ -14,12 +14,24 @@ import (
 
 const ConfigDir = "/configurations"
 const DefaultConfigFileRelPath = ConfigDir + "/mayastor_ci_hcloud_e2e_config.yaml"
+const PlatformConfigDir = "/configurations/platforms/"
 
 // E2EConfig is a application configuration structure
 type E2EConfig struct {
 	ConfigName string `yaml:"configName"`
-	// E2ePlatform indicates where the e2e is currently being run from
-	E2ePlatform string `yaml:"platform"`
+	Platform   struct {
+		// E2ePlatform indicates where the e2e is currently being run from
+		Name string `yaml:"name"`
+		// Add HostNetwork: true to the spec of test pods.
+		HostNetworkingRequired bool `yaml:"hostNetworkingRequired" env-default:"false"`
+		// Some deployments use a different namespace
+		MayastorNamespace string `yaml:"mayastorNamespace" env-default:"mayastor"`
+		// Some deployments use a different namespace
+		FilteredMayastorPodCheck int `yaml:"filteredMayastorPodCheck" env-default:"0"`
+		// FIXME: temporary for volterra Do not use e2e-agent
+		DisableE2EAgent bool `yaml:"disableE2EAgent" env-default:"false"`
+	} `yaml:"platform"`
+
 	// Generic configuration files used for CI and automation should not define MayastorRootDir and E2eRootDir
 	MayastorRootDir string `yaml:"mayastorRootDir" env:"e2e_mayastor_root_dir"`
 	E2eRootDir      string `yaml:"e2eRootDir" env:"e2e_root_dir"`
@@ -31,14 +43,7 @@ type E2EConfig struct {
 	CIRegistry string `yaml:"ciRegistry" env:"e2e_ci_docker_registry" env-default:"ci-registry.mayastor-ci.mayadata.io"`
 	ImageTag   string `yaml:"imageTag" env:"e2e_image_tag" env-default:"ci"`
 	PoolDevice string `yaml:"poolDevice" env:"e2e_pool_device"`
-	// Add HostNetwork: true to the spec of test pods.
-	HostNetworkingRequired bool `yaml:"hostNetworkingRequired" env-default:"false"`
-	// Some deployments use a different namespace
-	MayastorNamespace string `yaml:"mayastorNamespace" env-default:"mayastor"`
-	// Some deployments use a different namespace
-	FilteredMayastorPodCheck int `yaml:"filteredMayastorPodCheck" env-default:"0"`
-	// FIXME: temporary for volterra Do not use e2e-agent
-	DisableE2EAgent bool `yaml:"disableE2EAgent" env-default:"false"`
+
 	// Individual Test parameters
 	PVCStress struct {
 		Replicas   int `yaml:"replicas" env-default:"1"`
@@ -115,17 +120,6 @@ type E2EConfig struct {
 var once sync.Once
 var e2eConfig E2EConfig
 
-func configFileExists(path string) bool {
-	if _, err := os.Stat(path); err == nil {
-		return true
-	} else if os.IsNotExist(err) {
-		fmt.Printf("Configuration file %s does not exist\n", path)
-	} else {
-		fmt.Printf("Configuration file %s is not accessible\n", path)
-	}
-	return false
-}
-
 // This function is called early from junit and various bits have not been initialised yet
 // so we cannot use logf or Expect instead we use fmt.Print... and panic.
 func GetConfig() E2EConfig {
@@ -144,23 +138,23 @@ func GetConfig() E2EConfig {
 		// - Otherwise the config file is defaulted to ci_e2e_config
 		// A configuration file *MUST* be specified.
 		value, ok := os.LookupEnv("e2e_config_file")
-		if ok {
-			if configFileExists(value) {
-				configFile = value
-			} else {
-				if !okE2eRootDir {
-					panic("E2E root directory not defined - define via e2e_root_dir environment variable")
-				}
-				configFile = path.Clean(e2eRootDir + ConfigDir + "/" + value)
-			}
-		} else {
-			if !okE2eRootDir {
-				panic("E2E root directory not defined - define via e2e_root_dir environment variable")
-			}
-			configFile = path.Clean(e2eRootDir + DefaultConfigFileRelPath)
+		if !ok {
+			panic("configuration file not specified, use env var e2e_config_file")
 		}
+		configFile = path.Clean(e2eRootDir + ConfigDir + "/" + value)
 		fmt.Printf("Using configuration file %s\n", configFile)
 		err = cleanenv.ReadConfig(configFile, &e2eConfig)
+		if err != nil {
+			panic(fmt.Sprintf("%v", err))
+		}
+
+		value, ok = os.LookupEnv("e2e_platform_config_file")
+		if !ok {
+			panic("Platform configuration file not specified, use env var e2e_platform_config_file")
+		}
+		platformCfg := path.Clean(e2eRootDir + PlatformConfigDir + value)
+		fmt.Printf("Using platform configuration file %s\n", configFile)
+		err = cleanenv.ReadConfig(platformCfg, &e2eConfig)
 		if err != nil {
 			panic(fmt.Sprintf("%v", err))
 		}
@@ -191,7 +185,7 @@ func GetConfig() E2EConfig {
 		}
 
 		cfgBytes, _ := yaml.Marshal(e2eConfig)
-		cfgUsedFile := path.Clean(e2eConfig.E2eRootDir + "/artifacts/e2e_config-" + e2eConfig.ConfigName + "-used.yaml")
+		cfgUsedFile := path.Clean(e2eConfig.E2eRootDir + "/artifacts/used-" + e2eConfig.ConfigName + "-" + e2eConfig.Platform.Name + ".yaml")
 		err = ioutil.WriteFile(cfgUsedFile, cfgBytes, 0644)
 		if err == nil {
 			fmt.Printf("Resolved config written to %s\n", cfgUsedFile)

@@ -244,7 +244,7 @@ func (b *PodBuilder) WithVolumeDeviceOrMount(volType common.VolumeType) *PodBuil
 
 // Build returns the Pod API instance
 func (b *PodBuilder) Build() (*corev1.Pod, error) {
-	if e2e_config.GetConfig().HostNetworkingRequired {
+	if e2e_config.GetConfig().Platform.HostNetworkingRequired {
 		b.pod.object.Spec.HostNetwork = true
 	}
 	if len(b.errs) > 0 {
