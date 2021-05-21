@@ -82,7 +82,10 @@ func teardownMayastor() {
 	go k8stest.KubeCtlDeleteYaml("csi-daemonset.yaml", yamlsDir)
 	go k8stest.KubeCtlDeleteYaml("mayastor-daemonset.yaml", yamlsDir)
 	go k8stest.KubeCtlDeleteYaml("moac-deployment.yaml", yamlsDir)
+	// todo: these should ideally be deleted after MOAC and mayastor have gone
+	// because their removal may cause MOAC and mayastor to block
 	go k8stest.KubeCtlDeleteYaml("nats-deployment.yaml", yamlsDir)
+	go k8stest.KubeCtlDeleteYaml("etcd", yamlsDir)
 
 	{
 		const timeOutSecs = 240
