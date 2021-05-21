@@ -10,7 +10,7 @@ const NSDisrupt = common.NSE2EPrefix + "-iosoak-disrupt"
 
 const NodeSelectorKey = "e2e-io-soak"
 const NodeSelectorAppValue = "e2e-app"
-const PodReadyTime = 5
+const PodReadyTime = 10
 
 var AppNodeSelector = map[string]string{
 	NodeSelectorKey: NodeSelectorAppValue,
