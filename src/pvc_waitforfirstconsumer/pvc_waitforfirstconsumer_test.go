@@ -89,9 +89,10 @@ func testPvcWaitForFirstConsumerTest(
 
 	// fio pod container
 	podContainer := coreV1.Container{
-		Name:  fioPodName,
-		Image: "mayadata/e2e-fio",
-		Args:  []string{"sleep", "1000000"},
+		Name:            fioPodName,
+		Image:           common.GetFioImage(),
+		ImagePullPolicy: coreV1.PullAlways,
+		Args:            []string{"sleep", "1000000"},
 	}
 
 	// volume claim details

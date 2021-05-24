@@ -45,6 +45,7 @@ type E2EConfig struct {
 	// Count of mayastorvolume
 	MayastorVolumeCount int    `yaml:"mayastorVolumeCount" env-default:"3"`
 	PoolDevice          string `yaml:"poolDevice" env:"e2e_pool_device"`
+	E2eFioImage         string `yaml:"e2eFioImage" env-default:"mayadata/e2e-fio" env:"e2e_fio_image"`
 	// Individual Test parameters
 	PVCStress struct {
 		Replicas   int `yaml:"replicas" env-default:"1"`
@@ -95,6 +96,7 @@ type E2EConfig struct {
 		VolumeCount          int    `yaml:"volumeCount" env-default:"2"`
 		MultipleReplicaCount int    `yaml:"replicas" env-default:"2"`
 		Duration             string `yaml:"duration" env-default:"30s"`
+		Timeout              string `yaml:"timeout" env-default:"60s"`
 	} `yaml:"multiVolumesPodIO"`
 
 	// This is an advisory setting for individual tests
