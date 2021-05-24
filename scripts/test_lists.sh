@@ -45,6 +45,7 @@ pvc_readwriteonce
 volume_filesystem
 ms_pod_disruption
 dynamic_provisioning
+check_mayastornode
 pvc_waitforfirstconsumer"
 ONDEMAND_TEST_LIST="
 basic_volume_io
@@ -58,6 +59,7 @@ pvc_stress_fio
 io_soak
 multiple_vols_pod_io
 ms_pod_restart
+check_mayastornode
 pvc_waitforfirstconsumer"
 SOAK_TEST_LIST="
 io_soak"
