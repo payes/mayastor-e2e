@@ -16,11 +16,13 @@ ioSoakTest:
   - nvmf
   # fioStartDelay units are seconds
   fioStartDelay: 90
+  readyTimeout: 180s
   disrupt:
     # Number of disruptor pods
     podCount: 3
     # faultAfter units are seconds
     faultAfter: 51
+    readyTimeout: 60s
   # thinkTime units are microseconds
   fioDutyCycles:
   - thinkTime: 500000

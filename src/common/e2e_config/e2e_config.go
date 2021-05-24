@@ -55,15 +55,17 @@ type E2EConfig struct {
 		Duration string `yaml:"duration" env-default:"10m"`
 		// Number of volumes for each mayastor instance
 		// volumes for disruptor pods are allocated from within this "pool"
-		LoadFactor int      `yaml:"loadFactor" env-default:"20"`
+		LoadFactor int      `yaml:"loadFactor" env-default:"10"`
 		Protocols  []string `yaml:"protocols" env-default:"nvmf"`
 		// FioStartDelay units are seconds
-		FioStartDelay int `yaml:"fioStartDelay" env-default:"60"`
+		FioStartDelay int    `yaml:"fioStartDelay" env-default:"60"`
+		ReadyTimeout  string `yaml:"readyTimeout" env-default:"300s"`
 		Disrupt       struct {
 			// Number of disruptor pods.
 			PodCount int `yaml:"podCount" env-default:"3"`
 			// FaultAfter units are seconds
-			FaultAfter int `yaml:"faultAfter" env-default:"45"`
+			FaultAfter   int    `yaml:"faultAfter" env-default:"45"`
+			ReadyTimeout string `yaml:"readyTimeout" env-default:"60s"`
 		} `yaml:"disrupt"`
 		FioDutyCycles []struct {
 			// ThinkTime units are microseconds
