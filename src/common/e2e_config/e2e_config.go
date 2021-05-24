@@ -42,8 +42,9 @@ type E2EConfig struct {
 	// Registry from where CI testing images are retrieved
 	CIRegistry string `yaml:"ciRegistry" env:"e2e_ci_docker_registry" env-default:"ci-registry.mayastor-ci.mayadata.io"`
 	ImageTag   string `yaml:"imageTag" env:"e2e_image_tag" env-default:"ci"`
-	PoolDevice string `yaml:"poolDevice" env:"e2e_pool_device"`
-
+	// Count of mayastorvolume
+	MayastorVolumeCount int    `yaml:"mayastorVolumeCount" env-default:"3"`
+	PoolDevice          string `yaml:"poolDevice" env:"e2e_pool_device"`
 	// Individual Test parameters
 	PVCStress struct {
 		Replicas   int `yaml:"replicas" env-default:"1"`

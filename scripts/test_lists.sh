@@ -46,6 +46,7 @@ volume_filesystem
 ms_pod_disruption
 dynamic_provisioning
 check_mayastornode
+control_plane_rescheduling
 pvc_waitforfirstconsumer
 pvc_delete"
 ONDEMAND_TEST_LIST="
