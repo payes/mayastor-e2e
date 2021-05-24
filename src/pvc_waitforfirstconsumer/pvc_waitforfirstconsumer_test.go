@@ -19,12 +19,12 @@ import (
 
 var defTimeoutSecs = "90s"
 
-func TestMsPodRestart(t *testing.T) {
+func TestPvcWaitForFirstConsumer(t *testing.T) {
 	// Initialise test and set class and file names for reports
 	k8stest.InitTesting(t, "Check nexus and replica creation on PVC with volumeBindingMode: WaitForFirstConsumer", "pvc_waitforfirstconsumer")
 }
 
-func testPvcWiatForFirstConsumerTest(
+func testPvcWaitForFirstConsumerTest(
 	protocol common.ShareProto,
 	volumeType common.VolumeType,
 	mode storageV1.VolumeBindingMode,
@@ -164,7 +164,7 @@ var _ = Describe("Check nexus and replica creation on PVC with volumeBindingMode
 	})
 
 	It("Check nexus and replica creation on PVC with volumeBindingMode: WaitForFirstConsumer", func() {
-		testPvcWiatForFirstConsumerTest(common.ShareProtoNvmf, common.VolFileSystem, storageV1.VolumeBindingWaitForFirstConsumer, 2)
+		testPvcWaitForFirstConsumerTest(common.ShareProtoNvmf, common.VolFileSystem, storageV1.VolumeBindingWaitForFirstConsumer, 2)
 	})
 
 })

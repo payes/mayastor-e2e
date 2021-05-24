@@ -46,7 +46,8 @@ volume_filesystem
 ms_pod_disruption
 dynamic_provisioning
 check_mayastornode
-pvc_waitforfirstconsumer"
+pvc_waitforfirstconsumer
+pvc_delete"
 ONDEMAND_TEST_LIST="
 basic_volume_io
 csi
