@@ -100,7 +100,7 @@ func DisruptorsDeinit() {
 	}
 }
 
-func MakeDisruptors() {
+func MakeDisruptors(readyTimeout time.Duration) {
 	config := e2e_config.GetConfig().IOSoakTest.Disrupt
 	count := config.PodCount
 	err := k8stest.MkNamespace(NSDisrupt)
@@ -130,11 +130,7 @@ func MakeDisruptors() {
 		Expect(pod).ToNot(BeNil())
 	}
 
-	// Empirically allocate  PodReadyTime seconds for each pod to transition to ready
-	timeoutSecs := PodReadyTime * len(disruptorJobs)
-	if timeoutSecs < 60 {
-		timeoutSecs = 60
-	}
+	timeoutSecs := int(readyTimeout.Seconds())
 	logf.Log.Info("Waiting for disruptor pods to be ready", "timeout seconds", timeoutSecs, "jobs", len(disruptorJobs))
 
 	// Wait for the test pods to be ready,
