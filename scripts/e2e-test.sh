@@ -239,7 +239,7 @@ case "$profile" in
   nightlyfull|nightly_full)
     tests="$NIGHTLY_FULL_TESTS"
     echo "Overriding config file to nightly_full_config.yaml"
-    export e2e_config_file="nightly_full_config.yaml"
+    config_file="nightly_full_config.yaml"
     ;;
   ondemand)
     tests="$ONDEMAND_TESTS"
@@ -253,12 +253,12 @@ case "$profile" in
   selfci|self_ci)
     tests="$SELF_CI_TESTS"
     echo "Overriding config file to selfci_config.yaml"
-    export e2e_config_file="selfci_config.yaml"
+    config_file="selfci_config.yaml"
     ;;
   soak)
     tests="$SOAK_TESTS"
     echo "Overriding config file to soak_config.yaml"
-    export e2e_config_file="soak_config.yaml"
+    config_file="soak_config.yaml"
     ;;
   *)
     echo "Unknown profile: $profile"
