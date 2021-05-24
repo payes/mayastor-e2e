@@ -44,6 +44,7 @@ pool_modify
 pvc_readwriteonce
 volume_filesystem
 ms_pod_disruption
+ms_pool_delete
 dynamic_provisioning
 check_mayastornode
 control_plane_rescheduling
@@ -62,6 +63,10 @@ io_soak
 multiple_vols_pod_io
 ms_pod_restart
 check_mayastornode
+ms_pool_delete
+volume_filesystem
+dynamic_provisioning
+mayastorpool_schema
 pvc_waitforfirstconsumer"
 SOAK_TEST_LIST="
 io_soak"
