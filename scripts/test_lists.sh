@@ -21,7 +21,8 @@ resource_check
 rebuild
 io_soak
 volume_filesystem
-ms_pod_disruption"
+ms_pod_disruption
+ms_pod_disruption_no_io"
 NIGHTLY_TEST_LIST="
 basic_volume_io
 csi
@@ -44,6 +45,7 @@ pool_modify
 pvc_readwriteonce
 volume_filesystem
 ms_pod_disruption
+ms_pod_disruption_no_io
 ms_pool_delete
 dynamic_provisioning
 check_mayastornode
