@@ -96,9 +96,10 @@ func (job srJob) start(upDn string) srJob {
 
 	// fio pod container
 	podContainer := coreV1.Container{
-		Name:  job.status.podName,
-		Image: "mayadata/e2e-fio",
-		Args:  fioArgs,
+		Name:            job.status.podName,
+		Image:           common.GetFioImage(),
+		ImagePullPolicy: coreV1.PullAlways,
+		Args:            fioArgs,
 	}
 
 	// volume claim details

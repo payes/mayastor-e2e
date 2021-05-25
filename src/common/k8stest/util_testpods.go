@@ -145,9 +145,10 @@ func CreateFioPodDef(podName string, volName string, volType common.VolumeType, 
 			RestartPolicy: coreV1.RestartPolicyNever,
 			Containers: []coreV1.Container{
 				{
-					Name:  podName,
-					Image: "mayadata/e2e-fio",
-					Args:  []string{"sleep", "1000000"},
+					Name:            podName,
+					Image:           common.GetFioImage(),
+					ImagePullPolicy: coreV1.PullAlways,
+					Args:            []string{"sleep", "1000000"},
 				},
 			},
 			Volumes: []coreV1.Volume{

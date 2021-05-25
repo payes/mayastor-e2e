@@ -136,9 +136,10 @@ func testPVC(volName string, protocol common.ShareProto, runFio bool, fsType com
 		}
 		// fio pod container
 		firstPodContainer := coreV1.Container{
-			Name:  fioPodFirstNodeName,
-			Image: "mayadata/e2e-fio",
-			Args:  []string{"sleep", "1000000"},
+			Name:            fioPodFirstNodeName,
+			Image:           common.GetFioImage(),
+			ImagePullPolicy: coreV1.PullAlways,
+			Args:            []string{"sleep", "1000000"},
 		}
 
 		// volume claim details

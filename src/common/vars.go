@@ -3,6 +3,7 @@ package common
 import "mayastor-e2e/common/e2e_config"
 
 var nsMayastor = e2e_config.GetConfig().Platform.MayastorNamespace
+var fioImage = e2e_config.GetConfig().E2eFioImage
 
 // NSMayastor return the name of the namespace in which Mayastor is installed
 func NSMayastor() string {
@@ -26,4 +27,8 @@ var fioArgs = []string{
 // GetFioArgs return the default argument set for fio - for use with Mayastor
 func GetFioArgs() []string {
 	return fioArgs
+}
+
+func GetFioImage() string {
+	return fioImage
 }
