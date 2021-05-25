@@ -432,3 +432,35 @@ func GetReplicas(uuid string) ([]Replica, error) {
 
 	return msvReplicas, nil
 }
+
+// Return a group version resource for a MSN
+func GetMsnGVR() schema.GroupVersionResource {
+	return schema.GroupVersionResource{
+		Group:    common.CRDGroupName,
+		Version:  common.CRDPoolGroupVersion,
+		Resource: "mayastornodes",
+	}
+}
+
+// CheckMayastorNodesAreOnine checks all the msns are
+// in online state or not if any of the msn is not in
+// online state then it returns error.
+func CheckMayastorNodesAreOnline() error {
+	msnGVR := GetMsnGVR()
+	msns, err := gTestEnv.DynamicClient.Resource(msnGVR).Namespace(common.NSMayastor()).List(context.TODO(), metaV1.ListOptions{})
+	if err == nil && msns != nil && len(msns.Items) != 0 {
+		for _, msn := range msns.Items {
+			status, found, err := unstructured.NestedString(msn.Object, "status")
+			if err != nil {
+				return fmt.Errorf("failed to get status of mayastornode")
+			}
+			if !found {
+				return fmt.Errorf("status of mayastornode not found")
+			}
+			if status != "online" {
+				return fmt.Errorf("mayastornodes were not online")
+			}
+		}
+	}
+	return err
+}

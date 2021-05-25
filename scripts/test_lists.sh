@@ -21,7 +21,8 @@ resource_check
 rebuild
 io_soak
 volume_filesystem
-ms_pod_disruption"
+ms_pod_disruption
+ms_pod_disruption_no_io"
 NIGHTLY_TEST_LIST="
 basic_volume_io
 csi
@@ -44,8 +45,13 @@ pool_modify
 pvc_readwriteonce
 volume_filesystem
 ms_pod_disruption
+ms_pod_disruption_no_io
+ms_pool_delete
 dynamic_provisioning
-pvc_waitforfirstconsumer"
+check_mayastornode
+control_plane_rescheduling
+pvc_waitforfirstconsumer
+pvc_delete"
 ONDEMAND_TEST_LIST="
 basic_volume_io
 csi
@@ -58,6 +64,11 @@ pvc_stress_fio
 io_soak
 multiple_vols_pod_io
 ms_pod_restart
+check_mayastornode
+ms_pool_delete
+volume_filesystem
+dynamic_provisioning
+mayastorpool_schema
 pvc_waitforfirstconsumer"
 SOAK_TEST_LIST="
 io_soak"

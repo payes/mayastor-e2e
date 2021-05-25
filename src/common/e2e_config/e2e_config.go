@@ -42,8 +42,9 @@ type E2EConfig struct {
 	// Registry from where CI testing images are retrieved
 	CIRegistry string `yaml:"ciRegistry" env:"e2e_ci_docker_registry" env-default:"ci-registry.mayastor-ci.mayadata.io"`
 	ImageTag   string `yaml:"imageTag" env:"e2e_image_tag" env-default:"ci"`
-	PoolDevice string `yaml:"poolDevice" env:"e2e_pool_device"`
-
+	// Count of mayastorvolume
+	MayastorVolumeCount int    `yaml:"mayastorVolumeCount" env-default:"3"`
+	PoolDevice          string `yaml:"poolDevice" env:"e2e_pool_device"`
 	// Individual Test parameters
 	PVCStress struct {
 		Replicas   int `yaml:"replicas" env-default:"1"`
@@ -55,15 +56,17 @@ type E2EConfig struct {
 		Duration string `yaml:"duration" env-default:"10m"`
 		// Number of volumes for each mayastor instance
 		// volumes for disruptor pods are allocated from within this "pool"
-		LoadFactor int      `yaml:"loadFactor" env-default:"20"`
+		LoadFactor int      `yaml:"loadFactor" env-default:"10"`
 		Protocols  []string `yaml:"protocols" env-default:"nvmf"`
 		// FioStartDelay units are seconds
-		FioStartDelay int `yaml:"fioStartDelay" env-default:"60"`
+		FioStartDelay int    `yaml:"fioStartDelay" env-default:"60"`
+		ReadyTimeout  string `yaml:"readyTimeout" env-default:"300s"`
 		Disrupt       struct {
 			// Number of disruptor pods.
 			PodCount int `yaml:"podCount" env-default:"3"`
 			// FaultAfter units are seconds
-			FaultAfter int `yaml:"faultAfter" env-default:"45"`
+			FaultAfter   int    `yaml:"faultAfter" env-default:"45"`
+			ReadyTimeout string `yaml:"readyTimeout" env-default:"60s"`
 		} `yaml:"disrupt"`
 		FioDutyCycles []struct {
 			// ThinkTime units are microseconds

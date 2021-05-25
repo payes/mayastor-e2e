@@ -28,6 +28,8 @@ func mayastorPoolSchemaTest(schema string) {
 	for _, pool := range pools {
 		err := crds.DeletePool(pool.Name)
 		Expect(err).ToNot(HaveOccurred())
+	}
+	for _, pool := range pools {
 		if schema == "default" {
 			k8stest.CreateConfiguredPools()
 			break

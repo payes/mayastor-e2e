@@ -11,9 +11,7 @@ void run_fio_sh(char** argv) {
     /* Tis' C so we do it the "hard way" */
     char *pinsert;
     const char *prefix = "fio ";
-    /* stop fio generatng curses output,  stdio is not a tty */
-    const char *suffix = " | cat";
-    size_t buflen = strlen(prefix) + strlen(suffix) + 1;
+    size_t buflen = strlen(prefix) + 1;
     /* 1. work out the size of the buffer required to copy the arguments.*/
     for(char **argv_scan=argv; *argv_scan != NULL; ++argv_scan) {
         /* +1 for space delimiter */
@@ -32,8 +30,8 @@ void run_fio_sh(char** argv) {
             *pinsert = ' ';
             ++pinsert;
         }
-        strcat(pinsert,suffix);
         printf("exec %s\n",cmd);
+        fflush(stdout);
         execl("/bin/sh", "sh", "-c", cmd, NULL);
         free(cmd);
     } else {
@@ -43,7 +41,7 @@ void run_fio_sh(char** argv) {
 
 /*
  * Usage:
- * [sleep <sleep seconds>] [segfault-after <delay seconds>] [-- <fio argument list>] [exitv <exit value>] 
+ * [sleep <sleep seconds>] [segfault-after <delay seconds>] [-- <fio argument list>] [exitv <exit value>]
  * 1. fio is only run if fio arguments are specified.
  * 2. fio is always run as a forked process.
  * 3. the segfault directive takes priority over the sleep directive
@@ -60,6 +58,9 @@ int main(int argc, char **argv_in)
     int     running_fio = 0;
     int     exitv = 0;
 
+    puts("e2e_fio: version 2");
+    fflush(stdout);
+
     /* skip over this programs name */
     argv += 1;
     /* "parse" arguments -
@@ -69,7 +70,7 @@ int main(int argc, char **argv_in)
      *    -- also implies fio is launched.
      * 4. exitv <v> override exit value - this is to aid test development.
      *      specifically to validate error detection in the tests.
-     * For our simple purposes atoi is sufficient 
+     * For our simple purposes atoi is sufficient
      *
      * For simplicity none of the arguments are mandatory
      * if no arguments are supplied execution ends
@@ -79,7 +80,7 @@ int main(int argc, char **argv_in)
      * Note you can use --status-interval=N as an argument to get fio to print status every N seconds
      *
      * Intended use cases are
-     * a) sleep N fio is executed using exec 
+     * a) sleep N fio is executed using exec
      * b) segfault-after N, sleep for N then segfault terminating the pod or restarting the pod
      * c) segfault-after N -- ...., run fio (in a different process) and segfault after N seconds
      * d) -- ....., run fio, if fio completes, execution ends.
@@ -138,8 +139,17 @@ int main(int argc, char **argv_in)
         int status;
         waitpid(fio_pid, &status, 0);
         if (exitv == 0) {
-            printf("Exit value is fio status, %d\n", status);
-            return status;
+            if (WIFEXITED(status)) {
+                printf("Exit value is %d\n", WEXITSTATUS(status));
+                return WEXITSTATUS(status);
+            } else if WIFSIGNALED(status) {
+                printf("fio received signal, %d\n", WTERMSIG(status));
+                printf("Exit value set to 254");
+                return 254;
+            }
+            /* Should not reach here */
+            printf("Bug in handling waitpid status, Exit value set to 255\n");
+            return 255;
         }
     }
 

@@ -363,6 +363,10 @@ func RestartMayastorPods(timeoutSecs int) error {
 			if len(podNames) <= len(newPodNames) {
 				found := false
 				for _, prevPodName := range podNames {
+					// names of mayastor-etcd do not change so ignore.
+					if strings.HasPrefix(prevPodName, "mayastor-etcd") {
+						continue
+					}
 					for _, newPodName := range newPodNames {
 						found = found || prevPodName == newPodName
 						if prevPodName == newPodName {
@@ -453,11 +457,28 @@ func RestartMayastor(restartTOSecs int, readyTOSecs int, poolsTOSecs int) error 
 			logf.Log.Info("Restarting failed, pods are not healthy", "retries", retryCount, "error", err)
 		}
 		err = ResourceCheck()
-		if err != nil {
+		if err == nil {
+			break
+		} else {
 			time.Sleep(10 * time.Second)
 			logf.Log.Info("Restarting failed, resource check failed", "retries", retryCount, "error", err)
 		}
 	}
 
 	return err
+}
+
+func GetMoacPodName() ([]string, error) {
+	var podNames []string
+	podApi := gTestEnv.KubeInt.CoreV1().Pods
+	pods, err := podApi(common.NSMayastor()).List(context.TODO(), metaV1.ListOptions{})
+	if err != nil {
+		return podNames, err
+	}
+	for _, pod := range pods.Items {
+		if strings.HasPrefix(pod.Name, "moac") {
+			podNames = append(podNames, pod.Name)
+		}
+	}
+	return podNames, nil
 }

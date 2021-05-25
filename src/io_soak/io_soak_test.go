@@ -121,7 +121,13 @@ func monitor() error {
 /// proto - protocol "nvmf" or "isci"
 /// replicas - number of replicas for each volume
 /// loadFactor - number of volumes for each mayastor instance
-func IOSoakTest(protocols []common.ShareProto, replicas int, loadFactor int, duration time.Duration, disruptorCount int) {
+func IOSoakTest(protocols []common.ShareProto,
+	replicas int,
+	loadFactor int,
+	duration time.Duration,
+	readyTimeout time.Duration,
+	disruptorCount int,
+	disruptReadyTimeout time.Duration) {
 	nodeList, err := k8stest.GetNodeLocs()
 	Expect(err).ToNot(HaveOccurred())
 
@@ -186,7 +192,7 @@ func IOSoakTest(protocols []common.ShareProto, replicas int, loadFactor int, dur
 
 	logf.Log.Info("Starting disruptor pods")
 	DisruptorsInit(protocols, replicas)
-	MakeDisruptors()
+	MakeDisruptors(disruptReadyTimeout)
 
 	logf.Log.Info("Creating test pods")
 	// Create the job test pods
@@ -196,11 +202,7 @@ func IOSoakTest(protocols []common.ShareProto, replicas int, loadFactor int, dur
 		Expect(pod).ToNot(BeNil())
 	}
 
-	// Empirically allocated PodReadyTime seconds for each pod to transition to ready
-	timeoutSecs := PodReadyTime * len(jobs)
-	if timeoutSecs < 60 {
-		timeoutSecs = 60
-	}
+	timeoutSecs := int(readyTimeout.Seconds())
 	logf.Log.Info("Waiting for test pods to be ready", "timeout seconds", timeoutSecs, "jobCount", len(jobs))
 
 	// Wait for the test pods to be ready
@@ -291,11 +293,16 @@ var _ = Describe("Mayastor Volume IO soak test", func() {
 		}
 		duration, err := time.ParseDuration(e2eCfg.IOSoakTest.Duration)
 		Expect(err).ToNot(HaveOccurred(), "Duration configuration string format is invalid.")
+		readyTimeout, err := time.ParseDuration(e2eCfg.IOSoakTest.ReadyTimeout)
+		Expect(err).ToNot(HaveOccurred(), "ReadyTimeout configuration string format is invalid.")
+		disruptReadyTimeout, err := time.ParseDuration(e2eCfg.IOSoakTest.Disrupt.ReadyTimeout)
+		Expect(err).ToNot(HaveOccurred(), "Disrupt ReadyTimeout configuration string format is invalid.")
+
 		logf.Log.Info("Parameters",
 			"replicas", replicas, "loadFactor", loadFactor,
 			"duration", duration,
 			"disrupt", e2eCfg.IOSoakTest.Disrupt)
-		IOSoakTest(protocols, replicas, loadFactor, duration, disruptorCount)
+		IOSoakTest(protocols, replicas, loadFactor, duration, readyTimeout, disruptorCount, disruptReadyTimeout)
 	})
 })
 
