@@ -40,7 +40,7 @@ func controlPlaneReschedulingTest(protocol common.ShareProto, volumeType common.
 	Expect(err).To(BeNil(), "Storage class creation failed")
 
 	// Create volumes
-	for ix := 1; ix <= e2e_config.GetConfig().MayastorVolumeCount; ix += 1 {
+	for ix := 1; ix <= e2e_config.GetConfig().ControlPlaneRescheduling.MayastorVolumeCount; ix += 1 {
 		volName := fmt.Sprintf("reshedule-vol-%d", ix)
 		volNames = append(volNames, volName)
 		k8stest.MkPVC(common.DefaultVolumeSizeMb, volName, scName, volumeType, common.NSDefault)
