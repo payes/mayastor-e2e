@@ -24,27 +24,24 @@ typedef struct e2e_process {
 static e2e_process* proc_list = NULL;
 
 /* Create and run fio in child processes as defined in the list */
-void start_procs() {
-    e2e_process* proc = proc_list;
-    while (proc != NULL) {
-        proc->pid = fork();
-        if ( 0 == proc->pid ) {
-            /* Change working directory to avoid trivial collisions in file
-             * space across multiple jobs
-             */
-            char wkspace[32];
-            snprintf(wkspace, 32, "./%d", getpid());
-            if (0 == mkdir(wkspace,0777) && (0 == chdir(wkspace)) ) {
-                execl("/bin/sh", "sh", "-c", proc->cmd, NULL);
-                printf("** execl %s failed %d **\n", proc->cmd, errno);
-            } else {
-               printf("** mkdir %s failed **\n", wkspace);
-            }
-            exit(errno);
+void start_proc(e2e_process* proc_ptr ) {
+    proc_ptr->pid = fork();
+    if ( 0 == proc_ptr->pid ) {
+        /* Change working directory to avoid trivial collisions in file
+         * space across multiple jobs
+         */
+        char wkspace[32];
+        snprintf(wkspace, 32, "./%d", getpid());
+        if (0 == mkdir(wkspace,0777) && (0 == chdir(wkspace)) ) {
+            execl("/bin/sh", "sh", "-c", proc_ptr->cmd, NULL);
+            printf("** execl %s failed %d **\n", proc_ptr->cmd, errno);
+        } else {
+           printf("** mkdir %s failed **\n", wkspace);
         }
-        printf("pid:%d, %s\n", proc->pid, proc->cmd);
-        proc = proc->next;
+        exit(errno);
     }
+    printf("pid:%d, %s\n", proc_ptr->pid, proc_ptr->cmd);
+    fflush(stdout);
 }
 
 /*
@@ -52,7 +49,7 @@ void start_procs() {
  * and append it to the global list of e2e processes
  */
 char** parse_procs(char **argv) {
-    e2e_process *proc = NULL;
+    e2e_process *proc_ptr = NULL;
     /* Tis' C so we do it the "hard way" */
     char *pinsert;
     const char *executable = "fio ";
@@ -68,26 +65,26 @@ char** parse_procs(char **argv) {
         return NULL;
     }
 
-    proc = calloc(sizeof(*proc), 1);
-    if (proc == NULL) {
+    proc_ptr = calloc(sizeof(*proc_ptr), 1);
+    if (proc_ptr == NULL) {
         puts("failed to allocate memory for e2e_process");
         return NULL;
     }
 
     buflen += strlen(executable) + 1;
     /* 2. allocate a 0 intialised buffer so we can use strcat */
-    proc->cmd = calloc(sizeof(unsigned char), buflen);
-    if (proc->cmd == NULL) {
-        free(proc);
+    proc_ptr->cmd = calloc(sizeof(unsigned char), buflen);
+    if (proc_ptr->cmd == NULL) {
+        free(proc_ptr);
         puts("failed to allocate memory for command line");
         return NULL;
     }
 
-    pinsert = proc->cmd;
+    pinsert = proc_ptr->cmd;
     /* 3. construct the command line, using strcat */
     strcat(pinsert, executable);
     pinsert += strlen(pinsert);
-    for(; *argv != NULL && (0 != strcmp(*argv, "--")); ++argv) {
+    for(; *argv != NULL && (0 != strcmp(*argv, "&")); ++argv) {
         strcat(pinsert, *argv);
         pinsert += strlen(pinsert);
         *pinsert = ' ';
@@ -100,9 +97,10 @@ char** parse_procs(char **argv) {
         while (*insert_proc != NULL) {
             insert_proc = &(*insert_proc)->next;
         }
-        *insert_proc = proc;
+        *insert_proc = proc_ptr;
     }
 
+    start_proc(proc_ptr);
     return argv;
 }
 
@@ -149,6 +147,7 @@ int wait_procs() {
                 printf("** Bug in handling waitpid status **\n");
                 proc_ptr->abnormal_exit = 1;
             }
+            fflush(stdout);
         }
     }while(pending);
 
@@ -180,10 +179,10 @@ void print_procs() {
 
 /*
  * Usage:
- * [sleep <sleep seconds>] [segfault-after <delay seconds>] [-- <fio args1> -- <fio args2> ....] [exitv <exit value>]
- * 1. fio is only run if fio arguments are specified.
- * 2. fio is always run as a forked process.
- * 3. the segfault directive takes priority over the sleep directive
+ * [sleep <sleep seconds>] [segfault-after <delay seconds>] [-- <fio args1> & -- <fio args2> & ....] [exitv <exit value>]
+ * 1. All arguments can be specified multiple times and will be executed in sequence.
+ * 2. fio is only run if fio arguments are specified.
+ * 3. fio is always run as a forked process.
  * 4. exitv <v> override exit value - this is to simulate failure in the test pod.
  * 5. argument parsing is simple, invalid specifications are skipped over
  *  for example "sleep --" => sleep is skipped over, parsing resumes from "--"
@@ -196,11 +195,7 @@ int main(int argc, char **argv_in)
     int     exitv = 0;
     int     procs_exitv = 0;
 
-    puts("e2e_fio: version 3.00");
-    for(char **argv_scan=argv; *argv_scan != NULL; ++argv_scan) {
-        printf("%s ",*argv_scan);
-    }
-    puts("\n");
+    puts("e2e_fio: version 3.03");
     fflush(stdout);
 
     /* skip over this programs name */
@@ -223,22 +218,33 @@ int main(int argc, char **argv_in)
      * all instances ran succesfully, or the exit value of the last failing fio instance.
      * Note 1) you can use --status-interval=N as an argument to get fio to print status every N seconds
      *      2) output will be garbled when running multiple instances of fio.
-     *
-     * Intended use cases are
-     * a) sleep N fio is executed using exec
-     * b) segfault-after N, sleep for N then segfault terminating the pod or restarting the pod
-     * c) segfault-after N -- ...., run fio (in a different process) and segfault after N seconds
-     * d) -- ....., run fio, if fio completes, execution ends.
      */
     while(*argv != NULL) {
         if (0 == strcmp(*argv,"sleep") && NULL != *(argv+1) && 0 != atoi(*(argv+1))) {
             sleep_time = atoi(*(argv+1));
+            printf("sleeping %d seconds\n", sleep_time);
+            sleep(sleep_time);
             ++argv;
         } else if (0 == strcmp(*argv,"segfault-after") && NULL != *(argv+1) && 0 != atoi(*(argv+1))) {
             segfault_time = atoi(*(argv+1));
+            printf("Segfaulting after %d seconds\n", segfault_time);
+            sleep(segfault_time);
+            if (NULL != proc_list) {
+                kill_procs(SIGKILL);
+                sleep(1);
+            }
+            puts("Segfaulting now!");
+            raise(SIGSEGV);
             ++argv;
         } else if (0 == strcmp(*argv, "--")) {
-            break;
+            char **next = parse_procs(argv + 1);
+
+            if (*next == NULL) {
+                argv = next - 1;
+            } else {
+                argv = next;
+            }
+
         } else if (0 == strcmp(*argv,"exitv") && NULL != *(argv+1) && 0 != atoi(*(argv+1))) {
             exitv = atoi(*(argv+1));
             printf("Overriding exit value to %d\n", exitv);
@@ -248,41 +254,6 @@ int main(int argc, char **argv_in)
         }
         ++argv;
     }
-
-    /* parse the argument list and populate the list of fio processes to run */
-    while (*argv != NULL) {
-        if (0 == strcmp(*argv, "--")) {
-            argv++;
-            argv = parse_procs(argv);
-        } else {
-            break;
-        }
-    }
-
-    /* start the fio processes */
-    start_procs();
-
-    if (0 != segfault_time) {
-        printf("Segfaulting after %d seconds\n", segfault_time);
-        sleep(segfault_time);
-        if (NULL != proc_list) {
-            kill_procs(SIGKILL);
-            sleep(1);
-        }
-        puts("Segfaulting now!");
-        raise(SIGSEGV);
-    }
-
-    /* sleep takes priority over other actions,
-     * in particular the use case is to allow,
-     * a bunch of pods to startup
-     * prior to loading the node by running fio
-     */
-    if (0 != sleep_time) {
-        printf("sleeping %d seconds\n", sleep_time);
-        sleep(sleep_time);
-    }
-
 
     procs_exitv = wait_procs();
     puts("");
