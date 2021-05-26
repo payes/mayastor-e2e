@@ -51,7 +51,8 @@ dynamic_provisioning
 check_mayastornode
 control_plane_rescheduling
 pvc_waitforfirstconsumer
-pvc_delete"
+pvc_delete
+maximum_vols_io"
 ONDEMAND_TEST_LIST="
 basic_volume_io
 csi
@@ -69,7 +70,8 @@ ms_pool_delete
 volume_filesystem
 dynamic_provisioning
 mayastorpool_schema
-pvc_waitforfirstconsumer"
+pvc_waitforfirstconsumer
+maximum_vols_io"
 SOAK_TEST_LIST="
 io_soak"
 

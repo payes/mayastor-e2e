@@ -120,6 +120,15 @@ type E2EConfig struct {
 		PodUnscheduleTimeoutSecs int `yaml:"podUnscheduleTimeoutSecs" env-default:"100"`
 		PodRescheduleTimeoutSecs int `yaml:"podRnscheduleTimeoutSecs" env-default:"180"`
 	}
+
+	MaximumVolsIO struct {
+		VolMb             int    `yaml:"volMb" env-default:"1024"`
+		VolumeCountPerPod int    `yaml:"volumeCountPerPod" env-default:"2"`
+		PodCount          int    `yaml:"podCount" env-default:"2"`
+		Duration          string `yaml:"duration" env-default:"30s"`
+		Timeout           string `yaml:"timeout" env-default:"180s"`
+		ThinkTime         string `yaml:"thinkTime" env-default:"10ms"`
+	} `yaml:"maximumVolsIO"`
 }
 
 var once sync.Once
