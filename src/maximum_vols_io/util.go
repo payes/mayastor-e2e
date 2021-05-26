@@ -119,15 +119,19 @@ func (c *maxVolConfig) createFioPods() {
 		}
 
 		var podArgs []string
-		for _, v := range volFioArgs {
-			podArgs = append(podArgs, "--")
-			podArgs = append(podArgs, common.GetFioArgs()...)
+		podArgs = append(podArgs, "--")
+		for ix, v := range volFioArgs {
+			tmpArgs := []string{
+				fmt.Sprintf("--name=benchtest-%d", ix),
+				"--time_based",
+				fmt.Sprintf("--runtime=%d", int(c.duration.Seconds())),
+				fmt.Sprintf("--thinktime=%d", int(c.thinkTime.Microseconds())),
+			}
+			podArgs = append(podArgs, common.GetDefaultFioArguments()...)
 			podArgs = append(podArgs, v...)
-			podArgs = append(podArgs, "--time_based")
-			podArgs = append(podArgs, fmt.Sprintf("--runtime=%d", int(c.duration.Seconds())))
-			podArgs = append(podArgs, fmt.Sprintf("--thinktime=%d", int(c.thinkTime.Microseconds())))
-			podArgs = append(podArgs, "&")
+			podArgs = append(podArgs, tmpArgs...)
 		}
+		podArgs = append(podArgs, "&")
 
 		logf.Log.Info("fio", "arguments", podArgs)
 		podObj.Spec.Containers[0].Args = podArgs
