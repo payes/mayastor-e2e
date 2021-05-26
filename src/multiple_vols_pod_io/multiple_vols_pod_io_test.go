@@ -92,14 +92,18 @@ func multipleVolumeIOTest(replicas int, volumeCount int, protocol common.SharePr
 	}
 
 	var podArgs []string
-	for _, v := range volFioArgs {
-		podArgs = append(podArgs, "--")
-		podArgs = append(podArgs, common.GetFioArgs()...)
+	podArgs = append(podArgs, "--")
+	for ix, v := range volFioArgs {
+		podArgs = append(podArgs, []string{
+			fmt.Sprintf("--name=benchtest-%d", ix),
+			"--time_based",
+			fmt.Sprintf("--runtime=%d", int(duration.Seconds())),
+		}...,
+		)
+		podArgs = append(podArgs, common.GetDefaultFioArguments()...)
 		podArgs = append(podArgs, v...)
-		podArgs = append(podArgs, "--time_based")
-		podArgs = append(podArgs, fmt.Sprintf("--runtime=%d", int(duration.Seconds())))
-		podArgs = append(podArgs, "&")
 	}
+	podArgs = append(podArgs, "&")
 
 	logf.Log.Info("fio", "arguments", podArgs)
 	pod.Spec.Containers[0].Args = podArgs
