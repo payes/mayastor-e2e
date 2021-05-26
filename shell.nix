@@ -40,6 +40,7 @@ mkShell {
     python3
     utillinux
     xfsprogs
+    hcloud
   ]
   ;
 

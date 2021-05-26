@@ -5,6 +5,8 @@ import (
 	"mayastor-e2e/common/platform/types"
 	"os/exec"
 	"strings"
+
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 type hcloud struct {
@@ -15,18 +17,21 @@ func New() types.Platform {
 }
 
 func (h *hcloud) PowerOffNode(node string) error {
-	cmd := exec.Command("bash", "-c", fmt.Sprintf("hcloud server poweroff %s", node))
+	logf.Log.Info("Power off", "node", node)
+	cmd := exec.Command("sh", "-c", fmt.Sprintf("hcloud server poweroff %s", node))
 	_, err := cmd.Output()
 	return err
 }
 
 func (h *hcloud) PowerOnNode(node string) error {
-	cmd := exec.Command("bash", "-c", fmt.Sprintf("hcloud server poweron %s", node))
+	logf.Log.Info("Power on", "node", node)
+	cmd := exec.Command("sh", "-c", fmt.Sprintf("hcloud server poweron %s", node))
 	_, err := cmd.Output()
 	return err
 }
 
 func (h *hcloud) GetNodeStatus(node string) (string, error) {
+	logf.Log.Info("Get status", "node", node)
 	cmd := exec.Command("bash", "-c", fmt.Sprintf("hcloud  server list | grep %s", node))
 	stdout, err := cmd.Output()
 	if err != nil {

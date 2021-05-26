@@ -52,7 +52,8 @@ check_mayastornode
 control_plane_rescheduling
 pvc_waitforfirstconsumer
 pvc_delete
-maximum_vols_io"
+maximum_vols_io
+node_failure"
 ONDEMAND_TEST_LIST="
 basic_volume_io
 csi

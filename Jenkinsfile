@@ -150,7 +150,8 @@ pipeline {
               }
 
               withCredentials([
-                usernamePassword(credentialsId: 'GRAFANA_API', usernameVariable: 'grafana_api_user', passwordVariable: 'grafana_api_pw')
+                usernamePassword(credentialsId: 'GRAFANA_API', usernameVariable: 'grafana_api_user', passwordVariable: 'grafana_api_pw'),
+                string(credentialsId: 'HCLOUD_TOKEN', variable: 'HCLOUD_TOKEN')
               ]) {
                 lokiInstall(tag, loki_run_id)
                 sh "nix-shell --run '${cmd}'"

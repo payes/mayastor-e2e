@@ -11,7 +11,10 @@ import (
 	. "github.com/onsi/gomega"
 
 	coreV1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
+	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 type NodeLocation struct {
@@ -112,4 +115,54 @@ func EnsureNodeLabels() error {
 		}
 	}
 	return nil
+}
+
+func AreNodesReady() (bool, error) {
+	nodes, err := gTestEnv.KubeInt.CoreV1().Nodes().List(context.TODO(), metaV1.ListOptions{})
+	if err != nil {
+		return false, err
+	}
+	for _, node := range nodes.Items {
+		readyStatus, err := IsNodeReady(node.Name, &node)
+		if err != nil {
+			return false, err
+		}
+		if !readyStatus {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
+func IsNodeReady(nodeName string, node *v1.Node) (bool, error) {
+	var err error
+	if node == nil {
+		node, err = gTestEnv.KubeInt.CoreV1().Nodes().Get(context.TODO(), nodeName, metaV1.GetOptions{})
+		if err != nil {
+			return false, err
+		}
+	}
+	master := false
+	taints := node.Spec.Taints
+	for _, taint := range taints {
+		if taint.Key == "node-role.kubernetes.io/master" {
+			master = true
+		}
+	}
+	for _, nodeCond := range node.Status.Conditions {
+		if nodeCond.Reason == "KubeletReady" && nodeCond.Type == v1.NodeReady {
+			return true, nil
+		} else if master && nodeCond.Type == v1.NodeReady {
+			return true, nil
+		}
+	}
+	addrs := node.Status.Addresses
+	nodeAddr := ""
+	for _, addr := range addrs {
+		if addr.Type == v1.NodeInternalIP {
+			nodeAddr = addr.Address
+		}
+	}
+	logf.Log.Info("Node not ready", nodeName, nodeAddr)
+	return false, nil
 }

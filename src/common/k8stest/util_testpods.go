@@ -74,6 +74,22 @@ func RunFio(podName string, duration int, filename string, sizeMb int, args ...s
 	return output, err
 }
 
+func IsPodWithLabelsRunning(labels, namespace string) (bool, error) {
+	pods, err := gTestEnv.KubeInt.CoreV1().Pods(namespace).List(context.TODO(), metaV1.ListOptions{LabelSelector: labels})
+	if err != nil {
+		return false, err
+	}
+	if len(pods.Items) == 0 {
+		return false, nil
+	}
+	for _, pod := range pods.Items {
+		if pod.Status.Phase != v1.PodRunning {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
 func IsPodRunning(podName string, nameSpace string) bool {
 	var pod coreV1.Pod
 	if gTestEnv.K8sClient.Get(context.TODO(), types.NamespacedName{Name: podName, Namespace: nameSpace}, &pod) != nil {
@@ -209,8 +225,8 @@ func CheckForTestPods() (bool, error) {
 // For now this is a very simple filter function, to  handle the case where, mayastor pods share the namespace with other
 // pods whose health status has no bearing mayastor functionality.
 func isPodHealthCheckCandidate(podName string, namespace string) bool {
-	if namespace == common.NSMayastor() && e2e_config.GetConfig().Platform.FilteredMayastorPodCheck != 0 {
-		if strings.HasPrefix(podName, "moac") || strings.HasPrefix(podName, "mayastor") {
+	if namespace == common.NSMayastor() {
+		if (strings.HasPrefix(podName, "moac") || strings.HasPrefix(podName, "mayastor")) && !strings.HasPrefix(podName, "mayastor-etcd") {
 			return true
 		}
 		return false
@@ -304,7 +320,7 @@ func collectMayastorPodNames() ([]string, error) {
 		return podNames, err
 	}
 	for _, pod := range pods.Items {
-		if strings.HasPrefix(pod.Name, "mayastor") {
+		if strings.HasPrefix(pod.Name, "mayastor") && !strings.HasPrefix(pod.Name, "mayastor-etcd") {
 			podNames = append(podNames, pod.Name)
 		}
 		if strings.HasPrefix(pod.Name, "moac") {
@@ -346,6 +362,7 @@ func RestartMayastorPods(timeoutSecs int) error {
 	if err != nil {
 		return err
 	}
+	var newPodNames []string
 	const sleepTime = 10
 	// Wait (with timeout) for all pods to have restarted
 	// For this to work we rely on the fact that for daemonsets and deployments,
@@ -358,7 +375,7 @@ func RestartMayastorPods(timeoutSecs int) error {
 	logf.Log.Info("Waiting for all pods to restart", "timeoutSecs", timeoutSecs)
 	for ix := 1; ix < (timeoutSecs+sleepTime-1)/sleepTime; ix++ {
 		time.Sleep(sleepTime * time.Second)
-		newPodNames, err := collectMayastorPodNames()
+		newPodNames, err = collectMayastorPodNames()
 		if err == nil {
 			logf.Log.Info("Checking restarted pods")
 			if len(podNames) <= len(newPodNames) {
@@ -381,7 +398,66 @@ func RestartMayastorPods(timeoutSecs int) error {
 			}
 		}
 	}
+	logf.Log.Info("Restart pods failed", "oldpods", podNames, "newpods", newPodNames)
 	return fmt.Errorf("restart failed incomplete error=%v", err)
+}
+
+func collectNatsPodNames() ([]string, error) {
+	var podNames []string
+	podApi := gTestEnv.KubeInt.CoreV1().Pods
+	pods, err := podApi(common.NSMayastor()).List(context.TODO(), metaV1.ListOptions{})
+	if err != nil {
+		return podNames, err
+	}
+	for _, pod := range pods.Items {
+		if strings.HasPrefix(pod.Name, "nats") {
+			podNames = append(podNames, pod.Name)
+		}
+	}
+	return podNames, nil
+}
+
+func RestartNatsPods(timeoutSecs int) error {
+	var err error
+	podApi := gTestEnv.KubeInt.CoreV1().Pods
+
+	podNames, err := collectNatsPodNames()
+	if err != nil {
+		return err
+	}
+
+	for _, podName := range podNames {
+		delErr := podApi(common.NSMayastor()).Delete(context.TODO(), podName, metaV1.DeleteOptions{})
+		if delErr != nil {
+			logf.Log.Info("Failed to delete", "pod", podName, "error", delErr)
+			err = delErr
+		} else {
+			logf.Log.Info("Deleted", "pod", podName)
+		}
+	}
+
+	if err != nil {
+		return err
+	}
+	const sleepTime = 5
+	// Wait (with timeout) for all pods to have restarted
+	// For this to work we rely on the fact that for daemonsets and deployments,
+	// when a pod is deleted, k8s spins up a new pod with a different name.
+	// So the check is comparison between
+	//      1) the list of nats pods deleted
+	//      2) a freshly generated list of nats pods
+	// - the size of the fresh list >= size of the deleted list
+	// - the names of the pods deleted do not occur in the fresh list
+	for ix := 1; ix < (timeoutSecs+sleepTime-1)/sleepTime; ix++ {
+		newPodNames, err := collectNatsPodNames()
+		if err == nil {
+			if len(podNames) <= len(newPodNames) {
+				return nil
+			}
+			time.Sleep(sleepTime * time.Second)
+		}
+	}
+	return fmt.Errorf("restart failed in some nebulous way! ")
 }
 
 func restartMayastor(restartTOSecs int, readyTOSecs int, poolsTOSecs int) error {

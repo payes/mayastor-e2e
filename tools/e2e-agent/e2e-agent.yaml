@@ -4,7 +4,7 @@ metadata:
   name: test-vars
   namespace: e2e-agent
 data:
-  REST_PORT: "10000"
+  REST_PORT: "10012"
   MAYASTOR_PORT: "10124"
   E2E_HOST_ADDR: ""
 

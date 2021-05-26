@@ -6,21 +6,25 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-const REST_PORT = "10000"
+// RestPort is the port on which e2e-agent is listening
+const RestPort = "10012"
 
+// NodeList is the list of nodes to be passed to e2e-agent
 type NodeList struct {
 	Nodes []string `json:"nodes"`
 }
 
-func sendRequest(url string, data interface{}) error {
+func sendRequest(reqType, url string, data interface{}) error {
 	client := &http.Client{}
 	reqData := new(bytes.Buffer)
 	if err := json.NewEncoder(reqData).Encode(data); err != nil {
 		return err
 	}
-	req, err := http.NewRequest("POST", url, reqData)
+	req, err := http.NewRequest(reqType, url, reqData)
 	if err != nil {
 		fmt.Print(err.Error())
 	}
@@ -35,41 +39,48 @@ func sendRequest(url string, data interface{}) error {
 	if err != nil {
 		return err
 	}
-	var responseObject string
-	if err := json.Unmarshal(bodyBytes, &responseObject); err != nil {
-		return err
-	}
+	fmt.Printf("resp: %s\n", bodyBytes)
 	return nil
 }
 
 // UngracefulReboot crashes and reboots the host machine
 func UngracefulReboot(serverAddr string) error {
-	url := "http://" + serverAddr + ":" + REST_PORT + "/ungracefulReboot"
-	return sendRequest(url, nil)
+	logf.Log.Info("Ungracefully rebooting node", "addr", serverAddr)
+	url := "http://" + serverAddr + ":" + RestPort + "/ungracefulReboot"
+	return sendRequest("POST", url, nil)
+}
+
+// IsAgentReachable checks if the agent pod is in reachable
+func IsAgentReachable(serverAddr string) error {
+	url := "http://" + serverAddr + ":" + RestPort + "/"
+	return sendRequest("GET", url, nil)
 }
 
 // GracefulReboot reboots the host gracefully
 // It is not yet supported
 func GracefulReboot(serverAddr string) error {
-	url := "http://" + serverAddr + ":" + REST_PORT + "/gracefulReboot"
-	return sendRequest(url, nil)
+	logf.Log.Info("Gracefully rebooting node", "addr", serverAddr)
+	url := "http://" + serverAddr + ":" + RestPort + "/gracefulReboot"
+	return sendRequest("POST", url, nil)
 }
 
 // DropConnectionsFromNodes creates rules to drop connections from other k8s nodes
 func DropConnectionsFromNodes(serverAddr string, nodes []string) error {
-	url := "http://" + serverAddr + ":" + REST_PORT + "/dropConnectionsFromNodes"
+	logf.Log.Info("Dropping connections from nodes", "addr", serverAddr)
+	url := "http://" + serverAddr + ":" + RestPort + "/dropConnectionsFromNodes"
 	data := NodeList{
 		Nodes: nodes,
 	}
-	return sendRequest(url, data)
+	return sendRequest("POST", url, data)
 }
 
 // AcceptConnectionsFromNodes removes the rules set by
 // DropConnectionsFromNodes so that other k8s nodes can reach this node again
 func AcceptConnectionsFromNodes(serverAddr string, nodes []string) error {
-	url := "http://" + serverAddr + ":" + REST_PORT + "/acceptConnectionsFromNodes"
+	logf.Log.Info("Accepting connections from nodes", "addr", serverAddr)
+	url := "http://" + serverAddr + ":" + RestPort + "/acceptConnectionsFromNodes"
 	data := NodeList{
 		Nodes: nodes,
 	}
-	return sendRequest(url, data)
+	return sendRequest("POST", url, data)
 }

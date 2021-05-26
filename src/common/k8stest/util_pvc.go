@@ -13,6 +13,7 @@ import (
 	coreV1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -201,8 +202,12 @@ func RmPVC(volName string, scName string, nameSpace string) {
 
 	// Confirm the PVC has been created.
 	pvc, getPvcErr := PVCApi(nameSpace).Get(context.TODO(), volName, metaV1.GetOptions{})
-	Expect(getPvcErr).To(BeNil())
-	Expect(pvc).ToNot(BeNil())
+	if k8serrors.IsNotFound(getPvcErr) {
+		return
+	} else {
+		Expect(getPvcErr).To(BeNil())
+		Expect(pvc).ToNot(BeNil())
+	}
 
 	// Delete the PVC
 	deleteErr := PVCApi(nameSpace).Delete(context.TODO(), volName, metaV1.DeleteOptions{})

@@ -2,13 +2,14 @@ package k8stest
 
 import (
 	"context"
-	"github.com/onsi/gomega"
-	appsV1 "k8s.io/api/apps/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"mayastor-e2e/common"
 	"mayastor-e2e/common/e2e_config"
 	"mayastor-e2e/common/locations"
 	"time"
+
+	"github.com/onsi/gomega"
+	appsV1 "k8s.io/api/apps/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 func e2eReadyPodCount() int {

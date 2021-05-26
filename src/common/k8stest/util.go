@@ -20,6 +20,7 @@ import (
 	coreV1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -76,6 +77,9 @@ func RmStorageClass(scName string) error {
 	logf.Log.Info("Deleting storage class", "name", scName)
 	ScApi := gTestEnv.KubeInt.StorageV1().StorageClasses
 	deleteErr := ScApi().Delete(context.TODO(), scName, metaV1.DeleteOptions{})
+	if k8serrors.IsNotFound(deleteErr) {
+		return nil
+	}
 	return deleteErr
 }
 
@@ -307,6 +311,23 @@ func moacReady() bool {
 		}
 	}
 	logf.Log.Info("MOAC is Not Available")
+	return false
+}
+
+func DeploymentReady(deploymentName, namespace string) bool {
+	var deployment appsV1.Deployment
+	if err := gTestEnv.K8sClient.Get(context.TODO(), types.NamespacedName{Name: deploymentName, Namespace: namespace}, &deployment); err != nil {
+		logf.Log.Info("Failed to get deployment", "error", err)
+		return false
+	}
+
+	for _, condition := range deployment.Status.Conditions {
+		if condition.Type == appsV1.DeploymentAvailable {
+			if condition.Status == coreV1.ConditionTrue {
+				return true
+			}
+		}
+	}
 	return false
 }
 
