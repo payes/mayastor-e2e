@@ -91,17 +91,23 @@ func multipleVolumeIOTest(replicas int, volumeCount int, protocol common.SharePr
 		pod.Spec.Containers[0].VolumeDevices = volDevices
 	}
 
+	// Construct argument list for fio to run a single instance of fio,
+	// with multiple jobs, one for each volume.
 	var podArgs []string
+
+	// 1) directives for all fio jobs
 	podArgs = append(podArgs, "--")
+	podArgs = append(podArgs, common.GetDefaultFioArguments()...)
+	podArgs = append(podArgs, []string{
+		"--time_based",
+		fmt.Sprintf("--runtime=%d", int(duration.Seconds())),
+	}...,
+	)
+
+	// 2) per volume directives (filename, size, and testname)
 	for ix, v := range volFioArgs {
-		podArgs = append(podArgs, []string{
-			fmt.Sprintf("--name=benchtest-%d", ix),
-			"--time_based",
-			fmt.Sprintf("--runtime=%d", int(duration.Seconds())),
-		}...,
-		)
-		podArgs = append(podArgs, common.GetDefaultFioArguments()...)
 		podArgs = append(podArgs, v...)
+		podArgs = append(podArgs, fmt.Sprintf("--name=benchtest-%d", ix))
 	}
 	podArgs = append(podArgs, "&")
 
