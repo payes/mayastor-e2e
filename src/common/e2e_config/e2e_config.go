@@ -40,12 +40,22 @@ type E2EConfig struct {
 	// Registry from where mayastor images are retrieved
 	Registry string `yaml:"registry" env:"e2e_docker_registry" env-default:"ci-registry.mayastor-ci.mayadata.io"`
 	// Registry from where CI testing images are retrieved
-	CIRegistry string `yaml:"ciRegistry" env:"e2e_ci_docker_registry" env-default:"ci-registry.mayastor-ci.mayadata.io"`
-	ImageTag   string `yaml:"imageTag" env:"e2e_image_tag" env-default:"ci"`
-	// Count of mayastorvolume
-	MayastorVolumeCount int    `yaml:"mayastorVolumeCount" env-default:"3"`
-	PoolDevice          string `yaml:"poolDevice" env:"e2e_pool_device"`
-	E2eFioImage         string `yaml:"e2eFioImage" env-default:"mayadata/e2e-fio" env:"e2e_fio_image"`
+	CIRegistry  string `yaml:"ciRegistry" env:"e2e_ci_docker_registry" env-default:"ci-registry.mayastor-ci.mayadata.io"`
+	ImageTag    string `yaml:"imageTag" env:"e2e_image_tag" env-default:"ci"`
+	PoolDevice  string `yaml:"poolDevice" env:"e2e_pool_device"`
+	E2eFioImage string `yaml:"e2eFioImage" env-default:"mayadata/e2e-fio" env:"e2e_fio_image"`
+	// This is an advisory setting for individual tests
+	// If set to true - typically during test development - tests with multiple It clauses should defer asserts till after
+	// resources have been cleaned up . This behaviour makes it possible to have useful runs for all It clauses.
+	// Typically set to false for CI test execution - no cleanup after first failure, as a result subsequent It clauses
+	// in the test will fail the BeforeEach check, rendering post-mortem checks on the cluster more useful.
+	// It may be set to true for when we want maximum test coverage, and post-mortem analysis is a secondary requirement.
+	// NOTE: Only some tests support this feature.
+	DeferredAssert bool `yaml:"deferredAssert" env-default:"false" env:"e2e_defer_asserts" `
+
+	// Run configuration
+	ReportsDir string `yaml:"reportsDir" env:"e2e_reports_dir"`
+
 	// Individual Test parameters
 	PVCStress struct {
 		Replicas   int `yaml:"replicas" env-default:"1"`
@@ -98,18 +108,6 @@ type E2EConfig struct {
 		Duration             string `yaml:"duration" env-default:"30s"`
 		Timeout              string `yaml:"timeout" env-default:"60s"`
 	} `yaml:"multiVolumesPodIO"`
-
-	// This is an advisory setting for individual tests
-	// If set to true - typically during test development - tests with multiple It clauses should defer asserts till after
-	// resources have been cleaned up . This behaviour makes it possible to have useful runs for all It clauses.
-	// Typically set to false for CI test execution - no cleanup after first failure, as a result subsequent It clauses
-	// in the test will fail the BeforeEach check, rendering post-mortem checks on the cluster more useful.
-	// It may be set to true for when we want maximum test coverage, and post-mortem analysis is a secondary requirement.
-	// NOTE: Only some tests support this feature.
-	DeferredAssert bool `yaml:"deferredAssert" env-default:"false" env:"e2e_defer_asserts" `
-
-	// Run configuration
-	ReportsDir      string `yaml:"reportsDir" env:"e2e_reports_dir"`
 	MsPodDisruption struct {
 		VolMb                    int `yaml:"volMb" env-default:"4096"`
 		RemoveThinkTime          int `yaml:"removeThinkTime" env-default:"10"`
@@ -119,8 +117,7 @@ type E2EConfig struct {
 		RescheduleDelay          int `yaml:"rescheduleDelay" env-default:"10"`
 		PodUnscheduleTimeoutSecs int `yaml:"podUnscheduleTimeoutSecs" env-default:"100"`
 		PodRescheduleTimeoutSecs int `yaml:"podRnscheduleTimeoutSecs" env-default:"180"`
-	}
-
+	} `yaml:"msPodDisruption"`
 	MaximumVolsIO struct {
 		VolMb             int    `yaml:"volMb" env-default:"1024"`
 		VolumeCountPerPod int    `yaml:"volumeCountPerPod" env-default:"2"`
@@ -129,6 +126,10 @@ type E2EConfig struct {
 		Timeout           string `yaml:"timeout" env-default:"180s"`
 		ThinkTime         string `yaml:"thinkTime" env-default:"10ms"`
 	} `yaml:"maximumVolsIO"`
+	ControlPlaneRescheduling struct {
+		// Count of mayastor volume
+		MayastorVolumeCount int `yaml:"mayastorVolumeCount" env-default:"3"`
+	} `yaml:"controlPlaneRescheduling"`
 }
 
 var once sync.Once

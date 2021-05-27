@@ -118,16 +118,26 @@ func (c *maxVolConfig) createFioPods() {
 			podObj.Spec.Containers[0].VolumeDevices = volDevices
 		}
 
+		// Construct argument list for fio to run a single instance of fio,
+		// with multiple jobs, one for each volume.
 		var podArgs []string
-		for _, v := range volFioArgs {
-			podArgs = append(podArgs, "--")
-			podArgs = append(podArgs, common.GetFioArgs()...)
+
+		// 1) directives for all fio jobs
+		podArgs = append(podArgs, "--")
+		podArgs = append(podArgs, common.GetDefaultFioArguments()...)
+		podArgs = append(podArgs, []string{
+			"--time_based",
+			fmt.Sprintf("--runtime=%d", int(c.duration.Seconds())),
+			fmt.Sprintf("--thinktime=%d", int(c.thinkTime.Microseconds())),
+		}...,
+		)
+
+		// 2) per volume directives (filename, size, and testname)
+		for ix, v := range volFioArgs {
 			podArgs = append(podArgs, v...)
-			podArgs = append(podArgs, "--time_based")
-			podArgs = append(podArgs, fmt.Sprintf("--runtime=%d", int(c.duration.Seconds())))
-			podArgs = append(podArgs, fmt.Sprintf("--thinktime=%d", int(c.thinkTime.Microseconds())))
-			podArgs = append(podArgs, "&")
+			podArgs = append(podArgs, fmt.Sprintf("--name=benchtest-%d", ix))
 		}
+		podArgs = append(podArgs, "&")
 
 		logf.Log.Info("fio", "arguments", podArgs)
 		podObj.Spec.Containers[0].Args = podArgs

@@ -13,20 +13,29 @@ func NSMayastor() string {
 // default fio arguments for E2E fio runs
 var fioArgs = []string{
 	"--name=benchtest",
+	"--numjobs=1",
+}
+
+var fioParams = []string{
 	"--direct=1",
 	"--rw=randrw",
 	"--ioengine=libaio",
 	"--bs=4k",
 	"--iodepth=16",
-	"--numjobs=1",
 	"--verify=crc32",
 	"--verify_fatal=1",
 	"--verify_async=2",
 }
 
-// GetFioArgs return the default argument set for fio - for use with Mayastor
+// GetFioArgs return the default command line for fio - for use with Mayastor,
+// for single volume
 func GetFioArgs() []string {
-	return fioArgs
+	return append(fioArgs, fioParams...)
+}
+
+// GetDefaultFioArguments return the default settings (arguments) for fio - for use with Mayastor
+func GetDefaultFioArguments() []string {
+	return fioParams
 }
 
 func GetFioImage() string {
