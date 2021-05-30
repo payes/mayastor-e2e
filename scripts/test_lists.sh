@@ -53,7 +53,8 @@ control_plane_rescheduling
 pvc_waitforfirstconsumer
 pvc_delete
 maximum_vols_io
-node_failure"
+node_failure
+node_shutdown"
 ONDEMAND_TEST_LIST="
 basic_volume_io
 csi

@@ -90,6 +90,21 @@ func IsPodWithLabelsRunning(labels, namespace string) (bool, error) {
 	return true, nil
 }
 
+func GetNodeListForPods(labels, namespace string) (map[string]v1.PodPhase, error) {
+	pods, err := gTestEnv.KubeInt.CoreV1().Pods(namespace).List(context.TODO(), metaV1.ListOptions{LabelSelector: labels})
+	if err != nil {
+		return nil, err
+	}
+	if len(pods.Items) == 0 {
+		return nil, nil
+	}
+	nodeList := map[string]v1.PodPhase{}
+	for _, pod := range pods.Items {
+		nodeList[pod.Spec.NodeName] = pod.Status.Phase
+	}
+	return nodeList, nil
+}
+
 func IsPodRunning(podName string, nameSpace string) bool {
 	var pod coreV1.Pod
 	if gTestEnv.K8sClient.Get(context.TODO(), types.NamespacedName{Name: podName, Namespace: nameSpace}, &pod) != nil {

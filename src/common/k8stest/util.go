@@ -269,6 +269,20 @@ func mayastorReadyPodCount() int {
 	return int(mayastorDaemonSet.Status.NumberAvailable)
 }
 
+// Checks if MOAC is available and if the requisite number of mayastor instances are
+// up and running.
+func MayastorInstancesReady(numMayastorInstances int, sleepTime int, duration int) (bool, error) {
+
+	count := (duration + sleepTime - 1) / sleepTime
+	ready := false
+	for ix := 0; ix < count && !ready; ix++ {
+		time.Sleep(time.Duration(sleepTime) * time.Second)
+		ready = mayastorReadyPodCount() == numMayastorInstances && moacReady() && mayastorCSIReadyPodCount() == numMayastorInstances
+	}
+
+	return ready, nil
+}
+
 func mayastorCSIReadyPodCount() int {
 	var mayastorCsiDaemonSet appsV1.DaemonSet
 	if gTestEnv.K8sClient.Get(context.TODO(), types.NamespacedName{Name: "mayastor-csi", Namespace: common.NSMayastor()}, &mayastorCsiDaemonSet) != nil {
@@ -345,15 +359,7 @@ func MayastorReady(sleepTime int, duration int) (bool, error) {
 			numMayastorInstances += 1
 		}
 	}
-
-	count := (duration + sleepTime - 1) / sleepTime
-	ready := false
-	for ix := 0; ix < count && !ready; ix++ {
-		time.Sleep(time.Duration(sleepTime) * time.Second)
-		ready = mayastorReadyPodCount() == numMayastorInstances && moacReady() && mayastorCSIReadyPodCount() == numMayastorInstances
-	}
-
-	return ready, nil
+	return MayastorInstancesReady(numMayastorInstances, sleepTime, duration)
 }
 
 func getClusterMayastorNodeIPAddrs() ([]string, error) {
