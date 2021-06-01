@@ -4,6 +4,7 @@ import metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 type MayastorVolumeSpec struct {
 	ReplicaCount   int      `json:"replicaCount"`
+	Local          bool     `json:"local"`
 	PreferredNodes []string `json:"preferredNodes"`
 	RequiredNodes  []string `json:"requiredNodes"`
 	RequiredBytes  int      `json:"requiredBytes"`

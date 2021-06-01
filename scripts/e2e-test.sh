@@ -32,6 +32,7 @@ EXITV_OK=0
 EXITV_INVALID_OPTION=1
 EXITV_MISSING_OPTION=2
 EXITV_FAILED=4
+EXITV_FILE_MISMATCH=5
 EXITV_FAILED_CLUSTER_OK=255
 
 platform_config_file="hetzner.yaml"
@@ -206,6 +207,33 @@ if [ -z "$mayastor_root_dir" ]; then
     exit $EXITV_MISSING_OPTION
 fi
 export e2e_mayastor_root_dir=$mayastor_root_dir
+
+# grpc proto compatibility check
+if ! cmp src/common/mayastorclient/grpc/mayastor.proto "$mayastor_root_dir/rpc/proto/mayastor.proto"
+then
+    echo "src/common/mayastorclient/grpc/mayastor.proto != $mayastor_root_dir/rpc/proto/mayastor.proto"
+    exit $EXITV_FILE_MISMATCH
+fi
+
+# CRD compatibility checks
+if ! cmp src/common/crds/mayastorvolume.yaml "$mayastor_root_dir/csi/moac/crds/mayastorvolume.yaml"
+then
+    echo "src/common/crds/mayastorvolume.yaml != $mayastor_root_dir/csi/moac/crds/mayastorvolume.yaml"
+    exit $EXITV_FILE_MISMATCH
+fi
+
+if ! cmp src/common/crds/mayastorpool.yaml "$mayastor_root_dir/csi/moac/crds/mayastorpool.yaml"
+then
+    echo "src/common/crds/mayastorpool.yaml != $mayastor_root_dir/csi/moac/crds/mayastorpool.yaml"
+    exit $EXITV_FILE_MISMATCH
+fi
+
+if ! cmp src/common/crds/mayastornode.yaml "$mayastor_root_dir/csi/moac/crds/mayastornode.yaml"
+then
+    echo "src/common/crds/mayastornode.yaml != $mayastor_root_dir/csi/moac/crds/mayastornode.yaml"
+    exit $EXITV_FILE_MISMATCH
+fi
+
 
 if [ -z "$device" ]; then
   echo "Device for storage pools must be specified"
