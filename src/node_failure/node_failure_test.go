@@ -12,7 +12,7 @@ import (
 	"mayastor-e2e/common/platform"
 	"mayastor-e2e/common/platform/types"
 
-	"mayastor-e2e/common/crds"
+	"mayastor-e2e/common/custom_resources"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -175,7 +175,7 @@ func (c *failureConfig) RebootDesiredNodes(uuid string) {
 
 func (c *failureConfig) verifyMayastorComponentStates() {
 	Eventually(func() bool {
-		nodeList, err := crds.ListNodes()
+		nodeList, err := custom_resources.ListNodes()
 		Expect(err).ToNot(HaveOccurred(), "ListNodes")
 		for _, node := range nodeList {
 			if node.Status != "online" {
@@ -237,7 +237,7 @@ func (c *failureConfig) verifyNodeNotReady(nodeName string) {
 		// This check is not always possible as MOAC might be
 		// running on the node which has been turned off
 		Eventually(func() string {
-			msn, err := crds.GetNode(nodeName)
+			msn, err := custom_resources.GetNode(nodeName)
 			Expect(err).ToNot(HaveOccurred(), "GetNode")
 			return msn.Status
 		},

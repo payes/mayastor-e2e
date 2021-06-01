@@ -2,7 +2,7 @@ package node_shutdown
 
 import (
 	"mayastor-e2e/common"
-	"mayastor-e2e/common/crds"
+	"mayastor-e2e/common/custom_resources"
 	"mayastor-e2e/common/k8stest"
 
 	. "github.com/onsi/gomega"
@@ -95,7 +95,7 @@ func (c *shutdownConfig) deleteDeployment() {
 }
 
 func (c *shutdownConfig) verifyMayastorComponentStates(numMayastorInstances int) {
-	nodeList, err := crds.ListNodes()
+	nodeList, err := custom_resources.ListNodes()
 	Expect(err).ToNot(HaveOccurred(), "ListNodes")
 	count := 0
 	for _, node := range nodeList {
@@ -142,7 +142,7 @@ func (c *shutdownConfig) verifyNodeNotReady(nodeName string) {
 	).Should(Equal(false))
 
 	Eventually(func() string {
-		msn, err := crds.GetNode(nodeName)
+		msn, err := custom_resources.GetNode(nodeName)
 		Expect(err).ToNot(HaveOccurred(), "GetNode")
 		return msn.Status
 	},

@@ -14,7 +14,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"mayastor-e2e/common"
-	"mayastor-e2e/common/crds"
+	"mayastor-e2e/common/custom_resources"
 	"mayastor-e2e/common/e2e_config"
 	"mayastor-e2e/common/k8stest"
 )
@@ -137,11 +137,11 @@ func pooldeletionTest(protocol common.ShareProto, volumeType common.VolumeType, 
 	}
 
 	// Delete pool
-	err = crds.DeletePool(poolName)
+	err = custom_resources.DeletePool(poolName)
 	Expect(err).ToNot(HaveOccurred())
 
 	// Get pool
-	pool, err := crds.GetPool(poolName)
+	pool, err := custom_resources.GetPool(poolName)
 	Expect(err).ToNot(HaveOccurred())
 	Expect(pool).ToNot(BeNil())
 
