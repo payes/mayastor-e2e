@@ -51,6 +51,7 @@ dynamic_provisioning
 check_mayastornode
 control_plane_rescheduling
 pvc_waitforfirstconsumer
+msv_rebuild
 pvc_delete
 maximum_vols_io
 node_failure
