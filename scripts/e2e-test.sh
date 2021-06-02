@@ -217,24 +217,24 @@ then
 fi
 
 # CRD compatibility checks
-if ! cmp src/common/crds/mayastorvolume.yaml "$mayastor_root_dir/csi/moac/crds/mayastorvolume.yaml"
+if ! cmp src/common/custom_resources/mayastorvolume.yaml "$mayastor_root_dir/csi/moac/crds/mayastorvolume.yaml"
 then
-    echo "src/common/crds/mayastorvolume.yaml != $mayastor_root_dir/csi/moac/crds/mayastorvolume.yaml"
-    echo "see src/common/crds/README.md"
+    echo "src/common/custom_resources/mayastorvolume.yaml != $mayastor_root_dir/csi/moac/crds/mayastorvolume.yaml"
+    echo "see src/common/custom_resources/README.md"
     exit $EXITV_FILE_MISMATCH
 fi
 
-if ! cmp src/common/crds/mayastorpool.yaml "$mayastor_root_dir/csi/moac/crds/mayastorpool.yaml"
+if ! cmp src/common/custom_resources/mayastorpool.yaml "$mayastor_root_dir/csi/moac/crds/mayastorpool.yaml"
 then
-    echo "src/common/crds/mayastorpool.yaml != $mayastor_root_dir/csi/moac/crds/mayastorpool.yaml"
-    echo "see src/common/crds/README.md"
+    echo "src/common/custom_resources/mayastorpool.yaml != $mayastor_root_dir/csi/moac/crds/mayastorpool.yaml"
+    echo "see src/common/custom_resources/README.md"
     exit $EXITV_FILE_MISMATCH
 fi
 
-if ! cmp src/common/crds/mayastornode.yaml "$mayastor_root_dir/csi/moac/crds/mayastornode.yaml"
+if ! cmp src/common/custom_resources/mayastornode.yaml "$mayastor_root_dir/csi/moac/crds/mayastornode.yaml"
 then
-    echo "src/common/crds/mayastornode.yaml != $mayastor_root_dir/csi/moac/crds/mayastornode.yaml"
-    echo "see src/common/crds/README.md"
+    echo "src/common/custom_resources/mayastornode.yaml != $mayastor_root_dir/csi/moac/crds/mayastornode.yaml"
+    echo "see src/common/custom_resources/README.md"
     exit $EXITV_FILE_MISMATCH
 fi
 
