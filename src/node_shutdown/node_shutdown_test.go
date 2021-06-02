@@ -42,7 +42,7 @@ var _ = Describe("Mayastor node failure tests", func() {
 	})
 
 	AfterEach(func() {
-		if len(poweredOffNode) > 0 {
+		if len(poweredOffNode) != 0 {
 			platform := platform.Create()
 			_ = platform.PowerOnNode(poweredOffNode)
 		}
