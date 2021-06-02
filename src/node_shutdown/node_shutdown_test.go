@@ -1,6 +1,7 @@
 package node_shutdown
 
 import (
+	"mayastor-e2e/common/platform"
 	"testing"
 	"time"
 
@@ -12,6 +13,8 @@ import (
 	v1 "k8s.io/api/core/v1"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
+
+var poweredOffNode string
 
 func TestNodeFailures(t *testing.T) {
 	// Initialise test and set class and file names for reports
@@ -39,6 +42,11 @@ var _ = Describe("Mayastor node failure tests", func() {
 	})
 
 	AfterEach(func() {
+		if len(poweredOffNode) > 0 {
+			platform := platform.Create()
+			_ = platform.PowerOnNode(poweredOffNode)
+		}
+
 		// Check resource leakage.
 		err := k8stest.AfterEachCheck()
 		Expect(err).ToNot(HaveOccurred())
@@ -74,6 +82,7 @@ func (c *shutdownConfig) nodeShutdownTest() {
 	Expect(match).To(Equal(true))
 
 	// Power off nexus node on which application is running
+	poweredOffNode = oldNexusNode
 	Expect(c.platform.PowerOffNode(oldNexusNode)).ToNot(HaveOccurred(), "PowerOffNode")
 	time.Sleep(6 * time.Minute)
 	c.verifyNodeNotReady(oldNexusNode)
@@ -129,6 +138,7 @@ func (c *shutdownConfig) nodeShutdownTest() {
 
 	// Poweron the node for other tests to proceed
 	Expect(c.platform.PowerOnNode(oldNexusNode)).ToNot(HaveOccurred(), "PowerOnNode")
+	poweredOffNode = ""
 	c.verifyMayastorComponentStates(c.numMayastorInstances)
 	err = k8stest.RestartMayastor(240, 240, 240)
 	Expect(err).ToNot(HaveOccurred(), "Restart Mayastor pods")

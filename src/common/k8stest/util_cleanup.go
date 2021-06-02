@@ -15,6 +15,26 @@ import (
 
 var ZeroInt64 = int64(0)
 
+func DeleteAllDeployments(nameSpace string) (int, error) {
+	logf.Log.Info("DeleteAllDeployments")
+	numDeployments := 0
+
+	deployments, err := gTestEnv.KubeInt.AppsV1().Deployments(nameSpace).List(context.TODO(), metaV1.ListOptions{})
+	if err == nil {
+		numDeployments = len(deployments.Items)
+		logf.Log.Info("DeleteAllDeployments: found", "deployments", numDeployments)
+		for _, deployment := range deployments.Items {
+			logf.Log.Info("DeleteAllDeployments: Deleting", "deployment", deployment.Name)
+			delErr := gTestEnv.KubeInt.AppsV1().Deployments(nameSpace).Delete(context.TODO(), deployment.Name, metaV1.DeleteOptions{})
+			if delErr != nil {
+				logf.Log.Info("DeleteAllDeployments: failed to delete the pod", "deployment", deployment.Name, "error", delErr)
+			}
+		}
+	}
+
+	return numDeployments, err
+}
+
 /// Delete all pods in the default namespace
 func DeleteAllPods(nameSpace string) (int, error) {
 	logf.Log.Info("DeleteAllPods")
@@ -350,6 +370,7 @@ func ForceDeleteMayastorPods() (bool, int, error) {
 // and no errors were encountered.
 func CleanUp() bool {
 	var errs []error
+	deploymentCount := 0
 	podCount := 0
 	pvcCount := 0
 
@@ -357,7 +378,12 @@ func CleanUp() bool {
 	if err == nil {
 		for _, ns := range nameSpaces.Items {
 			if strings.HasPrefix(ns.Name, common.NSE2EPrefix) || ns.Name == common.NSDefault {
-				tmp, err := DeleteAllPods(ns.Name)
+				tmp, err := DeleteAllDeployments(ns.Name)
+				if err != nil {
+					errs = append(errs, err)
+				}
+				deploymentCount += tmp
+				tmp, err = DeleteAllPods(ns.Name)
 				if err != nil {
 					errs = append(errs, err)
 				}
@@ -385,6 +411,7 @@ func CleanUp() bool {
 	poolFinalizerDeleted, delPoolFinalizeErr := DeleteAllPoolFinalizers()
 
 	logf.Log.Info("Resource cleanup",
+		"deploymentCount", deploymentCount,
 		"podCount", podCount,
 		"pvcCount", pvcCount,
 		"pvCount", pvCount,
