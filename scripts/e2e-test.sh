@@ -212,6 +212,7 @@ export e2e_mayastor_root_dir=$mayastor_root_dir
 if ! cmp src/common/mayastorclient/grpc/mayastor.proto "$mayastor_root_dir/rpc/proto/mayastor.proto"
 then
     echo "src/common/mayastorclient/grpc/mayastor.proto != $mayastor_root_dir/rpc/proto/mayastor.proto"
+    echo "see src/common/mayastorclient/grpc/README.md"
     exit $EXITV_FILE_MISMATCH
 fi
 
@@ -219,18 +220,21 @@ fi
 if ! cmp src/common/crds/mayastorvolume.yaml "$mayastor_root_dir/csi/moac/crds/mayastorvolume.yaml"
 then
     echo "src/common/crds/mayastorvolume.yaml != $mayastor_root_dir/csi/moac/crds/mayastorvolume.yaml"
+    echo "see src/common/crds/README.md"
     exit $EXITV_FILE_MISMATCH
 fi
 
 if ! cmp src/common/crds/mayastorpool.yaml "$mayastor_root_dir/csi/moac/crds/mayastorpool.yaml"
 then
     echo "src/common/crds/mayastorpool.yaml != $mayastor_root_dir/csi/moac/crds/mayastorpool.yaml"
+    echo "see src/common/crds/README.md"
     exit $EXITV_FILE_MISMATCH
 fi
 
 if ! cmp src/common/crds/mayastornode.yaml "$mayastor_root_dir/csi/moac/crds/mayastornode.yaml"
 then
     echo "src/common/crds/mayastornode.yaml != $mayastor_root_dir/csi/moac/crds/mayastornode.yaml"
+    echo "see src/common/crds/README.md"
     exit $EXITV_FILE_MISMATCH
 fi
 
