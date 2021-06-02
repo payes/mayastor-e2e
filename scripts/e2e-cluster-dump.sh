@@ -93,15 +93,15 @@ function kubectlEmitLogs {
         echo "ERROR calling kubectlEmitLogs"
         return
     fi
- 
+
     if [ -z "$previous" ] ; then
         logfile="$destdir/$podname.$containername.log"
         msg="# $podname $containername ----------------------------"
-        cmd="kubectl -n $ns logs $podname $containername" 
+        cmd="kubectl -n $ns logs $podname $containername"
     else
         logfile="$destdir/$podname.$containername.previous.log"
         msg="# $podname $containername previous -------------------"
-        cmd="kubectl -n $ns logs -p $podname $containername" 
+        cmd="kubectl -n $ns logs -p $podname $containername"
     fi
 
     if [ -n "$destdir" ]; then
@@ -210,3 +210,26 @@ done
 
 # getLogs podlogs destdir
 getLogs "$podlogs" "$destdir"
+
+function getSystemCmdOutputs {
+        dest="$1"
+        shift
+
+        if [ -n "$dest" ];
+        then
+                mkdir -p "$dest"
+        fi
+
+        kubectl get nodes -owide >& "$dest/node-list-with-ip"
+        nodes=$(kubectl get nodes -o jsonpath='{ $.items[*].status.addresses[?(@.type=="InternalIP")].address }')
+        for node in $nodes
+        do
+                curl --connect-timeout 5 -XPOST http://$node:10012/exec -H "Content-Type: application/json" -d '{"cmd": "nvme list -v -o json"}' >& "$dest/$node-nvme-list"
+                curl --connect-timeout 5 -XPOST http://$node:10012/exec -H "Content-Type: application/json" -d '{"cmd": "findmnt -J"}' >& "$dest/$node-findmnt"
+                curl --connect-timeout 5 -XPOST http://$node:10012/exec -H "Content-Type: application/json" -d '{"cmd": "lsblk -J"}' >& "$dest/$node-lsblk"
+                curl --connect-timeout 5 -XPOST http://$node:10012/exec -H "Content-Type: application/json" -d '{"cmd": "cat /host/var/log/syslog"}' >& "$dest/$node-syslog"
+                curl --connect-timeout 5 -XPOST http://$node:10012/exec -H "Content-Type: application/json" -d '{"cmd": "dmesg"}'  >& "$dest/$node-dmesg"
+        done
+}
+
+getSystemCmdOutputs "$destdir"
