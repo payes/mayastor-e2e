@@ -574,3 +574,17 @@ func GetMoacPodName() ([]string, error) {
 	}
 	return podNames, nil
 }
+
+func GetMoacNodeName() (string, error) {
+	podApi := gTestEnv.KubeInt.CoreV1().Pods
+	pods, err := podApi(common.NSMayastor()).List(context.TODO(), metaV1.ListOptions{})
+	if err != nil {
+		return "", err
+	}
+	for _, pod := range pods.Items {
+		if strings.HasPrefix(pod.Name, "moac") && pod.Status.Phase == "Running" {
+			return pod.Spec.NodeName, nil
+		}
+	}
+	return "", nil
+}

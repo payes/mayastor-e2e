@@ -60,6 +60,7 @@ pvc_waitforfirstconsumer
 msv_rebuild
 pvc_delete
 maximum_vols_io
+single_msn_shutdown
 node_shutdown
 node_failure"
 
