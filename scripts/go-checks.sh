@@ -39,7 +39,7 @@ if golangci-lint > /dev/null 2>&1 ; then
 #        :
 #    done
 # so we run it on the whole go src tree
-    if ! golangci-lint run -v ; then
+    if ! golangci-lint run -v --allow-parallel-runners ; then
         exitv=1
     fi
 else

@@ -1,4 +1,4 @@
-package crds
+package custom_resources
 
 import (
 	"context"
@@ -6,8 +6,8 @@ import (
 	"sync"
 
 	"mayastor-e2e/common"
-	v1alpha1Api "mayastor-e2e/common/crds/api/types/v1alpha1"
-	v1alpha1Client "mayastor-e2e/common/crds/clientset/v1alpha1"
+	v1alpha1Api "mayastor-e2e/common/custom_resources/api/types/v1alpha1"
+	v1alpha1Client "mayastor-e2e/common/custom_resources/clientset/v1alpha1"
 
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"

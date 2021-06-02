@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"mayastor-e2e/common"
-	v1alpha12 "mayastor-e2e/common/crds/api/types/v1alpha1"
+	v1alpha12 "mayastor-e2e/common/custom_resources/api/types/v1alpha1"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"

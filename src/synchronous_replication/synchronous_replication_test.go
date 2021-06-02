@@ -3,8 +3,8 @@ package synchronous_replication
 import (
 	"fmt"
 	coreV1 "k8s.io/api/core/v1"
-	"mayastor-e2e/common/crds"
-	"mayastor-e2e/common/crds/api/types/v1alpha1"
+	"mayastor-e2e/common/custom_resources"
+	"mayastor-e2e/common/custom_resources/api/types/v1alpha1"
 	"strings"
 	"testing"
 	"time"
@@ -149,12 +149,12 @@ func (job srJob) stop() {
 }
 
 func (job srJob) updateVolumeCount(replicaCount int) {
-	volCR, err := crds.GetVolume(job.status.volUid)
+	volCR, err := custom_resources.GetVolume(job.status.volUid)
 	Expect(err).ToNot(HaveOccurred(), fmt.Sprintf("failed to retrieve volume %s", job.status.volUid))
 
 	volCR.Spec.ReplicaCount = replicaCount
 	logf.Log.Info("Set replicaCount count to", "repl", volCR.Spec.ReplicaCount)
-	_, err = crds.UpdateVolume(volCR)
+	_, err = custom_resources.UpdateVolume(volCR)
 	Expect(err).ToNot(HaveOccurred(), fmt.Sprintf("failed to update the volume replicas %s", job.status.volName))
 }
 
@@ -173,7 +173,7 @@ func (job srJob) waitPodComplete() {
 			return
 		}
 		Expect(podPhase == coreV1.PodRunning).To(BeTrue(), fmt.Sprintf("Unexpected pod phase %v", podPhase))
-		volCR, err := crds.GetVolume(job.status.volUid)
+		volCR, err := custom_resources.GetVolume(job.status.volUid)
 		if err == nil {
 			logf.Log.Info("MayastorVolume", "Name", job.status.volUid, "Status.State", volCR.Status.State)
 		}
@@ -190,7 +190,7 @@ func (job srJob) waitVolumeHealthy() {
 	logf.Log.Info("Waiting for volume to be healthy", "name", job.status.volUid)
 	for ix := 0; ix < (timeoutSecs+sleepTimeSecs-1)/sleepTimeSecs; ix++ {
 		time.Sleep(sleepTimeSecs * time.Second)
-		volCR, err = crds.GetVolume(job.status.volUid)
+		volCR, err = custom_resources.GetVolume(job.status.volUid)
 		if err == nil {
 			if volCR.Status.State == "healthy" {
 				return

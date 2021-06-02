@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"mayastor-e2e/common/crds"
+	"mayastor-e2e/common/custom_resources"
 	"mayastor-e2e/common/e2e_config"
 	"os/exec"
 	"regexp"
@@ -435,7 +435,7 @@ func CreateConfiguredPools() {
 	for _, node := range nodes {
 		if node.MayastorNode {
 			poolName := fmt.Sprintf("pool-on-%s", node.NodeName)
-			pool, err := crds.CreatePool(poolName, node.NodeName, disks)
+			pool, err := custom_resources.CreatePool(poolName, node.NodeName, disks)
 			Expect(err).ToNot(HaveOccurred(), "failed to create pool on %v, disks %v", node, disks)
 			logf.Log.Info("Created", "pool", pool)
 		}
