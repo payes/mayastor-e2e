@@ -270,6 +270,8 @@ type failureConfig struct {
 
 type TestType int
 
+var nodes []string
+
 const (
 	RebootAllNodes TestType = iota
 	RebootOneNonNexusNode
@@ -299,6 +301,7 @@ func generateFailureConfig(testType TestType, downTime time.Duration, testName s
 	Expect(c.platform).ToNot(BeNil())
 	for _, node := range nodeLocs {
 		c.nodeList[node.NodeName] = node.IPAddress
+		nodes = append(nodes, node.NodeName)
 	}
 	return c
 }
@@ -331,6 +334,10 @@ var _ = Describe("Mayastor node failure tests", func() {
 	})
 
 	AfterEach(func() {
+		platform := platform.Create()
+		for _, node := range nodes {
+			_ = platform.PowerOnNode(node)
+		}
 		// Check resource leakage.
 		err := k8stest.AfterEachCheck()
 		Expect(err).ToNot(HaveOccurred())
@@ -380,6 +387,7 @@ var _ = BeforeSuite(func(done Done) {
 }, 60)
 
 var _ = AfterSuite(func() {
+
 	// NB This only tears down the local structures for talking to the cluster,
 	// not the kubernetes cluster itself.	By("tearing down the test environment")
 	k8stest.TeardownTestEnv()
