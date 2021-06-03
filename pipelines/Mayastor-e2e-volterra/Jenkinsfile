@@ -187,7 +187,7 @@ pipeline {
                 sh 'cd Mayastor && git checkout develop'
               }
 
-              def cmd = "./scripts/volterra-e2e-test.sh --device /dev/sdb --tag \"${e2e_image_tag}\" --logs --onfail continue --profile \"${e2e_test_profile}\" --loki_run_id \"${loki_run_id}\" --mayastor \"${env.WORKSPACE}/Mayastor\" --reportsdir \"${env.WORKSPACE}/${e2e_reports_dir}\" "
+              def cmd = "./scripts/volterra-e2e-test.sh --device /dev/sdb --tag \"${e2e_image_tag}\" --logs --onfail restart --profile \"${e2e_test_profile}\" --loki_run_id \"${loki_run_id}\" --mayastor \"${env.WORKSPACE}/Mayastor\" --reportsdir \"${env.WORKSPACE}/${e2e_reports_dir}\" "
               // building images also means using the CI registry
               if (e2e_local_registry == true) {
                 cmd = cmd + " --registry \"" + env.REGISTRY + "\""

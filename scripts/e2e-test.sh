@@ -75,10 +75,10 @@ Options:
   --logs                    Generate logs and cluster state dump at the end of successful test run,
                             prior to uninstall.
   --logsdir <path>          Location to generate logs (default: emit to stdout).
-  --onfail <stop|uninstall|continue|restart>
-                            On fail, stop immediately,uninstall or continue default($on_fail)
+  --onfail <stop|uninstall|reinstall|restart>
+                            On fail, stop immediately,uninstall, reinstall and continue or restart and continue default($on_fail)
                             Behaviour for "uninstall" only differs if uninstall is in the list of tests (the default).
-                            If set to "continue" on failure, all resources are cleaned up and mayastor is re-installed.
+                            If set to "reinstall" on failure, all resources are cleaned up and mayastor is re-installed.
                             If set to "restart" on failure, all resources are cleaned up and mayastor pods are restarted by deleting.
   --uninstall_cleanup <y|n> On uninstall cleanup for reusable cluster. default($uninstall_cleanup)
   --config                  config name or configuration file default($config_file)
@@ -158,7 +158,7 @@ while [ "$#" -gt 0 ]; do
             stop)
                 on_fail=$1
                 ;;
-            continue)
+            reinstall)
                 on_fail=$1
                 ;;
             restart)
@@ -365,7 +365,7 @@ for testname in $tests; do
                       echo "\"restart\" failed"
                       exit $EXITV_FAILED
                   fi
-              elif [ "$on_fail" == "continue" ] ; then
+              elif [ "$on_fail" == "reinstall" ] ; then
                   echo "Attempting to continue by cleaning up and re-installing........"
                   runGoTest "tools/cleanup"
                   if ! runGoTest "uninstall"; then
