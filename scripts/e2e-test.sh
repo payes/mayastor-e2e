@@ -75,10 +75,11 @@ Options:
   --logs                    Generate logs and cluster state dump at the end of successful test run,
                             prior to uninstall.
   --logsdir <path>          Location to generate logs (default: emit to stdout).
-  --onfail <stop|uninstall|continue>
+  --onfail <stop|uninstall|continue|restart>
                             On fail, stop immediately,uninstall or continue default($on_fail)
                             Behaviour for "uninstall" only differs if uninstall is in the list of tests (the default).
                             If set to "continue" on failure, all resources are cleaned up and mayastor is re-installed.
+                            If set to "restart" on failure, all resources are cleaned up and mayastor pods are restarted by deleting.
   --uninstall_cleanup <y|n> On uninstall cleanup for reusable cluster. default($uninstall_cleanup)
   --config                  config name or configuration file default($config_file)
   --platform_config         test platform configuration file default($platform_config_file)
@@ -158,6 +159,9 @@ while [ "$#" -gt 0 ]; do
                 on_fail=$1
                 ;;
             continue)
+                on_fail=$1
+                ;;
+            restart)
                 on_fail=$1
                 ;;
             *)
@@ -354,15 +358,27 @@ for testname in $tests; do
           echo "Test \"$testname\" FAILED!"
           test_failed=1
           emitLogs "$testname"
-          if [ "$on_fail" == "continue" ] && [ "$testname" != "install" ] ; then
-              # continue is only possible if install was successful
-              echo "Attempting to continue....., cleanup"
-              if ! runGoTest "tools/restart" ; then
-                  echo "\"restart\" failed"
-                  exit $EXITV_FAILED
+          if [ "$testname" != "install" ] ; then
+              if [ "$on_fail" == "restart" ] ; then
+                  echo "Attempting to continue by cleaning up and restarting mayastor pods........"
+                  if ! runGoTest "tools/restart" ; then
+                      echo "\"restart\" failed"
+                      exit $EXITV_FAILED
+                  fi
+              elif [ "$on_fail" == "continue" ] ; then
+                  echo "Attempting to continue by cleaning up and re-installing........"
+                  runGoTest "tools/cleanup"
+                  if ! runGoTest "uninstall"; then
+                      echo "uninstall failed, abandoning attempt to continue"
+                      exit $EXITV_FAILED
+                  fi
+                  if ! runGoTest "install"; then
+                      echo "(re)install failed, abandoning attempt to continue"
+                      exit $EXITV_FAILED
+                  fi
+              else
+                  break
               fi
-          else
-              break
           fi
       fi
   fi
