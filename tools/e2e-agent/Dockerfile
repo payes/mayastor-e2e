@@ -1,6 +1,10 @@
 From ubuntu
 RUN apt-get update
-RUN apt-get install net-tools iptables wget nvme-cli -y
+# Parted is used to create and manipulate disk partition.
+# Udev provides a dynamic way of setting up device.
+# It ensures that devices are configured as soon as they are plugged in and discovered.
+# It propagates information about a processed device.
+RUN apt-get install net-tools iptables wget parted udev nvme-cli -y
 ADD  ./ /
 RUN wget https://golang.org/dl/go1.16.3.linux-amd64.tar.gz
 RUN tar -C /usr/local/ -xzf go1.16.3.linux-amd64.tar.gz; rm -rf go1.16.3.linux-amd64.tar.gz

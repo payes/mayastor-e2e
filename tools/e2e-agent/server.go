@@ -105,9 +105,7 @@ func execCmd(w http.ResponseWriter, r *http.Request) {
 	cmdArgs := strings.Split(cmdline.Cmd, " ")
 	cmdName := cmdArgs[0]
 	if len(cmdArgs) > 1 {
-		args := strings.Join(cmdArgs[1:], " ")
-		cmd = exec.Command(cmdName, args)
-		log.Printf("%s, %s\n", cmdName, args)
+		cmd = exec.Command(cmdName, cmdArgs[1:]...)
 	} else {
 		cmd = exec.Command(cmdName)
 		log.Printf("%s\n", cmdName)

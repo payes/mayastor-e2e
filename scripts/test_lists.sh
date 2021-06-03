@@ -15,7 +15,6 @@ replica
 rebuild
 ms_pod_disruption"
 
-
 CONTINUOUS_TEST_LIST="
 basic_volume_io
 csi
@@ -26,14 +25,12 @@ volume_filesystem
 ms_pod_disruption
 ms_pod_disruption_no_io"
 
-
 NIGHTLY_TEST_LIST="
 basic_volume_io
 csi
 resource_check
 io_soak
 multiple_vols_pod_io"
-
 
 NIGHTLY_FULL_TEST_LIST="
 basic_volume_io
@@ -56,6 +53,7 @@ ms_pool_delete
 dynamic_provisioning
 check_mayastornode
 control_plane_rescheduling
+expand_msp_disk
 pvc_waitforfirstconsumer
 msv_rebuild
 pvc_delete
@@ -70,7 +68,6 @@ basic_volume_io
 csi
 resource_check"
 
-
 SELF_CI_TEST_LIST="
 basic_volume_io
 csi
@@ -84,10 +81,11 @@ ms_pool_delete
 volume_filesystem
 dynamic_provisioning
 mayastorpool_schema
+expand_msp_disk
 pvc_waitforfirstconsumer
 maximum_vols_io"
 
-
 SOAK_TEST_LIST="
 io_soak"
+
 

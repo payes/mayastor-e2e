@@ -130,6 +130,20 @@ type E2EConfig struct {
 		// Count of mayastor volume
 		MayastorVolumeCount int `yaml:"mayastorVolumeCount" env-default:"3"`
 	} `yaml:"controlPlaneRescheduling"`
+	ExpandMspDisk struct {
+		// DiskPath is the path of the disk
+		DiskPath string `yaml:"diskPath" env-default:"/dev/sdb"`
+		// PartitionStartSize is the start size of partitioned disk
+		PartitionStartSize string `yaml:"partitionStartSize" env-default:"1GiB"`
+		// PartitionEndSize is the end size of partitioned disk
+		PartitionEndSize string `yaml:"partitionEndSize" env-default:"3GiB"`
+		// ResizePartitionDisk is the end size of partiioned disk to resize the disk
+		ResizePartitionDisk string `yaml:"resizePartitionDisk" env-default:"5GiB"`
+		// Duration is in seconds
+		Duration string `yaml:"duration" env-default:"60"`
+		// VolSizeMb Units are MiB
+		VolSizeMb string `yaml:"volSizeMb" env-default:"50"`
+	}
 }
 
 var once sync.Once

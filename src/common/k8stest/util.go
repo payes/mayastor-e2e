@@ -2,7 +2,6 @@ package k8stest
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"mayastor-e2e/common/custom_resources"
 	"mayastor-e2e/common/e2e_config"
@@ -15,6 +14,7 @@ import (
 	"mayastor-e2e/common/mayastorclient"
 
 	. "github.com/onsi/gomega"
+	errors "github.com/pkg/errors"
 
 	appsV1 "k8s.io/api/apps/v1"
 	coreV1 "k8s.io/api/core/v1"
@@ -474,4 +474,21 @@ func WaitForPoolsToBeOnline(timeoutSeconds int) error {
 		}
 	}
 	return CheckAllPoolsAreOnline()
+}
+
+// WaitPodComplete waits until pod is in completed state
+func WaitPodComplete(podName string, sleepTimeSecs, timeoutSecs int) error {
+	var podPhase coreV1.PodPhase
+	var err error
+
+	logf.Log.Info("Waiting for pod to complete", "name", podName)
+	for ix := 0; ix < (timeoutSecs+sleepTimeSecs-1)/sleepTimeSecs; ix++ {
+		time.Sleep(time.Duration(sleepTimeSecs) * time.Second)
+		podPhase, err = CheckPodCompleted(podName, common.NSDefault)
+		Expect(err).ToNot(HaveOccurred(), fmt.Sprintf("failed to access pod status %s %v", podName, err))
+		if podPhase == coreV1.PodSucceeded {
+			return nil
+		}
+	}
+	return errors.Errorf("pod did not complete, phase %v", podPhase)
 }

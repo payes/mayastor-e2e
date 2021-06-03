@@ -18,6 +18,10 @@ type NodeList struct {
 	Nodes []string `json:"nodes"`
 }
 
+type CmdList struct {
+	Cmd string `json:"cmd"`
+}
+
 func sendRequest(reqType, url string, data interface{}) error {
 	client := &http.Client{}
 	reqData := new(bytes.Buffer)
@@ -81,6 +85,15 @@ func AcceptConnectionsFromNodes(serverAddr string, nodes []string) error {
 	url := "http://" + serverAddr + ":" + RestPort + "/acceptConnectionsFromNodes"
 	data := NodeList{
 		Nodes: nodes,
+	}
+	return sendRequest("POST", url, data)
+}
+
+// DiskPartition performs operation related to disk prtitioning
+func DiskPartition(serverAddr string, cmd string) error {
+	url := "http://" + serverAddr + ":" + RestPort + "/exec"
+	data := CmdList{
+		Cmd: cmd,
 	}
 	return sendRequest("POST", url, data)
 }
