@@ -74,11 +74,6 @@ func testPvcDeleteTest(
 	)
 	logf.Log.Info("Volume", "uid", uid)
 
-	// Confirm the PVC has been created.
-	pvc, getPvcErr := k8stest.GetPVC(volName, common.NSDefault)
-	Expect(getPvcErr).ToNot(HaveOccurred(), "failed to get pvc")
-	Expect(pvc).ToNot(BeNil(), "failed to get pvc")
-
 	// create fio pod
 	fioPodName, err := createFioPod(volName)
 	Expect(err).ToNot(HaveOccurred(), "failed to create fio pod")
@@ -146,11 +141,6 @@ func testPvcDeleteTest(
 		common.NSDefault,
 	)
 	logf.Log.Info("Volume", "uid", uidSec)
-
-	// Confirm the PVC has been created.
-	pvc, getPvcErr = k8stest.GetPVC(volName, common.NSDefault)
-	Expect(getPvcErr).To(BeNil())
-	Expect(pvc).ToNot(BeNil(), "failed to get pvc")
 
 	//check for MayastorVolume CR status
 	Expect(k8stest.GetMSV(uidSec)).ToNot(BeNil(), "failed to get msv")

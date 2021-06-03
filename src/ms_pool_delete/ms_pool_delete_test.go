@@ -5,7 +5,6 @@ import (
 	"strings"
 	"testing"
 
-	coreV1 "k8s.io/api/core/v1"
 	storageV1 "k8s.io/api/storage/v1"
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -56,61 +55,6 @@ func pooldeletionTest(protocol common.ShareProto, volumeType common.VolumeType, 
 		volumeType,
 		common.NSDefault,
 	)
-
-	// Confirm the PVC has been created.
-	pvc, getPvcErr := k8stest.GetPVC(volName, common.NSDefault)
-	Expect(getPvcErr).To(BeNil(), "PVC creation failed")
-	Expect(pvc).ToNot(BeNil(), "PVC creation failed")
-
-	// Wait for the PVC to be bound.
-	Eventually(func() coreV1.PersistentVolumeClaimPhase {
-		return k8stest.GetPvcStatusPhase(volName, common.NSDefault)
-	},
-		defTimeoutSecs, // timeout
-		"1s",           // polling interval
-	).Should(Equal(coreV1.ClaimBound))
-
-	// Refresh the PVC contents, so that we can get the PV name.
-	pvc, getPvcErr = k8stest.GetPVC(volName, common.NSDefault)
-	Expect(getPvcErr).To(BeNil(), "PVC content is nil")
-	Expect(pvc).ToNot(BeNil(), "PVC content is nil")
-
-	// Wait for the PV to be provisioned
-	Eventually(func() *coreV1.PersistentVolume {
-		pv, getPvErr := k8stest.GetPV(pvc.Spec.VolumeName)
-		if getPvErr != nil {
-			return nil
-		}
-		return pv
-
-	},
-		defTimeoutSecs, // timeout
-		"1s",           // polling interval
-	).Should(Not(BeNil()))
-
-	// Wait for the PV to be bound.
-	Eventually(func() coreV1.PersistentVolumePhase {
-		return k8stest.GetPvStatusPhase(pvc.Spec.VolumeName)
-	},
-		defTimeoutSecs, // timeout
-		"1s",           // polling interval
-	).Should(Equal(coreV1.VolumeBound))
-
-	// Wait for the MSV to be provisioned
-	Eventually(func() *k8stest.MayastorVolStatus {
-		return k8stest.GetMSV(string(pvc.ObjectMeta.UID))
-	},
-		defTimeoutSecs, //timeout
-		"1s",           // polling interval
-	).Should(Not(BeNil()))
-
-	// Wait for the MSV to be healthy
-	Eventually(func() string {
-		return k8stest.GetMsvState(string(pvc.ObjectMeta.UID))
-	},
-		defTimeoutSecs, // timeout
-		"1s",           // polling interval
-	).Should(Equal("healthy"))
 
 	// Create pod
 	fioPodName := "fio-" + volName

@@ -74,11 +74,6 @@ func testMsPodRestartTest(
 	)
 	logf.Log.Info("Volume", "uid", uid)
 
-	// Confirm the PVC has been created.
-	pvc, getPvcErr := k8stest.GetPVC(volName, common.NSDefault)
-	Expect(getPvcErr).To(BeNil())
-	Expect(pvc).ToNot(BeNil(), "failed to get pvc")
-
 	// Create the fio Pod
 	fioPodName := "fio-" + volName
 

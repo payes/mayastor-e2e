@@ -46,12 +46,6 @@ func controlPlaneReschedulingTest(protocol common.ShareProto, volumeType common.
 		k8stest.MkPVC(common.DefaultVolumeSizeMb, volName, scName, volumeType, common.NSDefault)
 	}
 
-	// Check status of volume
-	for _, volName := range volNames {
-		err := checkVolumeStatus(volName)
-		Expect(err).ToNot(HaveOccurred())
-	}
-
 	// Create pod
 	for ix, volName := range volNames {
 		fioPodName := fmt.Sprintf("fio-%s-%d", volName, ix)
@@ -194,68 +188,6 @@ func createStoragClass(scName string, mode storageV1.VolumeBindingMode, namespac
 	// Create storage class
 	err = k8stest.CreateSc(scObj)
 	Expect(err).ToNot(HaveOccurred(), "Creating storage class %s", scName)
-
-	return err
-}
-
-// checkVolumeStatus confirms PVC has been created,
-// wait for PVC to bound, wait for the PV to be provisioned
-// and bound and also checks MSV to be provisioned and healthy
-func checkVolumeStatus(volName string) error {
-	// Confirm the PVC has been created.
-	pvc, err := k8stest.GetPVC(volName, common.NSDefault)
-	Expect(err).To(BeNil(), "PVC creation failed")
-	Expect(pvc).ToNot(BeNil(), "PVC creation failed")
-
-	// Wait for the PVC to be bound.
-	Eventually(func() coreV1.PersistentVolumeClaimPhase {
-		return k8stest.GetPvcStatusPhase(volName, common.NSDefault)
-	},
-		defTimeoutSecs, // timeout
-		"1s",           // polling interval
-	).Should(Equal(coreV1.ClaimBound))
-
-	// Refresh the PVC contents, so that we can get the PV name.
-	pvc, err = k8stest.GetPVC(volName, common.NSDefault)
-	Expect(err).To(BeNil(), "PVC content is nil")
-	Expect(pvc).ToNot(BeNil(), "PVC content is nil")
-
-	// Wait for the PV to be provisioned
-	Eventually(func() *coreV1.PersistentVolume {
-		pv, err := k8stest.GetPV(pvc.Spec.VolumeName)
-		if err != nil {
-			return nil
-		}
-		return pv
-
-	},
-		defTimeoutSecs, // timeout
-		"1s",           // polling interval
-	).Should(Not(BeNil()))
-
-	// Wait for the PV to be bound.
-	Eventually(func() coreV1.PersistentVolumePhase {
-		return k8stest.GetPvStatusPhase(pvc.Spec.VolumeName)
-	},
-		defTimeoutSecs, // timeout
-		"1s",           // polling interval
-	).Should(Equal(coreV1.VolumeBound))
-
-	// Wait for the MSV to be provisioned
-	Eventually(func() *k8stest.MayastorVolStatus {
-		return k8stest.GetMSV(string(pvc.ObjectMeta.UID))
-	},
-		defTimeoutSecs, //timeout
-		"1s",           // polling interval
-	).Should(Not(BeNil()))
-
-	// Wait for the MSV to be healthy
-	Eventually(func() string {
-		return k8stest.GetMsvState(string(pvc.ObjectMeta.UID))
-	},
-		defTimeoutSecs, // timeout
-		"1s",           // polling interval
-	).Should(Equal("healthy"))
 
 	return err
 }

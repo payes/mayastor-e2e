@@ -29,9 +29,6 @@ func mayastorRebuildTest(protocol common.ShareProto) {
 	Expect(err).ToNot(HaveOccurred(), "Creating storage class %s", storageClass)
 	// Create a PVC
 	uuid := k8stest.MkPVC(common.DefaultVolumeSizeMb, pvcName, storageClass, common.VolFileSystem, common.NSDefault)
-	pvc, err := k8stest.GetPVC(pvcName, common.NSDefault)
-	Expect(err).To(BeNil())
-	Expect(pvc).ToNot(BeNil())
 	timeout := "90s"
 	pollPeriod := "1s"
 	durationSecs := 250

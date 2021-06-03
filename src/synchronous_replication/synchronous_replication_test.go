@@ -2,12 +2,13 @@ package synchronous_replication
 
 import (
 	"fmt"
-	coreV1 "k8s.io/api/core/v1"
 	"mayastor-e2e/common/custom_resources"
 	"mayastor-e2e/common/custom_resources/api/types/v1alpha1"
 	"strings"
 	"testing"
 	"time"
+
+	coreV1 "k8s.io/api/core/v1"
 
 	"mayastor-e2e/common"
 	"mayastor-e2e/common/k8stest"
@@ -77,11 +78,6 @@ func (job srJob) start(upDn string) srJob {
 		common.NSDefault,
 	)
 	logf.Log.Info("Volume created", "name", job.status.volName, "uid", job.status.volUid)
-
-	// Confirm the PVC has been created.
-	pvc, getPvcErr := k8stest.GetPVC(job.status.volName, common.NSDefault)
-	Expect(getPvcErr).To(BeNil())
-	Expect(pvc).ToNot(BeNil(), "failed to get pvc")
 
 	// Create the fio Pod
 	job.status.podName = "fio-" + job.status.volName

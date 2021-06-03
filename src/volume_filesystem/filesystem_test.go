@@ -65,43 +65,6 @@ func volumeFilesytemTest(protocol common.ShareProto, volumeType common.VolumeTyp
 	Expect(getPvcErr).To(BeNil(), "PVC content is nil")
 	Expect(pvc).ToNot(BeNil(), "PVC content is nil")
 
-	// Wait for the PV to be provisioned
-	Eventually(func() *coreV1.PersistentVolume {
-		pv, getPvErr := k8stest.GetPV(pvc.Spec.VolumeName)
-		if getPvErr != nil {
-			return nil
-		}
-		return pv
-
-	},
-		defTimeoutSecs, // timeout
-		"1s",           // polling interval
-	).Should(Not(BeNil()))
-
-	// Wait for the PV to be bound.
-	Eventually(func() coreV1.PersistentVolumePhase {
-		return k8stest.GetPvStatusPhase(pvc.Spec.VolumeName)
-	},
-		defTimeoutSecs, // timeout
-		"1s",           // polling interval
-	).Should(Equal(coreV1.VolumeBound))
-
-	// Wait for the MSV to be provisioned
-	Eventually(func() *k8stest.MayastorVolStatus {
-		return k8stest.GetMSV(string(pvc.ObjectMeta.UID))
-	},
-		defTimeoutSecs, //timeout
-		"1s",           // polling interval
-	).Should(Not(BeNil()))
-
-	// Wait for the MSV to be healthy
-	Eventually(func() string {
-		return k8stest.GetMsvState(string(pvc.ObjectMeta.UID))
-	},
-		defTimeoutSecs, // timeout
-		"1s",           // polling interval
-	).Should(Equal("healthy"))
-
 	// Check for Volumemode in PV
 	pv, getPvErr := k8stest.GetPV(pvc.Spec.VolumeName)
 	Expect(getPvErr).To(BeNil(), "Error pv is nil")
