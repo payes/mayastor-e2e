@@ -200,14 +200,29 @@ func descheduledTestPod(replicas int, local bool) {
 	logf.Log.Info("", "replicas", replicasAppStopped)
 
 	// Compare the sets of replicas returned
-	Expect(len(replicasAppRunning) == len(replicasAppStopped)).To(BeTrue(), "%v != %v", replicasAppRunning, replicasAppStopped)
 	sort.Sort(mayastorclient.MayastorReplicaArray(replicasAppRunning))
 	sort.Sort(mayastorclient.MayastorReplicaArray(replicasAppStopped))
+	logf.Log.Info("App running", "replicas", replicasAppRunning)
+	logf.Log.Info("App stopped", "replicas", replicasAppStopped)
+	Expect(len(replicasAppRunning) == len(replicasAppStopped)).To(BeTrue(), "%v != %v", replicasAppRunning, replicasAppStopped)
 	for ix := range replicasAppRunning {
-		Expect(reflect.DeepEqual(replicasAppRunning[ix], replicasAppStopped[ix])).To(BeTrue(), "replicas do not match")
+		Expect(reflect.DeepEqual(replicasAppRunning[ix], replicasAppStopped[ix])).To(BeTrue(),
+			"replicas do not match %v != %v", replicasAppRunning[ix], replicasAppStopped[ix])
 	}
 
-	nexuses, err := k8stest.ListNexusesInCluster()
+	var nexuses []mayastorclient.MayastorNexus
+	const timoSecs = 120
+	const timoSleepSecs = 5
+	for ix := 0; ix < timoSecs; ix += timoSleepSecs {
+		time.Sleep(timoSleepSecs * time.Second)
+		nexuses, err = k8stest.ListNexusesInCluster()
+		if err == nil {
+			if len(nexuses) == 0 {
+				break
+			}
+		}
+	}
+
 	Expect(err).To(BeNil(), "failed to list nexuses")
 	logf.Log.Info("", "nexuses", nexuses)
 	if !deferredAssert {
