@@ -1,6 +1,7 @@
 package node_shutdown
 
 import (
+	"fmt"
 	"mayastor-e2e/common"
 	"mayastor-e2e/common/custom_resources"
 	"mayastor-e2e/common/k8stest"
@@ -44,8 +45,24 @@ func (c *shutdownConfig) createDeployment() {
 	labelselector := map[string]string{
 		"e2e-test": "shutdown",
 	}
-	command := []string{}
-	command = append(command, "sleep", "3600")
+	mount := corev1.VolumeMount{
+		Name:      "ms-volume",
+		MountPath: common.FioFsMountPoint,
+	}
+	var volMounts []corev1.VolumeMount
+	volMounts = append(volMounts, mount)
+
+	args := []string{
+		"--",
+		"--time_based",
+		fmt.Sprintf("--runtime=%d", durationSecs),
+		fmt.Sprintf("--filename=%s", common.FioFsFilename),
+		fmt.Sprintf("--size=%dm", volumeFileSizeMb),
+		fmt.Sprintf("--thinktime=%d", thinkTime),
+	}
+
+	fioArgs := append(args, common.GetFioArgs()...)
+	logf.Log.Info("fio", "arguments", fioArgs)
 	deployObj, err := k8stest.NewDeploymentBuilder().
 		WithName(c.deployName).
 		WithNamespace(common.NSDefault).
@@ -56,22 +73,16 @@ func (c *shutdownConfig) createDeployment() {
 				WithLabels(labelselector).
 				WithContainerBuildersNew(
 					k8stest.NewContainerBuilder().
-						WithName("busybox").
-						WithImage("busybox").
-						WithCommandNew(command).
-						WithVolumeMountsNew(
-							[]corev1.VolumeMount{
-								corev1.VolumeMount{
-									Name:      "datavol1",
-									MountPath: "/mnt/e2e-test",
-								},
-							},
-						),
-				).WithVolumeBuilders(
-				k8stest.NewVolumeBuilder().
-					WithName("datavol1").
-					WithPVCSource(c.pvcName),
-			),
+						WithName(c.podName).
+						WithImage(common.GetFioImage()).
+						WithVolumeMountsNew(volMounts).
+						WithImagePullPolicy(corev1.PullAlways).
+						WithArgumentsNew(fioArgs)).
+				WithVolumeBuilders(
+					k8stest.NewVolumeBuilder().
+						WithName("ms-volume").
+						WithPVCSource(c.pvcName),
+				),
 		).
 		Build()
 	Expect(err).ShouldNot(

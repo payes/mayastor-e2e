@@ -23,7 +23,10 @@ import (
 )
 
 const (
-	defTimeoutSecs = 240
+	defTimeoutSecs   = 240  // in seconds
+	durationSecs     = 600  // in seconds
+	volumeFileSizeMb = 250  // in Mb
+	thinkTime        = 1000 // in milliseconds
 )
 
 func TestNodeFailures(t *testing.T) {
@@ -58,8 +61,24 @@ func (c *failureConfig) createDeployment() {
 	labelselector := map[string]string{
 		"e2e-test": "reboot",
 	}
-	command := []string{}
-	command = append(command, "sleep", "3600")
+
+	mount := corev1.VolumeMount{
+		Name:      "ms-volume",
+		MountPath: common.FioFsMountPoint,
+	}
+	var volMounts []corev1.VolumeMount
+	volMounts = append(volMounts, mount)
+	args := []string{
+		"--",
+		"--time_based",
+		fmt.Sprintf("--runtime=%d", durationSecs),
+		fmt.Sprintf("--filename=%s", common.FioFsFilename),
+		fmt.Sprintf("--size=%dm", volumeFileSizeMb),
+		fmt.Sprintf("--thinktime=%d", thinkTime),
+	}
+
+	fioArgs := append(args, common.GetFioArgs()...)
+	logf.Log.Info("fio", "arguments", fioArgs)
 	deployObj, err := k8stest.NewDeploymentBuilder().
 		WithName(c.deployName).
 		WithNamespace(common.NSDefault).
@@ -70,22 +89,16 @@ func (c *failureConfig) createDeployment() {
 				WithLabels(labelselector).
 				WithContainerBuildersNew(
 					k8stest.NewContainerBuilder().
-						WithName("busybox").
-						WithImage("busybox").
-						WithCommandNew(command).
-						WithVolumeMountsNew(
-							[]corev1.VolumeMount{
-								corev1.VolumeMount{
-									Name:      "datavol1",
-									MountPath: "/mnt/e2e-test",
-								},
-							},
-						),
-				).WithVolumeBuilders(
-				k8stest.NewVolumeBuilder().
-					WithName("datavol1").
-					WithPVCSource(c.pvcName),
-			),
+						WithName(c.podName).
+						WithImage(common.GetFioImage()).
+						WithImagePullPolicy(corev1.PullAlways).
+						WithVolumeMountsNew(volMounts).
+						WithArgumentsNew(fioArgs)).
+				WithVolumeBuilders(
+					k8stest.NewVolumeBuilder().
+						WithName("ms-volume").
+						WithPVCSource(c.pvcName),
+				),
 		).
 		Build()
 	Expect(err).ShouldNot(
@@ -96,6 +109,7 @@ func (c *failureConfig) createDeployment() {
 	)
 
 	Expect(err).ToNot(HaveOccurred(), "Generating deployment definition %s", c.deployName)
+
 	err = k8stest.CreateDeployment(deployObj)
 	Expect(err).ToNot(HaveOccurred(), "Creating deployment %s", c.deployName)
 
@@ -264,6 +278,7 @@ type failureConfig struct {
 	pvcName        string
 	pvcSize        int
 	deployName     string
+	podName        string
 	nodeList       map[string]string
 	platform       types.Platform
 }
@@ -288,10 +303,11 @@ func generateFailureConfig(testType TestType, downTime time.Duration, testName s
 		replicas:       3,
 		DownTime:       downTime,
 		testType:       testType,
-		pvcSize:        1024, // In Mb
+		pvcSize:        5120, // In Mb
 		scName:         testName + "-sc",
 		pvcName:        testName + "-pvc",
 		deployName:     testName + "-deploy",
+		podName:        testName + "-pod",
 		nodeList:       make(map[string]string),
 	}
 
@@ -310,12 +326,11 @@ func (c *failureConfig) nodeRebootTests() {
 	c.createSC()
 	uuid := c.createPVC()
 	c.createDeployment()
-
 	c.RebootDesiredNodes(uuid)
 	c.verifyNodesReady()
 
-	c.verifyApplicationPodRunning(true)
 	c.verifyMayastorComponentStates()
+	c.verifyApplicationPodRunning(true)
 
 	c.deleteDeployment()
 	c.deletePVC()
@@ -382,7 +397,8 @@ var _ = Describe("Mayastor node failure tests", func() {
 
 var _ = BeforeSuite(func(done Done) {
 	k8stest.SetupTestEnv()
-
+	// err := k8stest.RestartMayastor(120, 120, 120)
+	// Expect(err).ToNot(HaveOccurred(), "Restart Mayastor pods")
 	close(done)
 }, 60)
 

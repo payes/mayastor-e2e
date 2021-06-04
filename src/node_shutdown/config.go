@@ -11,7 +11,10 @@ import (
 )
 
 const (
-	defTimeoutSecs = 240
+	defTimeoutSecs   = 240  // in seconds
+	durationSecs     = 600  // in seconds
+	volumeFileSizeMb = 250  // in Mb
+	thinkTime        = 1000 // in milliseconds
 )
 
 type shutdownConfig struct {
@@ -22,6 +25,7 @@ type shutdownConfig struct {
 	replicas             int
 	scName               string
 	pvcName              string
+	podName              string
 	pvcSize              int
 	deployName           string
 	numMayastorInstances int
@@ -37,10 +41,11 @@ func generateShutdownConfig(testName string) *shutdownConfig {
 		fsType:               common.Ext4FsType,
 		volBindingMode:       storageV1.VolumeBindingImmediate,
 		replicas:             3,
-		pvcSize:              1024, // In Mb
+		pvcSize:              5120, // In Mb
 		scName:               testName + "-sc",
 		pvcName:              testName + "-pvc",
 		deployName:           testName + "-deploy",
+		podName:              testName + "-pod",
 		numMayastorInstances: 3,
 	}
 
