@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"mayastor-e2e/common/custom_resources"
 	"mayastor-e2e/common/e2e_config"
 	"os/exec"
 	"strings"
@@ -507,13 +508,13 @@ func restartMayastor(restartTOSecs int, readyTOSecs int, poolsTOSecs int) error 
 	const sleepTime = 10
 	for ix := 0; ix < (poolsTOSecs+sleepTime-1)/sleepTime; ix++ {
 		time.Sleep(sleepTime * time.Second)
-		err = CheckAllPoolsAreOnline()
+		err = custom_resources.CheckAllPoolsAreOnline()
 		if err == nil {
 			break
 		}
 	}
 
-	err = CheckAllPoolsAreOnline()
+	err = custom_resources.CheckAllPoolsAreOnline()
 	if err != nil {
 		return fmt.Errorf("Not all pools are online %v", err)
 	}

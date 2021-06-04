@@ -3,6 +3,7 @@ package k8stest
 // Utility functions for cleaning up a cluster
 import (
 	"context"
+	"mayastor-e2e/common/custom_resources"
 	"os/exec"
 	"strings"
 	"time"
@@ -189,21 +190,20 @@ func DeleteAllPvs() (int, error) {
 	return numPvs, err
 }
 
-// Make best attempt to delete MayastorVolumes
+// DeleteAllMsvs Make best attempt to delete MayastorVolumes
 func DeleteAllMsvs() (int, error) {
 	// If after deleting PVCs and PVs Mayastor volumes are leftover
 	// try cleaning them up explicitly
-	msvGVR := GetMsVolGVR()
 
-	msvs, err := gTestEnv.DynamicClient.Resource(msvGVR).Namespace(common.NSMayastor()).List(context.TODO(), metaV1.ListOptions{})
+	msvs, err := custom_resources.ListVolumes()
 	if err != nil {
 		// This function may be called by AfterSuite by uninstall test so listing MSVs may fail correctly
 		logf.Log.Info("DeleteAllMsvs: list MSVs failed.", "Error", err)
 	}
-	if err == nil && msvs != nil && len(msvs.Items) != 0 {
-		for _, msv := range msvs.Items {
+	if err == nil && msvs != nil && len(msvs) != 0 {
+		for _, msv := range msvs {
 			logf.Log.Info("DeleteAllMsvs: deleting MayastorVolume", "MayastorVolume", msv.GetName())
-			if delErr := DeleteMSV(msv.GetName()); delErr != nil {
+			if delErr := custom_resources.DeleteVolume(msv.GetName()); delErr != nil {
 				logf.Log.Info("DeleteAllMsvs: failed deleting MayastorVolume", "MayastorVolume", msv.GetName(), "error", delErr)
 			}
 		}
@@ -212,9 +212,9 @@ func DeleteAllMsvs() (int, error) {
 	numMsvs := 0
 	// Wait 2 minutes for resources to be deleted
 	for attempts := 0; attempts < 120; attempts++ {
-		msvs, err := gTestEnv.DynamicClient.Resource(msvGVR).Namespace(common.NSMayastor()).List(context.TODO(), metaV1.ListOptions{})
+		msvs, err := custom_resources.ListVolumes()
 		if err == nil && msvs != nil {
-			numMsvs = len(msvs.Items)
+			numMsvs = len(msvs)
 			if numMsvs == 0 {
 				break
 			}
@@ -230,21 +230,19 @@ func DeleteAllPoolFinalizers() (bool, error) {
 	deletedFinalizer := false
 	var deleteErr error
 
-	poolGVR := GetMsPoolGVR()
-
-	pools, err := gTestEnv.DynamicClient.Resource(poolGVR).Namespace(common.NSMayastor()).List(context.TODO(), metaV1.ListOptions{})
+	pools, err := custom_resources.ListPools()
 	if err != nil {
 		logf.Log.Info("DeleteAllPoolFinalisers: list MSPs failed.", "Error", err)
 		return false, err
-	} else if len(pools.Items) != 0 {
-		for _, pool := range pools.Items {
+	} else if len(pools) != 0 {
+		for _, pool := range pools {
 			empty := make([]string, 0)
 			logf.Log.Info("DeleteAllPoolFinalizers", "pool", pool.GetName())
 			finalizers := pool.GetFinalizers()
 			if finalizers != nil {
 				logf.Log.Info("Removing all finalizers", "pool", pool.GetName(), "finalizer", finalizers)
 				pool.SetFinalizers(empty)
-				_, err = gTestEnv.DynamicClient.Resource(poolGVR).Namespace(common.NSMayastor()).Update(context.TODO(), &pool, metaV1.UpdateOptions{})
+				_, err = custom_resources.UpdatePool(pool)
 				if err != nil {
 					deleteErr = err
 					logf.Log.Info("Pool update finalizer", "error", err)
@@ -258,22 +256,20 @@ func DeleteAllPoolFinalizers() (bool, error) {
 }
 
 func DeleteAllPools() bool {
-	poolGVR := GetMsPoolGVR()
-
-	pools, err := gTestEnv.DynamicClient.Resource(poolGVR).Namespace(common.NSMayastor()).List(context.TODO(), metaV1.ListOptions{})
+	pools, err := custom_resources.ListPools()
 	if err != nil {
 		// This function may be called by AfterSuite by uninstall test so listing MSVs may fail correctly
 		logf.Log.Info("DeleteAllPools: list MSPs failed.", "Error", err)
 	}
-	if err == nil && pools != nil && len(pools.Items) != 0 {
+	if err == nil && pools != nil && len(pools) != 0 {
 		logf.Log.Info("DeleteAllPools: deleting MayastorPools")
-		for _, pool := range pools.Items {
+		for _, pool := range pools {
 			logf.Log.Info("DeleteAllPools: deleting", "pool", pool.GetName())
 			finalizers := pool.GetFinalizers()
 			if finalizers != nil {
 				logf.Log.Info("DeleteAllPools: found finalizers on pool ", "pool", pool.GetName(), "finalizers", finalizers)
 			}
-			err = gTestEnv.DynamicClient.Resource(poolGVR).Namespace(common.NSMayastor()).Delete(context.TODO(), pool.GetName(), metaV1.DeleteOptions{GracePeriodSeconds: &ZeroInt64})
+			err = custom_resources.DeletePool(pool.GetName())
 			if err != nil {
 				logf.Log.Info("DeleteAllPools: failed to delete pool", pool.GetName(), "error", err)
 			}
@@ -283,9 +279,9 @@ func DeleteAllPools() bool {
 	numPools := 0
 	// Wait 2 minutes for resources to be deleted
 	for attempts := 0; attempts < 120; attempts++ {
-		pools, err := gTestEnv.DynamicClient.Resource(poolGVR).Namespace(common.NSMayastor()).List(context.TODO(), metaV1.ListOptions{})
+		pools, err := custom_resources.ListPools()
 		if err == nil && pools != nil {
-			numPools = len(pools.Items)
+			numPools = len(pools)
 		}
 		if numPools == 0 {
 			break
@@ -295,7 +291,7 @@ func DeleteAllPools() bool {
 
 	logf.Log.Info("DeleteAllPools: ", "Pool count", numPools)
 	if numPools != 0 {
-		logf.Log.Info("DeleteAllPools: ", "Pools", pools.Items)
+		logf.Log.Info("DeleteAllPools: ", "Pools", pools)
 	}
 	return numPools == 0
 }

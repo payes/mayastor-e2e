@@ -180,7 +180,7 @@ func (job srJob) waitPodComplete() {
 func (job srJob) waitVolumeHealthy() {
 	const sleepTimeSecs = 5
 	const timeoutSecs = 360
-	var volCR v1alpha1.MayastorVolume
+	var volCR *v1alpha1.MayastorVolume
 	var err error
 
 	logf.Log.Info("Waiting for volume to be healthy", "name", job.status.volUid)

@@ -2,6 +2,7 @@ package install
 
 import (
 	"fmt"
+	"mayastor-e2e/common/custom_resources"
 	"os/exec"
 	"testing"
 	"time"
@@ -105,7 +106,7 @@ func installMayastor() {
 	const timoSleepSecs = 10
 	for ix := 0; ix < timoSecs/timoSleepSecs; ix++ {
 		time.Sleep(timoSleepSecs * time.Second)
-		err = k8stest.CheckAllPoolsAreOnline()
+		err = custom_resources.CheckAllPoolsAreOnline()
 		if err == nil {
 			break
 		}

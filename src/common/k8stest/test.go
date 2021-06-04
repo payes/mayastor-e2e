@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"mayastor-e2e/common/custom_resources"
 	"mayastor-e2e/common/e2e_config"
 	"testing"
 	"time"
@@ -15,7 +16,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/deprecated/scheme"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
@@ -161,13 +161,12 @@ func ResourceCheck() error {
 	}
 
 	// Mayastor volumes
-	msvGVR := GetMsVolGVR()
-	msvs, err := gTestEnv.DynamicClient.Resource(msvGVR).Namespace(common.NSMayastor()).List(context.TODO(), metaV1.ListOptions{})
+	msvs, err := custom_resources.ListVolumes()
 	if err != nil {
 		errorMsg += fmt.Sprintf("%s %v", errorMsg, err)
 	} else {
 		if msvs != nil {
-			if len(msvs.Items) != 0 {
+			if len(msvs) != 0 {
 				errorMsg += " found MayastorVolumes"
 			}
 		} else {
@@ -189,7 +188,7 @@ func ResourceCheck() error {
 		errorMsg += " found storage classes using mayastor "
 	}
 
-	err = CheckAllPoolsAreOnline()
+	err = custom_resources.CheckAllPoolsAreOnline()
 	if err != nil {
 		errorMsg += fmt.Sprintf("%s %v", errorMsg, err)
 		logf.Log.Info("ResourceCheck: not all pools are online")

@@ -12,19 +12,19 @@ type MayastorVolumeSpec struct {
 	Protocol       string   `json:"protocol"`
 }
 
-type nexusChild struct {
+type NexusChild struct {
 	Uri   string `json:"uri"`
 	State string `json:"state"`
 }
 
-type nexus struct {
+type Nexus struct {
 	Node      string       `json:"node"`
 	DeviceUri string       `json:"deviceUri"`
 	State     string       `json:"state"`
-	Children  []nexusChild `json:"children"`
+	Children  []NexusChild `json:"children"`
 }
 
-type replica struct {
+type Replica struct {
 	Node    string `json:"node"`
 	Pool    string `json:"pool"`
 	Uri     string `json:"uri"`
@@ -36,8 +36,8 @@ type MayastorVolumeStatus struct {
 	State       string    `json:"state"`
 	Reason      string    `json:"reason"`
 	TargetNodes []string  `json:"targetNodes"`
-	Nexus       nexus     `json:"nexus"`
-	Replicas    []replica `json:"replicas"`
+	Nexus       Nexus     `json:"Nexus"`
+	Replicas    []Replica `json:"replicas"`
 }
 
 type MayastorVolume struct {

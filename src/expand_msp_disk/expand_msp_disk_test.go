@@ -71,7 +71,7 @@ func diskPartitioningTest(protocol common.ShareProto, volumeType common.VolumeTy
 	// Wait for pools to be online
 	for ix := 0; ix < timoSecs/timoSleepSecs; ix++ {
 		time.Sleep(timoSleepSecs * time.Second)
-		err := k8stest.CheckAllPoolsAreOnline()
+		err := custom_resources.CheckAllPoolsAreOnline()
 		if err == nil {
 			break
 		}
@@ -117,7 +117,7 @@ func diskPartitioningTest(protocol common.ShareProto, volumeType common.VolumeTy
 	// Wait for pools to be online
 	for ix := 0; ix < timoSecs/timoSleepSecs; ix++ {
 		time.Sleep(timoSleepSecs * time.Second)
-		err := k8stest.CheckAllPoolsAreOnline()
+		err := custom_resources.CheckAllPoolsAreOnline()
 		if err == nil {
 			break
 		}

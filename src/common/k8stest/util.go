@@ -455,25 +455,25 @@ func RestoreConfiguredPools() error {
 	const sleepTime = 5
 	for ix := 1; ix < 120/sleepTime; ix++ {
 		time.Sleep(sleepTime * time.Second)
-		err := CheckAllPoolsAreOnline()
+		err := custom_resources.CheckAllPoolsAreOnline()
 		if err == nil {
 			break
 		}
 	}
 
-	return CheckAllPoolsAreOnline()
+	return custom_resources.CheckAllPoolsAreOnline()
 }
 
 func WaitForPoolsToBeOnline(timeoutSeconds int) error {
 	const sleepTime = 5
 	for ix := 1; ix < (timeoutSeconds+sleepTime)/sleepTime; ix++ {
 		time.Sleep(sleepTime * time.Second)
-		err := CheckAllPoolsAreOnline()
+		err := custom_resources.CheckAllPoolsAreOnline()
 		if err == nil {
 			return nil
 		}
 	}
-	return CheckAllPoolsAreOnline()
+	return custom_resources.CheckAllPoolsAreOnline()
 }
 
 // WaitPodComplete waits until pod is in completed state

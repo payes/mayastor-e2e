@@ -2,6 +2,7 @@ package ms_pod_disruption
 
 import (
 	"fmt"
+	"mayastor-e2e/common/custom_resources"
 	"os/exec"
 	"strings"
 	"testing"
@@ -43,6 +44,12 @@ type DisruptionEnv struct {
 }
 
 var env DisruptionEnv
+
+func getMsvState(uuid string) string {
+	volState, err := custom_resources.GetVolumeState(uuid)
+	Expect(err).To(BeNil(), "failed to access volume state %s, error=%v", uuid, err)
+	return volState
+}
 
 // Identify the nexus IP address,
 // the uri of the replica local to the nexus,
@@ -335,8 +342,8 @@ func (env *DisruptionEnv) PodLossTestWriteContinuously() {
 
 	// 2) Verify that the volume has become degraded and the data is correct
 	// We make the assumption that the volume has had enough time to become faulted
-	Expect(k8stest.GetMsvState(env.uuid)).To(Equal("degraded"), "Unexpected MSV state")
-	logf.Log.Info("volume condition", "state", k8stest.GetMsvState(env.uuid))
+	Expect(getMsvState(env.uuid)).To(Equal("degraded"), "Unexpected MSV state")
+	logf.Log.Info("volume condition", "state", getMsvState(env.uuid))
 
 	// Running fio with --verify=crc32 and --rw=randread means that only reads will occur
 	// and verification is performed
@@ -358,8 +365,8 @@ func (env *DisruptionEnv) PodLossTestWriteContinuously() {
 
 	// 4) Verify that the volume becomes healthy and the data is correct
 	// We make the assumption that the volume has had enough time to be repaired
-	Expect(k8stest.GetMsvState(env.uuid)).To(Equal("healthy"), "Unexpected MSV state")
-	logf.Log.Info("volume condition", "state", k8stest.GetMsvState(env.uuid))
+	Expect(getMsvState(env.uuid)).To(Equal("healthy"), "Unexpected MSV state")
+	logf.Log.Info("volume condition", "state", getMsvState(env.uuid))
 
 	// Verify the data just written.
 	logf.Log.Info("verifying the repaired volume")
@@ -378,7 +385,7 @@ func (env *DisruptionEnv) PodLossTestWriteContinuously() {
 
 	// 6) Verify that the volume becomes degraded and the data is correct
 	// We make the assumption that the volume has had enough time to become faulted
-	Expect(k8stest.GetMsvState(env.uuid)).To(Equal("degraded"), "Unexpected MSV state")
+	Expect(getMsvState(env.uuid)).To(Equal("degraded"), "Unexpected MSV state")
 
 	// Running fio with --verify=sha1 and --rw=randread means that only reads will occur
 	// and verification happens
@@ -392,12 +399,12 @@ func (env *DisruptionEnv) PodLossTestWriteContinuously() {
 
 	// 7) verify that the volume becomes healthy again
 	Eventually(func() string {
-		return k8stest.GetMsvState(env.uuid)
+		return getMsvState(env.uuid)
 	},
 		env.rebuildTimeoutSecs, // timeout
 		"1s",                   // polling interval
 	).Should(Equal("healthy"))
-	logf.Log.Info("volume condition", "state", k8stest.GetMsvState(env.uuid))
+	logf.Log.Info("volume condition", "state", getMsvState(env.uuid))
 
 	// Re-verify with the original replica on-line, It it gets any IO the
 	// verification will fail because it contains the wrong data.

@@ -4,6 +4,8 @@ package k8stest
 import (
 	"context"
 	"fmt"
+	"mayastor-e2e/common/custom_resources"
+	"mayastor-e2e/common/custom_resources/api/types/v1alpha1"
 	"strings"
 
 	"mayastor-e2e/common"
@@ -180,7 +182,7 @@ func MkPVC(volSizeMb int, volName string, scName string, volType common.VolumeTy
 		"1s",           // polling interval
 	).Should(Equal(coreV1.VolumeBound))
 
-	Eventually(func() *MayastorVolStatus {
+	Eventually(func() *v1alpha1.MayastorVolume {
 		return GetMSV(string(pvc.ObjectMeta.UID))
 	},
 		defTimeoutSecs,
@@ -231,7 +233,7 @@ func RmPVC(volName string, scName string, nameSpace string) {
 
 	// Wait for the MSV to be deleted.
 	Eventually(func() bool {
-		return IsMSVDeleted(string(pvc.ObjectMeta.UID))
+		return custom_resources.IsMSVDeleted(string(pvc.ObjectMeta.UID))
 	},
 		defTimeoutSecs, // timeout
 		"1s",           // polling interval

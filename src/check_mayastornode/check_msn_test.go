@@ -1,6 +1,7 @@
 package check_mayastornode
 
 import (
+	"mayastor-e2e/common/custom_resources"
 	"reflect"
 	"sort"
 	"testing"
@@ -30,7 +31,7 @@ func mayastorNodeTest(protocol common.ShareProto, volumeType common.VolumeType, 
 	// CheckMayastorNodesAreOnine checks all the msns are
 	// in online state or not if any of the msn is not in
 	// online state then it returns error.
-	err = k8stest.CheckMayastorNodesAreOnline()
+	err = custom_resources.CheckMayastorNodesAreOnline()
 	Expect(err).ToNot(HaveOccurred())
 
 	var workerNodes []string
