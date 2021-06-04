@@ -54,6 +54,8 @@ generate_logs=0
 logsdir="$ARTIFACTSDIR/logs"
 resportsdir="$ARTIFACTSDIR/reports"
 mayastor_root_dir=""
+policy_cleanup_before="${e2e_policy_cleanup_before:-false}"
+
 
 help() {
   cat <<EOF
@@ -158,12 +160,15 @@ while [ "$#" -gt 0 ]; do
                 ;;
             stop)
                 on_fail=$1
+                policy_cleanup_before='false'
                 ;;
             reinstall|continue)
                 on_fail="reinstall"
+                policy_cleanup_before='true'
                 ;;
             restart)
                 on_fail=$1
+                policy_cleanup_before='true'
                 ;;
             *)
                 echo "invalid option for --onfail"
@@ -359,6 +364,7 @@ contains() {
 
 export e2e_config_file="$config_file"
 export e2e_platform_config_file="$platform_config_file"
+export e2e_policy_cleanup_before="$policy_cleanup_before"
 
 #preprocess tests so that command line can use commas as delimiters
 tests=${tests//,/ }
@@ -374,6 +380,7 @@ echo "    e2e_reports_dir=$e2e_reports_dir"
 echo "    e2e_uninstall_cleanup=$e2e_uninstall_cleanup"
 echo "    e2e_config_file=$e2e_config_file"
 echo "    e2e_platform_config_file=$e2e_platform_config_file"
+echo "    e2e_policy_cleanup_before=$e2e_policy_cleanup_before"
 echo ""
 echo "Script control settings:"
 echo "    profile=$profile"

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"mayastor-e2e/common/e2e_config"
 	"testing"
 	"time"
 
@@ -234,7 +235,15 @@ func BeforeEachCheck() error {
 	logf.Log.Info("BeforeEachCheck")
 	err := ResourceCheck()
 	if err != nil {
-		logf.Log.Info("BeforeEachCheck failed", "error", err)
+		logf.Log.Info("ResourceCheck failed", "CleanupOnBeforeEach", e2e_config.GetConfig().CleanupOnBeforeEach)
+		if e2e_config.GetConfig().CleanupOnBeforeEach {
+			_ = CleanUp()
+			_ = RestoreConfiguredPools()
+			err = ResourceCheck()
+		}
+		if err != nil {
+			logf.Log.Info("BeforeEachCheck failed", "error", err)
+		}
 	}
 	return err
 }
