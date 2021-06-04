@@ -452,5 +452,7 @@ func CleanUp() bool {
 		logf.Log.Info("", "error", err)
 	}
 
+	_ = RmReplicasInCluster()
+
 	return len(errs) == 0
 }
