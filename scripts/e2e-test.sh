@@ -159,8 +159,8 @@ while [ "$#" -gt 0 ]; do
             stop)
                 on_fail=$1
                 ;;
-            reinstall)
-                on_fail=$1
+            reinstall|continue)
+                on_fail="reinstall"
                 ;;
             restart)
                 on_fail=$1
