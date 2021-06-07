@@ -36,7 +36,7 @@ type MayastorVolumeStatus struct {
 	State       string    `json:"state"`
 	Reason      string    `json:"reason"`
 	TargetNodes []string  `json:"targetNodes"`
-	Nexus       Nexus     `json:"Nexus"`
+	Nexus       Nexus     `json:"nexus"`
 	Replicas    []Replica `json:"replicas"`
 }
 
