@@ -116,9 +116,9 @@ func testMsPodRestartTest(
 		"1s",
 	).Should(Equal(true))
 
-	// get node name where nexus is hostted
-	node := getNexusNode(uid)
-	Expect(node).ToNot(BeNil(), "Failed to get nexus node name")
+	// Get the nexus node
+	node, _ := k8stest.GetMsvNodes(uid)
+	Expect(node).NotTo(Equal(""), "Nexus not found")
 
 	//verify one replica is local to the nexus
 	localRepl := verifyLocalReplica(uid, node, replica)
@@ -153,24 +153,6 @@ func testMsPodRestartTest(
 
 	err = k8stest.RmStorageClass(scName)
 	Expect(err).ToNot(HaveOccurred(), "Deleting storage class %s", scName)
-}
-
-// getNexusNodes return the node where nexus is hosted
-func getNexusNode(uuid string) string {
-
-	nexus, replicaNodes := k8stest.GetMsvNodes(uuid)
-	Expect(nexus).NotTo(Equal(""))
-
-	nexusNode := ""
-	// find a node which is the nexus
-	for _, node := range replicaNodes {
-		if node == nexus {
-			nexusNode = node
-			break
-		}
-	}
-	Expect(nexusNode).NotTo(Equal(""))
-	return nexusNode
 }
 
 // getMayastorPodName return the mayastor pod name where nexus is hosted
