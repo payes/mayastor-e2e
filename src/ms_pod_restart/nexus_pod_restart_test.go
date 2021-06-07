@@ -2,6 +2,7 @@ package ms_pod_restart
 
 import (
 	"fmt"
+	"mayastor-e2e/common/custom_resources"
 	"strings"
 	"testing"
 
@@ -191,13 +192,13 @@ func getMayastorPodName(ns string, nodeName string) string {
 // verifyLocalReplica return the true when one replica is local to the nexus
 func verifyLocalReplica(uuid string, nexusNode string, replCount int) bool {
 	logf.Log.Info("VerifyLocalReplica")
-	replicas, err := k8stest.GetReplicas(uuid)
+	replicas, err := custom_resources.GetMsVolReplicas(uuid)
 	Expect(err).ToNot(HaveOccurred())
 	Expect(len(replicas) == replCount).To(BeTrue(), "number of listed replicas does not match")
 	var status bool
 	for _, replica := range replicas {
 		if replica.Node == nexusNode &&
-			strings.HasPrefix(replica.URI, "bdev:///") {
+			strings.HasPrefix(replica.Uri, "bdev:///") {
 			status = true
 		}
 	}
@@ -206,16 +207,15 @@ func verifyLocalReplica(uuid string, nexusNode string, replCount int) bool {
 
 // verifyRemoteReplica the remote replicas are children of the newly (re) created nexus
 func verifyRemoteReplica(uuid string, nexusNode string, replCount int) bool {
-
-	replicas, err := k8stest.GetReplicas(uuid)
+	replicas, err := custom_resources.GetMsVolReplicas(uuid)
 	Expect(err).ToNot(HaveOccurred())
 	Expect(len(replicas) == replCount).To(BeTrue(), "number of listed replicas does not match")
 	var status bool
 	for _, replica := range replicas {
-		if replica.Node == nexusNode && strings.HasPrefix(replica.URI, "bdev:///") {
+		if replica.Node == nexusNode && strings.HasPrefix(replica.Uri, "bdev:///") {
 			status = true
 		} else if replica.Node != nexusNode &&
-			strings.HasPrefix(replica.URI, "nvmf://") {
+			strings.HasPrefix(replica.Uri, "nvmf://") {
 			status = true
 		} else {
 			status = false

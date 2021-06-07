@@ -37,7 +37,7 @@ func diskPartitioningTest(protocol common.ShareProto, volumeType common.VolumeTy
 	scName := fmt.Sprintf("expand-msp-disk-sc-%d", replica)
 	volName := fmt.Sprintf("expand-msp-disk-vol-%d", replica)
 	// List Pools
-	pools, err := custom_resources.ListPools()
+	pools, err := custom_resources.ListMsPools()
 	Expect(err).ToNot(HaveOccurred(), "List pools failed")
 
 	logf.Log.Info("Deleting Mayastor Pool")
@@ -64,14 +64,14 @@ func diskPartitioningTest(protocol common.ShareProto, volumeType common.VolumeTy
 	for _, pool := range pools {
 		diskPath := make([]string, 1)
 		diskPath[0] = pool.Spec.Disks[0] + "1"
-		_, err = custom_resources.CreatePool(pool.Name, pool.Spec.Node, diskPath)
+		_, err = custom_resources.CreateMsPool(pool.Name, pool.Spec.Node, diskPath)
 		Expect(err).ToNot(HaveOccurred(), "Pool creation failed for node %s:", pool.Spec.Node)
 	}
 
 	// Wait for pools to be online
 	for ix := 0; ix < timoSecs/timoSleepSecs; ix++ {
 		time.Sleep(timoSleepSecs * time.Second)
-		err := k8stest.CheckAllPoolsAreOnline()
+		err := custom_resources.CheckAllMsPoolsAreOnline()
 		if err == nil {
 			break
 		}
@@ -79,7 +79,7 @@ func diskPartitioningTest(protocol common.ShareProto, volumeType common.VolumeTy
 	Expect(err).To(BeNil(), "One or more pools are offline")
 
 	// Storage capacity of pool before resizing the disk
-	pools, err = custom_resources.ListPools()
+	pools, err = custom_resources.ListMsPools()
 	Expect(err).ToNot(HaveOccurred(), "List pools failed")
 	capacityBeforeDiskResize := map[string]int64{}
 	for _, pool := range pools {
@@ -117,7 +117,7 @@ func diskPartitioningTest(protocol common.ShareProto, volumeType common.VolumeTy
 	// Wait for pools to be online
 	for ix := 0; ix < timoSecs/timoSleepSecs; ix++ {
 		time.Sleep(timoSleepSecs * time.Second)
-		err := k8stest.CheckAllPoolsAreOnline()
+		err := custom_resources.CheckAllMsPoolsAreOnline()
 		if err == nil {
 			break
 		}
@@ -126,7 +126,7 @@ func diskPartitioningTest(protocol common.ShareProto, volumeType common.VolumeTy
 
 	// Store capacity of pools after
 	// resizing the partitioned disk
-	pools, err = custom_resources.ListPools()
+	pools, err = custom_resources.ListMsPools()
 	Expect(err).ToNot(HaveOccurred(), "List pools failed")
 	for _, pool := range pools {
 		capacityAfterDiskResize[pool.Name] = pool.Status.Capacity
@@ -163,7 +163,7 @@ func diskPartitioningTest(protocol common.ShareProto, volumeType common.VolumeTy
 	// Delete mayastorpool
 	logf.Log.Info("Deleting Mayastor Pool")
 	for _, pool := range pools {
-		err := custom_resources.DeletePool(pool.Name)
+		err := custom_resources.DeleteMsPool(pool.Name)
 		Expect(err).ToNot(HaveOccurred())
 	}
 	// Added sleep so that partitioned disk

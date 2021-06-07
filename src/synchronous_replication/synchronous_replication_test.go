@@ -145,12 +145,12 @@ func (job srJob) stop() {
 }
 
 func (job srJob) updateVolumeCount(replicaCount int) {
-	volCR, err := custom_resources.GetVolume(job.status.volUid)
+	volCR, err := custom_resources.GetMsVol(job.status.volUid)
 	Expect(err).ToNot(HaveOccurred(), fmt.Sprintf("failed to retrieve volume %s", job.status.volUid))
 
 	volCR.Spec.ReplicaCount = replicaCount
 	logf.Log.Info("Set replicaCount count to", "repl", volCR.Spec.ReplicaCount)
-	_, err = custom_resources.UpdateVolume(volCR)
+	_, err = custom_resources.UpdateMsVol(volCR)
 	Expect(err).ToNot(HaveOccurred(), fmt.Sprintf("failed to update the volume replicas %s", job.status.volName))
 }
 
@@ -169,7 +169,7 @@ func (job srJob) waitPodComplete() {
 			return
 		}
 		Expect(podPhase == coreV1.PodRunning).To(BeTrue(), fmt.Sprintf("Unexpected pod phase %v", podPhase))
-		volCR, err := custom_resources.GetVolume(job.status.volUid)
+		volCR, err := custom_resources.GetMsVol(job.status.volUid)
 		if err == nil {
 			logf.Log.Info("MayastorVolume", "Name", job.status.volUid, "Status.State", volCR.Status.State)
 		}
@@ -180,13 +180,13 @@ func (job srJob) waitPodComplete() {
 func (job srJob) waitVolumeHealthy() {
 	const sleepTimeSecs = 5
 	const timeoutSecs = 360
-	var volCR v1alpha1.MayastorVolume
+	var volCR *v1alpha1.MayastorVolume
 	var err error
 
 	logf.Log.Info("Waiting for volume to be healthy", "name", job.status.volUid)
 	for ix := 0; ix < (timeoutSecs+sleepTimeSecs-1)/sleepTimeSecs; ix++ {
 		time.Sleep(sleepTimeSecs * time.Second)
-		volCR, err = custom_resources.GetVolume(job.status.volUid)
+		volCR, err = custom_resources.GetMsVol(job.status.volUid)
 		if err == nil {
 			if volCR.Status.State == "healthy" {
 				return

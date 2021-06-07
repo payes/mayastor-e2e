@@ -1,6 +1,7 @@
 package uninstall
 
 import (
+	"mayastor-e2e/common/custom_resources"
 	"os/exec"
 	"testing"
 	"time"
@@ -60,13 +61,13 @@ func teardownMayastor() {
 		}
 		Expect(found).To(BeFalse(), "PersistentVolumes were found, none expected.")
 
-		found, err = k8stest.CheckForMSVs()
+		found, err = custom_resources.CheckForMsVols()
 		if err != nil {
 			logf.Log.Info("Failed to check MSVs", "error", err)
 		}
 		Expect(found).To(BeFalse(), "Mayastor volume CRDs were found, none expected.")
 
-		err = k8stest.CheckAllPoolsAreOnline()
+		err = custom_resources.CheckAllMsPoolsAreOnline()
 		Expect(err).ToNot(HaveOccurred())
 
 	}

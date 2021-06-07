@@ -4,6 +4,7 @@ package io_soak
 
 import (
 	"fmt"
+	"mayastor-e2e/common/custom_resources"
 	"sort"
 	"testing"
 	"time"
@@ -54,13 +55,13 @@ func monitor() error {
 			break
 		}
 
-		err = k8stest.CheckAllMsvsAreHealthy()
+		err = custom_resources.CheckAllMsVolsAreHealthy()
 		if err != nil {
 			logf.Log.Info("IOSoakTest monitor Mayastor volumes check", "error", err)
 			break
 		}
 
-		err = k8stest.CheckAllPoolsAreOnline()
+		err = custom_resources.CheckAllMsPoolsAreOnline()
 		if err != nil {
 			logf.Log.Info("IOSoakTest monitor Mayastor pools check", "error", err)
 			break
