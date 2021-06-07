@@ -24,6 +24,8 @@ SELF_CI_TESTS="
 install $SELF_CI_TEST_LIST uninstall"
 SOAK_TESTS="
 install $SOAK_TEST_LIST uninstall"
+VALIDATION_TESTS="
+install $VALIDATION_TEST_LIST uninstall"
 
 # removed: pvc_stress_fio temporarily mayastor bugs
 
@@ -72,7 +74,7 @@ Options:
                             Note: the last 2 tests should be (if they are to be run)
                                 - ms_pod_disruption
                                 - uninstall
-  --profile <continuous|nightly|nightly_full|ondemand|self_ci|soak>
+  --profile <continuous|nightly|nightly_full|ondemand|self_ci|soak|validation>
                             Run the tests corresponding to the profile (default: run all tests)
   --resportsdir <path>       Path to use for junit xml test reports (default: repo root)
   --logs                    Generate logs and cluster state dump at the end of successful test run,
@@ -300,6 +302,9 @@ case "$profile" in
     tests="$SOAK_TESTS"
     echo "Overriding config file to soak_config.yaml"
     config_file="soak_config.yaml"
+    ;;
+  validation)
+    tests="$VALIDATION_TESTS"
     ;;
   *)
     echo "Unknown profile: $profile"

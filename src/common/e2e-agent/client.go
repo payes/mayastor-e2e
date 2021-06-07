@@ -97,3 +97,13 @@ func DiskPartition(serverAddr string, cmd string) error {
 	}
 	return sendRequest("POST", url, data)
 }
+
+// Exec sends the shell command to the e2e-agent
+func Exec(serverAddr string, command string) error {
+	logf.Log.Info("Executing command on node", "command", command, "addr", serverAddr)
+	url := "http://" + serverAddr + ":" + RestPort + "/exec"
+	data := CmdList{
+		Cmd: command,
+	}
+	return sendRequest("POST", url, data)
+}

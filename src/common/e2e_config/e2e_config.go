@@ -51,7 +51,7 @@ type E2EConfig struct {
 	// in the test will fail the BeforeEach check, rendering post-mortem checks on the cluster more useful.
 	// It may be set to true for when we want maximum test coverage, and post-mortem analysis is a secondary requirement.
 	// NOTE: Only some tests support this feature.
-	DeferredAssert      bool `yaml:"deferredAssert" env-default:"false" env:"e2e_defer_asserts"`
+	DeferredAssert bool `yaml:"deferredAssert" env-default:"false" env:"e2e_defer_asserts"`
 	// TODO: for now using a simple boolean for a specific behaviour suffices, a more sophisticated approach using a policy for test runs may be required.
 	CleanupOnBeforeEach bool `yaml:"cleanupOnBeforeEach" env-default:"false" env:"e2e_policy_cleanup_before"`
 
@@ -146,6 +146,12 @@ type E2EConfig struct {
 		// VolSizeMb Units are MiB
 		VolSizeMb string `yaml:"volSizeMb" env-default:"50"`
 	}
+	ValidateIntegrityTest struct {
+		Replicas   int    `yaml:"replicas" env-default:"3"`
+		FioTimeout int    `yaml:"fioTimeout" env-default:"2000"`
+		VolMb      int    `yaml:"volMb" env-default:"9900"`
+		Device     string `yaml:"device" env-default:"/dev/sdb"`
+	} `yaml:"validateIntegrityTest"`
 }
 
 var once sync.Once
