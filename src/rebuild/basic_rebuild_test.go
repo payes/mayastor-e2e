@@ -1,6 +1,8 @@
 package rebuild
 
 import (
+	"mayastor-e2e/common/custom_resources"
+	v1alpha1Api "mayastor-e2e/common/custom_resources/api/types/v1alpha1"
 	"testing"
 
 	"mayastor-e2e/common"
@@ -35,26 +37,32 @@ func basicRebuildTest() {
 	Eventually(func() bool { return k8stest.IsPvcBound(pvcName, common.NSDefault) }, timeout, pollPeriod).Should(Equal(true))
 
 	uuid := string(pvc.ObjectMeta.UID)
-	repl, err := k8stest.GetNumReplicas(uuid)
+	replicas, err := custom_resources.GetMsVolReplicas(uuid)
 	Expect(err).To(BeNil())
-	Expect(repl).Should(Equal(int64(1)))
+	Expect(len(replicas)).Should(Equal(int64(1)))
 
 	// Wait for volume to be published before adding a child.
 	// This ensures that a nexus exists when the child is added.
-	Eventually(func() bool { return k8stest.IsVolumePublished(uuid) }, timeout, pollPeriod).Should(Equal(true))
+	Eventually(func() bool { return custom_resources.IsMsVolPublished(uuid) }, timeout, pollPeriod).Should(Equal(true))
 
 	// Add another child which should kick off a rebuild.
-	err = k8stest.UpdateNumReplicas(uuid, 2)
+	err = custom_resources.UpdateMsVolReplicaCount(uuid, 2)
 	Expect(err).ToNot(HaveOccurred(), "Update the number of replicas")
-	repl, err = k8stest.GetNumReplicas(uuid)
+	replicas, err = custom_resources.GetMsVolReplicas(uuid)
 	Expect(err).To(BeNil())
-	Expect(repl).Should(Equal(int64(2)))
+	Expect(len(replicas)).Should(Equal(int64(2)))
 
 	// Wait for the added child to show up.
-	Eventually(func() int { return k8stest.GetNumChildren(uuid) }, timeout, pollPeriod).Should(BeEquivalentTo(2))
+	Eventually(func() int {
+		msv, err := custom_resources.GetMsVol(uuid)
+		if err == nil {
+			return len(msv.Status.Nexus.Children)
+		}
+		return 0
+	}, timeout, pollPeriod).Should(BeEquivalentTo(2))
 
-	getChildrenFunc := func(uuid string) []k8stest.NexusChild {
-		children, err := k8stest.GetChildren(uuid)
+	getChildrenFunc := func(uuid string) []v1alpha1Api.NexusChild {
+		children, err := custom_resources.GetMsVolNexusChildren(uuid)
 		if err != nil {
 			panic("Failed to get children")
 		}
@@ -64,12 +72,12 @@ func basicRebuildTest() {
 
 	// Check the added child and nexus are both degraded.
 	Eventually(func() string { return getChildrenFunc(uuid)[1].State }, timeout, pollPeriod).Should(BeEquivalentTo("CHILD_DEGRADED"))
-	Eventually(func() (string, error) { return k8stest.GetNexusState(uuid) }, timeout, pollPeriod).Should(BeEquivalentTo("NEXUS_DEGRADED"))
+	Eventually(func() (string, error) { return custom_resources.GetMsVolNexusState(uuid) }, timeout, pollPeriod).Should(BeEquivalentTo("NEXUS_DEGRADED"))
 
 	// Check everything eventually goes healthy following a rebuild.
 	Eventually(func() string { return getChildrenFunc(uuid)[0].State }, timeout, pollPeriod).Should(BeEquivalentTo("CHILD_ONLINE"))
 	Eventually(func() string { return getChildrenFunc(uuid)[1].State }, timeout, pollPeriod).Should(BeEquivalentTo("CHILD_ONLINE"))
-	Eventually(func() (string, error) { return k8stest.GetNexusState(uuid) }, timeout, pollPeriod).Should(BeEquivalentTo("NEXUS_ONLINE"))
+	Eventually(func() (string, error) { return custom_resources.GetMsVolNexusState(uuid) }, timeout, pollPeriod).Should(BeEquivalentTo("NEXUS_ONLINE"))
 	err = k8stest.DeletePod(podName, common.NSDefault)
 	Expect(err).ToNot(HaveOccurred(), "Deleting rebuild test fio pod")
 	k8stest.RmPVC(pvcName, storageClass, common.NSDefault)

@@ -2,6 +2,7 @@ package ms_pod_disruption
 
 import (
 	"fmt"
+	"mayastor-e2e/common/custom_resources"
 	"os/exec"
 	"strings"
 	"testing"
@@ -40,6 +41,12 @@ type DisruptionEnv struct {
 }
 
 var env DisruptionEnv
+
+func getMsvState(uuid string) string {
+	volState, err := custom_resources.GetMsVolState(uuid)
+	Expect(err).To(BeNil(), "failed to access volume state %s, error=%v", uuid, err)
+	return volState
+}
 
 // Identify the nexus IP address,
 // the uri of the replica local to the nexus,
@@ -332,12 +339,12 @@ func (env *DisruptionEnv) PodLossTestDataCopy() {
 	// Running fio with --verify=crc32 and --rw=randread means that only reads will occur
 	// and verification is done
 	Eventually(func() string {
-		return k8stest.GetMsvState(env.uuid)
+		return getMsvState(env.uuid)
 	},
 		defTimeoutSecs, // timeout
 		"1s",           // polling interval
 	).Should(Equal("degraded"))
-	logf.Log.Info("volume condition", "state", k8stest.GetMsvState(env.uuid))
+	logf.Log.Info("volume condition", "state", getMsvState(env.uuid))
 
 	logf.Log.Info("verifying the degraded volume")
 	err = fioVerify(env.fioPodName, "crc32")
@@ -349,12 +356,12 @@ func (env *DisruptionEnv) PodLossTestDataCopy() {
 
 	// 5) verify that the volume becomes healthy, then verify the data
 	Eventually(func() string {
-		return k8stest.GetMsvState(env.uuid)
+		return getMsvState(env.uuid)
 	},
 		env.rebuildTimeoutSecs, // timeout
 		"1s",                   // polling interval
 	).Should(Equal("healthy"))
-	logf.Log.Info("volume condition", "state", k8stest.GetMsvState(env.uuid))
+	logf.Log.Info("volume condition", "state", getMsvState(env.uuid))
 
 	logf.Log.Info("verifying the repaired volume")
 	err = fioVerify(env.fioPodName, "crc32")
@@ -365,12 +372,12 @@ func (env *DisruptionEnv) PodLossTestDataCopy() {
 
 	// 7) verify that the volume becomes degraded, then verify the data (only re-built data)
 	Eventually(func() string {
-		return k8stest.GetMsvState(env.uuid)
+		return getMsvState(env.uuid)
 	},
 		defTimeoutSecs, // timeout
 		"1s",           // polling interval
 	).Should(Equal("degraded"))
-	logf.Log.Info("volume condition", "state", k8stest.GetMsvState(env.uuid))
+	logf.Log.Info("volume condition", "state", getMsvState(env.uuid))
 
 	logf.Log.Info("verifying the degraded volume")
 	err = fioVerify(env.fioPodName, "crc32")
@@ -381,12 +388,12 @@ func (env *DisruptionEnv) PodLossTestDataCopy() {
 
 	// 8) verify that the volume becomes healthy
 	Eventually(func() string {
-		return k8stest.GetMsvState(env.uuid)
+		return getMsvState(env.uuid)
 	},
 		env.rebuildTimeoutSecs, // timeout
 		"1s",                   // polling interval
 	).Should(Equal("healthy"))
-	logf.Log.Info("volume condition", "state", k8stest.GetMsvState(env.uuid))
+	logf.Log.Info("volume condition", "state", getMsvState(env.uuid))
 }
 
 func TestMayastorPodLossNoIo(t *testing.T) {
