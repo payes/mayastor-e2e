@@ -55,13 +55,13 @@ func monitor() error {
 			break
 		}
 
-		err = custom_resources.CheckAllMsvsAreHealthy()
+		err = custom_resources.CheckAllMsVolsAreHealthy()
 		if err != nil {
 			logf.Log.Info("IOSoakTest monitor Mayastor volumes check", "error", err)
 			break
 		}
 
-		err = custom_resources.CheckAllPoolsAreOnline()
+		err = custom_resources.CheckAllMsPoolsAreOnline()
 		if err != nil {
 			logf.Log.Info("IOSoakTest monitor Mayastor pools check", "error", err)
 			break

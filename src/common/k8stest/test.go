@@ -161,7 +161,7 @@ func ResourceCheck() error {
 	}
 
 	// Mayastor volumes
-	msvs, err := custom_resources.ListVolumes()
+	msvs, err := custom_resources.ListMsVols()
 	if err != nil {
 		errorMsg += fmt.Sprintf("%s %v", errorMsg, err)
 	} else {
@@ -188,7 +188,7 @@ func ResourceCheck() error {
 		errorMsg += " found storage classes using mayastor "
 	}
 
-	err = custom_resources.CheckAllPoolsAreOnline()
+	err = custom_resources.CheckAllMsPoolsAreOnline()
 	if err != nil {
 		errorMsg += fmt.Sprintf("%s %v", errorMsg, err)
 		logf.Log.Info("ResourceCheck: not all pools are online")

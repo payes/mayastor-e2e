@@ -34,19 +34,19 @@ func addUnpublishedReplicaTest() {
 
 	// Add another child before publishing the volume.
 	uuid := string(pvc.ObjectMeta.UID)
-	err = custom_resources.UpdateVolumeReplicaCount(uuid, 2)
+	err = custom_resources.UpdateMsVolReplicaCount(uuid, 2)
 	Expect(err).ToNot(HaveOccurred(), "Update number of replicas")
-	replicas, err := custom_resources.GetVolumeReplicas(uuid)
+	replicas, err := custom_resources.GetMsVolReplicas(uuid)
 	Expect(err).To(BeNil())
 	Expect(len(replicas)).Should(Equal(int64(2)))
 
 	// Use the PVC and wait for the volume to be published
 	_, err = k8stest.CreateFioPod(fioPodName, pvcName, common.VolFileSystem, common.NSDefault)
 	Expect(err).ToNot(HaveOccurred(), "Create fio pod")
-	Eventually(func() bool { return custom_resources.IsVolumePublished(uuid) }, timeout, pollPeriod).Should(Equal(true))
+	Eventually(func() bool { return custom_resources.IsMsVolPublished(uuid) }, timeout, pollPeriod).Should(Equal(true))
 
 	getChildrenFunc := func(uuid string) []v1alpha1Api.NexusChild {
-		children, err := custom_resources.GetVolumeNexusChildren(uuid)
+		children, err := custom_resources.GetMsVolNexusChildren(uuid)
 		if err != nil {
 			panic("Failed to get children")
 		}
@@ -56,12 +56,12 @@ func addUnpublishedReplicaTest() {
 
 	// Check the added child and nexus are both degraded.
 	Eventually(func() string { return getChildrenFunc(uuid)[1].State }, timeout, pollPeriod).Should(BeEquivalentTo("CHILD_DEGRADED"))
-	Eventually(func() (string, error) { return custom_resources.GetVolumeNexusState(uuid) }, timeout, pollPeriod).Should(BeEquivalentTo("NEXUS_DEGRADED"))
+	Eventually(func() (string, error) { return custom_resources.GetMsVolNexusState(uuid) }, timeout, pollPeriod).Should(BeEquivalentTo("NEXUS_DEGRADED"))
 
 	// Check everything eventually goes healthy following a rebuild.
 	Eventually(func() string { return getChildrenFunc(uuid)[0].State }, timeout, pollPeriod).Should(BeEquivalentTo("CHILD_ONLINE"))
 	Eventually(func() string { return getChildrenFunc(uuid)[1].State }, timeout, pollPeriod).Should(BeEquivalentTo("CHILD_ONLINE"))
-	Eventually(func() (string, error) { return custom_resources.GetVolumeNexusState(uuid) }, timeout, pollPeriod).Should(BeEquivalentTo("NEXUS_ONLINE"))
+	Eventually(func() (string, error) { return custom_resources.GetMsVolNexusState(uuid) }, timeout, pollPeriod).Should(BeEquivalentTo("NEXUS_ONLINE"))
 
 	err = k8stest.DeletePod(fioPodName, common.NSDefault)
 	Expect(err).ToNot(HaveOccurred(), "Delete fio test pod")

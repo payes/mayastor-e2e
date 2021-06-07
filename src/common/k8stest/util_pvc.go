@@ -233,7 +233,7 @@ func RmPVC(volName string, scName string, nameSpace string) {
 
 	// Wait for the MSV to be deleted.
 	Eventually(func() bool {
-		return custom_resources.IsMSVDeleted(string(pvc.ObjectMeta.UID))
+		return custom_resources.IsMsVolDeleted(string(pvc.ObjectMeta.UID))
 	},
 		defTimeoutSecs, // timeout
 		"1s",           // polling interval

@@ -195,7 +195,7 @@ func DeleteAllMsvs() (int, error) {
 	// If after deleting PVCs and PVs Mayastor volumes are leftover
 	// try cleaning them up explicitly
 
-	msvs, err := custom_resources.ListVolumes()
+	msvs, err := custom_resources.ListMsVols()
 	if err != nil {
 		// This function may be called by AfterSuite by uninstall test so listing MSVs may fail correctly
 		logf.Log.Info("DeleteAllMsvs: list MSVs failed.", "Error", err)
@@ -203,7 +203,7 @@ func DeleteAllMsvs() (int, error) {
 	if err == nil && msvs != nil && len(msvs) != 0 {
 		for _, msv := range msvs {
 			logf.Log.Info("DeleteAllMsvs: deleting MayastorVolume", "MayastorVolume", msv.GetName())
-			if delErr := custom_resources.DeleteVolume(msv.GetName()); delErr != nil {
+			if delErr := custom_resources.DeleteMsVol(msv.GetName()); delErr != nil {
 				logf.Log.Info("DeleteAllMsvs: failed deleting MayastorVolume", "MayastorVolume", msv.GetName(), "error", delErr)
 			}
 		}
@@ -212,7 +212,7 @@ func DeleteAllMsvs() (int, error) {
 	numMsvs := 0
 	// Wait 2 minutes for resources to be deleted
 	for attempts := 0; attempts < 120; attempts++ {
-		msvs, err := custom_resources.ListVolumes()
+		msvs, err := custom_resources.ListMsVols()
 		if err == nil && msvs != nil {
 			numMsvs = len(msvs)
 			if numMsvs == 0 {
@@ -230,7 +230,7 @@ func DeleteAllPoolFinalizers() (bool, error) {
 	deletedFinalizer := false
 	var deleteErr error
 
-	pools, err := custom_resources.ListPools()
+	pools, err := custom_resources.ListMsPools()
 	if err != nil {
 		logf.Log.Info("DeleteAllPoolFinalisers: list MSPs failed.", "Error", err)
 		return false, err
@@ -242,7 +242,7 @@ func DeleteAllPoolFinalizers() (bool, error) {
 			if finalizers != nil {
 				logf.Log.Info("Removing all finalizers", "pool", pool.GetName(), "finalizer", finalizers)
 				pool.SetFinalizers(empty)
-				_, err = custom_resources.UpdatePool(pool)
+				_, err = custom_resources.UpdateMsPool(pool)
 				if err != nil {
 					deleteErr = err
 					logf.Log.Info("Pool update finalizer", "error", err)
@@ -256,7 +256,7 @@ func DeleteAllPoolFinalizers() (bool, error) {
 }
 
 func DeleteAllPools() bool {
-	pools, err := custom_resources.ListPools()
+	pools, err := custom_resources.ListMsPools()
 	if err != nil {
 		// This function may be called by AfterSuite by uninstall test so listing MSVs may fail correctly
 		logf.Log.Info("DeleteAllPools: list MSPs failed.", "Error", err)
@@ -269,7 +269,7 @@ func DeleteAllPools() bool {
 			if finalizers != nil {
 				logf.Log.Info("DeleteAllPools: found finalizers on pool ", "pool", pool.GetName(), "finalizers", finalizers)
 			}
-			err = custom_resources.DeletePool(pool.GetName())
+			err = custom_resources.DeleteMsPool(pool.GetName())
 			if err != nil {
 				logf.Log.Info("DeleteAllPools: failed to delete pool", pool.GetName(), "error", err)
 			}
@@ -279,7 +279,7 @@ func DeleteAllPools() bool {
 	numPools := 0
 	// Wait 2 minutes for resources to be deleted
 	for attempts := 0; attempts < 120; attempts++ {
-		pools, err := custom_resources.ListPools()
+		pools, err := custom_resources.ListMsPools()
 		if err == nil && pools != nil {
 			numPools = len(pools)
 		}

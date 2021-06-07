@@ -435,7 +435,7 @@ func CreateConfiguredPools() {
 	for _, node := range nodes {
 		if node.MayastorNode {
 			poolName := fmt.Sprintf("pool-on-%s", node.NodeName)
-			pool, err := custom_resources.CreatePool(poolName, node.NodeName, disks)
+			pool, err := custom_resources.CreateMsPool(poolName, node.NodeName, disks)
 			Expect(err).ToNot(HaveOccurred(), "failed to create pool on %v, disks %v", node, disks)
 			logf.Log.Info("Created", "pool", pool)
 		}
@@ -455,25 +455,25 @@ func RestoreConfiguredPools() error {
 	const sleepTime = 5
 	for ix := 1; ix < 120/sleepTime; ix++ {
 		time.Sleep(sleepTime * time.Second)
-		err := custom_resources.CheckAllPoolsAreOnline()
+		err := custom_resources.CheckAllMsPoolsAreOnline()
 		if err == nil {
 			break
 		}
 	}
 
-	return custom_resources.CheckAllPoolsAreOnline()
+	return custom_resources.CheckAllMsPoolsAreOnline()
 }
 
 func WaitForPoolsToBeOnline(timeoutSeconds int) error {
 	const sleepTime = 5
 	for ix := 1; ix < (timeoutSeconds+sleepTime)/sleepTime; ix++ {
 		time.Sleep(sleepTime * time.Second)
-		err := custom_resources.CheckAllPoolsAreOnline()
+		err := custom_resources.CheckAllMsPoolsAreOnline()
 		if err == nil {
 			return nil
 		}
 	}
-	return custom_resources.CheckAllPoolsAreOnline()
+	return custom_resources.CheckAllMsPoolsAreOnline()
 }
 
 // WaitPodComplete waits until pod is in completed state

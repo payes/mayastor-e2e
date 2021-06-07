@@ -106,7 +106,7 @@ func installMayastor() {
 	const timoSleepSecs = 10
 	for ix := 0; ix < timoSecs/timoSleepSecs; ix++ {
 		time.Sleep(timoSleepSecs * time.Second)
-		err = custom_resources.CheckAllPoolsAreOnline()
+		err = custom_resources.CheckAllMsPoolsAreOnline()
 		if err == nil {
 			break
 		}

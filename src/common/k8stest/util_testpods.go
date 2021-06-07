@@ -508,13 +508,13 @@ func restartMayastor(restartTOSecs int, readyTOSecs int, poolsTOSecs int) error 
 	const sleepTime = 10
 	for ix := 0; ix < (poolsTOSecs+sleepTime-1)/sleepTime; ix++ {
 		time.Sleep(sleepTime * time.Second)
-		err = custom_resources.CheckAllPoolsAreOnline()
+		err = custom_resources.CheckAllMsPoolsAreOnline()
 		if err == nil {
 			break
 		}
 	}
 
-	err = custom_resources.CheckAllPoolsAreOnline()
+	err = custom_resources.CheckAllMsPoolsAreOnline()
 	if err != nil {
 		return fmt.Errorf("Not all pools are online %v", err)
 	}

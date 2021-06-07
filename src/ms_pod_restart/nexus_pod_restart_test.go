@@ -192,7 +192,7 @@ func getMayastorPodName(ns string, nodeName string) string {
 // verifyLocalReplica return the true when one replica is local to the nexus
 func verifyLocalReplica(uuid string, nexusNode string, replCount int) bool {
 	logf.Log.Info("VerifyLocalReplica")
-	replicas, err := custom_resources.GetVolumeReplicas(uuid)
+	replicas, err := custom_resources.GetMsVolReplicas(uuid)
 	Expect(err).ToNot(HaveOccurred())
 	Expect(len(replicas) == replCount).To(BeTrue(), "number of listed replicas does not match")
 	var status bool
@@ -207,7 +207,7 @@ func verifyLocalReplica(uuid string, nexusNode string, replCount int) bool {
 
 // verifyRemoteReplica the remote replicas are children of the newly (re) created nexus
 func verifyRemoteReplica(uuid string, nexusNode string, replCount int) bool {
-	replicas, err := custom_resources.GetVolumeReplicas(uuid)
+	replicas, err := custom_resources.GetMsVolReplicas(uuid)
 	Expect(err).ToNot(HaveOccurred())
 	Expect(len(replicas) == replCount).To(BeTrue(), "number of listed replicas does not match")
 	var status bool

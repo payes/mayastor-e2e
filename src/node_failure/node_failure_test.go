@@ -189,8 +189,8 @@ func (c *failureConfig) RebootDesiredNodes(uuid string) {
 
 func (c *failureConfig) verifyMayastorComponentStates() {
 	Eventually(func() bool {
-		nodeList, err := custom_resources.ListNodes()
-		Expect(err).ToNot(HaveOccurred(), "ListNodes")
+		nodeList, err := custom_resources.ListMsNodes()
+		Expect(err).ToNot(HaveOccurred(), "ListMsNodes")
 		for _, node := range nodeList {
 			if node.Status != "online" {
 				return false
@@ -251,8 +251,8 @@ func (c *failureConfig) verifyNodeNotReady(nodeName string) {
 		// This check is not always possible as MOAC might be
 		// running on the node which has been turned off
 		Eventually(func() string {
-			msn, err := custom_resources.GetNode(nodeName)
-			Expect(err).ToNot(HaveOccurred(), "GetNode")
+			msn, err := custom_resources.GetMsNode(nodeName)
+			Expect(err).ToNot(HaveOccurred(), "GetMsNode")
 			return msn.Status
 		},
 			defTimeoutSecs, // timeout

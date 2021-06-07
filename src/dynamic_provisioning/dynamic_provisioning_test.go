@@ -103,7 +103,7 @@ func dynamicProvisioningTest(protocol common.ShareProto, volumeType common.Volum
 	Expect(len(replicas)).To(BeZero(), "count of replicas reported via mayastor client is %d", len(nexuses))
 
 	// List mayastorvolumes
-	msv, err := custom_resources.ListVolumes()
+	msv, err := custom_resources.ListMsVols()
 	Expect(err).To(BeNil(), "Error while listing msv")
 	Expect(len(msv) == 0).To(BeTrue(), "Msv is not nil %s", msv)
 

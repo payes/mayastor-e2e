@@ -11,7 +11,7 @@ import (
 // GetMSV Get pointer to a mayastor volume custom resource
 // function asserts if the volume CR is not found.
 func GetMSV(uuid string) *v1alpha1Api.MayastorVolume {
-	msv, err := custom_resources.GetVolume(uuid)
+	msv, err := custom_resources.GetMsVol(uuid)
 	if err != nil {
 		logf.Log.Info("GetMSV", "error", err)
 		return nil
@@ -32,7 +32,7 @@ func GetMSV(uuid string) *v1alpha1Api.MayastorVolume {
 // and the names of the replica nodes
 // function asserts if the volume CR is not found.
 func GetMsvNodes(uuid string) (string, []string) {
-	msv, err := custom_resources.GetVolume(uuid)
+	msv, err := custom_resources.GetMsVol(uuid)
 	Expect(err).ToNot(HaveOccurred())
 	node := msv.Status.Nexus.Node
 	replicas := make([]string, len(msv.Status.Replicas))

@@ -46,7 +46,7 @@ type DisruptionEnv struct {
 var env DisruptionEnv
 
 func getMsvState(uuid string) string {
-	volState, err := custom_resources.GetVolumeState(uuid)
+	volState, err := custom_resources.GetMsVolState(uuid)
 	Expect(err).To(BeNil(), "failed to access volume state %s, error=%v", uuid, err)
 	return volState
 }

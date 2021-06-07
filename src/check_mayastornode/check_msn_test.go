@@ -31,7 +31,7 @@ func mayastorNodeTest(protocol common.ShareProto, volumeType common.VolumeType, 
 	// CheckMayastorNodesAreOnine checks all the msns are
 	// in online state or not if any of the msn is not in
 	// online state then it returns error.
-	err = custom_resources.CheckMayastorNodesAreOnline()
+	err = custom_resources.CheckMsNodesAreOnline()
 	Expect(err).ToNot(HaveOccurred())
 
 	var workerNodes []string

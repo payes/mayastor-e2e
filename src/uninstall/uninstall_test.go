@@ -61,13 +61,13 @@ func teardownMayastor() {
 		}
 		Expect(found).To(BeFalse(), "PersistentVolumes were found, none expected.")
 
-		found, err = custom_resources.CheckForMSVs()
+		found, err = custom_resources.CheckForMsVols()
 		if err != nil {
 			logf.Log.Info("Failed to check MSVs", "error", err)
 		}
 		Expect(found).To(BeFalse(), "Mayastor volume CRDs were found, none expected.")
 
-		err = custom_resources.CheckAllPoolsAreOnline()
+		err = custom_resources.CheckAllMsPoolsAreOnline()
 		Expect(err).ToNot(HaveOccurred())
 
 	}

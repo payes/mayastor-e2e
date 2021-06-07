@@ -51,9 +51,9 @@ func init() {
 	)
 }
 
-// == Maystor Pool  ======================
+// == Mayastor Pool  ======================
 
-func CreatePool(poolName string, node string, disks []string) (*v1alpha1Api.MayastorPool, error) {
+func CreateMsPool(poolName string, node string, disks []string) (*v1alpha1Api.MayastorPool, error) {
 	msp := v1alpha1Api.MayastorPool{
 		TypeMeta: metaV1.TypeMeta{Kind: "MayastorPool"},
 		ObjectMeta: metaV1.ObjectMeta{
@@ -69,7 +69,7 @@ func CreatePool(poolName string, node string, disks []string) (*v1alpha1Api.Maya
 	return mspOut, err
 }
 
-func GetPool(poolName string) (v1alpha1Api.MayastorPool, error) {
+func GetMsPool(poolName string) (v1alpha1Api.MayastorPool, error) {
 	msp := v1alpha1Api.MayastorPool{}
 	res, err := poolClientSet.MayastorPools().Get(context.TODO(), poolName, metaV1.GetOptions{})
 	if res != nil && err == nil {
@@ -78,17 +78,17 @@ func GetPool(poolName string) (v1alpha1Api.MayastorPool, error) {
 	return msp, err
 }
 
-func UpdatePool(mspIn v1alpha1Api.MayastorPool) (*v1alpha1Api.MayastorPool, error) {
+func UpdateMsPool(mspIn v1alpha1Api.MayastorPool) (*v1alpha1Api.MayastorPool, error) {
 	mspOut, err := poolClientSet.MayastorPools().Update(context.TODO(), &mspIn, metaV1.UpdateOptions{})
 	return mspOut, err
 }
 
-func DeletePool(poolName string) error {
+func DeleteMsPool(poolName string) error {
 	err := poolClientSet.MayastorPools().Delete(context.TODO(), poolName, metaV1.DeleteOptions{})
 	return err
 }
 
-func ListPools() ([]v1alpha1Api.MayastorPool, error) {
+func ListMsPools() ([]v1alpha1Api.MayastorPool, error) {
 	poolList, err := poolClientSet.MayastorPools().List(context.TODO(), metaV1.ListOptions{})
 	if err != nil {
 		return []v1alpha1Api.MayastorPool{}, err
@@ -96,16 +96,16 @@ func ListPools() ([]v1alpha1Api.MayastorPool, error) {
 	return poolList.Items, nil
 }
 
-// CheckAllPoolsAreOnline checks if all mayastor pools are online
-func CheckAllPoolsAreOnline() error {
+// CheckAllMsPoolsAreOnline checks if all mayastor pools are online
+func CheckAllMsPoolsAreOnline() error {
 	allHealthy := true
-	pools, err := ListPools()
+	pools, err := ListMsPools()
 	if err == nil && pools != nil && len(pools) != 0 {
 		for _, pool := range pools {
 			poolName := pool.GetName()
 			state := pool.Status.State
 			if state != "online" {
-				log.Log.Info("CheckAllPoolsAreOnline", "pool", poolName, "state", state)
+				log.Log.Info("CheckAllMsPoolsAreOnline", "pool", poolName, "state", state)
 				allHealthy = false
 			}
 		}
@@ -117,9 +117,9 @@ func CheckAllPoolsAreOnline() error {
 	return err
 }
 
-// == Maystor Nodes ======================
+// == Mayastor Nodes ======================
 
-func GetNode(nodeName string) (v1alpha1Api.MayastorNode, error) {
+func GetMsNode(nodeName string) (v1alpha1Api.MayastorNode, error) {
 	msn := v1alpha1Api.MayastorNode{}
 	res, err := nodeClientSet.MayastorNodes().Get(context.TODO(), nodeName, metaV1.GetOptions{})
 	if res != nil && err == nil {
@@ -128,7 +128,7 @@ func GetNode(nodeName string) (v1alpha1Api.MayastorNode, error) {
 	return msn, err
 }
 
-func ListNodes() ([]v1alpha1Api.MayastorNode, error) {
+func ListMsNodes() ([]v1alpha1Api.MayastorNode, error) {
 	nodeList, err := nodeClientSet.MayastorNodes().List(context.TODO(), metaV1.ListOptions{})
 	if err != nil {
 		return []v1alpha1Api.MayastorNode{}, err
@@ -136,16 +136,16 @@ func ListNodes() ([]v1alpha1Api.MayastorNode, error) {
 	return nodeList.Items, nil
 }
 
-func DeleteNode(nodeName string) error {
+func DeleteMsNode(nodeName string) error {
 	err := nodeClientSet.MayastorNodes().Delete(context.TODO(), nodeName, metaV1.DeleteOptions{})
 	return err
 }
 
-// CheckMayastorNodesAreOnline checks all the mayastor nodes are
+// CheckMsNodesAreOnline checks all the mayastor nodes are
 // in online state or not if any of the msn is not in
 // online state then it returns error.
-func CheckMayastorNodesAreOnline() error {
-	msns, err := ListNodes()
+func CheckMsNodesAreOnline() error {
+	msns, err := ListMsNodes()
 	if err == nil && msns != nil && len(msns) != 0 {
 		for _, msn := range msns {
 			if msn.Status != "online" {
@@ -156,11 +156,11 @@ func CheckMayastorNodesAreOnline() error {
 	return err
 }
 
-// == Maystor Volumes ======================
+// == Mayastor Volumes ======================
 
 //  MOAC/Mayastor creates Mayastor Volumes, create use case?
 
-func GetVolume(volName string) (*v1alpha1Api.MayastorVolume, error) {
+func GetMsVol(volName string) (*v1alpha1Api.MayastorVolume, error) {
 	msv := v1alpha1Api.MayastorVolume{}
 	res, err := volClientSet.MayastorVolumes().Get(context.TODO(), volName, metaV1.GetOptions{})
 	if res != nil && err == nil {
@@ -169,17 +169,17 @@ func GetVolume(volName string) (*v1alpha1Api.MayastorVolume, error) {
 	return &msv, err
 }
 
-func UpdateVolume(msvIn *v1alpha1Api.MayastorVolume) (*v1alpha1Api.MayastorVolume, error) {
+func UpdateMsVol(msvIn *v1alpha1Api.MayastorVolume) (*v1alpha1Api.MayastorVolume, error) {
 	msvOut, err := volClientSet.MayastorVolumes().Update(context.TODO(), msvIn, metaV1.UpdateOptions{})
 	return msvOut, err
 }
 
-func DeleteVolume(volName string) error {
+func DeleteMsVol(volName string) error {
 	err := volClientSet.MayastorVolumes().Delete(context.TODO(), volName, metaV1.DeleteOptions{})
 	return err
 }
 
-func ListVolumes() ([]v1alpha1Api.MayastorVolume, error) {
+func ListMsVols() ([]v1alpha1Api.MayastorVolume, error) {
 	volList, err := volClientSet.MayastorVolumes().List(context.TODO(), metaV1.ListOptions{})
 	if err != nil {
 		return []v1alpha1Api.MayastorVolume{}, err
@@ -187,79 +187,80 @@ func ListVolumes() ([]v1alpha1Api.MayastorVolume, error) {
 	return volList.Items, nil
 }
 
-// GetVolumeState convenience function to retrieve the volume state.
-func GetVolumeState(volName string) (string, error) {
-	msv, err := GetVolume(volName)
+// Helper functions
+// GetMsVolState convenience function to retrieve the volume state.
+func GetMsVolState(volName string) (string, error) {
+	msv, err := GetMsVol(volName)
 	if err == nil {
 		return msv.Status.State, nil
 	}
 	return "", err
 }
 
-// GetVolumeReplicas convenience function to retrieve the list of replicas comprising the volume.
-func GetVolumeReplicas(volName string) ([]v1alpha1Api.Replica, error) {
-	msv, err := GetVolume(volName)
+// GetMsVolReplicas convenience function to retrieve the list of replicas comprising the volume.
+func GetMsVolReplicas(volName string) ([]v1alpha1Api.Replica, error) {
+	msv, err := GetMsVol(volName)
 	if err != nil {
 		return nil, err
 	}
 	return msv.Status.Replicas, nil
 }
 
-// UpdateVolumeReplicaCount update the number of replicas in a volume.
-func UpdateVolumeReplicaCount(volName string, replicaCount int) error {
-	msv, err := GetVolume(volName)
+// UpdateMsVolReplicaCount update the number of replicas in a volume.
+func UpdateMsVolReplicaCount(volName string, replicaCount int) error {
+	msv, err := GetMsVol(volName)
 	if err != nil {
 		return err
 	}
 	msv.Spec.ReplicaCount = replicaCount
-	_, err = UpdateVolume(msv)
+	_, err = UpdateMsVol(msv)
 	return err
 }
 
-// GetVolumeNexusChildren convenience function to retrieve the nexus children of a volume.
-func GetVolumeNexusChildren(volName string) ([]v1alpha1Api.NexusChild, error) {
-	msv, err := GetVolume(volName)
+// GetMsVolNexusChildren convenience function to retrieve the nexus children of a volume.
+func GetMsVolNexusChildren(volName string) ([]v1alpha1Api.NexusChild, error) {
+	msv, err := GetMsVol(volName)
 	if err != nil {
 		return nil, err
 	}
 	return msv.Status.Nexus.Children, nil
 }
 
-// GetVolumeNexusState returns the nexus state from the MSV.
+// GetMsVolNexusState returns the nexus state from the MSV.
 // An error is returned if the nexus state cannot be retrieved.
-func GetVolumeNexusState(uuid string) (string, error) {
-	msv, err := GetVolume(uuid)
+func GetMsVolNexusState(uuid string) (string, error) {
+	msv, err := GetMsVol(uuid)
 	if err != nil {
 		return "", err
 	}
 	return msv.Status.State, nil
 }
 
-// IsVolumePublished returns true if the volume is published.
+// IsMsVolPublished returns true if the volume is published.
 // A volume is published if the "targetNodes" field exists in the MSV.
-func IsVolumePublished(uuid string) bool {
-	msv, err := GetVolume(uuid)
+func IsMsVolPublished(uuid string) bool {
+	msv, err := GetMsVol(uuid)
 	if err == nil {
 		return 0 == len(msv.Status.TargetNodes)
 	}
 	return false
 }
 
-// IsMSVDeleted check for a deleted Mayastor Volume, the object does not exist if deleted
-func IsMSVDeleted(uuid string) bool {
-	_, err := GetVolume(uuid)
+// IsMsVolDeleted check for a deleted Mayastor Volume, the object does not exist if deleted
+func IsMsVolDeleted(uuid string) bool {
+	_, err := GetMsVol(uuid)
 	if err != nil && errors.IsNotFound(err) {
 		return true
 	}
 	return false
 }
 
-// CheckForMSVs checks if any mayastor volumes exists
-func CheckForMSVs() (bool, error) {
-	log.Log.Info("CheckForMSVs")
+// CheckForMsVols checks if any mayastor volumes exists
+func CheckForMsVols() (bool, error) {
+	log.Log.Info("CheckForMsVols")
 	foundResources := false
 
-	msvs, err := ListVolumes()
+	msvs, err := ListMsVols()
 	if err == nil && msvs != nil && len(msvs) != 0 {
 		log.Log.Info("CheckForVolumeResources: found MayastorVolumes",
 			"MayastorVolumes", msvs)
@@ -268,14 +269,14 @@ func CheckForMSVs() (bool, error) {
 	return foundResources, err
 }
 
-// CheckAllMsvsAreHealthy checks if all existing mayastor volumes are in healthy state
-func CheckAllMsvsAreHealthy() error {
+// CheckAllMsVolsAreHealthy checks if all existing mayastor volumes are in healthy state
+func CheckAllMsVolsAreHealthy() error {
 	allHealthy := true
-	msvs, err := ListVolumes()
+	msvs, err := ListMsVols()
 	if err == nil && msvs != nil && len(msvs) != 0 {
 		for _, msv := range msvs {
 			if msv.Status.State != "healthy" {
-				log.Log.Info("CheckAllMsvsAreHealthy", "msv", msv)
+				log.Log.Info("CheckAllMsVolsAreHealthy", "msv", msv)
 				allHealthy = false
 			}
 		}

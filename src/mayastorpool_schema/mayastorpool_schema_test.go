@@ -22,11 +22,11 @@ func TestMayastorPoolSchema(t *testing.T) {
 func mayastorPoolSchemaTest(schema string) {
 	const timoSecs = 60
 	const timoSleepSecs = 5
-	pools, err := custom_resources.ListPools()
+	pools, err := custom_resources.ListMsPools()
 	Expect(err).ToNot(HaveOccurred())
 	logf.Log.Info("Creating Mayastor Pool")
 	for _, pool := range pools {
-		err := custom_resources.DeletePool(pool.Name)
+		err := custom_resources.DeleteMsPool(pool.Name)
 		Expect(err).ToNot(HaveOccurred())
 	}
 	for _, pool := range pools {
@@ -36,21 +36,21 @@ func mayastorPoolSchemaTest(schema string) {
 		} else {
 			diskPath := make([]string, 1)
 			diskPath[0] = schema + "://" + pool.Spec.Disks[0]
-			_, err = custom_resources.CreatePool(pool.Name, pool.Spec.Node, diskPath)
+			_, err = custom_resources.CreateMsPool(pool.Name, pool.Spec.Node, diskPath)
 			Expect(err).ToNot(HaveOccurred())
 		}
 	}
 	// Wait for pools to be online
 	for ix := 0; ix < timoSecs/timoSleepSecs; ix++ {
 		time.Sleep(timoSleepSecs * time.Second)
-		err := custom_resources.CheckAllPoolsAreOnline()
+		err := custom_resources.CheckAllMsPoolsAreOnline()
 		if err == nil {
 			break
 		}
 	}
 	Expect(err).To(BeNil(), "One or more pools are offline")
 	logf.Log.Info("Verifying Mayastor Pool device schema")
-	pools, err = custom_resources.ListPools()
+	pools, err = custom_resources.ListMsPools()
 	Expect(err).ToNot(HaveOccurred())
 
 	for _, pool := range pools {

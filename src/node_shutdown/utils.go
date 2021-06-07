@@ -106,8 +106,8 @@ func (c *shutdownConfig) deleteDeployment() {
 }
 
 func (c *shutdownConfig) verifyMayastorComponentStates(numMayastorInstances int) {
-	nodeList, err := custom_resources.ListNodes()
-	Expect(err).ToNot(HaveOccurred(), "ListNodes")
+	nodeList, err := custom_resources.ListMsNodes()
+	Expect(err).ToNot(HaveOccurred(), "ListMsNodes")
 	count := 0
 	for _, node := range nodeList {
 		if node.Status == "online" {
@@ -153,8 +153,8 @@ func (c *shutdownConfig) verifyNodeNotReady(nodeName string) {
 	).Should(Equal(false))
 
 	Eventually(func() string {
-		msn, err := custom_resources.GetNode(nodeName)
-		Expect(err).ToNot(HaveOccurred(), "GetNode")
+		msn, err := custom_resources.GetMsNode(nodeName)
+		Expect(err).ToNot(HaveOccurred(), "GetMsNode")
 		return msn.Status
 	},
 		defTimeoutSecs, // timeout
