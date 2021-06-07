@@ -26,7 +26,8 @@ func TestControlPlaneRescheduling(t *testing.T) {
 var defTimeoutSecs = "60s"
 
 func controlPlaneReschedulingTest(protocol common.ShareProto, volumeType common.VolumeType, fsType common.FileSystemType, mode storageV1.VolumeBindingMode) {
-
+	const sleepTimeSecs = 3
+	const timeoutSecs = 360
 	params := e2e_config.GetConfig().BasicVolumeIO
 	scName := fmt.Sprintf("reshedule-sc-%s", protocol)
 	var volNames []string
@@ -119,7 +120,8 @@ func controlPlaneReschedulingTest(protocol common.ShareProto, volumeType common.
 
 	// Wait for fio pods to get into completed state
 	for _, fioPodName := range fioPodNames {
-		waitPodComplete(fioPodName)
+		err = k8stest.WaitPodComplete(fioPodName, sleepTimeSecs, timeoutSecs)
+		Expect(err).ToNot(HaveOccurred())
 	}
 
 	// Cleanup of resources
@@ -239,24 +241,4 @@ func createFioPod(podName string, volName string) error {
 		return nil
 	}
 	return err
-}
-
-// waitPodComplete waits until all fio pods are in completed state
-func waitPodComplete(fioPodName string) {
-	const sleepTimeSecs = 3
-	const timeoutSecs = 360
-	var podPhase coreV1.PodPhase
-	var err error
-
-	logf.Log.Info("Waiting for pod to complete", "name", fioPodName)
-	for ix := 0; ix < (timeoutSecs+sleepTimeSecs-1)/sleepTimeSecs; ix++ {
-		time.Sleep(sleepTimeSecs * time.Second)
-		podPhase, err = k8stest.CheckPodCompleted(fioPodName, common.NSDefault)
-		Expect(err).ToNot(HaveOccurred(), fmt.Sprintf("failed to access pods status %s %v", fioPodName, err))
-		if podPhase == coreV1.PodSucceeded {
-			return
-		}
-		Expect(podPhase == coreV1.PodRunning).To(BeTrue(), fmt.Sprintf("Unexpected pod phase %v", podPhase))
-	}
-	Expect(podPhase == coreV1.PodSucceeded).To(BeTrue(), fmt.Sprintf("pod did not complete, phase %v", podPhase))
 }
