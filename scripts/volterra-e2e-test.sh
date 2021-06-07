@@ -24,6 +24,8 @@ SELF_CI_TESTS="
 patch_install $SELF_CI_TEST_LIST"
 SOAK_TESTS="
 patch_install $SOAK_TEST_LIST"
+VALIDATION_TESTS="
+patch_install $VALIDATION_TEST_LIST"
 
 #exit values
 EXITV_OK=0

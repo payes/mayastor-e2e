@@ -88,4 +88,6 @@ maximum_vols_io"
 SOAK_TEST_LIST="
 io_soak"
 
+VALIDATION_TEST_LIST="
+validate_integrity_test"
 
