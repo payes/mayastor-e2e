@@ -12,6 +12,70 @@ def GetJobBaseName() {
   return jobSections.length < 2 ? env.JOB_NAME : jobSections[ jobSections.length - 2 ]
 }
 
+def GetLokiRunId() {
+  String job_base_name = GetJobBaseName()
+  return job_base_name + "-" + env.BRANCH_NAME + "-" + env.BUILD_NUMBER
+}
+
+// Checks out the specified branch of Mayastor to the current repo
+def GetMayastor(branch) {
+  checkout([
+    $class: 'GitSCM',
+    branches: [[name: "*/${branch}"]],
+    doGenerateSubmoduleConfigurations: false,
+      extensions: [[
+        $class: 'RelativeTargetDirectory',
+        relativeTargetDir: "Mayastor"
+      ]],
+      submoduleCfg: [],
+        userRemoteConfigs:
+        [[url: "https://github.com/openebs/Mayastor", credentialsId: "github-checkout"]]
+    ])
+}
+
+def BuildCluster(e2e_build_cluster_job, e2e_environment) {
+  return build(
+    job: "${e2e_build_cluster_job}",
+    propagate: true,
+    wait: true,
+    parameters: [[
+      $class: 'StringParameterValue',
+      name: "ENVIRONMENT",
+      value: "${e2e_environment}"
+    ]]
+  )
+}
+
+def DestroyCluster(e2e_destroy_cluster_job, k8s_job) {
+  build(
+    job: "${e2e_destroy_cluster_job}",
+    propagate: true,
+    wait: true,
+    parameters: [
+      [
+        $class: 'RunParameterValue',
+        name: "BUILD",
+        runId:"${k8s_job.getProjectName()}#${k8s_job.getNumber()}"
+      ]
+    ]
+  )
+}
+
+def GetClusterAdminConf(e2e_environment, k8s_job) {
+  // FIXME(arne-rusek): move hcloud's config to top-level dir in TF scripts
+  sh """
+    mkdir -p "${e2e_environment}/modules/k8s/secrets"
+  """
+  copyArtifacts(
+    projectName: "${k8s_job.getProjectName()}",
+    selector: specific("${k8s_job.getNumber()}"),
+    filter: "${e2e_environment}/modules/k8s/secrets/admin.conf",
+    target: "",
+    fingerprintArtifacts: true
+  )
+  sh 'kubectl get nodes -o wide'
+}
+
 def WarnOrphanCluster(k8s_job) {
   withCredentials([string(credentialsId: 'HCLOUD_TOKEN', variable: 'HCLOUD_TOKEN')]) {
     e2e_nodes=sh(
@@ -43,7 +107,8 @@ def WarnOrphanCluster(k8s_job) {
 }
 
 // Install Loki on the cluster
-def LokiInstall(tag, loki_run_id) {
+def LokiInstall(tag) {
+  String loki_run_id = GetLokiRunId()
   sh 'kubectl apply -f ./loki/promtail_namespace_e2e.yaml'
   sh 'kubectl apply -f ./loki/promtail_rbac_e2e.yaml'
   sh 'kubectl apply -f ./loki/promtail_configmap_e2e.yaml'
@@ -52,12 +117,52 @@ def LokiInstall(tag, loki_run_id) {
 }
 
 // Unnstall Loki
-def LokiUninstall(tag, loki_run_id) {
+def LokiUninstall(tag) {
+  String loki_run_id = GetLokiRunId()
   def cmd = "run=\"${loki_run_id}\" version=\"${tag}\" envsubst -no-unset < ./loki/promtail_daemonset_e2e.template.yaml | kubectl delete -f -"
   sh "nix-shell --run '${cmd}'"
   sh 'kubectl delete -f ./loki/promtail_configmap_e2e.yaml'
   sh 'kubectl delete -f ./loki/promtail_rbac_e2e.yaml'
   sh 'kubectl delete -f ./loki/promtail_namespace_e2e.yaml'
+}
+
+def SendXrayReport(xray_testplan, summary, e2e_reports_dir) {
+  xray_projectkey = 'MQ'
+  xray_test_execution_type = '10059'
+
+  try {
+    step([
+      $class: 'XrayImportBuilder',
+      endpointName: '/junit/multipart',
+      importFilePath: "${e2e_reports_dir}/*.xml",
+      importToSameExecution: 'true',
+      projectKey: "${xray_projectkey}",
+      testPlanKey: "${xray_testplan}",
+      serverInstance: "${env.JIRASERVERUUID}",
+      inputInfoSwitcher: 'fileContent',
+      importInfo: """{
+        "fields": {
+          "summary": "${summary}",
+          "project": {
+            "key": "${xray_projectkey}"
+          },
+          "issuetype": {
+            "id": "${xray_test_execution_type}"
+          },
+          "description": "Results for build #${env.BUILD_NUMBER} at ${env.BUILD_URL}"
+        }
+      }"""
+    ])
+  } catch (err) {
+    echo 'XRay failed'
+    echo err.getMessage()
+    // send Slack message to inform of XRay failure
+    slackSend(
+      channel: '#mayastor-e2e',
+      color: 'danger',
+      message: "E2E failed to send XRay reports - <$self_url|$self_name>."
+    )
+  }
 }
 
 return this
