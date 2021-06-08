@@ -22,8 +22,13 @@ if (params.platform == 'volterra') {
 def k8s_job=""
 
 e2e_image_tag='nightly'
-
 e2e_reports_dir='artifacts/reports/'
+
+if (params.e2e_branch != '') {
+  e2e_mayastor_dir = 'mayastor-e2e'
+} else {
+  e2e_mayastor_dir = '.'
+}
 
 // In the case of multi-branch pipelines, the pipeline
 // name a.k.a. job base name, will be the
@@ -109,6 +114,7 @@ pipeline {
     booleanParam(defaultValue: true, name: 'use_ci_registry', description: 'true to use the CI registry, false to pull images from DockerHub')
     string(defaultValue: e2e_image_tag, name: 'image_tag', trim: true, description: 'can also be the short (12-char) commit sha')
     string(defaultValue: '', name: 'config_path', trim: true, description: 'specify for non-default config file, e.g. selfci_config.yaml nightly_full_config.yaml or soak_config.yaml')
+    string(defaultValue: '', name: 'e2e_branch', trim: true, description: 'specify for non-develop Mayastor-e2e branch to use')
   }
   stages {
     stage('test') {
@@ -117,7 +123,6 @@ pipeline {
           agent { label 'nixos' }
           steps {
             script {
-              common = load 'pipelines/common/common.groovy'
               k8s_job = buildCluster(e2e_build_cluster_job)
             }
           }
@@ -128,6 +133,25 @@ pipeline {
             KUBECONFIG = "${env.WORKSPACE}/${e2e_environment}/modules/k8s/secrets/admin.conf"
           }
           steps {
+            script {
+              // if not using the branch this pipeline is associated with,
+              // explicity clone and checkout the branch to use
+              if (params.e2e_branch != '') {
+                checkout([
+                  $class: 'GitSCM',
+                  branches: [[name: "*/${params.e2e_branch}"]],
+                  doGenerateSubmoduleConfigurations: false,
+                  extensions: [[
+                    $class: 'RelativeTargetDirectory',
+                    relativeTargetDir: "mayastor-e2e"
+                  ]],
+                  submoduleCfg: [],
+                    userRemoteConfigs:
+                    [[url: "https://github.com/mayadata-io/mayastor-e2e", credentialsId: "github-checkout"]]])
+
+              }
+            }
+
             // FIXME(arne-rusek): move hcloud's config to top-level dir in TF scripts
             sh """
               mkdir -p "${e2e_environment}/modules/k8s/secrets"
@@ -142,7 +166,7 @@ pipeline {
             sh 'kubectl get nodes -o wide'
 
             script {
-              common = load 'pipelines/common/common.groovy'
+              common = load "./${e2e_mayastor_dir}/pipelines/common/common.groovy"
               sh "mkdir -p ./${e2e_reports_dir}"
               sh 'rm -Rf Mayastor'
               // we need the Mayastor repo, but only for the deployment yamls
@@ -167,7 +191,7 @@ pipeline {
                 usernamePassword(credentialsId: 'GRAFANA_API', usernameVariable: 'grafana_api_user', passwordVariable: 'grafana_api_pw')
               ]) {
                 common.LokiInstall(params.image_tag, loki_run_id)
-                sh "nix-shell --run '${cmd}'"
+                sh "nix-shell --run 'cd ${e2e_mayastor_dir} && ${cmd}'"
                 common.LokiUninstall(params.image_tag, loki_run_id) // so that, if we keep the cluster, the next Loki instance can use different parameters
               }
             }
@@ -175,7 +199,6 @@ pipeline {
           post {
             failure {
               script {
-                common = load 'pipelines/common/common.groovy'
                 if (params.delete_cluster_on_failure) {
                   destroyCluster(e2e_destroy_cluster_job, k8s_job)
                 } else {
