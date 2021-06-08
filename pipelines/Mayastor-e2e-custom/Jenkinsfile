@@ -137,13 +137,18 @@ pipeline {
               // if not using the branch this pipeline is associated with,
               // explicity clone and checkout the branch to use
               if (params.e2e_branch != '') {
-                  sh 'rm -Rf mayastor-e2e'
-                  withCredentials([
-                    usernamePassword(credentialsId: 'github-checkout', usernameVariable: 'ghuser', passwordVariable: 'ghpw')
-                  ]) {
-                    sh "git clone https://${ghuser}:${ghpw}@github.com/mayadata-io/mayastor-e2e.git"
-                    sh "cd mayastor-e2e && git checkout ${params.e2e_branch}"
-                  }
+                checkout([
+                  $class: 'GitSCM',
+                  branches: [[name: "*/${params.e2e_branch}"]],
+                  doGenerateSubmoduleConfigurations: false,
+                  extensions: [[
+                    $class: 'RelativeTargetDirectory',
+                    relativeTargetDir: "mayastor-e2e"
+                  ]],
+                  submoduleCfg: [],
+                    userRemoteConfigs:
+                    [[url: "https://github.com/mayadata-io/mayastor-e2e", credentialsId: "github-checkout"]]])
+
               }
             }
 
@@ -161,7 +166,7 @@ pipeline {
             sh 'kubectl get nodes -o wide'
 
             script {
-              common = load "${e2e_environment}/${e2e_mayastor_dir}/pipelines/common/common.groovy"
+              common = load "./${e2e_mayastor_dir}/pipelines/common/common.groovy"
               sh "mkdir -p ./${e2e_reports_dir}"
               sh 'rm -Rf Mayastor'
               // we need the Mayastor repo, but only for the deployment yamls
