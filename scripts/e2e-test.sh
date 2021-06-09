@@ -8,25 +8,6 @@ TESTDIR=$(realpath "$SCRIPTDIR/../src")
 ARTIFACTSDIR=$(realpath "$SCRIPTDIR/../artifacts")
 #reportsdir=$(realpath "$SCRIPTDIR/..")
 
-# List and Sequence of tests.
-source "$SCRIPTDIR/test_lists.sh"
-DEFAULT_TESTS="
-install $DEFAULT_TEST_LIST uninstall"
-CONTINUOUS_TESTS="
-install $CONTINUOUS_TEST_LIST uninstall"
-NIGHTLY_TESTS="
-install $NIGHTLY_TEST_LIST uninstall"
-NIGHTLY_FULL_TESTS="
-install $NIGHTLY_FULL_TEST_LIST uninstall"
-ONDEMAND_TESTS="
-install $ONDEMAND_TEST_LIST uninstall"
-SELF_CI_TESTS="
-install $SELF_CI_TEST_LIST uninstall"
-SOAK_TESTS="
-install $SOAK_TEST_LIST uninstall"
-VALIDATION_TESTS="
-install $VALIDATION_TEST_LIST uninstall"
-
 # removed: pvc_stress_fio temporarily mayastor bugs
 
 #exit values
@@ -48,7 +29,6 @@ registry="ci-registry.mayastor-ci.mayadata.io"
 tag="nightly"
 #  script state variables
 tests=""
-custom_tests=""
 profile="default"
 on_fail="stop"
 uninstall_cleanup="n"
@@ -57,7 +37,11 @@ logsdir="$ARTIFACTSDIR/logs"
 resportsdir="$ARTIFACTSDIR/reports"
 mayastor_root_dir=""
 policy_cleanup_before="${e2e_policy_cleanup_before:-false}"
+profile_test_list=""
 
+declare -A profiles
+# List and Sequence of tests.
+source "$SCRIPTDIR/test_lists.sh"
 
 help() {
   cat <<EOF
@@ -97,6 +81,30 @@ Examples:
 EOF
 }
 
+function setup_profile_testlist {
+    for key in "${!profiles[@]}"; do
+        if [ "$key" == "$1" ] ; then
+            profile_test_list="${profiles[$1]}"
+            return 0
+        fi
+    done
+    return 1
+}
+
+function set_profile {
+    if [ "$profile" == "$1" ]; then
+        return
+    fi
+
+    # Can only sensibly override the default profile
+    if [ "$profile" != "default" ]; then
+        echo "--profile and --tests contradict"
+        help
+        exit $EXITV_INVALID_OPTION
+    fi
+    profile="$1"
+}
+
 # Parse arguments
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -122,7 +130,8 @@ while [ "$#" -gt 0 ]; do
       ;;
     -T|--tests)
       shift
-      custom_tests="$1"
+      set_profile "custom"
+      profiles[custom]="$1"
       ;;
     -R|--reportsdir)
       shift
@@ -152,7 +161,7 @@ while [ "$#" -gt 0 ]; do
       ;;
     --profile)
       shift
-      profile="$1"
+      set_profile "$1"
       ;;
     --onfail)
         shift
@@ -162,7 +171,6 @@ while [ "$#" -gt 0 ]; do
                 ;;
             stop)
                 on_fail=$1
-                policy_cleanup_before='false'
                 ;;
             reinstall|continue)
                 on_fail="reinstall"
@@ -260,58 +268,34 @@ fi
 export e2e_docker_registry="$registry" # can be empty string
 export e2e_root_dir="$E2EROOT"
 
-if [ -n "$custom_tests" ]; then
-  if [ "$profile" != "default" ]; then
-    echo "cannot specify --profile with --tests"
-    help
-    exit $EXITV_INVALID_OPTION
-  fi
-  profile="custom"
-fi
-
 case "$profile" in
-  continuous)
-    tests="$CONTINUOUS_TESTS"
-    ;;
-  extended) # todo remove this option when Mayastor Jenkinsfile is updated
-    tests="$NIGHTLY_TESTS"
-    ;;
-  nightly)
-    tests="$NIGHTLY_TESTS"
-    ;;
   nightlyfull|nightly_full)
-    tests="$NIGHTLY_FULL_TESTS"
+    profile="nightly_full"
     echo "Overriding config file to nightly_full_config.yaml"
     config_file="nightly_full_config.yaml"
     ;;
-  ondemand)
-    tests="$ONDEMAND_TESTS"
-    ;;
-  custom)
-    tests="$custom_tests"
-    ;;
-  default)
-    tests="$DEFAULT_TESTS"
-    ;;
   selfci|self_ci)
-    tests="$SELF_CI_TESTS"
+    profile="self_ci"
     echo "Overriding config file to selfci_config.yaml"
     config_file="selfci_config.yaml"
     ;;
   soak)
-    tests="$SOAK_TESTS"
     echo "Overriding config file to soak_config.yaml"
     config_file="soak_config.yaml"
     ;;
-  validation)
-    tests="$VALIDATION_TESTS"
-    ;;
-  *)
+esac
+
+if ! setup_profile_testlist "$profile" ; then
     echo "Unknown profile: $profile"
     help
     exit $EXITV_INVALID_OPTION
-    ;;
-esac
+fi
+
+if [ "$profile" != "custom" ] ; then
+    tests="install $profile_test_list uninstall"
+else
+    tests="$profile_test_list"
+fi
 
 export e2e_reports_dir="$resportsdir"
 
@@ -395,6 +379,7 @@ echo "    generate_logs=$generate_logs"
 echo "    logsdir=$logsdir"
 echo ""
 echo "list of tests: $tests"
+
 for testname in $tests; do
   # defer uninstall till after other tests have been run.
   if [ "$testname" != "uninstall" ] ;  then

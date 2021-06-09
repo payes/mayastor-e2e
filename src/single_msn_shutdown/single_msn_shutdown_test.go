@@ -11,7 +11,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestNodeFailures(t *testing.T) {
+func TestSingleMsnShutdown(t *testing.T) {
 	// Initialise test and set class and file names for reports
 	k8stest.InitTesting(t, "Single msn shutdown test", "single_msn_shutdown")
 }

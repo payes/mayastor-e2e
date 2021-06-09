@@ -1,21 +1,15 @@
 #!/usr/bin/env bash
 
-# List and Sequence of tests.
-# Restrictions:
-#   1. resource_check MUST follow csi
-#       resource_check is a follow up check for the 3rd party CSI test suite.
-#   2. ms_pod_disruption SHOULD be the last test
-#
-
-DEFAULT_TEST_LIST="
+profiles[default]="
 basic_volume_io
 csi
 resource_check
 replica
 rebuild
-ms_pod_disruption"
+ms_pod_disruption
+"
 
-CONTINUOUS_TEST_LIST="
+profiles[continuous]="
 basic_volume_io
 csi
 resource_check
@@ -24,18 +18,53 @@ io_soak
 volume_filesystem
 ms_pod_disruption
 ms_pod_disruption_no_io
-ms_pod_disruption_rm_msv"
-NIGHTLY_TEST_LIST="
-basic_volume_io
-csi
-resource_check
-io_soak
-multiple_vols_pod_io"
+ms_pod_disruption_rm_msv
+"
 
-NIGHTLY_FULL_TEST_LIST="
+profiles[nightly]="
 basic_volume_io
 csi
 resource_check
+check_mayastornode
+control_plane_rescheduling
+expand_msp_disk
+mayastorpool_schema
+ms_pod_restart
+ms_pool_delete
+nexus_location
+pvc_readwriteonce
+pvc_stress_fio
+pvc_waitforfirstconsumer
+volume_filesystem
+synchronous_replication
+io_soak
+ms_pod_disruption_rm_msv
+"
+
+profiles[c1]="
+pool_modify
+pvc_delete
+dynamic_provisioning
+msv_rebuild
+ms_pod_disruption_no_io
+ms_pod_disruption
+maximum_vols_io
+node_failure
+node_shutdown
+single_msn_shutdown
+"
+
+profiles[notrun]="
+multiple_vols_pod_io
+rebuild
+replica
+"
+
+profiles[nightly_full]="
+basic_volume_io
+csi
+resource_check
+dynamic_provisioning
 pvc_stress_fio
 replica
 rebuild
@@ -51,31 +80,33 @@ ms_pod_disruption
 ms_pod_disruption_no_io
 ms_pod_disruption_rm_msv
 ms_pool_delete
-dynamic_provisioning
 check_mayastornode
 control_plane_rescheduling
 expand_msp_disk
 pvc_waitforfirstconsumer
+synchronous_replication
 msv_rebuild
 pvc_delete
 maximum_vols_io
 single_msn_shutdown
 node_shutdown
-node_failure"
+node_failure
+"
 
-
-ONDEMAND_TEST_LIST="
-basic_volume_io
-csi
-resource_check"
-
-SELF_CI_TEST_LIST="
+profiles[ondemand]="
 basic_volume_io
 csi
 resource_check
-pvc_stress_fio
+"
+
+profiles[self_ci]="
+basic_volume_io
 io_soak
+maximum_vols_io
 multiple_vols_pod_io
+csi
+resource_check
+pvc_stress_fio
 ms_pod_restart
 check_mayastornode
 ms_pool_delete
@@ -84,11 +115,15 @@ dynamic_provisioning
 mayastorpool_schema
 expand_msp_disk
 pvc_waitforfirstconsumer
-maximum_vols_io"
+nexus_location
+pvc_readwriteonce
+synchronous_replication
+"
 
-SOAK_TEST_LIST="
-io_soak"
+profiles[soak]="
+io_soak
+"
 
-VALIDATION_TEST_LIST="
-validate_integrity_test"
-
+profiles[validation]="
+validate_integrity_test
+"

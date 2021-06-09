@@ -8,25 +8,6 @@ TESTDIR=$(realpath "$SCRIPTDIR/../src")
 ARTIFACTSDIR=$(realpath "$SCRIPTDIR/../artifacts")
 #reportsdir=$(realpath "$SCRIPTDIR/..")
 
-# List and Sequence of tests.
-source "$SCRIPTDIR/test_lists.sh"
-DEFAULT_TESTS="
-patch_install $DEFAULT_TEST_LIST"
-CONTINUOUS_TESTS="
-patch_install $CONTINUOUS_TEST_LIST"
-NIGHTLY_TESTS="
-patch_install $NIGHTLY_TEST_LIST"
-NIGHTLY_FULL_TESTS="
-patch_install $NIGHTLY_FULL_TEST_LIST"
-ONDEMAND_TESTS="
-patch_install $ONDEMAND_TEST_LIST"
-SELF_CI_TESTS="
-patch_install $SELF_CI_TEST_LIST"
-SOAK_TESTS="
-patch_install $SOAK_TEST_LIST"
-VALIDATION_TESTS="
-patch_install $VALIDATION_TEST_LIST"
-
 #exit values
 EXITV_OK=0
 EXITV_INVALID_OPTION=1
@@ -44,7 +25,6 @@ registry="ci-registry.mayastor-ci.mayadata.io"
 tag="nightly"
 #  script state variables
 tests=""
-custom_tests=""
 profile="default"
 on_fail="stop"
 uninstall_cleanup="n"
@@ -52,6 +32,13 @@ generate_logs=0
 logsdir="$ARTIFACTSDIR/logs"
 resportsdir="$ARTIFACTSDIR/reports"
 mayastor_root_dir=""
+policy_cleanup_before="${e2e_policy_cleanup_before:-true}"
+profile_test_list=""
+
+declare -A profiles
+# List and Sequence of tests.
+source "$SCRIPTDIR/test_lists.sh"
+
 
 help() {
   cat <<EOF
@@ -72,7 +59,7 @@ Options:
   --resportsdir <path>       Path to use for junit xml test reports (default: repo root)
   --logs                    Generate logs and cluster state dump at the end of successful test run,
   --logsdir <path>          Location to generate logs (default: emit to stdout).
-  --onfail <stop|continue>
+  --onfail <stop|restart>
                             On fail, stop immediately,or continue default($on_fail)
                             If set to "continue" on failure, all resources are cleaned up and mayastor is re-installed.
   --uninstall_cleanup <y|n> On uninstall cleanup for reusable cluster. default($uninstall_cleanup)
@@ -85,6 +72,31 @@ Examples:
   $0 --device /dev/nvme0n1 --registry 127.0.0.1:5000 --tag a80ce0c
 EOF
 }
+
+function setup_profile_testlist {
+    for key in "${!profiles[@]}"; do
+        if [ "$key" == "$1" ] ; then
+            profile_test_list="${profiles[$1]}"
+            return 0
+        fi
+    done
+    return 1
+}
+
+function set_profile {
+    if [ "$profile" == "$1" ]; then
+        return
+    fi
+
+    # Can only sensibly override the default profile
+    if [ "$profile" != "default" ]; then
+        echo "--profile and --tests contradict"
+        help
+        exit $EXITV_INVALID_OPTION
+    fi
+    profile="$1"
+}
+
 
 # Parse arguments
 while [ "$#" -gt 0 ]; do
@@ -111,7 +123,8 @@ while [ "$#" -gt 0 ]; do
       ;;
     -T|--tests)
       shift
-      custom_tests="$1"
+      set_profile "custom"
+      profiles[custom]="$1"
       ;;
     -R|--reportsdir)
       shift
@@ -141,7 +154,7 @@ while [ "$#" -gt 0 ]; do
       ;;
     --profile)
       shift
-      profile="$1"
+      set_profile "$1"
       ;;
     --onfail)
         shift
@@ -152,8 +165,9 @@ while [ "$#" -gt 0 ]; do
             stop)
                 on_fail=$1
                 ;;
-            continue)
-                on_fail=$1
+            continue|restart)
+                on_fail="restart"
+                policy_cleanup_before='true'
                 ;;
             *)
                 echo "invalid option for --onfail"
@@ -196,55 +210,34 @@ fi
 export e2e_docker_registry="$registry" # can be empty string
 export e2e_root_dir="$E2EROOT"
 
-if [ -n "$custom_tests" ]; then
-  if [ "$profile" != "default" ]; then
-    echo "cannot specify --profile with --tests"
-    help
-    exit $EXITV_INVALID_OPTION
-  fi
-  profile="custom"
-fi
-
 case "$profile" in
-  continuous)
-    tests="$CONTINUOUS_TESTS"
-    ;;
-  extended) # todo remove this option when Mayastor Jenkinsfile is updated
-    tests="$NIGHTLY_TESTS"
-    ;;
-  nightly)
-    tests="$NIGHTLY_TESTS"
-    ;;
   nightlyfull|nightly_full)
-    tests="$NIGHTLY_FULL_TESTS"
+    profile="nightly_full"
     echo "Overriding config file to nightly_full_config.yaml"
     config_file="nightly_full_config.yaml"
     ;;
-  ondemand)
-    tests="$ONDEMAND_TESTS"
-    ;;
-  custom)
-    tests="$custom_tests"
-    ;;
-  default)
-    tests="$DEFAULT_TESTS"
-    ;;
   selfci|self_ci)
-    tests="$SELF_CI_TESTS"
+    profile="self_ci"
     echo "Overriding config file to selfci_config.yaml"
     config_file="selfci_config.yaml"
     ;;
   soak)
-    tests="$SOAK_TESTS"
     echo "Overriding config file to soak_config.yaml"
     config_file="soak_config.yaml"
     ;;
-  *)
+esac
+
+if ! setup_profile_testlist "$profile" ; then
     echo "Unknown profile: $profile"
     help
     exit $EXITV_INVALID_OPTION
-    ;;
-esac
+fi
+
+if [ "$profile" != "custom" ] ; then
+    tests="patch_install $profile_test_list"
+else
+    tests="$profile_test_list"
+fi
 
 export e2e_reports_dir="$resportsdir"
 
@@ -297,6 +290,7 @@ contains() {
 
 export e2e_config_file="$config_file"
 export e2e_platform_config_file="$platform_config_file"
+export e2e_policy_cleanup_before="$policy_cleanup_before"
 
 #preprocess tests so that command line can use commas as delimiters
 tests=${tests//,/ }
@@ -326,7 +320,7 @@ for testname in $tests; do
           echo "Test \"$testname\" FAILED!"
           test_failed=1
           emitLogs "$testname"
-          if [ "$on_fail" == "continue" ] && [ "$testname" != "patch_install" ] ; then
+          if [ "$on_fail" == "restart" ] && [ "$testname" != "patch_install" ] ; then
               # continue is only possible if patch_install was successful
               echo "Attempting to continue....., cleanup"
               if ! runGoTest "tools/restart" ; then

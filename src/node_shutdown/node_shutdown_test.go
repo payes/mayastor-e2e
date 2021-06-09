@@ -16,7 +16,7 @@ import (
 
 var poweredOffNode string
 
-func TestNodeFailures(t *testing.T) {
+func TestNodeShutdown(t *testing.T) {
 	// Initialise test and set class and file names for reports
 	k8stest.InitTesting(t, "Node Shutdown Tests", "node_shutdown")
 }
