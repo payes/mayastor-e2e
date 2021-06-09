@@ -121,11 +121,11 @@ type E2EConfig struct {
 		PodRescheduleTimeoutSecs int `yaml:"podRnscheduleTimeoutSecs" env-default:"180"`
 	} `yaml:"msPodDisruption"`
 	MaximumVolsIO struct {
-		VolMb             int    `yaml:"volMb" env-default:"1024"`
-		VolumeCountPerPod int    `yaml:"volumeCountPerPod" env-default:"2"`
-		PodCount          int    `yaml:"podCount" env-default:"2"`
-		Duration          string `yaml:"duration" env-default:"30s"`
-		Timeout           string `yaml:"timeout" env-default:"180s"`
+		VolMb             int    `yaml:"volMb" env-default:"64"`
+		VolumeCountPerPod int    `yaml:"volumeCountPerPod" env-default:"10"`
+		PodCount          int    `yaml:"podCount" env-default:"11"`
+		Duration          string `yaml:"duration" env-default:"240s"`
+		Timeout           string `yaml:"timeout" env-default:"360s"`
 		ThinkTime         string `yaml:"thinkTime" env-default:"10ms"`
 	} `yaml:"maximumVolsIO"`
 	ControlPlaneRescheduling struct {

@@ -55,3 +55,11 @@ multiVolumesPodIO:
   volumeCount: 6
   replicas: 1
   duration: 2s
+maximumVolsIO:
+  # 4 volumes
+  volMb: 1024
+  volumeCountPerPod: 2
+  podCount: 2
+  duration: 30s
+  timeout:  180s
+  thinkTime: 10ms
