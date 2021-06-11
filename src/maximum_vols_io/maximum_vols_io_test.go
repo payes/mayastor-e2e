@@ -9,7 +9,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestNodeFailures(t *testing.T) {
+func TestMaximumVolsIO(t *testing.T) {
 	// Initialise test and set class and file names for reports
 	k8stest.InitTesting(t, " Test maximum number of  volumes", "maximum_vols_io")
 }
