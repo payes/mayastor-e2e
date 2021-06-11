@@ -22,9 +22,12 @@ ms_pod_disruption_rm_msv
 "
 
 profiles[nightly]="
-basic_volume_io
 csi
 resource_check
+"
+
+profiles[c1]="
+basic_volume_io
 check_mayastornode
 control_plane_rescheduling
 expand_msp_disk
@@ -39,9 +42,6 @@ volume_filesystem
 synchronous_replication
 io_soak
 ms_pod_disruption_rm_msv
-"
-
-profiles[c1]="
 pool_modify
 pvc_delete
 dynamic_provisioning
