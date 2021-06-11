@@ -45,7 +45,7 @@ var fioVerifyParams = []string{
 	"--verify_async=2",
 }
 
-func TestBasicVolumeIO(t *testing.T) {
+func TestIntegrityTest(t *testing.T) {
 	// Initialise test and set class and file names for reports
 	k8stest.InitTesting(t, "Integrity test validation test", "validate_integrity_test")
 }

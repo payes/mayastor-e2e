@@ -10,16 +10,16 @@ def e2e_environment="hcloud-kubeadm"
 // Global variable to pass current k8s job between stages
 def k8s_job=""
 
-e2e_image_tag='nightly'
-e2e_local_registry=true
+e2e_image_tag='develop'
+e2e_local_registry=false
 
 e2e_reports_dir='artifacts/reports/'
-e2e_test_profile = 'nightly_full'
+e2e_test_profile = 'nightly'
 
 String cron_schedule = "0 4 * * *"
 
 xray_send_report=true
-xray_nightly_full_testplan='MQ-924'
+xray_nightly_testplan='MQ-17'
 
 pipeline {
   agent none
@@ -39,34 +39,26 @@ pipeline {
           }
           steps {
             script {
-              common = load "${env.WORKSPACE}/pipelines/common/common.groovy"
-              common.GetClusterAdminConf(e2e_environment, k8s_job)
+              common = load "./pipelines/common/common.groovy"
               loki_run_id = common.GetLokiRunId()
               sh "mkdir -p ./${e2e_reports_dir}"
               // we need the Mayastor repo, but only for the deployment yamls
               common.GetMayastor('develop')
 
-              list = ['basic_volume_io', 'csi']
-              list.each { item ->
-                k8s_job = common.BuildCluster(e2e_build_cluster_job, e2e_environment)
-                common.GetClusterAdminConf(e2e_environment, k8s_job)
+              k8s_job = common.BuildCluster(e2e_build_cluster_job, e2e_environment)
+              common.GetClusterAdminConf(e2e_environment, k8s_job)
 
-                def cmd = "./scripts/e2e-test.sh --device /dev/sdb --tag \"${e2e_image_tag}\" --logs --onfail reinstall --tests \"install ${item} uninstall\" --loki_run_id \"${loki_run_id}\" --mayastor \"${env.WORKSPACE}/Mayastor\" --reportsdir \"${env.WORKSPACE}/${e2e_reports_dir}\" "
-                if (e2e_local_registry == true) {
-                  cmd = cmd + " --registry \"" + env.REGISTRY + "\""
-                }
+              def cmd = "./scripts/e2e-test.sh --device /dev/sdb --tag \"${e2e_image_tag}\" --logs --onfail reinstall --profile \"${e2e_test_profile}\" --loki_run_id \"${loki_run_id}\" --mayastor \"${env.WORKSPACE}/Mayastor\" --reportsdir \"${env.WORKSPACE}/${e2e_reports_dir}\" "
 
-                withCredentials([
-                  usernamePassword(credentialsId: 'GRAFANA_API', usernameVariable: 'grafana_api_user', passwordVariable: 'grafana_api_pw')
-                ]) {
-                  common.LokiInstall(e2e_image_tag)
-                  sh "nix-shell --run '${cmd}'"
-                  common.LokiUninstall(e2e_image_tag)
-                }
-                common.DestroyCluster(e2e_destroy_cluster_job, k8s_job)
-                k8s_job=""
+              withCredentials([
+                usernamePassword(credentialsId: 'GRAFANA_API', usernameVariable: 'grafana_api_user', passwordVariable: 'grafana_api_pw')
+              ]) {
+                common.LokiInstall(e2e_image_tag)
+                sh "nix-shell --run '${cmd}'"
+                common.LokiUninstall(e2e_image_tag)
               }
-
+              common.DestroyCluster(e2e_destroy_cluster_job, k8s_job)
+              k8s_job=""
             }
           }
           post {
@@ -79,15 +71,19 @@ pipeline {
                 if (k8s_job != "") {
                   common.DestroyCluster(e2e_destroy_cluster_job, k8s_job)
                 }
-
                 if (xray_send_report == true) {
-                  def xray_testplan = xray_nightly_full_testplan
                   def pipeline = common.GetJobBaseName()
-                  def summary = "Pipeline: ${pipeline}, test plan: ${xray_nightly_full_testplan}, git branch: ${env.BRANCH_name}, tested image tag: ${e2e_image_tag}"
-                  common.SendXrayReport(xray_nightly_full_testplan, summary, e2e_reports_dir)
+                  def summary = "Pipeline: ${pipeline}, test plan: ${xray_nightly_testplan}, git branch: ${env.BRANCH_name}, tested image tag: ${e2e_image_tag}"
+                  common.SendXrayReport(xray_nightly_testplan, summary, e2e_reports_dir)
                 }
               }
-            }// always
+            }
+            success {
+              script {
+                // on success re-tag images as "nightly-stable"
+                sh "./scripts/re-tag-images.sh"
+              }
+            }
           }//post
         }//stage 'run e2e'
       }//stages

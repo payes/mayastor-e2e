@@ -30,78 +30,6 @@ if (params.e2e_branch != '') {
   e2e_mayastor_dir = '.'
 }
 
-// In the case of multi-branch pipelines, the pipeline
-// name a.k.a. job base name, will be the
-// 2nd-to-last item of env.JOB_NAME which
-// consists of identifiers separated by '/' e.g.
-//     first/second/pipeline/branch
-// In the case of a non-multibranch pipeline, the pipeline
-// name is env.JOB_NAME. This caters for all eventualities.
-def getJobBaseName() {
-  def jobSections = env.JOB_NAME.tokenize('/') as String[]
-  return jobSections.length < 2 ? env.JOB_NAME : jobSections[ jobSections.length - 2 ]
-}
-
-def buildCluster(e2e_build_cluster_job) {
-  return build(
-    job: "${e2e_build_cluster_job}",
-    propagate: true,
-    wait: true,
-    parameters: [[
-      $class: 'StringParameterValue',
-      name: "ENVIRONMENT",
-      value: "${e2e_environment}"
-    ]]
-  )
-}
-
-def destroyCluster(e2e_destroy_cluster_job, k8s_job) {
-  build(
-    job: "${e2e_destroy_cluster_job}",
-    propagate: true,
-    wait: true,
-    parameters: [
-      [
-        $class: 'RunParameterValue',
-        name: "BUILD",
-        runId:"${k8s_job.getProjectName()}#${k8s_job.getNumber()}"
-      ]
-    ]
-  )
-}
-
-def warnOrphanCluster(k8s_job) {
-  withCredentials([string(credentialsId: 'HCLOUD_TOKEN', variable: 'HCLOUD_TOKEN')]) {
-    e2e_nodes=sh(
-      script: """
-        nix-shell -p hcloud --run 'hcloud server list' | grep -e '-${k8s_job.getNumber()} ' | awk '{ print \$2" "\$4 }'
-              """,
-        returnStdout: true
-    ).trim()
-  }
-  // Job name for multi-branch is Mayastor/<branch> however
-  // in URL jenkins requires /job/ in between for url to work
-  urlized_job_name=JOB_NAME.replaceAll("/", "/job/")
-  self_url="${JENKINS_URL}job/${urlized_job_name}/${BUILD_NUMBER}"
-  self_name="${JOB_NAME}#${BUILD_NUMBER}"
-  build_cluster_run_url="${JENKINS_URL}job/${k8s_job.getProjectName()}/${k8s_job.getNumber()}"
-  build_cluster_destroy_url="${JENKINS_URL}job/${e2e_destroy_cluster_job}/buildWithParameters?BUILD=${k8s_job.getProjectName()}%23${k8s_job.getNumber()}"
-  kubeconfig_url="${JENKINS_URL}job/${k8s_job.getProjectName()}/${k8s_job.getNumber()}/artifact/hcloud-kubeadm/modules/k8s/secrets/admin.conf"
-  slackSend(
-    channel: '#mayastor-e2e',
-    color: 'danger',
-    message: "E2E k8s cluster <$build_cluster_run_url|#${k8s_job.getNumber()}> left running due to failure of " +
-             "<$self_url|$self_name>. Investigate using <$kubeconfig_url|kubeconfig>, or ssh as root to:\n" +
-             "```$e2e_nodes```\n" +
-             "And then <$build_cluster_destroy_url|destroy> the cluster.\n" +
-             "Note: you need to click `proceed` and will get an empty page when using destroy link. " +
-             "(<https://mayadata.atlassian.net/wiki/spaces/MS/pages/247332965/Test+infrastructure#On-Demand-E2E-K8S-Clusters|doc>)"
-  )
-}
-
-String job_base_name = getJobBaseName()
-String loki_run_id = job_base_name + "-" + env.BRANCH_NAME + "-" + env.BUILD_NUMBER
-
 pipeline {
   agent none
   options {
@@ -123,7 +51,8 @@ pipeline {
           agent { label 'nixos' }
           steps {
             script {
-              k8s_job = buildCluster(e2e_build_cluster_job)
+              common = load "${env.WORKSPACE}/pipelines/common/common.groovy"
+              k8s_job = common.BuildCluster(e2e_build_cluster_job, e2e_environment)
             }
           }
         }
@@ -151,33 +80,16 @@ pipeline {
 
               }
             }
-
-            // FIXME(arne-rusek): move hcloud's config to top-level dir in TF scripts
-            sh """
-              mkdir -p "${e2e_environment}/modules/k8s/secrets"
-            """
-            copyArtifacts(
-              projectName: "${k8s_job.getProjectName()}",
-              selector: specific("${k8s_job.getNumber()}"),
-              filter: "${e2e_environment}/modules/k8s/secrets/admin.conf",
-              target: "",
-              fingerprintArtifacts: true
-            )
-            sh 'kubectl get nodes -o wide'
-
             script {
-              common = load "./${e2e_mayastor_dir}/pipelines/common/common.groovy"
-              sh "mkdir -p ./${e2e_reports_dir}"
-              sh 'rm -Rf Mayastor'
+              common = load "${env.WORKSPACE}/pipelines/common/common.groovy"
+              common.GetClusterAdminConf(e2e_environment, k8s_job)
+              loki_run_id = common.GetLokiRunId()
+              sh "mkdir -p ${env.WORKSPACE}/${e2e_reports_dir}"
               // we need the Mayastor repo, but only for the deployment yamls
-              withCredentials([
-                usernamePassword(credentialsId: 'github-checkout', usernameVariable: 'ghuser', passwordVariable: 'ghpw')
-              ]) {
-                sh "git clone https://github.com/openebs/Mayastor.git"
-                sh 'cd Mayastor && git checkout develop'
-              }
+              common.GetMayastor('develop')
+
               def cmd = "./scripts/${e2e_script} --device /dev/sdb --tag \"${params.image_tag}\" --logs --tests \'${params.tests}\' --loki_run_id \"${loki_run_id}\" --mayastor \"${env.WORKSPACE}/Mayastor\" --reportsdir \"${env.WORKSPACE}/${e2e_reports_dir}\" "
-              // building images also means using the CI registry
+
               if (params.use_ci_registry == true) {
                 cmd = cmd + " --registry \"" + env.REGISTRY + "\""
               } else {
@@ -190,26 +102,28 @@ pipeline {
               withCredentials([
                 usernamePassword(credentialsId: 'GRAFANA_API', usernameVariable: 'grafana_api_user', passwordVariable: 'grafana_api_pw')
               ]) {
-                common.LokiInstall(params.image_tag, loki_run_id)
-                sh "nix-shell --run 'cd ${e2e_mayastor_dir} && ${cmd}'"
-                common.LokiUninstall(params.image_tag, loki_run_id) // so that, if we keep the cluster, the next Loki instance can use different parameters
+                common.LokiInstall(params.image_tag)
+                sh "nix-shell --run 'cd ${env.WORKSPACE}/${e2e_mayastor_dir} && ${cmd}'"
+                common.LokiUninstall(params.image_tag) // so that, if we keep the cluster, the next Loki instance can use different parameters
               }
             }
           }
           post {
             failure {
               script {
+                common = load "${env.WORKSPACE}/pipelines/common/common.groovy"
                 if (params.delete_cluster_on_failure) {
-                  destroyCluster(e2e_destroy_cluster_job, k8s_job)
+                  common.DestroyCluster(e2e_destroy_cluster_job, k8s_job)
                 } else {
-                  warnOrphanCluster(k8s_job)
+                  common.WarnOrphanCluster(k8s_job)
                 }
               }
             }//failure
 
             success {
               script {
-                destroyCluster(e2e_destroy_cluster_job, k8s_job)
+                common = load "${env.WORKSPACE}/pipelines/common/common.groovy"
+                common.DestroyCluster(e2e_destroy_cluster_job, k8s_job)
               }
             }
             always {
