@@ -55,7 +55,7 @@ for name in $IMAGES; do
 
   docker pull ${input_image}
 
-  output_image=${REGISTRY}/${name}:${OUTPUT_TAG}
+  output_image="${REGISTRY}/mayadata/${name}:${OUTPUT_TAG}"
 
   docker tag ${input_image} ${output_image}
 
