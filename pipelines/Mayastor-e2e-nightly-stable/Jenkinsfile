@@ -76,15 +76,26 @@ pipeline {
                 }
               }
             }
-            success {
-              script {
-                // on success re-tag images as "nightly-stable" // TODO push nightly-stable images to dockerhub
-                sh "./scripts/re-tag-images.sh"
-              }
-            }
           }//post
         }//stage 'run e2e'
       }//stages
     }//stage 'test'
+    stage('push images') {
+      agent { label 'nixos-mayastor' }
+      steps {
+        // on success re-tag images as "nightly-stable", push to CI registry and DockerHub
+        sh "./scripts/re-tag-images.sh"
+        withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
+          sh 'echo $PASSWORD | docker login -u $USERNAME --password-stdin'
+        }
+        sh "./scripts/re-tag-images.sh --registry dockerhub"
+      }
+      post {
+        always {
+          sh 'docker logout'
+          sh 'docker image prune --all --force'
+        }
+      }
+    }
   }//stages
 }
