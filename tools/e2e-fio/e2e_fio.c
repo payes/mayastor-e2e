@@ -103,7 +103,66 @@ char** parse_procs(char **argv) {
     start_proc(proc_ptr);
     return argv;
 }
+char** parse_disk_test(char **argv,char command[] ) {
+    e2e_process *proc_ptr = NULL;
+    /* Tis' C so we do it the "hard way" */
+    char *pinsert;
+    char *executable;
+    if (command == "DiskTest "){
+    executable = "DiskTest ";
+    } else {
+    executable = "fallocate ";
+    }
+    size_t buflen = 0;
 
+    /* 1. work out the size of the buffer required to copy the arguments.*/
+    for(char **argv_scan=argv; *argv_scan != NULL; ++argv_scan) {
+        /* +1 for space delimiter */
+        buflen += strlen(*argv_scan) + 1;
+    }
+
+    if (buflen == 0) {
+        return NULL;
+    }
+
+    proc_ptr = calloc(sizeof(*proc_ptr), 1);
+    if (proc_ptr == NULL) {
+        puts("failed to allocate memory for e2e_process");
+        return NULL;
+    }
+
+    buflen += strlen(executable) + 1;
+    /* 2. allocate a 0 intialised buffer so we can use strcat */
+    proc_ptr->cmd = calloc(sizeof(unsigned char), buflen);
+    if (proc_ptr->cmd == NULL) {
+        free(proc_ptr);
+        puts("failed to allocate memory for command line");
+        return NULL;
+    }
+
+    pinsert = proc_ptr->cmd;
+    /* 3. construct the command line, using strcat */
+    strcat(pinsert, executable);
+    pinsert += strlen(pinsert);
+    for(; *argv != NULL && (0 != strcmp(*argv, "&")); ++argv) {
+        strcat(pinsert, *argv);
+        pinsert += strlen(pinsert);
+        *pinsert = ' ';
+        ++pinsert;
+    }
+
+    /* 4 append the process to the list */
+    {
+        e2e_process** insert_proc = &proc_list;
+        while (*insert_proc != NULL) {
+            insert_proc = &(*insert_proc)->next;
+        }
+        *insert_proc = proc_ptr;
+    }
+
+    start_proc(proc_ptr);
+    return argv;
+}
 /* Kill all processes as defined in the list */
 void kill_procs(int signal) {
     for (e2e_process* proc_ptr = proc_list; NULL != proc_ptr; proc_ptr = proc_ptr->next) {
@@ -245,7 +304,19 @@ int main(int argc, char **argv_in)
                 argv = next;
             }
 
-        } else if (0 == strcmp(*argv,"exitv") && NULL != *(argv+1) && 0 != atoi(*(argv+1))) {
+        }else if (0 == strcmp(*argv, "---")) {
+            if(0 == strcmp(*argv, "fallocate")){
+              char **next = parse_disk_test(argv + 1,"fallocate");
+            } 
+            char **next = parse_disk_test(argv + 1,"DiskTest");
+
+            if (*next == NULL) {
+                argv = next - 1;
+            } else {
+                argv = next;
+            }
+
+        }else if (0 == strcmp(*argv,"exitv") && NULL != *(argv+1) && 0 != atoi(*(argv+1))) {
             exitv = atoi(*(argv+1));
             printf("Overriding exit value to %d\n", exitv);
             ++argv;

@@ -1,15 +1,16 @@
 # VERSION 0.1
-FROM alpine
+FROM ubuntu
 
 MAINTAINER mayastor mayastor@mayadata.io
 
-RUN apk --no-cache add \
-    	fio gcc musl-dev
+RUN apt-get update
+
+RUN apt-get install -y fio gcc musl-dev
+
+COPY DiskTest /usr/local/bin
 
 ADD e2e_fio.c /
 
 RUN gcc -Wall -o /e2e_fio e2e_fio.c
-RUN apk --no-cache del \
-        gcc musl-dev
 
 ENTRYPOINT ["/e2e_fio"]
