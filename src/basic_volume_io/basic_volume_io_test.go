@@ -30,11 +30,17 @@ func TestBasicVolumeIO(t *testing.T) {
 func basicVolumeIOTest(protocol common.ShareProto, volumeType common.VolumeType, mode storageV1.VolumeBindingMode) {
 	params := e2e_config.GetConfig().BasicVolumeIO
 	logf.Log.Info("Test", "parameters", params)
-	scName := strings.ToLower(fmt.Sprintf("basic-vol-io-repl-%d-%s-%s-%s", params.Replicas, string(protocol), volumeType, mode))
-	err := k8stest.MakeStorageClass(scName, params.Replicas, protocol, common.NSDefault, &mode)
-	Expect(err).ToNot(HaveOccurred(), "Creating storage class %s", scName)
+	scName := strings.ToLower(fmt.Sprintf("basic-vol-io-repl-%d-%s-%s-%s", common.DefaultReplicaCount, string(protocol), volumeType, mode))
+	err := k8stest.NewScBuilder().
+		WithName(scName).
+		WithReplicas(common.DefaultReplicaCount).
+		WithProtocol(protocol).
+		WithNamespace(common.NSDefault).
+		WithVolumeBindingMode(mode).
+		BuildAndCreate()
+	Expect(err).ToNot(HaveOccurred(), "failed to create storage class %s", scName)
 
-	volName := strings.ToLower(fmt.Sprintf("basic-vol-io-repl-%d-%s-%s-%s", params.Replicas, string(protocol), volumeType, mode))
+	volName := strings.ToLower(fmt.Sprintf("basic-vol-io-repl-%d-%s-%s-%s", common.DefaultReplicaCount, string(protocol), volumeType, mode))
 
 	// Create the volume
 	uid := k8stest.MkPVC(params.VolSizeMb, volName, scName, volumeType, common.NSDefault)

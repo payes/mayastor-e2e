@@ -221,16 +221,14 @@ var _ = AfterSuite(func() {
 // createStorageClass creates storageclass object
 // and creates storage class.
 func createStorageClass(scName string, mode storageV1.VolumeBindingMode, namespace string, replicas int, protocol common.ShareProto) error {
-	// Create storage class obj
-	scObj, err := k8stest.NewScBuilder().
+	// Create storage class
+	err := k8stest.NewScBuilder().
 		WithName(scName).
 		WithNamespace(namespace).
 		WithReplicas(replicas).
 		WithVolumeBindingMode(mode).
-		WithProtocol(protocol).Build()
-	Expect(err).ToNot(HaveOccurred(), "Generating storage class definition %s", scName)
-	// Create storage class
-	err = k8stest.CreateSc(scObj)
+		WithProtocol(protocol).
+		BuildAndCreate()
 	Expect(err).ToNot(HaveOccurred(), "Creating storage class %s", scName)
 
 	return err

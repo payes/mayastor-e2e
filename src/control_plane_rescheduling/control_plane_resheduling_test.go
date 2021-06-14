@@ -28,16 +28,22 @@ var defTimeoutSecs = "60s"
 func controlPlaneReschedulingTest(protocol common.ShareProto, volumeType common.VolumeType, fsType common.FileSystemType, mode storageV1.VolumeBindingMode) {
 	const sleepTimeSecs = 3
 	const timeoutSecs = 360
-	params := e2e_config.GetConfig().BasicVolumeIO
 	scName := fmt.Sprintf("reshedule-sc-%s", protocol)
 	var volNames []string
 	var fioPodNames []string
 	deploymentName := "moac"
 	var replicas int32
-	logf.Log.Info("Test", "parameters", params)
 
 	// Create storage class
-	err := createStoragClass(scName, mode, common.NSDefault, params.Replicas, protocol, fsType)
+	err := k8stest.NewScBuilder().
+		WithName(scName).
+		WithNamespace(common.NSDefault).
+		WithReplicas(common.DefaultReplicaCount).
+		WithVolumeBindingMode(mode).
+		WithProtocol(protocol).
+		WithFileSystemType(fsType).
+		BuildAndCreate()
+
 	Expect(err).To(BeNil(), "Storage class creation failed")
 
 	// Create volumes
@@ -172,27 +178,6 @@ var _ = AfterSuite(func() {
 	// not the kubernetes cluster itself.	By("tearing down the test environment")
 	k8stest.TeardownTestEnv()
 })
-
-// createStorageClass creates storageclass object
-// and creates storage class.
-func createStoragClass(scName string, mode storageV1.VolumeBindingMode, namespace string, replicas int, protocol common.ShareProto, filetype common.FileSystemType) error {
-	// Create storage class obj
-	scObj, err := k8stest.NewScBuilder().
-		WithName(scName).
-		WithNamespace(namespace).
-		WithReplicas(replicas).
-		WithVolumeBindingMode(mode).
-		WithProtocol(protocol).Build()
-	Expect(err).ToNot(HaveOccurred(), "Generating storage class definition %s", scName)
-	if filetype != "" {
-		scObj.Parameters[string(common.ScFsType)] = string(filetype)
-	}
-	// Create storage class
-	err = k8stest.CreateSc(scObj)
-	Expect(err).ToNot(HaveOccurred(), "Creating storage class %s", scName)
-
-	return err
-}
 
 // createFioPod created fio pod obj and create fio pod
 func createFioPod(podName string, volName string) error {

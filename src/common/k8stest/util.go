@@ -7,7 +7,6 @@ import (
 	"mayastor-e2e/common/e2e_config"
 	"os/exec"
 	"regexp"
-	"strconv"
 	"time"
 
 	"mayastor-e2e/common"
@@ -19,7 +18,6 @@ import (
 	appsV1 "k8s.io/api/apps/v1"
 	coreV1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
-	storagev1 "k8s.io/api/storage/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -44,32 +42,14 @@ func KubeCtlDeleteYaml(filename string, dir string) {
 	Expect(err).ToNot(HaveOccurred(), "%s", out)
 }
 
-// create a storage class
-func MakeStorageClass(scName string, scReplicas int, protocol common.ShareProto, nameSpace string, bindingMode *storagev1.VolumeBindingMode) error {
-	logf.Log.Info("Creating storage class", "name", scName, "replicas", scReplicas, "protocol", protocol, "bindingMode", bindingMode)
-	createOpts := &storagev1.StorageClass{
-		ObjectMeta: metaV1.ObjectMeta{
-			Name:      scName,
-			Namespace: nameSpace,
-		},
-		Provisioner: common.CSIProvisioner,
-	}
-	createOpts.Parameters = make(map[string]string)
-	createOpts.Parameters["protocol"] = string(protocol)
-	createOpts.Parameters["repl"] = strconv.Itoa(scReplicas)
-
-	if bindingMode != nil {
-		createOpts.VolumeBindingMode = bindingMode
-	}
-
-	ScApi := gTestEnv.KubeInt.StorageV1().StorageClasses
-	_, createErr := ScApi().Create(context.TODO(), createOpts, metaV1.CreateOptions{})
-	return createErr
-}
-
 // create a storage class with default volume binding mode i.e. not specified
 func MkStorageClass(scName string, scReplicas int, protocol common.ShareProto, nameSpace string) error {
-	return MakeStorageClass(scName, scReplicas, protocol, nameSpace, nil)
+	return NewScBuilder().
+		WithName(scName).
+		WithReplicas(scReplicas).
+		WithProtocol(protocol).
+		WithNamespace(nameSpace).
+		BuildAndCreate()
 }
 
 // remove a storage class

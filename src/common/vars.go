@@ -41,3 +41,5 @@ func GetDefaultFioArguments() []string {
 func GetFioImage() string {
 	return fioImage
 }
+
+var DefaultReplicaCount = e2e_config.GetConfig().DefaultReplicaCount

@@ -54,6 +54,8 @@ type E2EConfig struct {
 	DeferredAssert bool `yaml:"deferredAssert" env-default:"false" env:"e2e_defer_asserts"`
 	// TODO: for now using a simple boolean for a specific behaviour suffices, a more sophisticated approach using a policy for test runs may be required.
 	CleanupOnBeforeEach bool `yaml:"cleanupOnBeforeEach" env-default:"false" env:"e2e_policy_cleanup_before"`
+	// Default replica count, used by tests which do not have a config section.
+	DefaultReplicaCount int `yaml:"defaultReplicaCount" env-default:"2" env:"e2e_default_replica_count"`
 
 	// Run configuration
 	ReportsDir string `yaml:"reportsDir" env:"e2e_reports_dir"`
@@ -96,7 +98,6 @@ type E2EConfig struct {
 		Cleanup int `yaml:"cleanup" env:"e2e_uninstall_cleanup"`
 	} `yaml:"uninstall"`
 	BasicVolumeIO struct {
-		Replicas int `yaml:"replicas" env-default:"1"`
 		// FioTimeout is in seconds
 		FioTimeout int `yaml:"fioTimeout" env-default:"120"`
 		// VolSizeMb Units are MiB
@@ -152,6 +153,18 @@ type E2EConfig struct {
 		VolMb      int    `yaml:"volMb" env-default:"9900"`
 		Device     string `yaml:"device" env-default:"/dev/sdb"`
 	} `yaml:"validateIntegrityTest"`
+	PvcReadWriteOnce struct {
+		// FioTimeout is in seconds
+		FioTimeout int `yaml:"fioTimeout" env-default:"120"`
+	} `yaml:"pvcReadWriteOnce"`
+	PvcDelete struct {
+		// VolSizeMb Units are MiB
+		VolSizeMb int `yaml:"volSizeMb" env-default:"1024"`
+		// FsVolSizeMb Units are MiB
+		FsVolSizeMb              int `yaml:"fsVolSizeMb" env-default:"900"`
+		PodUnscheduleTimeoutSecs int `yaml:"podUnscheduleTimeoutSecs" env-default:"100"`
+		PodRescheduleTimeoutSecs int `yaml:"podRnscheduleTimeoutSecs" env-default:"180"`
+	} `yaml:"pvcDelete"`
 }
 
 var once sync.Once

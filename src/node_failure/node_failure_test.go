@@ -36,14 +36,13 @@ func TestNodeFailures(t *testing.T) {
 
 func (c *failureConfig) createSC() {
 
-	scObj, err := k8stest.NewScBuilder().
+	err := k8stest.NewScBuilder().
 		WithName(c.scName).
 		WithNamespace(common.NSDefault).
 		WithProtocol(c.protocol).
 		WithReplicas(c.replicas).
-		WithFileSystemType(c.fsType).Build()
-	Expect(err).ToNot(HaveOccurred(), "Generating storage class definition %s", c.scName)
-	err = k8stest.CreateSc(scObj)
+		WithFileSystemType(c.fsType).
+		BuildAndCreate()
 	Expect(err).ToNot(HaveOccurred(), "Creating storage class %s", c.scName)
 }
 
