@@ -11,8 +11,6 @@ def e2e_environment="hcloud-kubeadm"
 def k8s_job=""
 
 e2e_image_tag='develop'
-e2e_local_registry=false
-
 e2e_reports_dir='artifacts/reports/'
 e2e_test_profile = 'nightly'
 
@@ -48,7 +46,7 @@ pipeline {
               k8s_job = common.BuildCluster(e2e_build_cluster_job, e2e_environment)
               common.GetClusterAdminConf(e2e_environment, k8s_job)
 
-              def cmd = "./scripts/e2e-test.sh --device /dev/sdb --tag \"${e2e_image_tag}\" --logs --onfail reinstall --profile \"${e2e_test_profile}\" --loki_run_id \"${loki_run_id}\" --mayastor \"${env.WORKSPACE}/Mayastor\" --reportsdir \"${env.WORKSPACE}/${e2e_reports_dir}\" "
+              def cmd = "./scripts/e2e-test.sh --device /dev/sdb --tag \"${e2e_image_tag}\" --logs --onfail reinstall --profile \"${e2e_test_profile}\" --loki_run_id \"${loki_run_id}\" --mayastor \"${env.WORKSPACE}/Mayastor\" --reportsdir \"${env.WORKSPACE}/${e2e_reports_dir}\" --registry \"dockerhub\" "
 
               withCredentials([
                 usernamePassword(credentialsId: 'GRAFANA_API', usernameVariable: 'grafana_api_user', passwordVariable: 'grafana_api_pw')
@@ -80,7 +78,7 @@ pipeline {
             }
             success {
               script {
-                // on success re-tag images as "nightly-stable"
+                // on success re-tag images as "nightly-stable" // TODO push nightly-stable images to dockerhub
                 sh "./scripts/re-tag-images.sh"
               }
             }
