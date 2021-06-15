@@ -108,7 +108,7 @@ char** parse_disk_test(char **argv,char command[] ) {
     /* Tis' C so we do it the "hard way" */
     char *pinsert;
     char *executable;
-    if (command == "DiskTest "){
+    if (strcmp(command,"DiskTest") == 0){
     executable = "DiskTest ";
     } else {
     executable = "fallocate ";
@@ -305,11 +305,12 @@ int main(int argc, char **argv_in)
             }
 
         }else if (0 == strcmp(*argv, "---")) {
+            char **next;
             if(0 == strcmp(*argv, "fallocate")){
-              char **next = parse_disk_test(argv + 1,"fallocate");
-            } 
-            char **next = parse_disk_test(argv + 1,"DiskTest");
-
+            next = parse_disk_test(argv + 1,"fallocate");
+            }else {
+            next = parse_disk_test(argv + 1,"DiskTest");
+            }
             if (*next == NULL) {
                 argv = next - 1;
             } else {
