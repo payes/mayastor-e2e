@@ -55,7 +55,11 @@ for name in $IMAGES; do
 
   docker pull ${input_image}
 
-  output_image="${REGISTRY}/mayadata/${name}:${OUTPUT_TAG}"
+  if [ "$REGISTRY" == "dockerhub" ]; then
+    output_image="mayadata/${name}:${OUTPUT_TAG}"
+  else
+    output_image="${REGISTRY}/mayadata/${name}:${OUTPUT_TAG}"
+  fi
 
   docker tag ${input_image} ${output_image}
 
