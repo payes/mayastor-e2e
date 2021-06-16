@@ -62,6 +62,8 @@ pipeline {
             // Note: We might want to build and test dev images that have more
             // assertions instead but that complicates e2e tests a bit.
             sh "cd Mayastor && ./scripts/release.sh --registry \"${env.REGISTRY}\""
+            // Build the install image
+            sh "./scripts/create-install-image.sh --alias-tag \"$mayastor_tag\" --mayastor Mayastor --registry \"${env.REGISTRY}\""
           }
           post {
             // Always remove all docker images because they are usually used just once
@@ -86,8 +88,7 @@ pipeline {
               k8s_job = common.BuildCluster(e2e_build_cluster_job, e2e_environment)
               common.GetClusterAdminConf(e2e_environment, k8s_job)
 
-
-              def cmd = "./scripts/e2e-test.sh --device /dev/sdb --tag \"${mayastor_tag}\" --logs --onfail reinstall --profile \"${e2e_test_profile}\" --loki_run_id \"${loki_run_id}\" --mayastor \"${env.WORKSPACE}/Mayastor\" --reportsdir \"${env.WORKSPACE}/${e2e_reports_dir}\" --registry \"${env.REGISTRY}\" "
+              def cmd = "./scripts/e2e-test.sh --device /dev/sdb --tag \"${mayastor_tag}\" --logs --onfail reinstall --profile \"${e2e_test_profile}\" --loki_run_id \"${loki_run_id}\" --reportsdir \"${env.WORKSPACE}/${e2e_reports_dir}\" --registry \"${env.REGISTRY}\" "
 
               withCredentials([
                 usernamePassword(credentialsId: 'GRAFANA_API', usernameVariable: 'grafana_api_user', passwordVariable: 'grafana_api_pw')
