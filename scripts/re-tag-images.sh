@@ -1,10 +1,8 @@
 #!/usr/bin/env bash
 
-# get the devlop images and push them to the CI repo tagged as 'nightly-stable'
-
 set -euo pipefail
 
-IMAGES="mayastor mayastor-csi mayastor-client moac"
+IMAGES="mayastor mayastor-csi mayastor-client moac install-images"
 
 REGISTRY="ci-registry.mayastor-ci.mayadata.io"
 DESTINATION_REGISTRY="$REGISTRY"
@@ -76,6 +74,10 @@ for name in $IMAGES; do
 
   if [ "$DESTINATION_REGISTRY" == "dockerhub" ]; then
     output_image="mayadata/${name}:${ALIAS_TAG}"
+    # do not upload install-images to dockerhub
+    if [ "$name" == "install-images" ]; then
+        continue
+    fi
   else
     output_image="${DESTINATION_REGISTRY}/mayadata/${name}:${ALIAS_TAG}"
   fi
