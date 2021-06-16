@@ -48,71 +48,11 @@ void start_proc(e2e_process* proc_ptr ) {
  * parse command line arguments and populate a single e2e processes argument list,
  * and append it to the global list of e2e processes
  */
-char** parse_procs(char **argv) {
+char** parse_procs(char **argv, char command[]) {
     e2e_process *proc_ptr = NULL;
     /* Tis' C so we do it the "hard way" */
     char *pinsert;
-    const char *executable = "fio ";
-    size_t buflen = 0;
-
-    /* 1. work out the size of the buffer required to copy the arguments.*/
-    for(char **argv_scan=argv; *argv_scan != NULL; ++argv_scan) {
-        /* +1 for space delimiter */
-        buflen += strlen(*argv_scan) + 1;
-    }
-
-    if (buflen == 0) {
-        return NULL;
-    }
-
-    proc_ptr = calloc(sizeof(*proc_ptr), 1);
-    if (proc_ptr == NULL) {
-        puts("failed to allocate memory for e2e_process");
-        return NULL;
-    }
-
-    buflen += strlen(executable) + 1;
-    /* 2. allocate a 0 intialised buffer so we can use strcat */
-    proc_ptr->cmd = calloc(sizeof(unsigned char), buflen);
-    if (proc_ptr->cmd == NULL) {
-        free(proc_ptr);
-        puts("failed to allocate memory for command line");
-        return NULL;
-    }
-
-    pinsert = proc_ptr->cmd;
-    /* 3. construct the command line, using strcat */
-    strcat(pinsert, executable);
-    pinsert += strlen(pinsert);
-    for(; *argv != NULL && (0 != strcmp(*argv, "&")); ++argv) {
-        strcat(pinsert, *argv);
-        pinsert += strlen(pinsert);
-        *pinsert = ' ';
-        ++pinsert;
-    }
-
-    /* 4 append the process to the list */
-    {
-        e2e_process** insert_proc = &proc_list;
-        while (*insert_proc != NULL) {
-            insert_proc = &(*insert_proc)->next;
-        }
-        *insert_proc = proc_ptr;
-    }
-
-    start_proc(proc_ptr);
-    return argv;
-}
-char** parse_disk_test(char **argv,char command[] ) {
-    e2e_process *proc_ptr = NULL;
-    /* Tis' C so we do it the "hard way" */
-    char *pinsert;
-    char *executable;
-    if (strcmp(command,"DiskTest") == 0){
-    executable = "DiskTest ";
-    } else {
-    executable = "fallocate ";
-    }
+    const char *executable = command;
     size_t buflen = 0;
 
     /* 1. work out the size of the buffer required to copy the arguments.*/
@@ -296,8 +236,7 @@ int main(int argc, char **argv_in)
             raise(SIGSEGV);
             ++argv;
         } else if (0 == strcmp(*argv, "--")) {
-            char **next = parse_procs(argv + 1);
-
+            char **next = parse_procs(argv+1,"fio ");
             if (*next == NULL) {
                 argv = next - 1;
             } else {
@@ -305,18 +244,29 @@ int main(int argc, char **argv_in)
             }
 
         }else if (0 == strcmp(*argv, "---")) {
-            char **next;
-            if(0 == strcmp(*argv, "fallocate")){
-            next = parse_disk_test(argv + 1,"fallocate");
-            }else {
-            next = parse_disk_test(argv + 1,"DiskTest");
-            }
+            char **next = parse_procs(argv+1,"DiskTest ");
             if (*next == NULL) {
                 argv = next - 1;
             } else {
                 argv = next;
             }
 
+        }else if (0 == strcmp(*argv, "createfile")) {
+            size_t buflen = 0;
+            for(char **argv_scan=argv; *argv_scan != NULL; ++argv_scan) {
+                buflen += strlen(*argv_scan) + 1;
+            }
+            char *cmdline;
+            cmdline = calloc(sizeof(unsigned char), buflen);
+            cmdline += strlen(cmdline);
+            for(; *argv != NULL && (0 != strcmp(*argv, "&")); ++argv) {
+                strcat(cmdline, *argv);
+                cmdline += strlen(cmdline);
+                *cmdline = ' ';
+                ++cmdline;
+            }
+            system(cmdline);
+            free(cmdline);
         }else if (0 == strcmp(*argv,"exitv") && NULL != *(argv+1) && 0 != atoi(*(argv+1))) {
             exitv = atoi(*(argv+1));
             printf("Overriding exit value to %d\n", exitv);
