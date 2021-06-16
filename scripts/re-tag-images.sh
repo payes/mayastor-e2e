@@ -7,8 +7,8 @@ set -euo pipefail
 IMAGES="mayastor mayastor-csi mayastor-client moac"
 
 REGISTRY="ci-registry.mayastor-ci.mayadata.io"
-INPUT_TAG="develop"
-OUTPUT_TAG="nightly-stable"
+SRC_TAG=""
+ALIAS_TAG=""
 
 help() {
   cat <<EOF
@@ -18,10 +18,11 @@ Options:
   -h, --help                 Display this text.
   --registry <host[:port]>   Push the built images to the provided registry,
                              default is ${REGISTRY}
-  --alias-tag                Tag to give CI image, default is ${OUTPUT_TAG}
+  --src-tag                  Tag to retag
+  --alias-tag                Tag to give CI image
 
 Examples:
-  $(basename $0) --registry 127.0.0.1:5000 --alias-tag customized-tag
+  $(basename $0) --registry 127.0.0.1:5000 --src-tag 755c435fdb0a --alias-tag customized-tag
 EOF
 }
 
@@ -35,12 +36,17 @@ while [ "$#" -gt 0 ]; do
       ;;
     --registry)
       shift
-      REGISTRY=$1
+      DESTINATION_REGISTRY=$1
+      shift
+      ;;
+    --src-tag)
+      shift
+      SRC_TAG=$1
       shift
       ;;
     --alias-tag)
       shift
-      OUTPUT_TAG=$1
+      ALIAS_TAG=$1
       shift
       ;;
     *)
@@ -50,19 +56,31 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 
+if [ -z "$SRC_TAG" ] ; then
+    echo "source tag not specified"
+    help
+    exit 1
+fi
+
+if [ -z "$ALIAS_TAG" ] ; then
+    echo "alias tag not specified"
+    help
+    exit 1
+fi
+
 for name in $IMAGES; do
-  input_image="mayadata/${name}:${INPUT_TAG}"
+  input_image="${REGISTRY}/mayadata/${name}:${SRC_TAG}"
 
-  docker pull ${input_image}
+  docker pull "${input_image}"
 
-  if [ "$REGISTRY" == "dockerhub" ]; then
-    output_image="mayadata/${name}:${OUTPUT_TAG}"
+  if [ "$DESTINATION_REGISTRY" == "dockerhub" ]; then
+    output_image="mayadata/${name}:${ALIAS_TAG}"
   else
-    output_image="${REGISTRY}/mayadata/${name}:${OUTPUT_TAG}"
+    output_image="${DESTINATION_REGISTRY}/mayadata/${name}:${ALIAS_TAG}"
   fi
 
-  docker tag ${input_image} ${output_image}
+  docker tag "${input_image}" "${output_image}"
 
-  docker push ${output_image}
+  docker push "${output_image}"
 done
 

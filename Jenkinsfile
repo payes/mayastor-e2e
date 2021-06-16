@@ -10,14 +10,14 @@ def e2e_environment="hcloud-kubeadm"
 // Global variable to pass current k8s job between stages
 def k8s_job=""
 
-e2e_image_tag='nightly'
+e2e_image_tag='selfci'
 e2e_local_registry=true
 e2e_reports_dir='artifacts/reports/'
 e2e_test_profile = 'selfci'
 
 run_linter=true
 
-xray_send_report=true
+xray_send_report=false
 xray_self_ci_testplan='MQ-482'
 
 pipeline {
@@ -86,7 +86,7 @@ pipeline {
               sh "mkdir -p ./${e2e_reports_dir}"
               // we need the Mayastor repo, but only for the deployment yamls
               common.GetMayastor('develop')
-              def cmd = "./scripts/e2e-test.sh --device /dev/sdb --tag \"${e2e_image_tag}\" --logs --profile \"${e2e_test_profile}\" --loki_run_id \"${loki_run_id}\" --mayastor \"${env.WORKSPACE}/Mayastor\" --reportsdir \"${env.WORKSPACE}/${e2e_reports_dir}\" "
+              def cmd = "./scripts/e2e-test.sh --device /dev/sdb --tag \"${e2e_image_tag}\" --logs --profile \"${e2e_test_profile}\" --loki_run_id \"${loki_run_id}\" --reportsdir \"${env.WORKSPACE}/${e2e_reports_dir}\" "
               // building images also means using the CI registry
               if (e2e_local_registry == true) {
                 cmd = cmd + " --registry \"" + env.REGISTRY + "\""
