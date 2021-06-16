@@ -7,6 +7,7 @@ set -euo pipefail
 IMAGES="mayastor mayastor-csi mayastor-client moac"
 
 REGISTRY="ci-registry.mayastor-ci.mayadata.io"
+DESTINATION_REGISTRY="$REGISTRY"
 SRC_TAG=""
 ALIAS_TAG=""
 
