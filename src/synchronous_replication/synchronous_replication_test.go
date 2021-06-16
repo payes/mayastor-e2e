@@ -55,16 +55,12 @@ func (job srJob) start(upDn string) srJob {
 			job.spec.replicaCount,
 		),
 	)
-	scObj, err := k8stest.NewScBuilder().
+	err := k8stest.NewScBuilder().
 		WithName(job.status.scName).
 		WithNamespace(common.NSDefault).
 		WithProtocol(protocol).
 		WithReplicas(job.spec.replicaCount).
-		Build()
-
-	Expect(err).ToNot(HaveOccurred(), fmt.Sprintf("Generating storage class definition %s", job.status.scName))
-
-	err = k8stest.CreateSc(scObj)
+		BuildAndCreate()
 	Expect(err).ToNot(HaveOccurred(), fmt.Sprintf("Creating storage class %s", job.status.scName))
 
 	job.status.volName = strings.ToLower(fmt.Sprintf("vol-%s", job.status.scName))

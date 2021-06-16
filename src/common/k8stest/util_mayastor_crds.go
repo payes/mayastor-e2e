@@ -22,8 +22,9 @@ func GetMSV(uuid string) *v1alpha1Api.MayastorVolume {
 		return nil
 	}
 
+	logf.Log.Info("GetMSV", "msv", msv)
 	// Note: msVol.Node can be unassigned here if the volume is not mounted
-	Expect(msv.Status.State).NotTo(Equal(""))
+	Expect(msv.Status.State).NotTo(Equal(""), "msv.Status=\"%v\"", msv.Status)
 	Expect(len(msv.Status.Replicas)).To(BeNumerically(">", 0))
 	return msv
 }

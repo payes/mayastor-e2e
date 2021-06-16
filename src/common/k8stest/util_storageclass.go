@@ -3,6 +3,7 @@ package k8stest
 import (
 	"context"
 	"mayastor-e2e/common"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"strconv"
 
 	"github.com/pkg/errors"
@@ -81,10 +82,12 @@ func (b *ScBuilder) WithReplicas(value int) *ScBuilder {
 
 // WithFileType sets the fsType parameter of storageclass with provided argument.
 func (b *ScBuilder) WithFileSystemType(value common.FileSystemType) *ScBuilder {
-	if b.sc.object.Parameters == nil {
-		b.sc.object.Parameters = map[string]string{}
+	if value != common.NoneFsType {
+		if b.sc.object.Parameters == nil {
+			b.sc.object.Parameters = map[string]string{}
+		}
+		b.sc.object.Parameters[string(common.ScFsType)] = string(value)
 	}
-	b.sc.object.Parameters[string(common.ScFsType)] = string(value)
 	return b
 }
 
@@ -140,8 +143,18 @@ func (b *ScBuilder) WithVolumeBindingMode(bindingMode storagev1.VolumeBindingMod
 	return b
 }
 
+//Build and create the StorageClass
+func (b *ScBuilder) BuildAndCreate() error {
+	scObj, err := b.Build()
+	if err == nil {
+		err = CreateSc(scObj)
+	}
+	return err
+}
+
 // CreateSc creates storageclass with provided storageclass object
 func CreateSc(obj *storagev1.StorageClass) error {
+	logf.Log.Info("Creating", "StorageClass", obj)
 	ScApi := gTestEnv.KubeInt.StorageV1().StorageClasses
 	_, createErr := ScApi().Create(context.TODO(), obj, metaV1.CreateOptions{})
 	return createErr

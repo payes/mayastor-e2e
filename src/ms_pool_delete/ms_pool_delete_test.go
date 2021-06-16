@@ -7,14 +7,11 @@ import (
 
 	storageV1 "k8s.io/api/storage/v1"
 
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
 	"mayastor-e2e/common"
 	"mayastor-e2e/common/custom_resources"
-	"mayastor-e2e/common/e2e_config"
 	"mayastor-e2e/common/k8stest"
 )
 
@@ -27,29 +24,22 @@ var defTimeoutSecs = "60s"
 
 func pooldeletionTest(protocol common.ShareProto, volumeType common.VolumeType, fsType common.FileSystemType, mode storageV1.VolumeBindingMode) {
 
-	params := e2e_config.GetConfig().BasicVolumeIO
-	logf.Log.Info("Test", "parameters", params)
-	scName := strings.ToLower(fmt.Sprintf("pool-deletion-%d-%s-%s", params.Replicas, string(protocol), volumeType))
-	volName := strings.ToLower(fmt.Sprintf("pool-deletion-%d-%s-%s", params.Replicas, string(protocol), volumeType))
+	scName := strings.ToLower(fmt.Sprintf("pool-deletion-%d-%s-%s", common.DefaultReplicaCount, string(protocol), volumeType))
+	volName := strings.ToLower(fmt.Sprintf("pool-deletion-%d-%s-%s", common.DefaultReplicaCount, string(protocol), volumeType))
 
-	// Create storage class obj
-	scObj, err := k8stest.NewScBuilder().
+	// Create storage class
+	err := k8stest.NewScBuilder().
 		WithName(scName).
 		WithNamespace(common.NSDefault).
-		WithReplicas(params.Replicas).
+		WithReplicas(common.DefaultReplicaCount).
 		WithVolumeBindingMode(mode).
-		WithProtocol(protocol).Build()
-	Expect(err).ToNot(HaveOccurred(), "Generating storage class definition %s", scName)
-	if fsType != "" {
-		scObj.Parameters[string(common.ScFsType)] = string(fsType)
-	}
-	// Create storage class
-	err = k8stest.CreateSc(scObj)
+		WithProtocol(protocol).
+		BuildAndCreate()
 	Expect(err).ToNot(HaveOccurred(), "Creating storage class %s", scName)
 
 	// Create the volume
 	uid := k8stest.MkPVC(
-		params.VolSizeMb,
+		common.LargeClaimSizeMb,
 		volName,
 		scName,
 		volumeType,

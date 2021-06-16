@@ -63,3 +63,12 @@ maximumVolsIO:
   duration: 30s
   timeout:  180s
   thinkTime: 10ms
+pvcReadWriteOnce:
+  # timeout units are seconds
+  fioTimeout: 20
+pvcDelete:
+  # volSizeMb units are MiB
+  volSizeMb: 64
+  # fsVolSizeMb units are MiB
+  fsVolSizeMb: 50
+

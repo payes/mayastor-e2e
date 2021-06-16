@@ -99,6 +99,8 @@ csi
 resource_check
 "
 
+# removed synchronous_replication doesn't  with mayastor build 755c435fdb0a.
+# add pvc_delete and control_plane_rescheduling passes with mayastor build 755c435fdb0a
 profiles[self_ci]="
 basic_volume_io
 io_soak
@@ -117,7 +119,8 @@ expand_msp_disk
 pvc_waitforfirstconsumer
 nexus_location
 pvc_readwriteonce
-synchronous_replication
+pvc_delete
+control_plane_rescheduling
 "
 
 profiles[soak]="

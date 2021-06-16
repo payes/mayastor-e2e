@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"mayastor-e2e/common"
-	"mayastor-e2e/common/e2e_config"
 	"mayastor-e2e/common/k8stest"
 
 	. "github.com/onsi/ginkgo"
@@ -30,8 +29,7 @@ func testPvcWaitForFirstConsumerTest(
 	volumeType common.VolumeType,
 	mode storageV1.VolumeBindingMode,
 	replica int) {
-	params := e2e_config.GetConfig().BasicVolumeIO
-	logf.Log.Info("Test", "parameters", params)
+
 	scName := strings.ToLower(
 		fmt.Sprintf(
 			"pvc-waitforfirstconsumer-%d-%s",
@@ -39,16 +37,13 @@ func testPvcWaitForFirstConsumerTest(
 			string(protocol),
 		),
 	)
-	scObj, err := k8stest.NewScBuilder().
+	err := k8stest.NewScBuilder().
 		WithName(scName).
 		WithNamespace(common.NSDefault).
 		WithProtocol(protocol).
 		WithReplicas(replica).
-		WithVolumeBindingMode(mode).Build()
-
-	Expect(err).ToNot(HaveOccurred(), "Generating storage class definition %s", scName)
-
-	err = k8stest.CreateSc(scObj)
+		WithVolumeBindingMode(mode).
+		BuildAndCreate()
 	Expect(err).ToNot(HaveOccurred(), "Creating storage class %s", scName)
 
 	volName := strings.ToLower(
@@ -61,7 +56,7 @@ func testPvcWaitForFirstConsumerTest(
 
 	// Create the volume
 	uid := k8stest.MkPVC(
-		params.VolSizeMb,
+		common.LargeClaimSizeMb,
 		volName,
 		scName,
 		volumeType,

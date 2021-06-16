@@ -35,9 +35,8 @@ func testPvcDeleteTest(
 	volumeType common.VolumeType,
 	mode storageV1.VolumeBindingMode,
 	replica int) {
-	// params := e2e_config.GetConfig().BasicVolumeIO
-	params := e2e_config.GetConfig()
-	logf.Log.Info("Test", "parameters", params.BasicVolumeIO)
+	params := e2e_config.GetConfig().PvcDelete
+	logf.Log.Info("Test", "parameters", params)
 	scName := strings.ToLower(
 		fmt.Sprintf(
 			"pvc-delete-%d-%s",
@@ -45,15 +44,12 @@ func testPvcDeleteTest(
 			string(protocol),
 		),
 	)
-	scObj, err := k8stest.NewScBuilder().
+	err := k8stest.NewScBuilder().
 		WithName(scName).
 		WithNamespace(common.NSDefault).
 		WithProtocol(protocol).
-		WithReplicas(replica).Build()
-
-	Expect(err).ToNot(HaveOccurred(), "Generating storage class definition %s", scName)
-
-	err = k8stest.CreateSc(scObj)
+		WithReplicas(replica).
+		BuildAndCreate()
 	Expect(err).ToNot(HaveOccurred(), "Creating storage class %s", scName)
 
 	volName := strings.ToLower(
@@ -66,7 +62,7 @@ func testPvcDeleteTest(
 
 	// Create the volume
 	uid := k8stest.MkPVC(
-		params.BasicVolumeIO.VolSizeMb,
+		params.VolSizeMb,
 		volName,
 		scName,
 		volumeType,
@@ -105,7 +101,7 @@ func testPvcDeleteTest(
 	Expect(status).Should(Equal(true))
 
 	// Prevent mayastor pod from running on the given node.
-	suppressMayastorPodOn(nodeName, params.MsPodDisruption.PodUnscheduleTimeoutSecs)
+	suppressMayastorPodOn(nodeName, params.PodUnscheduleTimeoutSecs)
 
 	// Delete the volume
 	k8stest.RmPVC(volName, scName, common.NSDefault)
@@ -116,7 +112,7 @@ func testPvcDeleteTest(
 	Expect(len(nexusList)).To(Equal(0), "Expected to find 0 nexus")
 
 	// Allow mayastor pod to run on the given node.
-	unsuppressMayastorPodOn(nodeName, params.MsPodDisruption.PodRescheduleTimeoutSecs)
+	unsuppressMayastorPodOn(nodeName, params.PodRescheduleTimeoutSecs)
 
 	// check mayastor status
 	ready, err := k8stest.MayastorReady(2, 540)
@@ -134,7 +130,7 @@ func testPvcDeleteTest(
 
 	// Create the volume to check orphaned replica behavior
 	uidSec := k8stest.MkPVC(
-		params.BasicVolumeIO.VolSizeMb,
+		params.VolSizeMb,
 		volName,
 		scName,
 		volumeType,

@@ -30,17 +30,16 @@ const (
 //	2. The associated PV is deleted
 //  3. The associated MV is deleted
 func testPVC(volName string, protocol common.ShareProto, fsType common.FileSystemType) {
-	params := e2e_config.GetConfig().BasicVolumeIO
+	params := e2e_config.GetConfig().PvcReadWriteOnce
 	logf.Log.Info("Test", "parameters", params)
 	logf.Log.Info("testPVC", "volume", volName, "protocol", protocol, "fsType", fsType)
 	scName := "pvc-rwo-test-" + string(protocol) + "-" + string(fsType)
-	scObj, err := k8stest.NewScBuilder().
+	err := k8stest.NewScBuilder().
 		WithName(scName).
 		WithNamespace(common.NSDefault).
 		WithProtocol(protocol).
-		WithFileSystemType(fsType).Build()
-	Expect(err).ToNot(HaveOccurred(), "Generating storage class definition %s", scName)
-	err = k8stest.CreateSc(scObj)
+		WithFileSystemType(fsType).
+		BuildAndCreate()
 	Expect(err).ToNot(HaveOccurred(), "Creating storage class %s", scName)
 
 	// create PVC

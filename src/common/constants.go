@@ -6,7 +6,9 @@ const NSDefault = "default"
 const CSIProvisioner = "io.openebs.csi-mayastor"
 const DefaultVolumeSizeMb = 64
 const DefaultFioSizeMb = 50
-const DefaultReplicaCount = 1
+
+const SmallClaimSizeMb = 64
+const LargeClaimSizeMb = 500
 
 //  These variables match the settings used in createFioPodDef
 

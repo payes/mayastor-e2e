@@ -28,8 +28,14 @@ func TestMultipleVolumeIO(t *testing.T) {
 func multipleVolumeIOTest(replicas int, volumeCount int, protocol common.ShareProto, volumeType common.VolumeType, binding storageV1.VolumeBindingMode, duration time.Duration, timeout time.Duration) {
 	logf.Log.Info("MultipleVolumeIOTest", "replicas", replicas, "volumeCount", volumeCount, "protocol", protocol, "volumeType", volumeType, "binding", binding)
 	scName := strings.ToLower(fmt.Sprintf("msv-repl-%d-%s-%s-%s", replicas, string(protocol), volumeType, binding))
-	err := k8stest.MakeStorageClass(scName, replicas, protocol, common.NSDefault, &binding)
-	Expect(err).ToNot(HaveOccurred(), "Creating storage class %s", scName)
+	err := k8stest.NewScBuilder().
+		WithName(scName).
+		WithReplicas(replicas).
+		WithProtocol(protocol).
+		WithNamespace(common.NSDefault).
+		WithVolumeBindingMode(binding).
+		BuildAndCreate()
+	Expect(err).ToNot(HaveOccurred(), "failed to create storage class %s", scName)
 
 	var volNames []string
 	var volumes []coreV1.Volume

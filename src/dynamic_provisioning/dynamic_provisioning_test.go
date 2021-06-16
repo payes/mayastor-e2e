@@ -13,7 +13,6 @@ import (
 
 	"mayastor-e2e/common"
 	"mayastor-e2e/common/custom_resources"
-	"mayastor-e2e/common/e2e_config"
 	"mayastor-e2e/common/k8stest"
 )
 
@@ -26,24 +25,18 @@ var defTimeoutSecs = "60s"
 
 func dynamicProvisioningTest(protocol common.ShareProto, volumeType common.VolumeType, fsType common.FileSystemType, mode storageV1.VolumeBindingMode) {
 
-	params := e2e_config.GetConfig().BasicVolumeIO
-	logf.Log.Info("Test", "parameters", params)
-	scName := strings.ToLower(fmt.Sprintf("dynamic-provisioning-%d-%s-%s", params.Replicas, string(protocol), volumeType))
-	volName := strings.ToLower(fmt.Sprintf("dynamic-provisioning-%d-%s-%s", params.Replicas, string(protocol), volumeType))
+	scName := strings.ToLower(fmt.Sprintf("dynamic-provisioning-%d-%s-%s", common.DefaultReplicaCount, string(protocol), volumeType))
+	volName := strings.ToLower(fmt.Sprintf("dynamic-provisioning-%d-%s-%s", common.DefaultReplicaCount, string(protocol), volumeType))
 
-	// Create storage class obj
-	scObj, err := k8stest.NewScBuilder().
+	// Create storage class
+	err := k8stest.NewScBuilder().
 		WithName(scName).
 		WithNamespace(common.NSDefault).
-		WithReplicas(params.Replicas).
+		WithReplicas(common.DefaultReplicaCount).
 		WithVolumeBindingMode(mode).
-		WithProtocol(protocol).Build()
-	Expect(err).ToNot(HaveOccurred(), "Generating storage class definition %s", scName)
-	if fsType != "" {
-		scObj.Parameters[string(common.ScFsType)] = string(fsType)
-	}
-	// Create storage class
-	err = k8stest.CreateSc(scObj)
+		WithProtocol(protocol).
+		WithFileSystemType(fsType).
+		BuildAndCreate()
 	Expect(err).ToNot(HaveOccurred(), "Creating storage class %s", scName)
 
 	// Create PVC
@@ -69,7 +62,7 @@ func dynamicProvisioningTest(protocol common.ShareProto, volumeType common.Volum
 		logf.Log.Info("ResourceEachCheck: failed to retrieve list of nexuses")
 	}
 	logf.Log.Info("ResourceCheck:", "num nexuses", len(nexuses))
-	Expect(len(nexuses) == params.Replicas).To(BeTrue(), "Nexus not found")
+	Expect(len(nexuses) == 1).To(BeTrue(), "Nexus not found")
 
 	// List replicas in the cluster
 	replicas, err := k8stest.ListReplicasInCluster()
@@ -77,7 +70,7 @@ func dynamicProvisioningTest(protocol common.ShareProto, volumeType common.Volum
 		logf.Log.Info("ResourceEachCheck: failed to retrieve list of replicas")
 	}
 	logf.Log.Info("ResourceCheck:", "num replicas", len(replicas))
-	Expect(len(replicas) == params.Replicas).To(BeTrue(), "Replicas not found")
+	Expect(len(replicas) == common.DefaultReplicaCount).To(BeTrue(), "Replicas not found")
 
 	// Delete the fio pod
 	err = k8stest.DeletePod(fioPodName, common.NSDefault)

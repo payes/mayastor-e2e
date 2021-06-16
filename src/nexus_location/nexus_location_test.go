@@ -37,15 +37,13 @@ func TestNexusLocation(t *testing.T) {
 
 func makeTestVolume(prefix string, replicas int, local bool) (string, string, string) {
 	scName := fmt.Sprintf("%s-repl-%d-local-%v", prefix, replicas, local)
-	scObj, err := k8stest.NewScBuilder().
+	err := k8stest.NewScBuilder().
 		WithName(scName).
 		WithNamespace(ns).
 		WithProtocol(common.ShareProtoNvmf).
 		WithReplicas(replicas).
 		WithLocal(local).
-		Build()
-	Expect(err).ToNot(HaveOccurred(), "Generating storage class definition %s", scName)
-	err = k8stest.CreateSc(scObj)
+		BuildAndCreate()
 	Expect(err).ToNot(HaveOccurred(), "failed to create storage class %s", scName)
 	volName := fmt.Sprintf("vol-%s", scName)
 	uid := k8stest.MkPVC(volSizeMb, volName, scName, volumeType, ns)
