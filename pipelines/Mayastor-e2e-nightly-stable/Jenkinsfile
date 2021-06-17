@@ -18,7 +18,7 @@ e2e_test_profile = 'nightly'
 String cron_schedule = "0 4 * * *"
 
 xray_send_report=true
-xray_nightly_testplan='MQ-17'
+xray_nightly_stable_testplan='MQ-1482'
 
 def getMayastorTag() {
   def tag = sh(
@@ -109,8 +109,8 @@ pipeline {
                 }
                 if (xray_send_report == true) {
                   def pipeline = common.GetJobBaseName()
-                  def summary = "Pipeline: ${pipeline}, test plan: ${xray_nightly_testplan}, git branch: ${env.BRANCH_name}, tested image tag: ${e2e_image_tag}"
-                  common.SendXrayReport(xray_nightly_testplan, summary, e2e_reports_dir)
+                  def summary = "Pipeline: ${pipeline}, test plan: ${xray_nightly_stable_testplan}, git branch: ${env.BRANCH_name}, tested image tag: ${e2e_image_tag}"
+                  common.SendXrayReport(xray_nightly_stable_testplan, summary, e2e_reports_dir)
                 }
               }
             }
