@@ -252,20 +252,26 @@ int main(int argc, char **argv_in)
             }
 
         }else if (0 == strcmp(*argv, "createfile")) {
-            size_t buflen = 0;
+            size_t buf = 0;
             for(char **argv_scan=argv; *argv_scan != NULL; ++argv_scan) {
-                buflen += strlen(*argv_scan) + 1;
+                buf += strlen(*argv_scan) + 1;
             }
             char *cmdline;
-            cmdline = calloc(sizeof(unsigned char), buflen);
-            cmdline += strlen(cmdline);
-            for(; *argv != NULL && (0 != strcmp(*argv, "&")); ++argv) {
-                strcat(cmdline, *argv);
-                cmdline += strlen(cmdline);
-                *cmdline = ' ';
-                ++cmdline;
+            char *pinsert;
+            cmdline = calloc(sizeof(unsigned char), buf);
+            if (cmdline != NULL){
+                pinsert = cmdline;
             }
-            system(cmdline);
+            argv= argv+1;
+            for(; *argv != NULL && (0 != strcmp(*argv, "+")); ++argv) {
+                strcat(pinsert, *argv);
+                pinsert += strlen(pinsert);
+                *pinsert = ' ';
+                ++pinsert;
+            }
+            if (system(cmdline)!= 0){
+                printf("ERROR: system call failed\n%s", cmdline);
+            }
             free(cmdline);
         }else if (0 == strcmp(*argv,"exitv") && NULL != *(argv+1) && 0 != atoi(*(argv+1))) {
             exitv = atoi(*(argv+1));
