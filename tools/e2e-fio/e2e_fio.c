@@ -36,7 +36,7 @@ void start_proc(e2e_process* proc_ptr ) {
             execl("/bin/sh", "sh", "-c", proc_ptr->cmd, NULL);
             printf("** execl %s failed %d **\n", proc_ptr->cmd, errno);
         } else {
-           printf("** mkdir %s failed **\n", wkspace);
+            printf("** mkdir %s failed **\n", wkspace);
         }
         exit(errno);
     }
@@ -148,7 +148,7 @@ int wait_procs() {
             }
             fflush(stdout);
         }
-    }while(pending);
+    } while(pending);
 
     for (e2e_process* proc_ptr = proc_list; NULL != proc_ptr; proc_ptr = proc_ptr->next) {
         if (proc_ptr->exitv) {
@@ -166,13 +166,13 @@ int wait_procs() {
 void print_procs() {
     for (e2e_process* proc_ptr = proc_list; NULL != proc_ptr; proc_ptr = proc_ptr->next) {
         printf("pid:%d, status=%d, exit=%d, termsig=%d, abnormal_exit=%d finished=%d\ncmd=%s\n",
-                proc_ptr->pid,
-                proc_ptr->status,
-                proc_ptr->exitv,
-                proc_ptr->termsig,
-                proc_ptr->abnormal_exit,
-                proc_ptr->finished,
-                proc_ptr->cmd);
+               proc_ptr->pid,
+               proc_ptr->status,
+               proc_ptr->exitv,
+               proc_ptr->termsig,
+               proc_ptr->abnormal_exit,
+               proc_ptr->finished,
+               proc_ptr->cmd);
     }
 }
 
@@ -236,22 +236,23 @@ int main(int argc, char **argv_in)
             raise(SIGSEGV);
             ++argv;
         } else if (0 == strcmp(*argv, "--")) {
-            char **next = parse_procs(argv+1,"fio ");
+            char **next = parse_procs(argv+1,strcat("fio"," "));
             if (*next == NULL) {
                 argv = next - 1;
             } else {
                 argv = next;
             }
 
-        }else if (0 == strcmp(*argv, "---")) {
-            char **next = parse_procs(argv+1,"DiskTest ");
+        } else if (0 == strcmp(*argv, "---")) {
+            char **next = parse_procs(argv+1,strcat("DiskTest"," "));
             if (*next == NULL) {
                 argv = next - 1;
             } else {
                 argv = next;
             }
 
-        }else if (0 == strcmp(*argv, "createfile")) {
+        } else if (0 == strcmp(*argv, "command")) {
+            argv++;
             size_t buf = 0;
             for(char **argv_scan=argv; *argv_scan != NULL; ++argv_scan) {
                 buf += strlen(*argv_scan) + 1;
@@ -259,21 +260,24 @@ int main(int argc, char **argv_in)
             char *cmdline;
             char *pinsert;
             cmdline = calloc(sizeof(unsigned char), buf);
-            if (cmdline != NULL){
+            if (cmdline != NULL) {
                 pinsert = cmdline;
+            }else{
+                printf("ERROR: failed to allocate memory\n");
+                exit(-1);
             }
-            argv= argv+1;
             for(; *argv != NULL && (0 != strcmp(*argv, "+")); ++argv) {
                 strcat(pinsert, *argv);
                 pinsert += strlen(pinsert);
                 *pinsert = ' ';
                 ++pinsert;
             }
-            if (system(cmdline)!= 0){
+            if (system(cmdline)!= 0) {
                 printf("ERROR: system call failed\n%s", cmdline);
+                exit(-1);
             }
             free(cmdline);
-        }else if (0 == strcmp(*argv,"exitv") && NULL != *(argv+1) && 0 != atoi(*(argv+1))) {
+        } else if (0 == strcmp(*argv,"exitv") && NULL != *(argv+1) && 0 != atoi(*(argv+1))) {
             exitv = atoi(*(argv+1));
             printf("Overriding exit value to %d\n", exitv);
             ++argv;

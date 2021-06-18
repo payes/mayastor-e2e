@@ -1,16 +1,18 @@
 # VERSION 0.1
-FROM ubuntu
+FROM ubuntu:20.04 AS builder
 
-MAINTAINER mayastor mayastor@mayadata.io
-
-RUN apt-get update
-
-RUN apt-get install -y fio gcc musl-dev
-
-COPY DiskTest /usr/local/bin
+RUN apt-get update && apt-get install -qy fio gcc && rm -fr /var/cache/apt/*
 
 ADD e2e_fio.c /
 
 RUN gcc -Wall -o /e2e_fio e2e_fio.c
+
+FROM ubuntu:20.04
+
+MAINTAINER mayastor mayastor@mayadata.io
+
+COPY --from=builder /e2e_fio /e2e_fio
+
+COPY DiskTest /usr/local/bin
 
 ENTRYPOINT ["/e2e_fio"]
