@@ -14,7 +14,7 @@ e2e_image_tag='nightly-stable'
 e2e_reports_dir='artifacts/reports/'
 e2e_test_profile = 'nightly'
 
-String cron_schedule = "0 4 * * *"
+String cron_schedule = "0 0 * * *"
 
 xray_send_report=true
 xray_nightly_stable_testplan='MQ-1482'
@@ -22,7 +22,7 @@ xray_nightly_stable_testplan='MQ-1482'
 pipeline {
   agent none
   options {
-    timeout(time: 6, unit: 'HOURS')
+    timeout(time: 23, unit: 'HOURS')
   }
   triggers {
     cron(cron_schedule)
