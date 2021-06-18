@@ -56,7 +56,7 @@ char** parse_procs(char **argv, char command[]) {
     size_t buflen = 0;
 
     /* 1. work out the size of the buffer required to copy the arguments.*/
-    for(char **argv_scan=argv; *argv_scan != NULL; ++argv_scan) {
+    for(char **argv_scan=argv; *argv_scan != NULL && (0 != strcmp(*argv_scan, "&")); ++argv_scan) {
         /* +1 for space delimiter */
         buflen += strlen(*argv_scan) + 1;
     }
@@ -83,6 +83,7 @@ char** parse_procs(char **argv, char command[]) {
     pinsert = proc_ptr->cmd;
     /* 3. construct the command line, using strcat */
     strcat(pinsert, executable);
+    strcat(pinsert, " ");
     pinsert += strlen(pinsert);
     for(; *argv != NULL && (0 != strcmp(*argv, "&")); ++argv) {
         strcat(pinsert, *argv);
@@ -236,7 +237,7 @@ int main(int argc, char **argv_in)
             raise(SIGSEGV);
             ++argv;
         } else if (0 == strcmp(*argv, "--")) {
-            char **next = parse_procs(argv+1,strcat("fio"," "));
+            char **next = parse_procs(argv+1,"fio");
             if (*next == NULL) {
                 argv = next - 1;
             } else {
@@ -244,7 +245,7 @@ int main(int argc, char **argv_in)
             }
 
         } else if (0 == strcmp(*argv, "---")) {
-            char **next = parse_procs(argv+1,strcat("DiskTest"," "));
+            char **next = parse_procs(argv+1,"DiskTest");
             if (*next == NULL) {
                 argv = next - 1;
             } else {
@@ -254,7 +255,7 @@ int main(int argc, char **argv_in)
         } else if (0 == strcmp(*argv, "command")) {
             argv++;
             size_t buf = 0;
-            for(char **argv_scan=argv; *argv_scan != NULL; ++argv_scan) {
+            for(char **argv_scan=argv; *argv_scan != NULL && (0 != strcmp(*argv_scan, "+")); ++argv_scan) {
                 buf += strlen(*argv_scan) + 1;
             }
             char *cmdline;
@@ -273,7 +274,7 @@ int main(int argc, char **argv_in)
                 ++pinsert;
             }
             if (system(cmdline)!= 0) {
-                printf("ERROR: system call failed\n%s", cmdline);
+                printf("ERROR: system call failed with %d\n%s",errno, cmdline);
                 exit(-1);
             }
             free(cmdline);
