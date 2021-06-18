@@ -84,10 +84,8 @@ pipeline {
               common = load "./pipelines/common/common.groovy"
               loki_run_id = common.GetLokiRunId()
               sh "mkdir -p ./${e2e_reports_dir}"
-              // we need the Mayastor repo, but only for the deployment yamls
-              common.GetMayastor('develop')
+
               def cmd = "./scripts/e2e-test.sh --device /dev/sdb --tag \"${e2e_image_tag}\" --logs --profile \"${e2e_test_profile}\" --loki_run_id \"${loki_run_id}\" --reportsdir \"${env.WORKSPACE}/${e2e_reports_dir}\" "
-              // building images also means using the CI registry
               if (e2e_local_registry == true) {
                 cmd = cmd + " --registry \"" + env.REGISTRY + "\""
               }
@@ -98,7 +96,7 @@ pipeline {
               ]) {
                 common.LokiInstall(e2e_image_tag)
                 sh "nix-shell --run '${cmd}'"
-                common.LokiUninstall(e2e_image_tag)  // so that, if we keep the cluster, the next Loki instance can use different parameters
+                common.LokiUninstall(e2e_image_tag)
               }
             }
           }
@@ -140,6 +138,10 @@ pipeline {
               contextSource: [
                 $class: 'ManuallyEnteredCommitContextSource',
                 context: 'continuous-integration/jenkins/branch'
+              ],
+              reposSource: [
+                $class: 'ManuallyEnteredRepositorySource',
+                url: 'https://github.com/mayadata-io/mayastor-e2e'
               ],
               statusResultSource: [
                 $class: 'ConditionalStatusResultSource',
