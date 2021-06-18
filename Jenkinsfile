@@ -96,7 +96,7 @@ pipeline {
               ]) {
                 common.LokiInstall(e2e_image_tag)
                 sh "nix-shell --run '${cmd}'"
-                common.LokiUninstall(e2e_image_tag)  // so that, if we keep the cluster, the next Loki instance can use different parameters
+                common.LokiUninstall(e2e_image_tag)
               }
             }
           }
