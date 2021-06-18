@@ -139,6 +139,10 @@ pipeline {
                 $class: 'ManuallyEnteredCommitContextSource',
                 context: 'continuous-integration/jenkins/branch'
               ],
+              reposSource: [
+                $class: 'ManuallyEnteredRepositorySource',
+                url: 'https://github.com/mayadata-io/mayastor-e2e'
+              ],
               statusResultSource: [
                 $class: 'ConditionalStatusResultSource',
                 results: [
