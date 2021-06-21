@@ -50,6 +50,11 @@ void start_proc(e2e_process* proc_ptr ) {
  */
 char** parse_procs(char **argv, char command[]) {
     e2e_process *proc_ptr = NULL;
+
+    if ((*argv == NULL) && strlen(command)>0){
+      printf("ERROR:argument or command is empty");
+      return NULL;
+    };
     /* Tis' C so we do it the "hard way" */
     char *pinsert;
     const char *executable = command;
@@ -258,19 +263,14 @@ int main(int argc, char **argv_in)
                 buf += strlen(*argv_scan) + 1;
             }
             char *cmdline;
-            char *pinsert;
             cmdline = calloc(sizeof(unsigned char), buf);
-            if (cmdline != NULL) {
-                pinsert = cmdline;
-            }else{
+            if (cmdline == NULL) {
                 printf("ERROR: failed to allocate memory\n");
                 exit(-1);
             }
             for(; *argv != NULL && (0 != strcmp(*argv, "+")); ++argv) {
-                strcat(pinsert, *argv);
-                pinsert += strlen(pinsert);
-                *pinsert = ' ';
-                ++pinsert;
+                strcat(cmdline, *argv);
+                strcat(cmdline, " ");
             }
             if (system(cmdline)!= 0) {
                 printf("ERROR: system call failed with %d\n%s",errno, cmdline);

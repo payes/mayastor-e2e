@@ -19,7 +19,7 @@ Derived from `dmonakhov/alpine-fio`
      * disktest
    * multiple occurrences of this sequence are supported, a new separate process is created for each occurrence 
  * `--- <executable> <args> $` 
-   * delimited by `---` and `$`
+   * delimited by `---` and `&`
    * `executable` is launched and on completion parsing resumes.
  * `command <args> +`
    * delimited by `+`
