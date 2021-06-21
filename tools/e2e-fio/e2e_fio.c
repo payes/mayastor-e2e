@@ -61,17 +61,16 @@ char** parse_procs(char **argv, char command[]) {
         buflen += strlen(*argv_scan) + 1;
     }
 
+    buflen += strlen(executable) + 1;
     if (buflen == 0) {
         return NULL;
     }
-
     proc_ptr = calloc(sizeof(*proc_ptr), 1);
     if (proc_ptr == NULL) {
         puts("failed to allocate memory for e2e_process");
         return NULL;
     }
 
-    buflen += strlen(executable) + 1;
     /* 2. allocate a 0 intialised buffer so we can use strcat */
     proc_ptr->cmd = calloc(sizeof(unsigned char), buflen);
     if (proc_ptr->cmd == NULL) {
@@ -245,7 +244,7 @@ int main(int argc, char **argv_in)
             }
 
         } else if (0 == strcmp(*argv, "---")) {
-            char **next = parse_procs(argv+1,"DiskTest");
+            char **next = parse_procs(argv+2,*(argv+1));
             if (*next == NULL) {
                 argv = next - 1;
             } else {
