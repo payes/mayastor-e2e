@@ -33,6 +33,15 @@ def GetMayastor(branch) {
     ])
 }
 
+def GetMayastorTag() {
+  def tag = sh(
+    // using printf to get rid of trailing newline
+    script: "cd Mayastor && printf \$(git rev-parse --short=12 HEAD)",
+    returnStdout: true
+  )
+  return tag
+}
+
 def BuildCluster(e2e_build_cluster_job, e2e_environment) {
   return build(
     job: "${e2e_build_cluster_job}",
