@@ -80,7 +80,7 @@ func mayastorRebuildTest(protocol common.ShareProto) {
 	).Should(Equal(true))
 	replicas, err := custom_resources.GetMsVolReplicas(uuid)
 	Expect(err).To(BeNil())
-	Expect(len(replicas)).Should(Equal(int64(1)))
+	Expect(len(replicas)).Should(Equal(1))
 	// Wait for volume to be published before adding a child.
 	// This ensures that a nexus exists when the child is added.
 	Eventually(func() bool { return custom_resources.IsMsVolPublished(uuid) }, timeout, pollPeriod).Should(Equal(true))
@@ -90,7 +90,7 @@ func mayastorRebuildTest(protocol common.ShareProto) {
 		Expect(err).ToNot(HaveOccurred(), "Update the number of replicas")
 		replicas, err := custom_resources.GetMsVolReplicas(uuid)
 		Expect(err).To(BeNil())
-		Expect(len(replicas)).Should(Equal(int64(2)))
+		Expect(len(replicas)).Should(Equal(2))
 		// Wait for the added child to show up.
 		time.Sleep(20 * time.Second)
 		Eventually(func() int {
@@ -118,7 +118,7 @@ func mayastorRebuildTest(protocol common.ShareProto) {
 		Expect(err).ToNot(HaveOccurred(), "Update the number of replicas")
 		replicas, err = custom_resources.GetMsVolReplicas(uuid)
 		Expect(err).To(BeNil())
-		Expect(len(replicas)).Should(Equal(int64(1)))
+		Expect(len(replicas)).Should(Equal(1))
 		// Check everything remains in healthy state.
 		Eventually(func() string { return getChildrenFunc(uuid)[0].State }, timeout, pollPeriod).Should(BeEquivalentTo("CHILD_ONLINE"))
 		Eventually(func() (string, error) { return custom_resources.GetMsVolNexusState(uuid) }, timeout, pollPeriod).Should(BeEquivalentTo("NEXUS_ONLINE"))

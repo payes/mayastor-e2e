@@ -3,9 +3,10 @@ package custom_resources
 import (
 	"context"
 	"fmt"
+	"sync"
+
 	"k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	"sync"
 
 	"mayastor-e2e/common"
 	v1alpha1Api "mayastor-e2e/common/custom_resources/api/types/v1alpha1"
@@ -233,7 +234,7 @@ func GetMsVolNexusState(uuid string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return msv.Status.State, nil
+	return msv.Status.Nexus.State, nil
 }
 
 // IsMsVolPublished returns true if the volume is published.
@@ -241,7 +242,7 @@ func GetMsVolNexusState(uuid string) (string, error) {
 func IsMsVolPublished(uuid string) bool {
 	msv, err := GetMsVol(uuid)
 	if err == nil {
-		return 0 == len(msv.Status.TargetNodes)
+		return 1 == len(msv.Status.TargetNodes)
 	}
 	return false
 }

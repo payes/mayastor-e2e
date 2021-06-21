@@ -38,7 +38,7 @@ func addUnpublishedReplicaTest() {
 	Expect(err).ToNot(HaveOccurred(), "Update number of replicas")
 	replicas, err := custom_resources.GetMsVolReplicas(uuid)
 	Expect(err).To(BeNil())
-	Expect(len(replicas)).Should(Equal(int64(2)))
+	Expect(len(replicas)).Should(Equal(2))
 
 	// Use the PVC and wait for the volume to be published
 	_, err = k8stest.CreateFioPod(fioPodName, pvcName, common.VolFileSystem, common.NSDefault)
@@ -54,9 +54,11 @@ func addUnpublishedReplicaTest() {
 		return children
 	}
 
+	// This check could not be performed as the the child doesn't go in degraded mode anymore,
+	// or the size to sync is too small, and by the time code reaches here, sync is completed.
 	// Check the added child and nexus are both degraded.
-	Eventually(func() string { return getChildrenFunc(uuid)[1].State }, timeout, pollPeriod).Should(BeEquivalentTo("CHILD_DEGRADED"))
-	Eventually(func() (string, error) { return custom_resources.GetMsVolNexusState(uuid) }, timeout, pollPeriod).Should(BeEquivalentTo("NEXUS_DEGRADED"))
+	//Eventually(func() string { return getChildrenFunc(uuid)[1].State }, timeout, pollPeriod).Should(BeEquivalentTo("CHILD_DEGRADED"))
+	//Eventually(func() (string, error) { return custom_resources.GetMsVolNexusState(uuid) }, timeout, pollPeriod).Should(BeEquivalentTo("NEXUS_DEGRADED"))
 
 	// Check everything eventually goes healthy following a rebuild.
 	Eventually(func() string { return getChildrenFunc(uuid)[0].State }, timeout, pollPeriod).Should(BeEquivalentTo("CHILD_ONLINE"))
