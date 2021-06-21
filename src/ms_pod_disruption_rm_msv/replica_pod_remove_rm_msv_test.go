@@ -267,23 +267,26 @@ func ReplicaLossVolumeDelete(pvcName string, storageClassName string, fioPodName
 		"1s",           // polling interval
 	).Should(Equal(0))
 
-	// the nexus pool should be online, the others pending
-	msps, err := custom_resources.ListMsPools()
-	logf.Log.Info("pools", "count", len(msps))
-	Expect(err).ToNot(HaveOccurred(), "%v", err)
-	for _, msp := range msps {
-		Eventually(func() bool {
+	Eventually(func() bool {
+		// the nexus pool should be online, the others offline
+		msps, err := custom_resources.ListMsPools()
+		logf.Log.Info("pools", "count", len(msps))
+		Expect(err).ToNot(HaveOccurred(), "%v", err)
+		for _, msp := range msps {
 			logf.Log.Info("pool", "name", msp.Name, "state", msp.Status.State)
 			if msp.Spec.Node == nexus {
-				return msp.Status.State == "online"
-			} else {
-				return msp.Status.State == "pending"
+				if msp.Status.State != "online" {
+					return false
+				}
+			} else if msp.Status.State != "offline" {
+				return false
 			}
-		},
-			defTimeoutSecs, // timeout
-			"1s",           // polling interval
-		).Should(Equal(true))
-	}
+		}
+		return true
+	},
+		defTimeoutSecs, // timeout
+		"1s",           // polling interval
+	).Should(Equal(true))
 
 	// wait for the nexus replica to go
 	Eventually(func() int {
