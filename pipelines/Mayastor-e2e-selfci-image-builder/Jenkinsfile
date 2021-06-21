@@ -45,7 +45,10 @@ pipeline {
             // Build images (REGISTRY is set in jenkin's global configuration).
             // Note: We might want to build and test dev images that have more
             // assertions instead but that complicates e2e tests a bit.
+            // Build mayastor and mayastor-csi
             sh "cd Mayastor && ./scripts/release.sh --registry \"${env.REGISTRY}\""
+            // Build moac
+            sh "cd Mayastor && ./csi/moac/scripts/release.sh --registry \"${env.REGISTRY}\""
             // Build the install image
             sh "./scripts/create-install-image.sh --alias-tag \"$mayastor_tag\" --mayastor Mayastor --registry \"${env.REGISTRY}\""
           }
