@@ -4,6 +4,7 @@ const NSE2EAgent = "e2e-agent"
 const NSE2EPrefix = "e2e-maya"
 const NSDefault = "default"
 const CSIProvisioner = "io.openebs.csi-mayastor"
+const DefaultIOTimeout = 60
 const DefaultVolumeSizeMb = 64
 const DefaultFioSizeMb = 50
 
@@ -36,6 +37,7 @@ const ScProtocol = "protocol"
 const ScFsType = "fsType"
 const ScReplicas = "repl"
 const ScLocal = "local"
+const IOTimeout = "ioTimeout"
 
 // Labels
 

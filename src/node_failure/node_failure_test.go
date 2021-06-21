@@ -215,7 +215,7 @@ func (c *failureConfig) verifyApplicationPodRunning(state bool) {
 
 	logf.Log.Info("Verify application pod running", "state", state)
 	Eventually(func() bool {
-		runningStatus, err := k8stest.IsPodWithLabelsRunning(labels, common.NSDefault)
+		_, runningStatus, err := k8stest.IsPodWithLabelsRunning(labels, common.NSDefault)
 		Expect(err).ToNot(HaveOccurred())
 		return runningStatus
 	},

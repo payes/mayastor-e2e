@@ -3,7 +3,10 @@ package single_msn_shutdown
 import (
 	"fmt"
 	"mayastor-e2e/common"
+	"mayastor-e2e/common/custom_resources"
 	"mayastor-e2e/common/k8stest"
+	"os/exec"
+	"time"
 
 	. "github.com/onsi/gomega"
 
@@ -19,6 +22,7 @@ func (c *appConfig) createSC() {
 		WithProtocol(c.protocol).
 		WithReplicas(c.replicas).
 		WithLocal(true).
+		WithIOTimeout(common.DefaultIOTimeout).
 		WithFileSystemType(c.fsType).
 		BuildAndCreate()
 	Expect(err).ToNot(HaveOccurred(), "Creating storage class %s", c.scName)
@@ -46,30 +50,15 @@ func (c *appConfig) createDeployment() {
 	nodeSelector := map[string]string{
 		"kubernetes.io/hostname": c.nodeName,
 	}
-	args := []string{
-		"--",
-		"--time_based",
-		fmt.Sprintf("--runtime=%d", durationSecs),
-		fmt.Sprintf("--filename=%s", common.FioFsFilename),
-		fmt.Sprintf("--size=%dm", volumeFileSizeMb),
-		fmt.Sprintf("--thinktime=%d", thinkTime),
-	}
-	cmds := []string{
-		"touch",
-		"livenessProbe",
-	}
-	probe := &corev1.Probe{
-		PeriodSeconds:       periodSeconds,
-		InitialDelaySeconds: initialDelaySeconds,
-		Handler: corev1.Handler{
-			Exec: &corev1.ExecAction{
-				Command: cmds,
-			},
-		},
-	}
 
-	fioArgs := append(args, common.GetFioArgs()...)
-	logf.Log.Info("fio", "arguments", fioArgs)
+	mount := corev1.VolumeMount{
+		Name:      "ms-volume",
+		MountPath: common.FioFsMountPoint,
+	}
+	var volMounts []corev1.VolumeMount
+	volMounts = append(volMounts, mount)
+
+	args := []string{"sleep", "1000000"}
 
 	deployObj, err := k8stest.NewDeploymentBuilder().
 		WithName(c.deployName).
@@ -85,8 +74,8 @@ func (c *appConfig) createDeployment() {
 						WithName(c.deployName).
 						WithImage(common.GetFioImage()).
 						WithImagePullPolicy(corev1.PullAlways).
-						WithLivenessProbe(probe).
-						WithArgumentsNew(fioArgs)).
+						WithVolumeMountsNew(volMounts).
+						WithArgumentsNew(args)).
 				WithVolumeBuilders(
 					k8stest.NewVolumeBuilder().
 						WithName("ms-volume").
@@ -106,6 +95,7 @@ func (c *appConfig) createDeployment() {
 	Expect(err).ToNot(HaveOccurred(), "Creating deployment %s", c.deployName)
 
 	c.verifyApplicationPodRunning(true)
+	go c.fioWriteOnly(c.podName, "sha1", thinkTime)
 }
 
 func (c *appConfig) deleteDeployment() {
@@ -133,10 +123,15 @@ func verifyMayastorComponentStates(numMayastorInstances int) {
 }
 
 func (c *appConfig) verifyApplicationPodRunning(state bool) {
+	var (
+		podName       string
+		runningStatus bool
+		err           error
+	)
 	labels := "e2e-test=" + c.deployName
 	logf.Log.Info("Verify application deployment ready", "state", state)
 	Eventually(func() bool {
-		runningStatus := k8stest.DeploymentReady(c.deployName, common.NSDefault)
+		runningStatus = k8stest.DeploymentReady(c.deployName, common.NSDefault)
 		return runningStatus
 	},
 		defTimeoutSecs, // timeout
@@ -145,13 +140,14 @@ func (c *appConfig) verifyApplicationPodRunning(state bool) {
 
 	logf.Log.Info("Verify application pod running", "state", state)
 	Eventually(func() bool {
-		runningStatus, err := k8stest.IsPodWithLabelsRunning(labels, common.NSDefault)
+		podName, runningStatus, err = k8stest.IsPodWithLabelsRunning(labels, common.NSDefault)
 		Expect(err).ToNot(HaveOccurred())
 		return runningStatus
 	},
 		defTimeoutSecs, // timeout
 		5,              // polling interval
 	).Should(Equal(state))
+	c.podName = podName
 }
 
 func verifyNodeNotReady(nodeName string) {
@@ -186,4 +182,99 @@ func verifyNodesReady() {
 		defTimeoutSecs, // timeout
 		5,              // polling interval
 	).Should(Equal(true))
+}
+
+// write to all blocks with a block-specific pattern and its checksum
+func (c *appConfig) fioWriteOnly(fioPodName string, hash string, thinkTime int) {
+	verifyParam := fmt.Sprintf("--verify=%s", hash)
+	// thinkTime is being added to control the time of execution of fio
+	thinkTimeParam := fmt.Sprintf("--thinktime=%d", thinkTime)
+	thinkTimeBlocksParam := fmt.Sprintf("--thinktime_blocks=%d", thinkTimeBlocks)
+
+	var err error
+	ch := make(chan bool, 1)
+
+	go func() {
+		_, err = runFio(
+			fioPodName,
+			common.FioFsFilename,
+			"--rw=randwrite",
+			"--do_verify=0",
+			verifyParam,
+			"--verify_pattern=%o",
+			thinkTimeParam,
+			thinkTimeBlocksParam)
+		ch <- true
+	}()
+	select {
+	case <-ch:
+		if err != nil {
+			logf.Log.Info("FIO failed", "podName", c.podName, "err", err)
+			c.taskCompletionStatus = "failed"
+		}
+		c.taskCompletionStatus = "success"
+	case <-time.After(time.Duration(fioTimeoutSecs) * time.Second):
+		logf.Log.Info("FIO timedout", "podName", c.podName)
+		c.taskCompletionStatus = "failed"
+	}
+}
+
+// Run fio against the device, finish when all blocks are accessed
+func runFio(podName string, filename string, args ...string) ([]byte, error) {
+	argFilename := fmt.Sprintf("--filename=%s", filename)
+	volumeFileSize := fmt.Sprintf("%dM", volumeFileSizeMb)
+	logf.Log.Info("RunFio",
+		"podName", podName,
+		"filename", filename,
+		"args", args)
+
+	cmdArgs := []string{
+		"exec",
+		"-it",
+		podName,
+		"--",
+		"fio",
+		"--name=benchtest",
+		"--verify_fatal=1",
+		"--verify_async=2",
+		argFilename,
+		"--direct=1",
+		"--ioengine=libaio",
+		"--bs=4k",
+		"--iodepth=16",
+		"--numjobs=1",
+		"--size=" + volumeFileSize,
+	}
+
+	if args != nil {
+		cmdArgs = append(cmdArgs, args...)
+	}
+	cmd := exec.Command(
+		"kubectl",
+		cmdArgs...,
+	)
+	cmd.Dir = ""
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		logf.Log.Info("Running fio failed", "error", err, "output", string(output))
+	}
+	return output, err
+}
+
+func (c *appConfig) verifyTaskCompletionStatus(status string) {
+	Eventually(func() string {
+		Expect(c.taskCompletionStatus).NotTo(Equal("failed"))
+		logf.Log.Info("Verify task completion", "pod", c.podName, "status", c.taskCompletionStatus)
+		return c.taskCompletionStatus
+	},
+		defTimeoutSecs, // timeout
+		5,              // polling interval
+	).Should(Equal("success"))
+
+}
+
+func getMsvState(uuid string) string {
+	volState, err := custom_resources.GetMsVolState(uuid)
+	Expect(err).To(BeNil(), "failed to access volume state %s, error=%v", uuid, err)
+	return volState
 }

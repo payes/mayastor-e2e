@@ -109,6 +109,15 @@ func (b *ScBuilder) WithLocal(value bool) *ScBuilder {
 	return b
 }
 
+// WithProtocol sets the protocol parameter of storageclass with provided argument.
+func (b *ScBuilder) WithIOTimeout(value int) *ScBuilder {
+	if b.sc.object.Parameters == nil {
+		b.sc.object.Parameters = map[string]string{}
+	}
+	b.sc.object.Parameters[string(common.IOTimeout)] = strconv.Itoa(value)
+	return b
+}
+
 // WithProvisioner sets the Provisioner field of storageclass with provided argument.
 func (b *ScBuilder) WithProvisioner(provisioner string) *ScBuilder {
 	if len(provisioner) == 0 {

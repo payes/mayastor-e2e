@@ -75,20 +75,22 @@ func RunFio(podName string, duration int, filename string, sizeMb int, args ...s
 	return output, err
 }
 
-func IsPodWithLabelsRunning(labels, namespace string) (bool, error) {
+func IsPodWithLabelsRunning(labels, namespace string) (string, bool, error) {
+	var podName string
 	pods, err := gTestEnv.KubeInt.CoreV1().Pods(namespace).List(context.TODO(), metaV1.ListOptions{LabelSelector: labels})
 	if err != nil {
-		return false, err
+		return "", false, err
 	}
 	if len(pods.Items) == 0 {
-		return false, nil
+		return "", false, nil
 	}
 	for _, pod := range pods.Items {
 		if pod.Status.Phase != v1.PodRunning {
-			return false, nil
+			return pod.Name, false, nil
 		}
+		podName = pod.Name
 	}
-	return true, nil
+	return podName, true, nil
 }
 
 func GetNodeListForPods(labels, namespace string) (map[string]v1.PodPhase, error) {

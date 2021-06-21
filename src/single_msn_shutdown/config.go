@@ -12,26 +12,27 @@ import (
 )
 
 const (
-	defTimeoutSecs      = 240  // in seconds
-	durationSecs        = 600  // in seconds
-	volumeFileSizeMb    = 250  // in Mb
-	thinkTime           = 1000 // in milliseconds
-	periodSeconds       = 5    // in seconds
-	initialDelaySeconds = 5    // in seconds
+	defTimeoutSecs   = 300 // in seconds
+	volumeFileSizeMb = 100
+	thinkTime        = 100000 // in milliseconds
+	thinkTimeBlocks  = 10
+	fioTimeoutSecs   = 300
 )
 
 type appConfig struct {
-	pvcName        string
-	uuid           string
-	deployName     string
-	scName         string
-	replicas       int
-	pvcSize        int
-	nodeName       string
-	protocol       common.ShareProto
-	fsType         common.FileSystemType
-	volType        common.VolumeType
-	volBindingMode storageV1.VolumeBindingMode
+	pvcName              string
+	uuid                 string
+	deployName           string
+	scName               string
+	replicas             int
+	pvcSize              int
+	nodeName             string
+	podName              string
+	taskCompletionStatus string
+	protocol             common.ShareProto
+	fsType               common.FileSystemType
+	volType              common.VolumeType
+	volBindingMode       storageV1.VolumeBindingMode
 }
 
 type shutdownConfig struct {
