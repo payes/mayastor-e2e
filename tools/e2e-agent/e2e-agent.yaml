@@ -45,9 +45,15 @@ spec:
             - name: host-root
               mountPath: /host
               mountPropagation: "Bidirectional"
+            - name: device-dir
+              mountPath: /dev
       volumes:
         - name: host-root
           hostPath:
             path: /
+            type: Directory
+        - name: device-dir
+          hostPath:
+            path: /dev
             type: Directory
 ---
