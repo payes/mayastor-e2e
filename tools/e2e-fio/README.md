@@ -7,9 +7,20 @@ Derived from `dmonakhov/alpine-fio`
  * `sleep <sleep seconds>`
  * `segfault-after <delay seconds>`
  * `exitv <exit value>`
- * `-- <fio args 1> & -- <fio args 2> & .... -- <fio args N> &`
-   * fio arguments are delimited by `--` and `&`
-   * a single instance of `fio` is launched for each set of arguments.
+ * `-- <fio args> &` ( Note deprecated, use `--- fio ....` instead)
+   * delimited by `--` and `&`
+   * fork and run fio, fio arguments are delimited by `--` and `&`
+   * multiple occurrences of this sequence are supported, a new separate process is created for each occurrence 
+ * `--- <executable> <args> &`
+   * delimited by `---` and `&`
+   * each executable is run as a forked process
+   * current list of supported executables
+     * fio
+     * disktest
+   * multiple occurrences of this sequence are supported, a new separate process is created for each occurrence and runs in the backgound
+ * `command <executable> <args> +`
+   * delimited by `+`
+   * `<executable> <args>` is launched via system() function and it will run in asynchronously.
  1. `fio` is only run if `fio` arguments are specified.
  2. all `fio` instances are run as a forked processes.
  3. all options can be specified multiple time for example
@@ -29,5 +40,3 @@ Derived from `dmonakhov/alpine-fio`
 Run `./build.sh`
 
 This builds the image `mayadata/e2e-fio`
-
-
