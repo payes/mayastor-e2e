@@ -14,16 +14,13 @@ Derived from `dmonakhov/alpine-fio`
  * `--- <executable> <args> &`
    * delimited by `---` and `&`
    * each executable is run as a forked process
-   * current list of executables
+   * current list of supported executables
      * fio
      * disktest
-   * multiple occurrences of this sequence are supported, a new separate process is created for each occurrence 
- * `--- <executable> <args> $` 
-   * delimited by `---` and `&`
-   * `executable` is launched and on completion parsing resumes.
- * `command <args> +`
+   * multiple occurrences of this sequence are supported, a new separate process is created for each occurrence and runs in the backgound
+ * `command <executable> <args> +`
    * delimited by `+`
-   * `command` is launched as a system call it will run in asynchronous
+   * `<executable> <args>` is launched via system() function and it will run in asynchronously.
  1. `fio` is only run if `fio` arguments are specified.
  2. all `fio` instances are run as a forked processes.
  3. all options can be specified multiple time for example
@@ -43,4 +40,3 @@ Derived from `dmonakhov/alpine-fio`
 Run `./build.sh`
 
 This builds the image `mayadata/e2e-fio`
-
