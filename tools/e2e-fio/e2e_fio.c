@@ -36,7 +36,7 @@ void start_proc(e2e_process* proc_ptr ) {
             execl("/bin/sh", "sh", "-c", proc_ptr->cmd, NULL);
             printf("** execl %s failed %d **\n", proc_ptr->cmd, errno);
         } else {
-           printf("** mkdir %s failed **\n", wkspace);
+            printf("** mkdir %s failed **\n", wkspace);
         }
         exit(errno);
     }
@@ -48,30 +48,34 @@ void start_proc(e2e_process* proc_ptr ) {
  * parse command line arguments and populate a single e2e processes argument list,
  * and append it to the global list of e2e processes
  */
-char** parse_procs(char **argv) {
+char** parse_procs(char **argv, char command[]) {
     e2e_process *proc_ptr = NULL;
+
+    if ((*argv == NULL) && strlen(command)>0){
+      printf("ERROR:argument or command is empty");
+      return NULL;
+    };
     /* Tis' C so we do it the "hard way" */
     char *pinsert;
-    const char *executable = "fio ";
+    const char *executable = command;
     size_t buflen = 0;
 
     /* 1. work out the size of the buffer required to copy the arguments.*/
-    for(char **argv_scan=argv; *argv_scan != NULL; ++argv_scan) {
+    for(char **argv_scan=argv; *argv_scan != NULL && (0 != strcmp(*argv_scan, "&")); ++argv_scan) {
         /* +1 for space delimiter */
         buflen += strlen(*argv_scan) + 1;
     }
 
+    buflen += strlen(executable) + 1;
     if (buflen == 0) {
         return NULL;
     }
-
     proc_ptr = calloc(sizeof(*proc_ptr), 1);
     if (proc_ptr == NULL) {
         puts("failed to allocate memory for e2e_process");
         return NULL;
     }
 
-    buflen += strlen(executable) + 1;
     /* 2. allocate a 0 intialised buffer so we can use strcat */
     proc_ptr->cmd = calloc(sizeof(unsigned char), buflen);
     if (proc_ptr->cmd == NULL) {
@@ -83,6 +87,7 @@ char** parse_procs(char **argv) {
     pinsert = proc_ptr->cmd;
     /* 3. construct the command line, using strcat */
     strcat(pinsert, executable);
+    strcat(pinsert, " ");
     pinsert += strlen(pinsert);
     for(; *argv != NULL && (0 != strcmp(*argv, "&")); ++argv) {
         strcat(pinsert, *argv);
@@ -103,7 +108,6 @@ char** parse_procs(char **argv) {
     start_proc(proc_ptr);
     return argv;
 }
-
 /* Kill all processes as defined in the list */
 void kill_procs(int signal) {
     for (e2e_process* proc_ptr = proc_list; NULL != proc_ptr; proc_ptr = proc_ptr->next) {
@@ -149,7 +153,7 @@ int wait_procs() {
             }
             fflush(stdout);
         }
-    }while(pending);
+    } while(pending);
 
     for (e2e_process* proc_ptr = proc_list; NULL != proc_ptr; proc_ptr = proc_ptr->next) {
         if (proc_ptr->exitv) {
@@ -167,13 +171,13 @@ int wait_procs() {
 void print_procs() {
     for (e2e_process* proc_ptr = proc_list; NULL != proc_ptr; proc_ptr = proc_ptr->next) {
         printf("pid:%d, status=%d, exit=%d, termsig=%d, abnormal_exit=%d finished=%d\ncmd=%s\n",
-                proc_ptr->pid,
-                proc_ptr->status,
-                proc_ptr->exitv,
-                proc_ptr->termsig,
-                proc_ptr->abnormal_exit,
-                proc_ptr->finished,
-                proc_ptr->cmd);
+               proc_ptr->pid,
+               proc_ptr->status,
+               proc_ptr->exitv,
+               proc_ptr->termsig,
+               proc_ptr->abnormal_exit,
+               proc_ptr->finished,
+               proc_ptr->cmd);
     }
 }
 
@@ -237,14 +241,42 @@ int main(int argc, char **argv_in)
             raise(SIGSEGV);
             ++argv;
         } else if (0 == strcmp(*argv, "--")) {
-            char **next = parse_procs(argv + 1);
-
+            char **next = parse_procs(argv+1,"fio");
             if (*next == NULL) {
                 argv = next - 1;
             } else {
                 argv = next;
             }
 
+        } else if (0 == strcmp(*argv, "---")) {
+            char **next = parse_procs(argv+2,*(argv+1));
+            if (*next == NULL) {
+                argv = next - 1;
+            } else {
+                argv = next;
+            }
+
+        } else if (0 == strcmp(*argv, "command")) {
+            argv++;
+            size_t buf = 0;
+            for(char **argv_scan=argv; *argv_scan != NULL && (0 != strcmp(*argv_scan, "+")); ++argv_scan) {
+                buf += strlen(*argv_scan) + 1;
+            }
+            char *cmdline;
+            cmdline = calloc(sizeof(unsigned char), buf);
+            if (cmdline == NULL) {
+                printf("ERROR: failed to allocate memory\n");
+                exit(-1);
+            }
+            for(; *argv != NULL && (0 != strcmp(*argv, "+")); ++argv) {
+                strcat(cmdline, *argv);
+                strcat(cmdline, " ");
+            }
+            if (system(cmdline)!= 0) {
+                printf("ERROR: system call failed with %d\n%s",errno, cmdline);
+                exit(-1);
+            }
+            free(cmdline);
         } else if (0 == strcmp(*argv,"exitv") && NULL != *(argv+1) && 0 != atoi(*(argv+1))) {
             exitv = atoi(*(argv+1));
             printf("Overriding exit value to %d\n", exitv);

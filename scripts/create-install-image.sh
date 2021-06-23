@@ -71,9 +71,17 @@ copy install.tar /
 CMD [\"ls\"]"
 
 tmpdir=$(mktemp -d)
-pushd "${MAYASTOR_DIR}" && tar cf "$tmpdir/install.tar" scripts/generate-deploy-yamls.sh chart/ csi/moac/crds/ deploy rpc/proto/mayastor.proto && popd
+pushd "${MAYASTOR_DIR}" \
+    && tar cf "$tmpdir/install.tar" scripts/generate-deploy-yamls.sh chart/ csi/moac/crds/ deploy rpc/proto/mayastor.proto \
+    && git rev-parse HEAD > "$tmpdir/git-revision.mayastor" \
+    && git rev-parse --short=12 HEAD >> "$tmpdir/git-revision.mayastor" \
+    && popd
+
 echo "$DockerfileTxt" > "$tmpdir/Dockerfile"
-pushd "$tmpdir" && docker build -t "${image}" . && popd
+pushd "$tmpdir" \
+    && tar -rvf install.tar git-revision* \
+    && docker build -t "${image}" . \
+    && popd
 rm -rf "$tmpdir"
 
 docker tag "${image}" "${reg_image}"

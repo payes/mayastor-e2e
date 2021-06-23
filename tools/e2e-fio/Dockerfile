@@ -1,15 +1,20 @@
 # VERSION 0.1
-FROM alpine
+FROM ubuntu:20.04 AS builder
 
-MAINTAINER mayastor mayastor@mayadata.io
-
-RUN apk --no-cache add \
-    	fio gcc musl-dev
+RUN apt-get update && apt-get install -qy gcc && rm -fr /var/cache/apt/*
 
 ADD e2e_fio.c /
 
 RUN gcc -Wall -o /e2e_fio e2e_fio.c
-RUN apk --no-cache del \
-        gcc musl-dev
+
+FROM ubuntu:20.04
+
+MAINTAINER mayastor mayastor@mayadata.io
+
+RUN apt-get update && apt-get install -qy fio
+
+COPY --from=builder /e2e_fio /e2e_fio
+
+COPY DiskTest /usr/local/bin
 
 ENTRYPOINT ["/e2e_fio"]

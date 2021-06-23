@@ -6,7 +6,7 @@ go get google.golang.org/protobuf/cmd/protoc-gen-go google.golang.org/grpc/cmd/p
 
 To generate the client code 
 1. Edit `mayastor.proto` and add the line 
-    * `option go_package = "/mayastorclient";`
+    * `option go_package = "/grpc";`
 2. Use the command
     * `protoc --go_out=. --go_opt=paths=source_relative  --go-grpc_out=. --go-grpc_opt=paths=source_relative mayastor.proto`
 3. Remove the line that was added in step 1
