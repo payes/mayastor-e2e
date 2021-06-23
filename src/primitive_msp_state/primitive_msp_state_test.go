@@ -42,25 +42,21 @@ var _ = Describe("Mayastor pool state tests", func() {
 	It("should verify mayastor pool state", func() {
 		verifyMspCrdAndGrpcState()
 	})
-	// It("should verify maximum number of  volumes test with 2 replica", func() {
-	// 	c := generateMaxVolConfig("max-volume", 2)
-	// 	c.maxVolumeTest()
-	// })
-	// It("should verify maximum number of  volumes test with 3 replica", func() {
-	// 	c := generateMaxVolConfig("max-volume", 3)
-	// 	c.maxVolumeTest()
-	// })
+	It("should verify correctness of all msp CRD fields for all operations", func() {
+		c := generateMspStateConfig("primitive-msp-state", 1)
+		c.mspCrdPresenceTest()
+	})
 })
 
-// func (c *maxVolConfig) maxVolumeTest() {
-// 	c.createSC()
-// 	c = c.createPVC()
-// 	c.createFioPods()
-// 	c.checkFioPodsComplete()
-// 	c.deleteFioPods()
-// 	c.deletePVC()
-// 	c.deleteSC()
-// }
-
-func mspStateTest() {
+func (c *mspStateConfig) mspCrdPresenceTest() {
+	verifyMspCrdAndGrpcState()
+	c.createSC()
+	c.createPVC()
+	c.createFioPods()
+	c.getMsvDetails()
+	c.verifyMspUsedSize()
+	k8stest.WaitPodComplete(c.fioPodName, 5, int(c.timeout))
+	c.deleteFioPods()
+	c.deletePVC()
+	c.deleteSC()
 }

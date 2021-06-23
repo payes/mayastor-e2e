@@ -7,7 +7,7 @@ import (
 	"mayastor-e2e/common/custom_resources/api/types/v1alpha1"
 	"mayastor-e2e/common/k8stest"
 	"mayastor-e2e/common/mayastorclient"
-	"time"
+	"mayastor-e2e/common/mayastorclient/grpc"
 
 	coreV1 "k8s.io/api/core/v1"
 
@@ -43,6 +43,30 @@ func (c *mspStateConfig) createPVC() *mspStateConfig {
 // deletePVC will delete all pvc
 func (c *mspStateConfig) deletePVC() {
 	k8stest.RmPVC(c.pvcName, c.scName, common.NSDefault)
+}
+
+// getMsvDetails will set pools and msv capacity
+func (c *mspStateConfig) getMsvDetails() *mspStateConfig {
+	msv, err := custom_resources.GetMsVol(c.uuid)
+	Expect(err).To(BeNil(), "failed to access volume %s, error=%v", c.uuid, err)
+	c.msvSize = msv.Status.Size
+	for _, replica := range msv.Status.Replicas {
+		c.poolNames = append(c.poolNames, replica.Pool)
+	}
+	return c
+}
+
+// getMsvDetails will set pools and msv capacity
+func (c *mspStateConfig) verifyMspUsedSize() *mspStateConfig {
+	// // List Pools by CRDs
+	// pools, err := custom_resources.ListMsPools()
+	// Expect(err).ToNot(HaveOccurred(), "List pools failed")
+	for _, poolname := range c.poolNames {
+		pool, err := custom_resources.GetMsPool(poolname)
+		Expect(err).ToNot(HaveOccurred(), "GetMsPool failed %s", poolname)
+		verifyMspUsedSize(pool, c.msvSize)
+	}
+	return c
 }
 
 // createFioPods will create fio pods and run fio concurrently on all mounted volumes
@@ -112,13 +136,13 @@ func (c *mspStateConfig) createFioPods() {
 	// with multiple jobs, one for each volume.
 	var podArgs []string
 
-	// 1) directives for all fio jobs
+	// 1) directives for fio job
 	podArgs = append(podArgs, "--")
 	podArgs = append(podArgs, common.GetDefaultFioArguments()...)
 	podArgs = append(podArgs, []string{
 		"--time_based",
-		fmt.Sprintf("--runtime=%d", int(c.duration.Seconds())),
-		fmt.Sprintf("--thinktime=%d", int(c.thinkTime.Microseconds())),
+		fmt.Sprintf("--runtime=%d", c.duration),
+		fmt.Sprintf("--thinktime=%d", c.thinkTime),
 	}...,
 	)
 
@@ -144,36 +168,13 @@ func (c *mspStateConfig) createFioPods() {
 	).Should(Equal(true))
 }
 
-// delete all fip pods
+// delete all fio pods
 func (c *mspStateConfig) deleteFioPods() {
 
 	// Delete the fio pod
 	err := k8stest.DeletePod(c.fioPodName, common.NSDefault)
 	Expect(err).ToNot(HaveOccurred(), "failed to delete fio pod")
 
-}
-
-// check fio pods completion status
-func (c *mspStateConfig) checkFioPodsComplete() {
-
-	logf.Log.Info("Waiting for run to complete", "duration", c.duration, "timeout", c.timeout)
-	tSecs := 0
-	var phase coreV1.PodPhase
-	var err error
-	for {
-		if tSecs > int(c.timeout.Seconds()) {
-			break
-		}
-		time.Sleep(1 * time.Second)
-		tSecs += 1
-		phase, err = k8stest.CheckPodCompleted(c.fioPodName, common.NSDefault)
-		Expect(err).To(BeNil(), "CheckPodComplete got error %s", err)
-		if phase != coreV1.PodRunning {
-			break
-		}
-	}
-	Expect(phase == coreV1.PodSucceeded).To(BeTrue(), "fio pod phase is %s", phase)
-	logf.Log.Info("fio completed", "duration", tSecs)
 }
 
 // verifyMspCrdAndGrpcState verifies the msp details from grpc and crd
@@ -203,29 +204,30 @@ func verifyMspCrdAndGrpcState() {
 
 		if err == nil && len(grpcPools) != 0 {
 			for _, gPool := range grpcPools {
-				verifyMspState(crPools[gPool.Name], gPool)
-				verifyMspCapacity(crPools[gPool.Name], gPool)
-				verifyMspUsedSpace(crPools[gPool.Name], gPool)
+				Expect(verifyMspState(crPools[gPool.Name], gPool)).Should(Equal(true))
+				Expect(verifyMspCapacity(crPools[gPool.Name], gPool)).Should(Equal(true))
+				Expect(verifyMspUsedSpace(crPools[gPool.Name], gPool)).Should(Equal(true))
 			}
 		} else {
 			logf.Log.Info("pools", "count", len(grpcPools), "error", err)
 		}
-
 	}
-
 }
 
-// verifyMspState will verify msp state
+// verifyMspState will verify msp state via crd  and grpc
+// gRPC report msp status as "POOL_UNKNOWN","POOL_ONLINE","POOL_DEGRADED","POOL_FAULTED"
+// CRD report msp status as "unknown", "online", "degraded", "faulted"
+// CRDs report as online
 func verifyMspState(crPool v1alpha1.MayastorPool,
 	grpcPool mayastorclient.MayastorPool) bool {
 	var status bool
-	if crPool.Status.State == grpcPool.State.String() {
+	if crPool.Status.State == grpcStateToCrdstate(grpcPool.State) {
 		status = true
 	}
 	return status
 }
 
-// verifyMspCapacity will verify msp capacity
+// verifyMspCapacity will verify msp capacity via crd  and grpc
 func verifyMspCapacity(crPool v1alpha1.MayastorPool,
 	grpcPool mayastorclient.MayastorPool) bool {
 	var status bool
@@ -235,7 +237,7 @@ func verifyMspCapacity(crPool v1alpha1.MayastorPool,
 	return status
 }
 
-// verifyMspCapacity will verify msp used size
+// verifyMspUsedSpace will verify msp used size via crd  and grpc
 func verifyMspUsedSpace(crPool v1alpha1.MayastorPool,
 	grpcPool mayastorclient.MayastorPool) bool {
 	var status bool
@@ -243,4 +245,26 @@ func verifyMspUsedSpace(crPool v1alpha1.MayastorPool,
 		status = true
 	}
 	return status
+}
+
+// verifyMspUsedSize will verify msp used size
+func verifyMspUsedSize(crPool v1alpha1.MayastorPool, size int64) bool {
+	var status bool
+	if crPool.Status.Used == size {
+		status = true
+	}
+	return status
+}
+
+func grpcStateToCrdstate(mspState grpc.PoolState) string {
+	switch mspState {
+	case 0:
+		return "unknown"
+	case 1:
+		return "online"
+	case 2:
+		return "degraded"
+	default:
+		return "faulted"
+	}
 }
