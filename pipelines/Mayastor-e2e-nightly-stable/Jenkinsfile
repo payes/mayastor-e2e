@@ -9,7 +9,7 @@ def e2e_destroy_cluster_job='k8s-destroy-cluster' // Jenkins job to destroy clus
 def e2e_environment="hcloud-kubeadm"
 // Global variable to pass current k8s job between stages
 def k8s_job=""
-def mayastor_tag=""
+def test_tag=""
 
 e2e_image_tag='nightly-stable'
 e2e_reports_dir='artifacts/reports/'
@@ -19,15 +19,6 @@ String cron_schedule = "0 4 * * *"
 
 xray_send_report=true
 xray_nightly_stable_testplan='MQ-1482'
-
-def getMayastorTag() {
-  def tag = sh(
-    // using printf to get rid of trailing newline
-    script: "cd Mayastor && printf \$(git rev-parse --short=12 HEAD)",
-    returnStdout: true
-  )
-  return tag
-}
 
 pipeline {
   agent none
@@ -45,24 +36,9 @@ pipeline {
           steps {
             script {
               common = load "./pipelines/common/common.groovy"
-              common.GetMayastor('develop')
-              mayastor_tag = getMayastorTag()
+              test_tag = common.GetTestTag()
+              common.BuildImages('develop', 'develop', test_tag)
             }
-
-            // e2e tests are the most demanding step for space on the disk so we
-            // test the free space here rather than repeating the same code in all
-            // stages.
-            sh "cd Mayastor && ./scripts/reclaim-space.sh 10"
-
-            // Build images (REGISTRY is set in jenkin's global configuration).
-            // Note: We might want to build and test dev images that have more
-            // assertions instead but that complicates e2e tests a bit.
-            // Build mayastor and mayastor-csi
-            sh "cd Mayastor && ./scripts/release.sh --registry \"${env.REGISTRY}\""
-            // Build moac
-            sh "cd Mayastor && ./csi/moac/scripts/release.sh --registry \"${env.REGISTRY}\""
-            // Build the install image
-            sh "./scripts/create-install-image.sh --alias-tag \"$mayastor_tag\" --mayastor Mayastor --registry \"${env.REGISTRY}\""
           }
           post {
             // Always remove all docker images because they are usually used just once
@@ -87,14 +63,14 @@ pipeline {
               k8s_job = common.BuildCluster(e2e_build_cluster_job, e2e_environment)
               common.GetClusterAdminConf(e2e_environment, k8s_job)
 
-              def cmd = "./scripts/e2e-test.sh --device /dev/sdb --tag \"${mayastor_tag}\" --logs --onfail reinstall --profile \"${e2e_test_profile}\" --loki_run_id \"${loki_run_id}\" --reportsdir \"${env.WORKSPACE}/${e2e_reports_dir}\" --registry \"${env.REGISTRY}\" "
+              def cmd = "./scripts/e2e-test.sh --device /dev/sdb --tag \"${test_tag}\" --logs --onfail reinstall --profile \"${e2e_test_profile}\" --loki_run_id \"${loki_run_id}\" --reportsdir \"${env.WORKSPACE}/${e2e_reports_dir}\" --registry \"${env.REGISTRY}\" "
 
               withCredentials([
                 usernamePassword(credentialsId: 'GRAFANA_API', usernameVariable: 'grafana_api_user', passwordVariable: 'grafana_api_pw')
               ]) {
-                common.LokiInstall(mayastor_tag)
+                common.LokiInstall(test_tag)
                 sh "nix-shell --run '${cmd}'"
-                common.LokiUninstall(mayastor_tag)
+                common.LokiUninstall(test_tag)
               }
               common.DestroyCluster(e2e_destroy_cluster_job, k8s_job)
               k8s_job=""
@@ -125,11 +101,11 @@ pipeline {
       agent { label 'nixos-mayastor' }
       steps {
         // on success re-tag images as "nightly-stable", push to CI registry and DockerHub
-        sh "./scripts/re-tag-images.sh --src-tag $mayastor_tag --alias-tag ${e2e_image_tag}"
+        sh "./scripts/re-tag-images.sh --src-tag $test_tag --alias-tag ${e2e_image_tag}"
         withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
           sh 'echo $PASSWORD | docker login -u $USERNAME --password-stdin'
         }
-        sh "./scripts/re-tag-images.sh --src-tag $mayastor_tag --alias-tag ${e2e_image_tag} --registry dockerhub"
+        sh "./scripts/re-tag-images.sh --src-tag $test_tag --alias-tag ${e2e_image_tag} --registry dockerhub"
       }
       post {
         always {

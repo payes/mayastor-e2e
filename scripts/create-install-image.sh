@@ -9,6 +9,7 @@ OUTPUT_TAG="nightly-stable"
 SCRIPTDIR=$(dirname "$(realpath "$0")")
 E2EROOT=$(realpath "$SCRIPTDIR/..")
 MAYASTOR_DIR=""
+MOAC_DIR=""
 
 help() {
   cat <<EOF
@@ -23,6 +24,7 @@ Options:
   --alias-tag                Tag to give CI image, default is ${OUTPUT_TAG}
 
   --mayastor                 Path to root Mayastor directory
+  --moac                     Path to root MOAC directory
 Examples:
   $(basename $0) --registry 127.0.0.1:5000 --alias-tag customized-tag
 EOF
@@ -51,6 +53,11 @@ while [ "$#" -gt 0 ]; do
       MAYASTOR_DIR=$1
       shift
       ;;
+    --moac)
+      shift
+      MOAC_DIR=$1
+      shift
+      ;;
     *)
       echo "Unknown option: $1"
       exit 1
@@ -63,6 +70,11 @@ if [ -z "$MAYASTOR_DIR" ] ; then
     exit 127
 fi
 
+if [ -z "$MOAC_DIR" ] ; then
+    echo "no moac repository directory specified"
+    exit 127
+fi
+
 image="mayadata/install-images:${OUTPUT_TAG}"
 reg_image="${REGISTRY}/${image}"
 
@@ -72,14 +84,21 @@ CMD [\"ls\"]"
 
 tmpdir=$(mktemp -d)
 pushd "${MAYASTOR_DIR}" \
-    && tar cf "$tmpdir/install.tar" scripts/generate-deploy-yamls.sh chart/ csi/moac/crds/ deploy rpc/proto/mayastor.proto \
+    && tar cf "$tmpdir/install.tar" scripts/generate-deploy-yamls.sh chart/ deploy rpc/proto/mayastor.proto \
     && git rev-parse HEAD > "$tmpdir/git-revision.mayastor" \
     && git rev-parse --short=12 HEAD >> "$tmpdir/git-revision.mayastor" \
     && popd
 
+pushd "${MOAC_DIR}" \
+    && mkdir -p "$tmpdir/csi/moac/crds" \
+    && cp crds/* "$tmpdir/csi/moac/crds/" \
+    && git rev-parse HEAD > "$tmpdir/git-revision.moac" \
+    && git rev-parse --short=12 HEAD >> "$tmpdir/git-revision.moac" \
+    && popd
+
 echo "$DockerfileTxt" > "$tmpdir/Dockerfile"
 pushd "$tmpdir" \
-    && tar -rvf install.tar git-revision* \
+    && tar -rvf install.tar git-revision* csi/moac/crds/ \
     && docker build -t "${image}" . \
     && popd
 rm -rf "$tmpdir"

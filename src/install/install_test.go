@@ -44,6 +44,7 @@ func generateYamlFiles(imageTag string, mayastorNodes []string, e2eCfg *e2e_conf
 		locations.GetGeneratedYamlsDir(),
 		imageTag, registryDirective, coresDirective, poolDirectives,
 	)
+	logf.Log.Info("About to execute", "command", bashCmd)
 	cmd := exec.Command("bash", "-c", bashCmd)
 	out, err := cmd.CombinedOutput()
 	Expect(err).ToNot(HaveOccurred(), "%s", out)
@@ -52,7 +53,7 @@ func generateYamlFiles(imageTag string, mayastorNodes []string, e2eCfg *e2e_conf
 func WaitForPoolCrd() bool {
 	const timoSleepSecs = 5
 	const timoSecs = 60
-	for ix:=0; ix < timoSecs; ix+=timoSleepSecs {
+	for ix := 0; ix < timoSecs; ix += timoSleepSecs {
 		_, err := custom_resources.ListMsPools()
 		if err != nil {
 			logf.Log.Info("WaitForPoolCrd", "error", err)
