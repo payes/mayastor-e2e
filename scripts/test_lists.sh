@@ -46,6 +46,7 @@ ms_pod_disruption_rm_msv
 pool_modify
 pvc_delete
 dynamic_provisioning
+primitive_msp_deletion
 msv_rebuild
 ms_pod_disruption_no_io
 ms_pod_disruption
@@ -86,6 +87,7 @@ control_plane_rescheduling
 expand_msp_disk
 pvc_waitforfirstconsumer
 synchronous_replication
+primitive_msp_deletion
 msv_rebuild
 pvc_delete
 maximum_vols_io
@@ -123,6 +125,7 @@ nexus_location
 pvc_readwriteonce
 pvc_delete
 control_plane_rescheduling
+primitive_msp_deletion
 "
 
 profiles[soak]="
