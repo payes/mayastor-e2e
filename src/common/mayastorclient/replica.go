@@ -83,7 +83,7 @@ func rmReplica(address string, uuid string) error {
 		return err
 	}
 	c := mayastorGrpc.NewMayastorClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	req := mayastorGrpc.DestroyReplicaRequest{Uuid: uuid}
@@ -106,7 +106,7 @@ func CreateReplica(address string, uuid string, size uint64, pool string) error 
 		return err
 	}
 	c := mayastorGrpc.NewMayastorClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	req := mayastorGrpc.CreateReplicaRequest{
