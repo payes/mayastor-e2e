@@ -107,8 +107,6 @@ func teardownMayastor() {
 		}
 	}
 
-	deployDir := locations.GetMayastorDeployDir()
-	k8stest.KubeCtlDeleteYaml("mayastorpoolcrd.yaml", deployDir)
 	k8stest.KubeCtlDeleteYaml("moac-rbac.yaml", yamlsDir)
 
 	// MOAC implicitly creates these CRDs, should we delete?
