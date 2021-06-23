@@ -256,3 +256,7 @@ func AfterEachCheck() error {
 	}
 	return err
 }
+
+func GetGTestEnv() TestEnvironment {
+	return gTestEnv
+}

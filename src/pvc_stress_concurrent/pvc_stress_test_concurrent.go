@@ -2,7 +2,9 @@
 package pvc_stress_fio_concurrent
 
 import (
+	"context"
 	"fmt"
+	"mayastor-e2e/common/custom_resources/api/types/v1alpha1"
 	"sync"
 	"testing"
 
@@ -19,6 +21,8 @@ import (
 
 	coreV1 "k8s.io/api/core/v1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	custom_resources "mayastor-e2e/common/custom_resources"
 )
 
 var defTimeoutSecs = "60s"
@@ -33,30 +37,47 @@ var crudIterations = e2e_config.GetConfig().PVCStress.CrudCycles
 var replicaCount = e2e_config.GetConfig().PVCStress.Replicas
 
 // Size of each volume in Mi
-var volSizeMb = "10"
+var volSizeMb = 10
 
 // VolumeMode: Filesystem
 var fileSystemVolumeMode = coreV1.PersistentVolumeFilesystem
 
 // Attempt to create n volumes simultaneously
 func testPVCConcurrent(n int) {
+	// Get the test environment from the k8stest package
+	gTestEnv := k8stest.GetGTestEnv()
+
 	volSizeMbStr := fmt.Sprintf("%dMi", volSizeMb)
 
 	// Create the storage class
 	scName := "pvc-stress-test-concurrent-" + string(common.ShareProtoNvmf)
-	err := k8stest.MkStorageClass("pvc-stress-test-concurrent-"+string(common.ShareProtoNvmf), replicaCount, common.ShareProtoNvmf, common.NSDefault)
+	err := k8stest.NewScBuilder().
+		WithName(scName).
+		WithReplicas(replicaCount).
+		WithProtocol(common.ShareProtoNvmf).
+		WithNamespace(common.NSDefault).
+		WithVolumeBindingMode("Immediate").
+		BuildAndCreate()
+
 	Expect(err).ToNot(HaveOccurred(), "Creating storage class %s", scName)
 
-	//	Create the specs of the list of volumes to be created
+	// Ensure that the cluster has only a single pool of size larger than n * volSizeMb
+	poolsList, poolsListErr := custom_resources.ListMsPools()
+	Expect(poolsListErr).To(Equal(nil))
+	Expect(len(poolsList)).To(Equal(1))
+	var poolCapacity int64 = poolsList[0].Status.Capacity // Pool capacity in bytes
+	Expect(poolCapacity).Should(BeNumerically(">=", n*volSizeMb*1024))
+
+	//	Create the descriptions of the volumes to be created
 	var optsList = make([]coreV1.PersistentVolumeClaim, n)
 	var errChannels = make([]chan error, n)
-
-	// TODO: Ensure the presence of a pool of size larger than n * volSizeMb
+	var pvcNames = make([]string, n)
 
 	for i := 0; i < n; i++ {
+		pvcNames[i] = fmt.Sprintf("%s-%d", "vol", i)
 		optsList[i] = coreV1.PersistentVolumeClaim{
 			ObjectMeta: metaV1.ObjectMeta{
-				Name:      fmt.Sprintf("%s-%d", "vol", i),
+				Name:      pvcNames[i],
 				Namespace: common.NSDefault,
 			},
 			Spec: coreV1.PersistentVolumeClaimSpec{
@@ -77,19 +98,80 @@ func testPVCConcurrent(n int) {
 	// Create the volumes
 	var wg sync.WaitGroup
 	wg.Add(n)
-	for i := 0; i > n; i++ {
-		go MkPVCMinimalHelper(&optsList[i], errChannels[i], wg)
+	for i := 0; i < n; i++ {
+		go MkPVCMinimal(&optsList[i], errChannels[i], wg, gTestEnv)
 	}
-
-	// Wait for all the volumes to be created
 	wg.Wait()
 
-	// TODO: check that all volumes have been created successfully, that none of them are in the pending state,
-	// that all of them have the right size, that all of them have the right storageClass, etc.....
+	// Check that all volumes have been created successfully, that none of them are in the pending state,
+	// that all of them have the right size, that all of them have the right storageClass, tha.
+	for i := 0; i < n; i++ {
+
+		// Confirm that the PVC has been created
+		Expect(<-errChannels[i]).ToNot(BeNil())
+		pvcApi := gTestEnv.KubeInt.CoreV1().PersistentVolumeClaims
+		pvc, getPvcErr := pvcApi(common.NSDefault).Get(context.TODO(), pvcNames[i], metaV1.GetOptions{})
+		Expect(getPvcErr).To(BeNil())
+		Expect(pvc).ToNot(BeNil())
+
+		// // Check that we can still get the storage class
+		// ScApi := gTestEnv.KubeInt.StorageV1().StorageClasses
+		// _, getScErr := ScApi().Get(context.TODO(), scName, metaV1.GetOptions{})
+		// Expect(getScErr).To(BeNil())
+
+		// Wait for the PVC to be bound.
+		Eventually(func() coreV1.PersistentVolumeClaimPhase {
+			return k8stest.GetPvcStatusPhase(pvcNames[i], common.NSDefault)
+		},
+			defTimeoutSecs, // timeout
+			"1s",           // polling interval
+		).Should(Equal(coreV1.ClaimBound))
+
+		// Refresh the PVC contents, so that we can get the PV name.
+		pvc, getPvcErr = pvcApi(common.NSDefault).Get(context.TODO(), pvcNames[i], metaV1.GetOptions{})
+		Expect(getPvcErr).To(BeNil())
+		Expect(pvc).ToNot(BeNil())
+
+		// Wait for the PV to be provisioned
+		Eventually(func() *coreV1.PersistentVolume {
+			pv, getPvErr := gTestEnv.KubeInt.CoreV1().PersistentVolumes().Get(context.TODO(), pvc.Spec.VolumeName, metaV1.GetOptions{})
+			if getPvErr != nil {
+				return nil
+			}
+			return pv
+
+		},
+			defTimeoutSecs, // timeout
+			"1s",           // polling interval
+		).Should(Not(BeNil()))
+
+		// Wait for the PV to be bound.
+		Eventually(func() coreV1.PersistentVolumePhase {
+			return k8stest.GetPvStatusPhase(pvc.Spec.VolumeName)
+		},
+			defTimeoutSecs, // timeout
+			"1s",           // polling interval
+		).Should(Equal(coreV1.VolumeBound))
+
+		// Check that an MSV is linked with the PVC
+		Eventually(func() *v1alpha1.MayastorVolume {
+			return k8stest.GetMSV(string(pvc.ObjectMeta.UID))
+		},
+			defTimeoutSecs,
+			"1s",
+			defTimeoutSecs, // timeout
+			"1s",           // polling interval
+		).Should(Not(BeNil()))
+
+		logf.Log.Info("Created", "volume", pvc.Spec.VolumeName, "uuid", pvc.ObjectMeta.UID, "storageClass", scName, "volume type", common.VolFileSystem)
+	}
+
 }
 
-func MkPVCMinimalHelper(createOpts *coreV1.PersistentVolumeClaim, ch chan error, wg sync.WaitGroup) {
-	ch <- k8stest.MkPVCMinimal(createOpts)
+func MkPVCMinimal(createOpts *coreV1.PersistentVolumeClaim, ch chan error, wg sync.WaitGroup, gTestEnv k8stest.TestEnvironment) {
+	// Create the PVC.
+	_, err := gTestEnv.KubeInt.CoreV1().PersistentVolumeClaims(createOpts.ObjectMeta.Namespace).Create(context.TODO(), createOpts, metaV1.CreateOptions{})
+	ch <- err
 	wg.Done()
 }
 
