@@ -98,6 +98,13 @@ func GetPvStatusPhase(volname string) (phase coreV1.PersistentVolumePhase) {
 	return pv.Status.Phase
 }
 
+// Simply creates a PVC by calling the API and returns the generated error object
+func MkPVCMinimal(createOpts *coreV1.PersistentVolumeClaim) error {
+	// Create the PVC.
+	_, err := gTestEnv.KubeInt.CoreV1().PersistentVolumeClaims(createOpts.ObjectMeta.Namespace).Create(context.TODO(), createOpts, metaV1.CreateOptions{})
+	return err
+}
+
 // Create a PVC and verify that
 //	1. The PVC status transitions to bound,
 //	2. The associated PV is created and its status transitions bound
