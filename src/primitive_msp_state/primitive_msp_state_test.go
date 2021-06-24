@@ -46,6 +46,10 @@ var _ = Describe("Mayastor pool state tests", func() {
 		c := generateMspStateConfig("primitive-msp-state", 1)
 		c.mspCrdPresenceTest()
 	})
+	It("should verify the MSP CR reconciles correctly when replica updated via gRPC", func() {
+		c := generateMspStateConfig("primitive-msp-state", 1)
+		c.mspGrpcReplicaAddTest()
+	})
 })
 
 func (c *mspStateConfig) mspCrdPresenceTest() {
@@ -55,6 +59,22 @@ func (c *mspStateConfig) mspCrdPresenceTest() {
 	c.createFioPods()
 	c.getMsvDetails()
 	c.verifyMspUsedSize()
+	k8stest.WaitPodComplete(c.fioPodName, 5, int(c.timeout))
+	c.deleteFioPods()
+	c.deletePVC()
+	c.deleteSC()
+}
+
+func (c *mspStateConfig) mspGrpcReplicaAddTest() {
+	verifyMspCrdAndGrpcState()
+	c.createSC()
+	c.createPVC()
+	c.createFioPods()
+	c.getMsvDetails()
+	c.verifyMspUsedSize()
+	c.getPoolAndNodeAddress()
+	c.updateReplica()
+	c.verifyNewlyAddedPoolUsedSize()
 	k8stest.WaitPodComplete(c.fioPodName, 5, int(c.timeout))
 	c.deleteFioPods()
 	c.deletePVC()

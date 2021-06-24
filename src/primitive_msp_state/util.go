@@ -56,17 +56,43 @@ func (c *mspStateConfig) getMsvDetails() *mspStateConfig {
 	return c
 }
 
-// getMsvDetails will set pools and msv capacity
-func (c *mspStateConfig) verifyMspUsedSize() *mspStateConfig {
-	// // List Pools by CRDs
-	// pools, err := custom_resources.ListMsPools()
-	// Expect(err).ToNot(HaveOccurred(), "List pools failed")
+// update pool and node address
+func (c *mspStateConfig) getPoolAndNodeAddress() *mspStateConfig {
+	nodes, err := k8stest.GetNodeLocs()
+	if err != nil {
+		logf.Log.Info("list nodes failed", "error", err)
+	}
+	// List Pools by CRDs
+	crdPools, err := custom_resources.ListMsPools()
+	Expect(err).ToNot(HaveOccurred(), "List pools via CRD failed")
+	var poolName, nodeName string
+	for _, pool := range c.poolNames {
+		for _, crdPool := range crdPools {
+			if pool != crdPool.Name {
+				poolName = crdPool.Name
+				nodeName = crdPool.Spec.Node
+			}
+		}
+	}
+	c.newPoolName = poolName
+	for _, node := range nodes {
+		if !node.MayastorNode {
+			continue
+		}
+		if node.NodeName == nodeName {
+			c.nodeAddress = node.IPAddress
+		}
+	}
+	return c
+}
+
+// verifyMspUsedSize will verify msp used size
+func (c *mspStateConfig) verifyMspUsedSize() {
 	for _, poolname := range c.poolNames {
 		pool, err := custom_resources.GetMsPool(poolname)
 		Expect(err).ToNot(HaveOccurred(), "GetMsPool failed %s", poolname)
-		verifyMspUsedSize(pool, c.msvSize)
+		Expect(verifyMspUsedSizeValue(pool, c.msvSize)).Should(Equal(true))
 	}
-	return c
 }
 
 // createFioPods will create fio pods and run fio concurrently on all mounted volumes
@@ -248,12 +274,28 @@ func verifyMspUsedSpace(crPool v1alpha1.MayastorPool,
 }
 
 // verifyMspUsedSize will verify msp used size
-func verifyMspUsedSize(crPool v1alpha1.MayastorPool, size int64) bool {
+func verifyMspUsedSizeValue(crPool v1alpha1.MayastorPool, size int64) bool {
 	var status bool
 	if crPool.Status.Used == size {
 		status = true
+	} else {
+		logf.Log.Info("Pool", "name", crPool.Name, "Used", crPool.Status.Used, "Expected Used", size)
 	}
 	return status
+}
+
+// update replica
+func (c *mspStateConfig) updateReplica() {
+	err := mayastorclient.CreateReplica(c.nodeAddress, c.uuid, uint64(c.msvSize), c.newPoolName)
+	Expect(err).ToNot(HaveOccurred(), "failed to update replica")
+
+}
+
+// verifyMspUsedSize will verify msp used size
+func (c *mspStateConfig) verifyNewlyAddedPoolUsedSize() {
+	pool, err := custom_resources.GetMsPool(c.newPoolName)
+	Expect(err).ToNot(HaveOccurred(), "GetMsPool failed %s", c.newPoolName)
+	Expect(verifyMspUsedSizeValue(pool, c.msvSize)).Should(Equal(true))
 }
 
 func grpcStateToCrdstate(mspState grpc.PoolState) string {

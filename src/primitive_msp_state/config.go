@@ -29,6 +29,8 @@ type mspStateConfig struct {
 	uuid           string
 	poolNames      []string
 	msvSize        int64
+	nodeAddress    string // mayastor node address
+	newPoolName    string // pool to be added while updating replica over gRPC
 	duration       int64
 	timeout        int64
 	thinkTime      int64
