@@ -13,6 +13,7 @@ type MayastorPoolStatus struct {
 	Reason   string   `json:"reason"`
 	State    string   `json:"state"`
 	Used     int64    `json:"used"`
+	Avail    int64    `json:"avail"`
 }
 
 type MayastorPool struct {
