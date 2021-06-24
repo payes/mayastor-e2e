@@ -54,29 +54,14 @@ var _ = Describe("Mayastor pool state tests", func() {
 
 func (c *mspStateConfig) mspCrdPresenceTest() {
 	verifyMspCrdAndGrpcState()
-	c.createSC()
-	c.createPVC()
-	c.createFioPods()
-	c.getMsvDetails()
+	c.createReplica()
 	c.verifyMspUsedSize()
-	k8stest.WaitPodComplete(c.fioPodName, 5, int(c.timeout))
-	c.deleteFioPods()
-	c.deletePVC()
-	c.deleteSC()
+	c.removeReplica()
 }
 
 func (c *mspStateConfig) mspGrpcReplicaAddTest() {
 	verifyMspCrdAndGrpcState()
-	c.createSC()
-	c.createPVC()
-	c.createFioPods()
-	c.getMsvDetails()
+	c.createReplica()
 	c.verifyMspUsedSize()
-	c.getPoolAndNodeAddress()
-	c.updateReplica()
-	c.verifyNewlyAddedPoolUsedSize()
-	k8stest.WaitPodComplete(c.fioPodName, 5, int(c.timeout))
-	c.deleteFioPods()
-	c.deletePVC()
-	c.deleteSC()
+	c.removeReplica()
 }
