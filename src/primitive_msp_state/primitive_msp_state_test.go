@@ -39,28 +39,27 @@ var _ = Describe("Mayastor pool state tests", func() {
 		Expect(err).ToNot(HaveOccurred())
 	})
 	It("should verify mayastor pool state", func() {
-		verifyMspCrdAndGrpcState()
+		c := generateMspStateConfig()
+		c.mspGrpcCrdsTest()
 	})
 	It("should verify correctness of all msp CRD fields for all operations", func() {
-		c := generateMspStateConfig("primitive-msp-state", 1)
+		c := generateMspStateConfig()
 		c.mspCrdPresenceTest()
-	})
-	It("should verify the MSP CR reconciles correctly when replica updated via gRPC", func() {
-		c := generateMspStateConfig("primitive-msp-state", 1)
-		c.mspGrpcReplicaAddTest()
 	})
 })
 
 func (c *mspStateConfig) mspCrdPresenceTest() {
-	verifyMspCrdAndGrpcState()
-	c.createReplica()
-	c.verifyMspUsedSize()
-	c.removeReplica()
+	for ix := 0; ix < c.iterations; ix++ {
+		verifyMspCrdAndGrpcState()
+		c.createReplica()
+		c.verifyMspUsedSize(c.replicaSize)
+		c.removeReplica()
+		c.verifyMspUsedSize(0)
+	}
 }
 
-func (c *mspStateConfig) mspGrpcReplicaAddTest() {
-	verifyMspCrdAndGrpcState()
-	c.createReplica()
-	c.verifyMspUsedSize()
-	c.removeReplica()
+func (c *mspStateConfig) mspGrpcCrdsTest() {
+	for ix := 0; ix < c.iterations; ix++ {
+		verifyMspCrdAndGrpcState()
+	}
 }
