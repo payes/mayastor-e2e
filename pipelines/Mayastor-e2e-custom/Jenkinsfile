@@ -21,7 +21,7 @@ if (params.platform == 'volterra') {
 // Global variable to pass current k8s job between stages
 def k8s_job=""
 
-e2e_image_tag='nightly'
+e2e_image_tag='nightly-stable'
 e2e_reports_dir='artifacts/reports/'
 
 if (params.e2e_branch != '') {
@@ -40,7 +40,7 @@ pipeline {
     booleanParam(defaultValue: true, name: 'delete_cluster_on_failure', description: 'if false, failed tests will leave the cluster running')
     choice(choices: ['generic', 'volterra'], name: 'platform', description: 'server platform')
     booleanParam(defaultValue: true, name: 'use_ci_registry', description: 'true to use the CI registry, false to pull images from DockerHub')
-    string(defaultValue: e2e_image_tag, name: 'image_tag', trim: true, description: 'can also be the short (12-char) commit sha')
+    string(defaultValue: e2e_image_tag, name: 'image_tag', trim: true, description: 'image tag of mayastor images, e.g. nightly-stable or selfci')
     string(defaultValue: '', name: 'config_path', trim: true, description: 'specify for non-default config file, e.g. selfci_config.yaml nightly_full_config.yaml or soak_config.yaml')
     string(defaultValue: '', name: 'e2e_branch', trim: true, description: 'specify for non-develop Mayastor-e2e branch to use')
   }
@@ -85,10 +85,8 @@ pipeline {
               common.GetClusterAdminConf(e2e_environment, k8s_job)
               loki_run_id = common.GetLokiRunId()
               sh "mkdir -p ${env.WORKSPACE}/${e2e_reports_dir}"
-              // we need the Mayastor repo, but only for the deployment yamls
-              common.GetMayastor('develop')
 
-              def cmd = "./scripts/${e2e_script} --device /dev/sdb --tag \"${params.image_tag}\" --logs --tests \'${params.tests}\' --loki_run_id \"${loki_run_id}\" --mayastor \"${env.WORKSPACE}/Mayastor\" --reportsdir \"${env.WORKSPACE}/${e2e_reports_dir}\" "
+              def cmd = "./scripts/${e2e_script} --device /dev/sdb --tag \"${params.image_tag}\" --logs --tests \'${params.tests}\' --loki_run_id \"${loki_run_id}\" --reportsdir \"${env.WORKSPACE}/${e2e_reports_dir}\" "
 
               if (params.use_ci_registry == true) {
                 cmd = cmd + " --registry \"" + env.REGISTRY + "\""
