@@ -165,6 +165,12 @@ type E2EConfig struct {
 		PodUnscheduleTimeoutSecs int `yaml:"podUnscheduleTimeoutSecs" env-default:"100"`
 		PodRescheduleTimeoutSecs int `yaml:"podRnscheduleTimeoutSecs" env-default:"180"`
 	} `yaml:"pvcDelete"`
+	PrimitiveReplicas struct {
+		Iterations  int `yaml:"iterations" env-default:"100"`
+		StartSizeMb int `yaml:"startSizeMb" env-default:"128"`
+		EndSizeMb   int `yaml:"endSizeMb" env-default:"1024"`
+		SizeStepMb  int `yaml:"sizeStepMb" env-default:"64"`
+	} `yaml:"primitiveReplicas"`
 }
 
 var once sync.Once

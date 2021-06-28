@@ -388,7 +388,7 @@ func ListReplicasInCluster() ([]mayastorclient.MayastorReplica, error) {
 func RmReplicasInCluster() error {
 	nodeAddrs, err := getClusterMayastorNodeIPAddrs()
 	if err == nil {
-		return mayastorclient.RmReplicas(nodeAddrs)
+		return mayastorclient.RmNodeReplicas(nodeAddrs)
 	}
 	return err
 }

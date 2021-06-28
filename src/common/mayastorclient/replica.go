@@ -74,8 +74,9 @@ func listReplica(address string) ([]MayastorReplica, error) {
 	return replicaInfos, err
 }
 
-func rmReplica(address string, uuid string) error {
-	logf.Log.Info("rmReplica", "address", address, "UUID", uuid)
+// RmReplica remove a replica identified by node and uuid
+func RmReplica(address string, uuid string) error {
+	logf.Log.Info("RmReplica", "address", address, "UUID", uuid)
 	addrPort := fmt.Sprintf("%s:%d", address, mayastorPort)
 	conn, err := grpc.Dial(addrPort, grpc.WithInsecure())
 	if err != nil {
@@ -91,14 +92,9 @@ func rmReplica(address string, uuid string) error {
 	return err
 }
 
-// CreateReplica create a replica on a mayastor node, with parameters
-//	 thin fixed to false and share fixed to NVMF.
-//	Other parameters must be specified
-func CreateReplica(address string, uuid string, size uint64, pool string) error {
-	const thin = false
-	const share = mayastorGrpc.ShareProtocolReplica_REPLICA_NVMF
-
-	logf.Log.Info("CreateReplica", "address", address, "UUID", uuid, "size", size, "pool", pool, "Thin", thin, "Share", share)
+// CreateReplicaExt create a replica on a mayastor node
+func CreateReplicaExt(address string, uuid string, size uint64, pool string, thin bool, shareProto mayastorGrpc.ShareProtocolReplica) error {
+	logf.Log.Info("CreateReplica", "address", address, "UUID", uuid, "size", size, "pool", pool, "Thin", thin, "Share", shareProto)
 	addrPort := fmt.Sprintf("%s:%d", address, mayastorPort)
 	conn, err := grpc.Dial(addrPort, grpc.WithInsecure())
 	if err != nil {
@@ -114,10 +110,17 @@ func CreateReplica(address string, uuid string, size uint64, pool string) error 
 		Size:  size,
 		Thin:  thin,
 		Pool:  pool,
-		Share: share,
+		Share: shareProto,
 	}
 	_, err = c.CreateReplica(ctx, &req)
 	return err
+}
+
+// CreateReplica create a replica on a mayastor node, with parameters
+//	 thin fixed to false and share fixed to NVMF.
+//	Other parameters must be specified
+func CreateReplica(address string, uuid string, size uint64, pool string) error {
+	return CreateReplicaExt(address, uuid, size, pool, false, mayastorGrpc.ShareProtocolReplica_REPLICA_NVMF)
 }
 
 // ListReplicas given a list of node ip addresses, enumerate the set of replicas on mayastor using gRPC on each of those nodes
@@ -140,15 +143,15 @@ func ListReplicas(addrs []string) ([]MayastorReplica, error) {
 	return replicaInfos, accErr
 }
 
-// RmReplicas given a list of node ip addresses, delete the set of replicas on mayastor using gRPC on each of those nodes
+// RmNodeReplicas given a list of node ip addresses, delete the set of replicas on mayastor using gRPC on each of those nodes
 // returns errors if gRPC communication failed.
-func RmReplicas(addrs []string) error {
+func RmNodeReplicas(addrs []string) error {
 	var accErr error
 	for _, address := range addrs {
 		replicaInfos, err := listReplica(address)
 		if err == nil {
 			for _, replicaInfo := range replicaInfos {
-				err = rmReplica(address, replicaInfo.Uuid)
+				err = RmReplica(address, replicaInfo.Uuid)
 			}
 		}
 		if err != nil {

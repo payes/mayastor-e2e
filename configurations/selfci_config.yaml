@@ -71,4 +71,8 @@ pvcDelete:
   volSizeMb: 64
   # fsVolSizeMb units are MiB
   fsVolSizeMb: 50
-
+primitiveReplicas:
+    iterations: 10
+    startSizeMb: 64
+    endSizeMb: 512
+    sizeStepMb: 64
