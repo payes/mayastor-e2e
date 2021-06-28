@@ -4,17 +4,17 @@ import (
 	"fmt"
 	"testing"
 
-	storageV1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/util/uuid"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	"mayastor-e2e/common"
 	"mayastor-e2e/common/custom_resources"
 	"mayastor-e2e/common/e2e_config"
 	"mayastor-e2e/common/k8stest"
 	"mayastor-e2e/common/mayastorclient"
+
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 func TestPrimitiveMspDeletionTest(t *testing.T) {
@@ -22,9 +22,17 @@ func TestPrimitiveMspDeletionTest(t *testing.T) {
 	k8stest.InitTesting(t, "Primitive Mayastor Pool Deletion Test", "primitive_msp_deletion")
 }
 
-func primitiveMspDeletionTest(protocol common.ShareProto, volumeType common.VolumeType, fsType common.FileSystemType, mode storageV1.VolumeBindingMode) {
+func testMspDeletion() {
+	for ix := 0; ix < e2e_config.GetConfig().PrimitiveMspDelete.Iterations; ix++ {
+		primitiveMspDeletionTest()
+	}
+}
+
+func primitiveMspDeletionTest() {
 
 	params := e2e_config.GetConfig().PrimitiveMspDelete
+
+	logf.Log.Info("Primitive MayastorPool Deletion Test", "parameters", params)
 
 	// List pools in the cluster
 	pools, err := custom_resources.ListMsPools()
@@ -123,7 +131,6 @@ func primitiveMspDeletionTest(protocol common.ShareProto, volumeType common.Volu
 	// the test should delete all pools and recreate the configured set of pools.
 	err = k8stest.RestoreConfiguredPools()
 	Expect(err).To(BeNil(), "Not all pools are online after restoration")
-
 }
 
 var _ = Describe("Primitive Mayatstor Pool deletion test", func() {
@@ -141,7 +148,7 @@ var _ = Describe("Primitive Mayatstor Pool deletion test", func() {
 	})
 
 	It("Should verify mayastor pool deletion", func() {
-		primitiveMspDeletionTest(common.ShareProtoNvmf, common.VolFileSystem, common.XfsFsType, storageV1.VolumeBindingImmediate)
+		testMspDeletion()
 	})
 
 })
