@@ -16,7 +16,6 @@ func TestMspState(t *testing.T) {
 
 var _ = BeforeSuite(func(done Done) {
 	k8stest.SetupTestEnv()
-
 	close(done)
 }, 60)
 

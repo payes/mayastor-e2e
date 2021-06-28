@@ -1,13 +1,17 @@
 package primitive_msp_state
 
 import (
+	"fmt"
 	"mayastor-e2e/common/custom_resources"
 	"mayastor-e2e/common/custom_resources/api/types/v1alpha1"
 	"mayastor-e2e/common/k8stest"
 	"mayastor-e2e/common/mayastorclient"
 	"mayastor-e2e/common/mayastorclient/grpc"
 
+	"time"
+
 	. "github.com/onsi/gomega"
+	"github.com/pkg/errors"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -17,7 +21,8 @@ func (c *mspStateConfig) verifyMspUsedSize() {
 	crdPools, err := custom_resources.ListMsPools()
 	Expect(err).ToNot(HaveOccurred(), "List pools via CRD failed")
 	for _, crdPool := range crdPools {
-		Expect(crdPool.Status.Used).Should(Equal(c.msvSize), "Used size mis match")
+		err := c.checkPoolUsedSize(crdPool.Name)
+		Expect(err).ShouldNot(HaveOccurred(), "failed to verify used size of pool %s error %v", crdPool.Name, err)
 	}
 }
 
@@ -91,17 +96,6 @@ func verifyMspUsedSpace(crPool v1alpha1.MayastorPool,
 	return status
 }
 
-// verifyMspUsedSize will verify msp used size
-func verifyMspUsedSizeValue(crPool v1alpha1.MayastorPool, size int64) bool {
-	var status bool
-	if crPool.Status.Used == size {
-		status = true
-	} else {
-		logf.Log.Info("Pool", "name", crPool.Name, "Used", crPool.Status.Used, "Expected Used", size)
-	}
-	return status
-}
-
 // create replicas
 func (c *mspStateConfig) createReplica() {
 	nodes, err := k8stest.GetNodeLocs()
@@ -136,6 +130,22 @@ func (c *mspStateConfig) removeReplica() {
 	}
 	err = mayastorclient.RmReplicas(address)
 	Expect(err).ToNot(HaveOccurred(), "failed to remove replicas")
+}
+
+// WaitPodComplete waits until pod is in completed state
+func (c *mspStateConfig) checkPoolUsedSize(poolName string) error {
+	timeoutSecs := int(c.timeout.Seconds())
+	sleepTimeSecs := int(c.sleepTime.Seconds())
+	logf.Log.Info("Waiting for pool used size", "name", poolName)
+	for ix := 0; ix < (timeoutSecs+sleepTimeSecs-1)/sleepTimeSecs; ix++ {
+		time.Sleep(time.Duration(sleepTimeSecs) * time.Second)
+		pool, err := custom_resources.GetMsPool(poolName)
+		Expect(err).ToNot(HaveOccurred(), fmt.Sprintf("failed to get mayastor pool %s %v", poolName, err))
+		if pool.Status.Used == c.msvSize {
+			return nil
+		}
+	}
+	return errors.Errorf("pool %s used size did not reconcile in %d seconds", poolName, timeoutSecs)
 }
 
 func grpcStateToCrdstate(mspState grpc.PoolState) string {
