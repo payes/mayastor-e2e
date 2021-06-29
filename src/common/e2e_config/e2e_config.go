@@ -193,6 +193,7 @@ type E2EConfig struct {
 		MayastorRestartTimeout int    `yaml:"mayastorRestartTimeout" env-default:"240"`
 		Iterations             int    `yaml:"iterations" env-default:"100"`
 	} `yaml:"primitiveMspDelete"`
+
 	PrimitiveMspStressTest struct {
 		PartitionSizeInGiB int `yaml:"partitionSizeInGiB" env-default:"1"`
 		PartitionCount     int `yaml:"partitionCount" env-default:"5"`
@@ -204,6 +205,9 @@ type E2EConfig struct {
 		Iterations      int `yaml:"iterations" env-default:"10"`
 		VolumeMultipler int `yaml:"volumeMultipler" env-default:"10"`
 	} `yaml:"concurrentPvcCreate"`
+	PrimitiveDataIntegrity struct {
+		VolMb int `yaml:"volMb" env-default:"64"`
+	} `yaml:"primitiveDataIntegrity"`
 }
 
 var once sync.Once
