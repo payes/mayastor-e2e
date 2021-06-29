@@ -177,7 +177,7 @@ def LokiUninstall(tag) {
 
 def GetTestList(profile) {
   def list = sh(
-    script: "scripts/e2e-get-test-list.sh ${profile}",
+    script: "scripts/e2e-get-test-list.sh '${profile}'",
     returnStdout: true
   )
   return list
