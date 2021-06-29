@@ -11,7 +11,6 @@ import (
 type mspStateConfig struct {
 	uuid              string
 	replicaSize       int64
-	timeout           time.Duration
 	sleepTime         time.Duration
 	poolCreateTimeout time.Duration
 	poolDeleteTimeout time.Duration
@@ -32,11 +31,10 @@ func generateMspStateConfig() *mspStateConfig {
 	c := &mspStateConfig{
 		replicaSize:       int64(params.ReplicaSize),
 		uuid:              string(uuid.NewUUID()),
-		timeout:           poolUsageTimeout,
 		sleepTime:         poolUsageSleepTime,
 		poolCreateTimeout: mspCreateTimeout,
 		poolDeleteTimeout: mspDeleteTimeout,
-		poolUsageTimeout:  mspDeleteTimeout,
+		poolUsageTimeout:  poolUsageTimeout,
 		iterations:        params.IterationCount,
 	}
 	return c

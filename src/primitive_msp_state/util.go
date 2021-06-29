@@ -108,17 +108,22 @@ func (c *mspStateConfig) createReplica() {
 		nodeAddrs = append(nodeAddrs, node.IPAddress)
 		mayastorPools, err := mayastorclient.ListPools(nodeAddrs)
 		Expect(err).ToNot(HaveOccurred())
-		for _, mayastorPool := range mayastorPools {
-			Eventually(func() error {
-				err = mayastorclient.CreateReplica(node.IPAddress, c.uuid, uint64(c.replicaSize), mayastorPool.Name)
-				Expect(err).ToNot(HaveOccurred(), "Failed to create replica by gRPC")
-				return nil
-			},
-				c.poolCreateTimeout.Seconds(), // timeout
-				"1s",                          // polling interval
-			).Should(BeNil(), "Failed to delete pool")
+		if len(mayastorPools) != 0 {
+			for _, mayastorPool := range mayastorPools {
+				Eventually(func() error {
+					err = mayastorclient.CreateReplica(node.IPAddress, c.uuid, uint64(c.replicaSize), mayastorPool.Name)
+					Expect(err).ToNot(HaveOccurred(), "Failed to create replica by gRPC")
+					return nil
+				},
+					c.poolCreateTimeout.Seconds(), // timeout
+					"1s",                          // polling interval
+				).Should(BeNil(), "Failed to delete pool")
 
+			}
+		} else {
+			logf.Log.Info("Node", "Name", node.NodeName, "Pool Count", len(mayastorPools))
 		}
+
 	}
 
 }
@@ -146,9 +151,9 @@ func (c *mspStateConfig) removeReplica() {
 
 }
 
-// WaitPodComplete waits until pod is in completed state
+// checkPoolUsedSize verify mayastor pool used size
 func (c *mspStateConfig) checkPoolUsedSize(poolName string, replicaSize int64) error {
-	timeoutSecs := int(c.timeout.Seconds())
+	timeoutSecs := int(c.poolUsageTimeout.Seconds())
 	sleepTimeSecs := int(c.sleepTime.Seconds())
 	logf.Log.Info("Waiting for pool used size", "name", poolName)
 	for ix := 0; ix < (timeoutSecs+sleepTimeSecs-1)/sleepTimeSecs; ix++ {
