@@ -168,7 +168,7 @@ type E2EConfig struct {
 	PrimitiveReplicas struct {
 		Iterations  int `yaml:"iterations" env-default:"100"`
 		StartSizeMb int `yaml:"startSizeMb" env-default:"128"`
-		EndSizeMb   int `yaml:"endSizeMb" env-default:"1024"`
+		EndSizeMb   int `yaml:"endSizeMb" env-default:"4096"`
 		SizeStepMb  int `yaml:"sizeStepMb" env-default:"64"`
 	} `yaml:"primitiveReplicas"`
 }

@@ -77,12 +77,13 @@ func makeInvalidReplica(pd poolDetails, replicaSize uint64, fuzzVal uint) error 
 	return nil
 }
 
-func makeReplica(pd poolDetails, replicaSize uint64) ([]replicaDetails, error) {
+func makeReplica(pd poolDetails, replicaSize uint64) (*replicaDetails, error) {
 	replicaUuid := uuid.NewUUID()
-	var rd []replicaDetails
+	var rd *replicaDetails
 	var err error
-	logf.Log.Info("makeReplica", "replicaSize", replicaSize, "replicaSizeMiB",
-		replicaSize/(1024*1024),
+	logf.Log.Info("makeReplica",
+		"replicaSize", replicaSize,
+		"replicaSizeMiB", replicaSize/(1024*1024),
 		"replicaUuid", replicaUuid,
 		"node", pd.node,
 		"pool", pd.pool,
@@ -91,7 +92,7 @@ func makeReplica(pd poolDetails, replicaSize uint64) ([]replicaDetails, error) {
 	err = mayastorclient.CreateReplica(pd.node, string(replicaUuid), replicaSize, pd.pool.Name)
 	if err == nil {
 		logf.Log.Info("makeReplica", "success", replicaDetails{node: pd.node, replicaUuid: replicaUuid})
-		rd = append(rd, replicaDetails{node: pd.node, replicaUuid: replicaUuid})
+		rd = &replicaDetails{node: pd.node, replicaUuid: replicaUuid}
 	} else {
 		logf.Log.Info("makeReplica",
 			"replicaUuid", replicaUuid,
@@ -134,25 +135,25 @@ func creatDelTest() {
 		replicaSize := sizeTable[ix%len(sizeTable)]
 		pd := mayastorNodePools[ix%len(mayastorNodePools)]
 
-		rds, err := makeReplica(pd, replicaSize)
+		rd, err := makeReplica(pd, replicaSize)
 		Expect(err).ToNot(HaveOccurred(), "failed to create replica of size %d on %v", replicaSize, pd)
+		Expect(rd).ToNot(BeNil(), "got nil pointer to replica details")
 
 		checkPoolsOnline([]string{pd.node})
 
-		_, err = k8stest.ListReplicasInCluster()
+		replicas, err := k8stest.ListReplicasInCluster()
 		Expect(err).ToNot(HaveOccurred(), "failed to list replicas")
+		Expect(len(replicas)).To(Equal(1))
 
-		for _, rd := range rds {
-			err := mayastorclient.RmReplica(rd.node, string(rd.replicaUuid))
-			Expect(err).ToNot(HaveOccurred())
-		}
+		err = mayastorclient.RmReplica(rd.node, string(rd.replicaUuid))
+		Expect(err).ToNot(HaveOccurred())
 
 		checkPoolsOnline([]string{pd.node})
 
 		err = k8stest.CheckTestPodsHealth(common.NSMayastor())
 		Expect(err).ToNot(HaveOccurred(), "mayastor pods not healthy")
 
-		replicas, err := k8stest.ListReplicasInCluster()
+		replicas, err = k8stest.ListReplicasInCluster()
 		Expect(err).ToNot(HaveOccurred(), "failed to list replicas")
 		Expect(len(replicas)).To(BeZero())
 	}
@@ -174,18 +175,21 @@ func createDeleteReplica(pd poolDetails, doneC chan string, errC chan<- error) {
 	for ix := 0; ix < e2e_config.GetConfig().PrimitiveReplicas.Iterations; ix += 1 {
 		replicaSize := sizeTable[ix%len(sizeTable)]
 
-		rds, err := makeReplica(pd, replicaSize)
+		rd, err := makeReplica(pd, replicaSize)
 		if err != nil {
 			errC <- err
 			return
 		}
 
-		for _, rd := range rds {
-			err := mayastorclient.RmReplica(rd.node, string(rd.replicaUuid))
-			if err != nil {
-				errC <- err
-				return
-			}
+		if rd == nil {
+			errC <- fmt.Errorf("makeReplica returned nil pointer")
+			return
+		}
+
+		err = mayastorclient.RmReplica(rd.node, string(rd.replicaUuid))
+		if err != nil {
+			errC <- err
+			return
 		}
 	}
 	doneC <- pd.pool.Name
@@ -263,7 +267,7 @@ var _ = Describe("Mayastor Volume IO test", func() {
 	cfg := e2e_config.GetConfig().PrimitiveReplicas
 	logf.Log.Info("Using", "configuration", cfg)
 	const mb = 1024 * 1024
-	for rSize := uint64(cfg.SizeStepMb) * mb; rSize <= uint64(cfg.EndSizeMb)*mb; rSize += uint64(cfg.SizeStepMb) * mb {
+	for rSize := uint64(cfg.StartSizeMb) * mb; rSize <= uint64(cfg.EndSizeMb)*mb; rSize += uint64(cfg.SizeStepMb) * mb {
 		sizeTable = append(sizeTable, rSize)
 	}
 
