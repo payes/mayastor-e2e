@@ -165,6 +165,10 @@ type E2EConfig struct {
 		PodUnscheduleTimeoutSecs int `yaml:"podUnscheduleTimeoutSecs" env-default:"100"`
 		PodRescheduleTimeoutSecs int `yaml:"podRnscheduleTimeoutSecs" env-default:"180"`
 	} `yaml:"pvcDelete"`
+	PrimitiveMaxVolsInPool struct {
+		VolMb       int `yaml:"volMb" env-default:"64"`
+		VolumeCount int `yaml:"volumeCountPerPod" env-default:"100"`
+	} `yaml:"primitiveMaxVolsInPool"`
 }
 
 var once sync.Once
