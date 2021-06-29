@@ -2,9 +2,12 @@ package primitive_max_volumes_in_pool
 
 import (
 	"mayastor-e2e/common"
+	"mayastor-e2e/common/custom_resources"
 	"mayastor-e2e/common/k8stest"
 
 	. "github.com/onsi/gomega"
+	"github.com/pkg/errors"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // createSC will create storageclass
@@ -34,6 +37,22 @@ func (c *primitiveMaxVolConfig) createPVC() *primitiveMaxVolConfig {
 	}
 
 	return c
+}
+
+// verify msp used size
+func (c *primitiveMaxVolConfig) verifyMspUsedSize(size int64) {
+	// List Pools by CRDs
+	crdPools, err := custom_resources.ListMsPools()
+	Expect(err).ToNot(HaveOccurred(), "List pools via CRD failed")
+	for _, crdPool := range crdPools {
+		logf.Log.Info("Pool If", "name", crdPool.Name, "Used", crdPool.Status.Used, "Expected", size)
+		if crdPool.Status.Used != int64(size) {
+			logf.Log.Info("Pool If", "name", crdPool.Name, "Used", crdPool.Status.Used)
+			errors.Errorf("pool %s used size did not reconcile", crdPool.Name)
+			return
+		}
+
+	}
 }
 
 // deletePVC will delete all pvc

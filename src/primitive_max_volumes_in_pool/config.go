@@ -1,6 +1,7 @@
 package primitive_max_volumes_in_pool
 
 import (
+	"fmt"
 	"mayastor-e2e/common"
 	"mayastor-e2e/common/e2e_config"
 	// . "github.com/onsi/gomega"
@@ -30,6 +31,11 @@ func generatePrimitiveMaxVolConfig(testName string, replicasCount int) *primitiv
 		volumeCount: params.VolumeCount,
 		replicas:    replicasCount,
 		scName:      testName + "-sc",
+	}
+	for ix := 0; ix < c.volumeCount; ix++ {
+		//generate pvc name
+		pvcName := fmt.Sprintf("%s-pvc-%d", testName, ix)
+		c.pvcNames = append(c.pvcNames, pvcName)
 	}
 
 	return c
