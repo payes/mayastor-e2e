@@ -175,6 +175,55 @@ def LokiUninstall(tag) {
   sh 'kubectl delete -f ./loki/promtail_namespace_e2e.yaml'
 }
 
+def GetTestList(profile) {
+  def list = sh(
+    script: "scripts/e2e-get-test-list.sh '${profile}'",
+    returnStdout: true
+  )
+  return list
+}
+
+def RunTestsOnePerCluster(e2e_test_profile,
+                          test_tag,
+                          loki_run_id,
+                          e2e_build_cluster_job,
+                          e2e_destroy_cluster_job,
+                          e2e_environment,
+                          e2e_reports_dir) {
+  def list = GetTestList(e2e_test_profile)
+  def tests = list.split()
+  def failed_tests=""
+  def k8s_job=""
+
+  //loop over list
+  for (int i = 0; i < tests.size(); i++) {
+    testset = "install ${tests[i]} uninstall"
+    println testset
+    k8s_job = BuildCluster(e2e_build_cluster_job, e2e_environment)
+    GetClusterAdminConf(e2e_environment, k8s_job)
+
+    cmd = "./scripts/e2e-test.sh --device /dev/sdb --tag \"${test_tag}\" --logs --onfail stop --tests \"${testset}\" --loki_run_id \"${loki_run_id}\" --reportsdir \"${env.WORKSPACE}/${e2e_reports_dir}\" --registry \"${env.REGISTRY}\" "
+
+    withCredentials([
+      usernamePassword(credentialsId: 'GRAFANA_API', usernameVariable: 'grafana_api_user', passwordVariable: 'grafana_api_pw')
+    ]) {
+      LokiInstall(test_tag)
+      try {
+        sh "nix-shell --run '${cmd}'"
+      } catch(err) {
+        if (failed_tests == "") {
+          failed_tests = tests[i]
+        } else {
+          failed_tests = failed_tests + ',' + tests[i]
+        }
+      }
+      LokiUninstall(test_tag)
+    }
+    DestroyCluster(e2e_destroy_cluster_job, k8s_job)
+  } //loop
+  return failed_tests
+}
+
 def SendXrayReport(xray_testplan, summary, e2e_reports_dir) {
   xray_projectkey = 'MQ'
   xray_test_execution_type = '10059'
