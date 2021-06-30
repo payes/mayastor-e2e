@@ -32,7 +32,7 @@ var mayastorNodePools []poolDetails
 
 func TestPrimitiveReplicas(t *testing.T) {
 	// Initialise test and set class and file names for reports
-	k8stest.InitTesting(t, "Primitive Replicas Tests", "primitive-replicas")
+	k8stest.InitTesting(t, "Primitive Replicas Tests", "primitive_replicas")
 }
 
 func makeInvalidReplica(pd poolDetails, replicaSize uint64, fuzzVal uint) error {
