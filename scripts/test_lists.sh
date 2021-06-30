@@ -24,6 +24,7 @@ ms_pod_disruption_rm_msv
 profiles[nightly]="
 csi
 resource_check
+primitive_msp_state
 "
 
 profiles[c1]="
