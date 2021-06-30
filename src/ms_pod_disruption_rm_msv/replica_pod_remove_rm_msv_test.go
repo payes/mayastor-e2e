@@ -339,7 +339,7 @@ func ReplicaLossVolumeDelete(pvcName string, storageClassName string, fioPodName
 
 func TestMayastorPodLoss(t *testing.T) {
 	// Initialise test and set class and file names for reports
-	k8stest.InitTesting(t, "Replica pod removal tests", "ms_pod_disruption")
+	k8stest.InitTesting(t, "Replica pod removal tests", "ms_pod_disruption_rm_msv")
 }
 
 var _ = Describe("Mayastor replica pod removal test", func() {
