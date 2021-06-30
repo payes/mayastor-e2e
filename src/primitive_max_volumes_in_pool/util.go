@@ -15,8 +15,6 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-var defTimeoutSecs = "90s"
-
 // createSC will create storageclass
 func (c *primitiveMaxVolConfig) createSC() {
 	err := k8stest.NewScBuilder().
@@ -47,12 +45,10 @@ func (c *primitiveMaxVolConfig) createPVCs() *primitiveMaxVolConfig {
 
 // createVolumes will create volumes
 func (c *primitiveMaxVolConfig) createVolumes() *primitiveMaxVolConfig {
-	logf.Log.Info("PVC:", "pvcNames", c.pvcNames, "Opts", c.optsList)
 	// Create the volumes
 	var wg sync.WaitGroup
 	wg.Add(len(c.pvcNames))
 	for i := 0; i < len(c.pvcNames); i++ {
-		logf.Log.Info("Attempting to create PVC:", "pvcName", c.pvcNames[i])
 		go c.createPvc(&c.optsList[i], &c.errs[i], &wg)
 	}
 	wg.Wait()
@@ -77,9 +73,8 @@ func (c *primitiveMaxVolConfig) verifyMspUsedSize(size int64) {
 	crdPools, err := custom_resources.ListMsPools()
 	Expect(err).ToNot(HaveOccurred(), "List pools via CRD failed")
 	for _, crdPool := range crdPools {
-		logf.Log.Info("Pool If", "name", crdPool.Name, "Used", crdPool.Status.Used, "Expected", size)
 		if crdPool.Status.Used != int64(size) {
-			logf.Log.Info("Pool If", "name", crdPool.Name, "Used", crdPool.Status.Used)
+			logf.Log.Info("Pool", "name", crdPool.Name, "Used", crdPool.Status.Used)
 			errors.Errorf("pool %s used size did not reconcile", crdPool.Name)
 			return
 		}

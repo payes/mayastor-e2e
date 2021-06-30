@@ -11,9 +11,7 @@ import (
 	// . "github.com/onsi/gomega"
 )
 
-// const (
-// 	defTimeoutSecs = 240
-// )
+var defTimeoutSecs = "90s"
 
 type primitiveMaxVolConfig struct {
 	protocol    common.ShareProto
@@ -37,6 +35,7 @@ func generatePrimitiveMaxVolConfig(testName string, replicasCount int) *primitiv
 		volumeCount: params.VolumeCount,
 		replicas:    replicasCount,
 		scName:      testName + "-sc",
+		errs:        make([]error, params.VolumeCount),
 	}
 	for ix := 0; ix < c.volumeCount; ix++ {
 		//generate pvc name
