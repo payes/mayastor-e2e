@@ -3,7 +3,7 @@
 # script to output to stdout the list of tests
 # defined by the given profile as a space-separated string
 
-SCRIPTDIR=$(dirname "$(realpath "$0")")
+SCRIPTDIR="$(dirname "$(realpath "$0")")"
 set -eu
 
 if [ "$#" != "1" ]; then
@@ -34,5 +34,5 @@ for string in $set; do
    fi
 done
 
-echo ${outputset}
+echo "${outputset}"
 
