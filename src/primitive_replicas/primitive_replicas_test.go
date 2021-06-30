@@ -22,6 +22,10 @@ type replicaDetails struct {
 	replicaUuid types.UID
 }
 
+func (rd replicaDetails) String() string {
+	return fmt.Sprintf("node:%v, replicaUuid:%v", rd.node, rd.replicaUuid)
+}
+
 type poolDetails struct {
 	pool mayastorclient.MayastorPool
 	node string
@@ -91,8 +95,8 @@ func makeReplica(pd poolDetails, replicaSize uint64) (*replicaDetails, error) {
 
 	err = mayastorclient.CreateReplica(pd.node, string(replicaUuid), replicaSize, pd.pool.Name)
 	if err == nil {
-		logf.Log.Info("makeReplica", "success", replicaDetails{node: pd.node, replicaUuid: replicaUuid})
 		rd = &replicaDetails{node: pd.node, replicaUuid: replicaUuid}
+		logf.Log.Info("makeReplica", "replica details", rd)
 	} else {
 		logf.Log.Info("makeReplica",
 			"replicaUuid", replicaUuid,
