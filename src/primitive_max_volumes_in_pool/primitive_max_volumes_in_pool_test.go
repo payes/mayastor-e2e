@@ -39,10 +39,10 @@ var _ = Describe("Large number of volumes in pool tests", func() {
 		err := k8stest.AfterEachCheck()
 		Expect(err).ToNot(HaveOccurred())
 	})
-	// It("should verify serial creation of maximum number of  volumes in pool test", func() {
-	// 	c := generatePrimitiveMaxVolConfig("primitive-max-volume-pool", 3)
-	// 	c.serialMaxVolumeInPoolTest()
-	// })
+	It("should verify serial creation of maximum number of  volumes in pool test", func() {
+		c := generatePrimitiveMaxVolConfig("primitive-max-volume-pool", 3)
+		c.serialMaxVolumeInPoolTest()
+	})
 
 	It("should verify concurrent creation of maximum number of  volumes in pool test", func() {
 		c := generatePrimitiveMaxVolConfig("primitive-max-volume-pool", 3)
@@ -63,9 +63,10 @@ func (c *primitiveMaxVolConfig) serialMaxVolumeInPoolTest() {
 func (c *primitiveMaxVolConfig) concurrentMaxVolumeInPoolTest() {
 	c.createSC()
 	c.createVolumes()
-	c.verifyVolumes()
+	c.verifyVolumesCreation()
 	c.verifyMspUsedSize(int64(1024 * 1024 * c.pvcSize * c.volumeCount))
-	c.deletePVC()
+	c.removeVolumes()
+	c.verifyVolumesDeletion()
 	c.deleteSC()
 	c.verifyMspUsedSize(0)
 }

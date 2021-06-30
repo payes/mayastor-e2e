@@ -2,11 +2,13 @@ package primitive_max_volumes_in_pool
 
 import (
 	"context"
+	"fmt"
 	"mayastor-e2e/common"
 	"mayastor-e2e/common/custom_resources"
 	"mayastor-e2e/common/custom_resources/api/types/v1alpha1"
 	"mayastor-e2e/common/k8stest"
 	"sync"
+	"time"
 
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
@@ -49,7 +51,7 @@ func (c *primitiveMaxVolConfig) createVolumes() *primitiveMaxVolConfig {
 	var wg sync.WaitGroup
 	wg.Add(len(c.pvcNames))
 	for i := 0; i < len(c.pvcNames); i++ {
-		go c.createPvc(&c.optsList[i], &c.errs[i], &wg)
+		go c.createPvc(&c.optsList[i], &c.createErrs[i], &c.uuid[i], &wg)
 	}
 	wg.Wait()
 
@@ -57,13 +59,38 @@ func (c *primitiveMaxVolConfig) createVolumes() *primitiveMaxVolConfig {
 
 	return c
 }
-func (c *primitiveMaxVolConfig) createPvc(createOpts *coreV1.PersistentVolumeClaim, errBuf *error, wg *sync.WaitGroup) {
+
+func (c *primitiveMaxVolConfig) createPvc(createOpts *coreV1.PersistentVolumeClaim, errBuf *error, uuid *string, wg *sync.WaitGroup) {
 	// Get the test environment from the k8stest package
 	gTestEnv := k8stest.GetGTestEnv()
 	// Create the PVC.
 	pvc, err := gTestEnv.KubeInt.CoreV1().PersistentVolumeClaims(createOpts.ObjectMeta.Namespace).Create(context.TODO(), createOpts, metaV1.CreateOptions{})
 	*errBuf = err
-	c.uuid = append(c.uuid, string(pvc.UID))
+	*uuid = string(pvc.UID)
+	wg.Done()
+}
+
+// removeVolumes will remove volumes
+func (c *primitiveMaxVolConfig) removeVolumes() *primitiveMaxVolConfig {
+	// Create the volumes
+	var wg sync.WaitGroup
+	wg.Add(len(c.pvcNames))
+	for i := 0; i < len(c.pvcNames); i++ {
+		go c.deletePvc(c.pvcNames[i], &c.createErrs[i], &wg)
+	}
+	wg.Wait()
+
+	logf.Log.Info("Finished calling the delete methods for all PVC candidates.")
+
+	return c
+}
+
+func (c *primitiveMaxVolConfig) deletePvc(volName string, errBuf *error, wg *sync.WaitGroup) {
+	// Get the test environment from the k8stest package
+	PVCApi := k8stest.GetGTestEnv().KubeInt.CoreV1().PersistentVolumeClaims
+	// Create the PVC.
+	err := PVCApi(common.NSDefault).Delete(context.TODO(), volName, metaV1.DeleteOptions{})
+	*errBuf = err
 	wg.Done()
 }
 
@@ -73,13 +100,23 @@ func (c *primitiveMaxVolConfig) verifyMspUsedSize(size int64) {
 	crdPools, err := custom_resources.ListMsPools()
 	Expect(err).ToNot(HaveOccurred(), "List pools via CRD failed")
 	for _, crdPool := range crdPools {
-		if crdPool.Status.Used != int64(size) {
-			logf.Log.Info("Pool", "name", crdPool.Name, "Used", crdPool.Status.Used)
-			errors.Errorf("pool %s used size did not reconcile", crdPool.Name)
-			return
-		}
-
+		err := checkPoolUsedSize(crdPool.Name, size)
+		Expect(err).ShouldNot(HaveOccurred(), "failed to verify used size of pool %s error %v", crdPool.Name, err)
 	}
+}
+
+// checkPoolUsedSize verify mayastor pool used size
+func checkPoolUsedSize(poolName string, usedSize int64) error {
+	logf.Log.Info("Waiting for pool used size", "name", poolName)
+	for ix := 0; ix < (timeoutSec+sleepTimeSec-1)/sleepTimeSec; ix++ {
+		time.Sleep(time.Duration(sleepTimeSec) * time.Second)
+		pool, err := custom_resources.GetMsPool(poolName)
+		Expect(err).ToNot(HaveOccurred(), fmt.Sprintf("failed to get mayastor pool %s %v", poolName, err))
+		if pool.Status.Used == usedSize {
+			return nil
+		}
+	}
+	return errors.Errorf("pool %s used size did not reconcile in %d seconds", poolName, timeoutSec)
 }
 
 // deletePVC will delete all pvc
@@ -89,12 +126,13 @@ func (c *primitiveMaxVolConfig) deletePVC() {
 	}
 }
 
-// Check that all volumes have been created successfully, that none of them are in the pending state,
+// Check that all volumes have been created successfully,
+// that none of them are in the pending state,
 // that all of them have the right size
-func (c *primitiveMaxVolConfig) verifyVolumes() {
+func (c *primitiveMaxVolConfig) verifyVolumesCreation() {
 	for ix := 0; ix < len(c.pvcNames); ix++ {
 		// Confirm that the PVC has been created
-		Expect(c.errs[ix]).To(BeNil(), "failed to create PVC %s", c.pvcNames[ix])
+		Expect(c.createErrs[ix]).To(BeNil(), "failed to create PVC %s", c.pvcNames[ix])
 
 		// Get the test environment from the k8stest package
 		gTestEnv := k8stest.GetGTestEnv()
@@ -149,6 +187,29 @@ func (c *primitiveMaxVolConfig) verifyVolumes() {
 		).Should(Not(BeNil()))
 
 		logf.Log.Info("Created", "volume", volName, "uuid", pvc.ObjectMeta.UID, "storageClass", c.scName)
+
+	}
+}
+
+// verify deletion of pvc and corresponding msv
+func (c *primitiveMaxVolConfig) verifyVolumesDeletion() {
+	for ix := 0; ix < len(c.pvcNames); ix++ {
+		// Confirm that the PVC has been created
+		Expect(c.deleteErrs[ix]).To(BeNil(), "failed to delete PVC %s", c.pvcNames[ix])
+		// Wait for the PVC to be deleted.
+		Eventually(func() bool {
+			return k8stest.IsPVCDeleted(c.pvcNames[ix], common.NSDefault)
+		},
+			defTimeoutSecs, // timeout
+			"1s",           // polling interval
+		).Should(Equal(true))
+		// Wait for the MSV to be deleted.
+		Eventually(func() bool {
+			return custom_resources.IsMsVolDeleted(c.uuid[ix])
+		},
+			defTimeoutSecs, // timeout
+			"1s",           // polling interval
+		).Should(Equal(true))
 
 	}
 }

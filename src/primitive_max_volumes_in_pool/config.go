@@ -13,6 +13,11 @@ import (
 
 var defTimeoutSecs = "90s"
 
+const (
+	timeoutSec   = 90
+	sleepTimeSec = 2
+)
+
 type primitiveMaxVolConfig struct {
 	protocol    common.ShareProto
 	fsType      common.FileSystemType
@@ -22,7 +27,8 @@ type primitiveMaxVolConfig struct {
 	pvcNames    []string
 	pvcSize     int
 	uuid        []string
-	errs        []error
+	createErrs  []error
+	deleteErrs  []error
 	optsList    []coreV1.PersistentVolumeClaim
 }
 
@@ -35,7 +41,9 @@ func generatePrimitiveMaxVolConfig(testName string, replicasCount int) *primitiv
 		volumeCount: params.VolumeCount,
 		replicas:    replicasCount,
 		scName:      testName + "-sc",
-		errs:        make([]error, params.VolumeCount),
+		createErrs:  make([]error, params.VolumeCount),
+		deleteErrs:  make([]error, params.VolumeCount),
+		uuid:        make([]string, params.VolumeCount),
 	}
 	for ix := 0; ix < c.volumeCount; ix++ {
 		//generate pvc name
