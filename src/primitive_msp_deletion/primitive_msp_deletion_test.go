@@ -3,6 +3,7 @@ package primitive_msp_deletion
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"k8s.io/apimachinery/pkg/util/uuid"
 
@@ -125,6 +126,26 @@ func primitiveMspDeletionTest() {
 		params.PoolCreateTimeoutSecs, // timeout
 		"1s",                         // polling interval
 	).Should(BeNil(), "Failed to create pool")
+
+	time.Sleep(60 * time.Second)
+
+	Eventually(func() int {
+		poolUsage, err := k8stest.GetPoolUsageInCluster()
+		Expect(err).ToNot(HaveOccurred(), fmt.Sprintf("Failed to get pool usage %v", err))
+		return int(poolUsage)
+	},
+		params.PoolUsageTimeoutSecs, // timeout
+		"1s",                        // polling interval
+	).Should(Equal(0), "Pool usage is not 0")
+
+	Eventually(func() int {
+		replicas, err := k8stest.ListReplicasInCluster()
+		Expect(err).ToNot(HaveOccurred(), "Failed to retrieve list of replicas")
+		return len(replicas)
+	},
+		params.ReplicasTimeoutSecs, // timeout
+		"1s",                       // polling interval
+	).Should(Equal(0), "Failed while checking replicas")
 
 	// RestoreConfiguredPools (re)create pools as defined by the configuration.
 	// As part of the tests we may modify the pools, in such test cases
