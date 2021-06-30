@@ -11,6 +11,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"mayastor-e2e/common/custom_resources"
+	"mayastor-e2e/common/custom_resources/api/types/v1alpha1"
 	"mayastor-e2e/common/e2e_config"
 	"mayastor-e2e/common/k8stest"
 	"mayastor-e2e/common/mayastorclient"
@@ -37,6 +38,7 @@ func primitiveMspDeletionTest() {
 
 	// List pools in the cluster
 	pools, err := custom_resources.ListMsPools()
+	Expect(err).ToNot(HaveOccurred(), "Failed to list pools")
 
 	var replicaCount int
 	nodes, err := k8stest.GetNodeLocs()
@@ -147,11 +149,11 @@ func primitiveMspDeletionTest() {
 		"1s",                       // polling interval
 	).Should(Equal(0), "Failed while checking replicas")
 
-	// RestoreConfiguredPools (re)create pools as defined by the configuration.
-	// As part of the tests we may modify the pools, in such test cases
-	// the test should delete all pools and recreate the configured set of pools.
-	err = k8stest.RestoreConfiguredPools()
-	Expect(err).To(BeNil(), "Not all pools are online after restoration")
+	msps, err := custom_resources.ListMsPools()
+	Expect(err).ToNot(HaveOccurred(), "Failed to list pools")
+
+	err = compareMsps(pools, msps)
+	Expect(err).ToNot(HaveOccurred(), "Failed while checking mayastor pool configuration")
 }
 
 var _ = Describe("Primitive Mayatstor Pool deletion test", func() {
@@ -185,3 +187,35 @@ var _ = AfterSuite(func() {
 	// not the kubernetes cluster itself.	By("tearing down the test environment")
 	k8stest.TeardownTestEnv()
 })
+
+func compareMsps(mspListBefore []v1alpha1.MayastorPool, mspListAfter []v1alpha1.MayastorPool) error {
+	mspConfigBefore := make(map[string]v1alpha1.MayastorPool)
+	mspConfigAfter := make(map[string]v1alpha1.MayastorPool)
+
+	for _, msp := range mspListBefore {
+		mspConfigBefore[msp.Name] = msp
+	}
+
+	for _, msp := range mspListAfter {
+		mspConfigAfter[msp.Name] = msp
+	}
+	for i, m := range mspConfigBefore {
+		_, ok := mspConfigAfter[i]
+		if !ok {
+			return fmt.Errorf("Pool not found")
+		}
+		if m.Status.Capacity != mspConfigAfter[i].Status.Capacity {
+			return fmt.Errorf("Failed due to capacity mismatch capacity before: %d capacity after: %d", m.Status.Capacity, mspConfigAfter[i].Status.Capacity)
+		}
+		if m.Status.Used != mspConfigAfter[i].Status.Used {
+			return fmt.Errorf("Failed due to pool usage mismatch usage before: %d usage after: %d", m.Status.Used, mspConfigAfter[i].Status.Used)
+		}
+		if m.Spec.Disks[0] != mspConfigAfter[i].Spec.Disks[0] {
+			return fmt.Errorf("Failed due to disk mismatch disk before: %s disk after: %s", m.Spec.Disks[0], mspConfigAfter[i].Spec.Disks[0])
+		}
+		if m.Spec.Node != mspConfigAfter[i].Spec.Node {
+			return fmt.Errorf("Failed due to node name mismatch node name before: %s node name after: %s", m.Spec.Node, mspConfigAfter[i].Spec.Node)
+		}
+	}
+	return nil
+}
