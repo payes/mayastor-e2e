@@ -1,14 +1,21 @@
 package primitive_max_volumes_in_pool
 
 import (
+	"context"
 	"mayastor-e2e/common"
 	"mayastor-e2e/common/custom_resources"
+	"mayastor-e2e/common/custom_resources/api/types/v1alpha1"
 	"mayastor-e2e/common/k8stest"
+	"sync"
 
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
+	coreV1 "k8s.io/api/core/v1"
+	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
+
+var defTimeoutSecs = "90s"
 
 // createSC will create storageclass
 func (c *primitiveMaxVolConfig) createSC() {
@@ -28,15 +35,40 @@ func (c *primitiveMaxVolConfig) deleteSC() {
 	Expect(err).ToNot(HaveOccurred(), "Deleting storage class %s", c.scName)
 }
 
-// createPVC will create pvc
-func (c *primitiveMaxVolConfig) createPVC() *primitiveMaxVolConfig {
+// createPVCs will create pvc
+func (c *primitiveMaxVolConfig) createPVCs() *primitiveMaxVolConfig {
 	// Create the volumes
 	for _, pvc := range c.pvcNames {
 		uid := k8stest.MkPVC(c.pvcSize, pvc, c.scName, common.VolFileSystem, common.NSDefault)
 		c.uuid = append(c.uuid, uid)
 	}
+	return c
+}
+
+// createVolumes will create volumes
+func (c *primitiveMaxVolConfig) createVolumes() *primitiveMaxVolConfig {
+	logf.Log.Info("PVC:", "pvcNames", c.pvcNames, "Opts", c.optsList)
+	// Create the volumes
+	var wg sync.WaitGroup
+	wg.Add(len(c.pvcNames))
+	for i := 0; i < len(c.pvcNames); i++ {
+		logf.Log.Info("Attempting to create PVC:", "pvcName", c.pvcNames[i])
+		go c.createPvc(&c.optsList[i], &c.errs[i], &wg)
+	}
+	wg.Wait()
+
+	logf.Log.Info("Finished calling the create methods for all PVC candidates.")
 
 	return c
+}
+func (c *primitiveMaxVolConfig) createPvc(createOpts *coreV1.PersistentVolumeClaim, errBuf *error, wg *sync.WaitGroup) {
+	// Get the test environment from the k8stest package
+	gTestEnv := k8stest.GetGTestEnv()
+	// Create the PVC.
+	pvc, err := gTestEnv.KubeInt.CoreV1().PersistentVolumeClaims(createOpts.ObjectMeta.Namespace).Create(context.TODO(), createOpts, metaV1.CreateOptions{})
+	*errBuf = err
+	c.uuid = append(c.uuid, string(pvc.UID))
+	wg.Done()
 }
 
 // verify msp used size
@@ -59,5 +91,69 @@ func (c *primitiveMaxVolConfig) verifyMspUsedSize(size int64) {
 func (c *primitiveMaxVolConfig) deletePVC() {
 	for _, pvc := range c.pvcNames {
 		k8stest.RmPVC(pvc, c.scName, common.NSDefault)
+	}
+}
+
+// Check that all volumes have been created successfully, that none of them are in the pending state,
+// that all of them have the right size
+func (c *primitiveMaxVolConfig) verifyVolumes() {
+	for ix := 0; ix < len(c.pvcNames); ix++ {
+		// Confirm that the PVC has been created
+		Expect(c.errs[ix]).To(BeNil(), "failed to create PVC %s", c.pvcNames[ix])
+
+		// Get the test environment from the k8stest package
+		gTestEnv := k8stest.GetGTestEnv()
+		namespace := common.NSDefault
+		volName := c.pvcNames[ix]
+		// Confirm the PVC has been created.
+		PVCApi := gTestEnv.KubeInt.CoreV1().PersistentVolumeClaims
+		pvc, getPvcErr := PVCApi(namespace).Get(context.TODO(), volName, metaV1.GetOptions{})
+		Expect(getPvcErr).To(BeNil(), "Failed to get PVC %s", volName)
+		Expect(pvc).ToNot(BeNil())
+
+		// Wait for the PVC to be bound.
+		Eventually(func() coreV1.PersistentVolumeClaimPhase {
+			return k8stest.GetPvcStatusPhase(volName, namespace)
+		},
+			defTimeoutSecs, // timeout
+			"1s",           // polling interval
+		).Should(Equal(coreV1.ClaimBound))
+
+		// Refresh the PVC contents, so that we can get the PV name.
+		pvc, getPvcErr = PVCApi(common.NSDefault).Get(context.TODO(), volName, metaV1.GetOptions{})
+		Expect(getPvcErr).To(BeNil())
+		Expect(pvc).ToNot(BeNil())
+		logf.Log.Info("Created", "volume", pvc.Spec.VolumeName, "uuid", pvc.ObjectMeta.UID)
+
+		// Wait for the PV to be provisioned
+		Eventually(func() *coreV1.PersistentVolume {
+			pv, getPvErr := gTestEnv.KubeInt.CoreV1().PersistentVolumes().Get(context.TODO(), pvc.Spec.VolumeName, metaV1.GetOptions{})
+			if getPvErr != nil {
+				return nil
+			}
+			return pv
+
+		},
+			defTimeoutSecs, // timeout
+			"1s",           // polling interval
+		).Should(Not(BeNil()))
+
+		// Wait for the PV to be bound.
+		Eventually(func() coreV1.PersistentVolumePhase {
+			return k8stest.GetPvStatusPhase(pvc.Spec.VolumeName)
+		},
+			defTimeoutSecs, // timeout
+			"1s",           // polling interval
+		).Should(Equal(coreV1.VolumeBound))
+
+		Eventually(func() *v1alpha1.MayastorVolume {
+			return k8stest.GetMSV(string(pvc.ObjectMeta.UID))
+		},
+			defTimeoutSecs,
+			"1s",
+		).Should(Not(BeNil()))
+
+		logf.Log.Info("Created", "volume", volName, "uuid", pvc.ObjectMeta.UID, "storageClass", c.scName)
+
 	}
 }

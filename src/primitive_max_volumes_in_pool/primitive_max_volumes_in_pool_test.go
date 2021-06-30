@@ -41,14 +41,29 @@ var _ = Describe("Large number of volumes in pool tests", func() {
 	})
 	It("should verify serial creation of maximum number of  volumes in pool test", func() {
 		c := generatePrimitiveMaxVolConfig("primitive-max-volume-pool", 3)
-		c.primitiveMaxVolumeInPoolTest()
+		c.serialMaxVolumeInPoolTest()
+	})
+
+	It("should verify concurrent creation of maximum number of  volumes in pool test", func() {
+		c := generatePrimitiveMaxVolConfig("primitive-max-volume-pool", 3)
+		c.concurrentMaxVolumeInPoolTest()
 	})
 
 })
 
-func (c *primitiveMaxVolConfig) primitiveMaxVolumeInPoolTest() {
+func (c *primitiveMaxVolConfig) serialMaxVolumeInPoolTest() {
 	c.createSC()
-	c.createPVC()
+	c.createPVCs()
+	c.verifyMspUsedSize(int64(1024 * 1024 * c.pvcSize * c.volumeCount))
+	c.deletePVC()
+	c.deleteSC()
+	c.verifyMspUsedSize(0)
+}
+
+func (c *primitiveMaxVolConfig) concurrentMaxVolumeInPoolTest() {
+	c.createSC()
+	c.createVolumes()
+	c.verifyVolumes()
 	c.verifyMspUsedSize(int64(1024 * 1024 * c.pvcSize * c.volumeCount))
 	c.deletePVC()
 	c.deleteSC()

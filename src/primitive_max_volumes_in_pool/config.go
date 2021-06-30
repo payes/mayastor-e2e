@@ -4,6 +4,10 @@ import (
 	"fmt"
 	"mayastor-e2e/common"
 	"mayastor-e2e/common/e2e_config"
+
+	coreV1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	// . "github.com/onsi/gomega"
 )
 
@@ -20,6 +24,8 @@ type primitiveMaxVolConfig struct {
 	pvcNames    []string
 	pvcSize     int
 	uuid        []string
+	errs        []error
+	optsList    []coreV1.PersistentVolumeClaim
 }
 
 func generatePrimitiveMaxVolConfig(testName string, replicasCount int) *primitiveMaxVolConfig {
@@ -35,7 +41,28 @@ func generatePrimitiveMaxVolConfig(testName string, replicasCount int) *primitiv
 	for ix := 0; ix < c.volumeCount; ix++ {
 		//generate pvc name
 		pvcName := fmt.Sprintf("%s-pvc-%d", testName, ix)
+		volSizeMbStr := fmt.Sprintf("%dMi", c.pvcSize)
+		// VolumeMode: Filesystem
+		var fileSystemVolumeMode = coreV1.PersistentVolumeFilesystem
+		opts := coreV1.PersistentVolumeClaim{
+			ObjectMeta: metaV1.ObjectMeta{
+				Name:      pvcName,
+				Namespace: common.NSDefault,
+			},
+			Spec: coreV1.PersistentVolumeClaimSpec{
+				StorageClassName: &c.scName,
+				AccessModes:      []coreV1.PersistentVolumeAccessMode{coreV1.ReadWriteOnce},
+				Resources: coreV1.ResourceRequirements{
+					Requests: coreV1.ResourceList{
+						coreV1.ResourceStorage: resource.MustParse(volSizeMbStr),
+					},
+				},
+				VolumeMode: &fileSystemVolumeMode,
+			},
+		}
+
 		c.pvcNames = append(c.pvcNames, pvcName)
+		c.optsList = append(c.optsList, opts)
 	}
 
 	return c
