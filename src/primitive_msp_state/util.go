@@ -6,7 +6,6 @@ import (
 	"mayastor-e2e/common/custom_resources/api/types/v1alpha1"
 	"mayastor-e2e/common/k8stest"
 	"mayastor-e2e/common/mayastorclient"
-	"mayastor-e2e/common/mayastorclient/grpc"
 
 	"time"
 
@@ -70,7 +69,7 @@ func verifyMspCrdAndGrpcState() {
 func verifyMspState(crPool v1alpha1.MayastorPool,
 	grpcPool mayastorclient.MayastorPool) bool {
 	var status bool
-	if crPool.Status.State == grpcStateToCrdstate(grpcPool.State) {
+	if crPool.Status.State == k8stest.MspGrpcStateToCrdstate(grpcPool.State) {
 		status = true
 	}
 	return status
@@ -108,21 +107,20 @@ func (c *mspStateConfig) createReplica() {
 		nodeAddrs = append(nodeAddrs, node.IPAddress)
 		mayastorPools, err := mayastorclient.ListPools(nodeAddrs)
 		Expect(err).ToNot(HaveOccurred())
-		if len(mayastorPools) != 0 {
-			for _, mayastorPool := range mayastorPools {
-				Eventually(func() error {
-					err = mayastorclient.CreateReplica(node.IPAddress, c.uuid, uint64(c.replicaSize), mayastorPool.Name)
-					Expect(err).ToNot(HaveOccurred(), "Failed to create replica by gRPC")
-					return nil
-				},
-					c.poolCreateTimeout.Seconds(), // timeout
-					"1s",                          // polling interval
-				).Should(BeNil(), "Failed to delete pool")
+		Expect(len(mayastorPools)).ToNot(BeZero(), "Invalid number of pool on node %s", node.NodeName)
+		for _, mayastorPool := range mayastorPools {
+			Eventually(func() error {
+				err = mayastorclient.CreateReplica(node.IPAddress, c.uuid, uint64(c.replicaSize), mayastorPool.Name)
+				Expect(err).ToNot(HaveOccurred(), "Failed to create replica by gRPC")
+				return nil
+			},
+				c.poolCreateTimeout.Seconds(), // timeout
+				"1s",                          // polling interval
+			).Should(BeNil(), "Failed to delete pool")
 
-			}
-		} else {
-			logf.Log.Info("Node", "Name", node.NodeName, "Pool Count", len(mayastorPools))
 		}
+
+		logf.Log.Info("Node", "Name", node.NodeName, "Pool Count", len(mayastorPools))
 
 	}
 
@@ -165,17 +163,4 @@ func (c *mspStateConfig) checkPoolUsedSize(poolName string, replicaSize int64) e
 		}
 	}
 	return errors.Errorf("pool %s used size did not reconcile in %d seconds", poolName, timeoutSecs)
-}
-
-func grpcStateToCrdstate(mspState grpc.PoolState) string {
-	switch mspState {
-	case 0:
-		return "unknown"
-	case 1:
-		return "online"
-	case 2:
-		return "degraded"
-	default:
-		return "faulted"
-	}
 }

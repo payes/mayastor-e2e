@@ -11,7 +11,7 @@ import (
 
 func TestMspState(t *testing.T) {
 	// Initialise test and set class and file names for reports
-	k8stest.InitTesting(t, " Test mayastor pool state", "primitive_msp_state")
+	k8stest.InitTesting(t, "Primitive MSP state test", "primitive_msp_state")
 }
 
 var _ = BeforeSuite(func(done Done) {
