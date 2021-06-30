@@ -25,6 +25,7 @@ profiles[nightly]="
 csi
 resource_check
 primitive_replicas
+primitive_msp_deletion
 "
 
 profiles[c1]="
