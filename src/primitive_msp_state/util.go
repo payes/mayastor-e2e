@@ -64,8 +64,8 @@ func verifyMspCrdAndGrpcState() {
 
 // verifyMspState will verify msp state via crd  and grpc
 // gRPC report msp status as "POOL_UNKNOWN","POOL_ONLINE","POOL_DEGRADED","POOL_FAULTED"
-// CRD report msp status as "unknown", "online", "degraded", "faulted"
-// CRDs report as online
+// CRD report msp status as "pending", "online", "degraded", "faulted" and "offline"
+//pool state can be offline in CRDs but there is no such state in gRPC
 func verifyMspState(crPool v1alpha1.MayastorPool,
 	grpcPool mayastorclient.MayastorPool) bool {
 	var status bool
