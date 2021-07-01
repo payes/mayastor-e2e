@@ -120,8 +120,6 @@ func (c *mspStateConfig) createReplica() {
 
 		}
 
-		logf.Log.Info("Node", "Name", node.NodeName, "Pool Count", len(mayastorPools))
-
 	}
 
 }
@@ -139,7 +137,7 @@ func (c *mspStateConfig) removeReplica() {
 		address = append(address, node.IPAddress)
 	}
 	Eventually(func() error {
-		err = mayastorclient.RmReplicas(address)
+		err = mayastorclient.RmNodeReplicas(address)
 		Expect(err).ToNot(HaveOccurred(), "failed to remove replicas")
 		return nil
 	},
@@ -153,7 +151,7 @@ func (c *mspStateConfig) removeReplica() {
 func (c *mspStateConfig) checkPoolUsedSize(poolName string, replicaSize int64) error {
 	timeoutSecs := int(c.poolUsageTimeout.Seconds())
 	sleepTimeSecs := int(c.sleepTime.Seconds())
-	logf.Log.Info("Waiting for pool used size", "name", poolName)
+	logf.Log.Info("Waiting for pool used size", "name", poolName, "Expected Used size", replicaSize)
 	for ix := 0; ix < (timeoutSecs+sleepTimeSecs-1)/sleepTimeSecs; ix++ {
 		time.Sleep(time.Duration(sleepTimeSecs) * time.Second)
 		pool, err := custom_resources.GetMsPool(poolName)
