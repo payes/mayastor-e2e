@@ -7,6 +7,7 @@ import (
 	"mayastor-e2e/common/custom_resources"
 	"mayastor-e2e/common/custom_resources/api/types/v1alpha1"
 	"strings"
+	"sync"
 
 	"mayastor-e2e/common"
 
@@ -326,4 +327,19 @@ func CheckForPVs() (bool, error) {
 		}
 	}
 	return foundResources, err
+}
+
+func CreatePvc(createOpts *coreV1.PersistentVolumeClaim, errBuf *error, uuid *string, wg *sync.WaitGroup) {
+	// Create the PVC.
+	pvc, err := gTestEnv.KubeInt.CoreV1().PersistentVolumeClaims(createOpts.ObjectMeta.Namespace).Create(context.TODO(), createOpts, metaV1.CreateOptions{})
+	*errBuf = err
+	*uuid = string(pvc.UID)
+	wg.Done()
+}
+
+func DeletePvc(volName string, namespace string, errBuf *error, wg *sync.WaitGroup) {
+	// Delete the PVC.
+	err := gTestEnv.KubeInt.CoreV1().PersistentVolumeClaims(namespace).Delete(context.TODO(), volName, metaV1.DeleteOptions{})
+	*errBuf = err
+	wg.Done()
 }

@@ -1,7 +1,6 @@
 package primitive_max_volumes_in_pool
 
 import (
-	"context"
 	"fmt"
 	"mayastor-e2e/common"
 	"mayastor-e2e/common/custom_resources"
@@ -13,7 +12,6 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
 	coreV1 "k8s.io/api/core/v1"
-	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -51,7 +49,7 @@ func (c *primitiveMaxVolConfig) createVolumes() *primitiveMaxVolConfig {
 	var wg sync.WaitGroup
 	wg.Add(len(c.pvcNames))
 	for i := 0; i < len(c.pvcNames); i++ {
-		go c.createPvc(&c.optsList[i], &c.createErrs[i], &c.uuid[i], &wg)
+		go k8stest.CreatePvc(&c.optsList[i], &c.createErrs[i], &c.uuid[i], &wg)
 	}
 	wg.Wait()
 
@@ -60,38 +58,18 @@ func (c *primitiveMaxVolConfig) createVolumes() *primitiveMaxVolConfig {
 	return c
 }
 
-func (c *primitiveMaxVolConfig) createPvc(createOpts *coreV1.PersistentVolumeClaim, errBuf *error, uuid *string, wg *sync.WaitGroup) {
-	// Get the test environment from the k8stest package
-	gTestEnv := k8stest.GetGTestEnv()
-	// Create the PVC.
-	pvc, err := gTestEnv.KubeInt.CoreV1().PersistentVolumeClaims(createOpts.ObjectMeta.Namespace).Create(context.TODO(), createOpts, metaV1.CreateOptions{})
-	*errBuf = err
-	*uuid = string(pvc.UID)
-	wg.Done()
-}
-
 // removeVolumes will remove volumes
 func (c *primitiveMaxVolConfig) removeVolumes() *primitiveMaxVolConfig {
 	// Create the volumes
 	var wg sync.WaitGroup
 	wg.Add(len(c.pvcNames))
 	for i := 0; i < len(c.pvcNames); i++ {
-		go c.deletePvc(c.pvcNames[i], &c.createErrs[i], &wg)
+		go k8stest.DeletePvc(c.pvcNames[i], common.NSDefault, &c.createErrs[i], &wg)
 	}
 	wg.Wait()
-
 	logf.Log.Info("Finished calling the delete methods for all PVC candidates.")
 
 	return c
-}
-
-func (c *primitiveMaxVolConfig) deletePvc(volName string, errBuf *error, wg *sync.WaitGroup) {
-	// Get the test environment from the k8stest package
-	PVCApi := k8stest.GetGTestEnv().KubeInt.CoreV1().PersistentVolumeClaims
-	// Create the PVC.
-	err := PVCApi(common.NSDefault).Delete(context.TODO(), volName, metaV1.DeleteOptions{})
-	*errBuf = err
-	wg.Done()
 }
 
 // verify msp used size
@@ -134,13 +112,9 @@ func (c *primitiveMaxVolConfig) verifyVolumesCreation() {
 		// Confirm that the PVC has been created
 		Expect(c.createErrs[ix]).To(BeNil(), "failed to create PVC %s", c.pvcNames[ix])
 
-		// Get the test environment from the k8stest package
-		gTestEnv := k8stest.GetGTestEnv()
 		namespace := common.NSDefault
 		volName := c.pvcNames[ix]
-		// Confirm the PVC has been created.
-		PVCApi := gTestEnv.KubeInt.CoreV1().PersistentVolumeClaims
-		pvc, getPvcErr := PVCApi(namespace).Get(context.TODO(), volName, metaV1.GetOptions{})
+		pvc, getPvcErr := k8stest.GetPVC(volName, namespace)
 		Expect(getPvcErr).To(BeNil(), "Failed to get PVC %s", volName)
 		Expect(pvc).ToNot(BeNil())
 
@@ -153,14 +127,14 @@ func (c *primitiveMaxVolConfig) verifyVolumesCreation() {
 		).Should(Equal(coreV1.ClaimBound))
 
 		// Refresh the PVC contents, so that we can get the PV name.
-		pvc, getPvcErr = PVCApi(common.NSDefault).Get(context.TODO(), volName, metaV1.GetOptions{})
+		pvc, getPvcErr = k8stest.GetPVC(volName, namespace)
 		Expect(getPvcErr).To(BeNil())
 		Expect(pvc).ToNot(BeNil())
 		logf.Log.Info("Created", "volume", pvc.Spec.VolumeName, "uuid", pvc.ObjectMeta.UID)
 
 		// Wait for the PV to be provisioned
 		Eventually(func() *coreV1.PersistentVolume {
-			pv, getPvErr := gTestEnv.KubeInt.CoreV1().PersistentVolumes().Get(context.TODO(), pvc.Spec.VolumeName, metaV1.GetOptions{})
+			pv, getPvErr := k8stest.GetPV(pvc.Spec.VolumeName)
 			if getPvErr != nil {
 				return nil
 			}
