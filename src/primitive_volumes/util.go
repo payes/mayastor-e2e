@@ -3,6 +3,7 @@ package primitive_volumes
 import (
 	"mayastor-e2e/common"
 	"mayastor-e2e/common/k8stest"
+	"sync"
 
 	. "github.com/onsi/gomega"
 )
@@ -59,4 +60,34 @@ func (c *pvcConcurrentConfig) verifyVolumesDeletion() {
 			"1s",           // polling interval
 		).Should(Equal(true))
 	}
+}
+
+func (c *pvcConcurrentConfig) pvcConcurrentTest() {
+	c.createStorageClass()
+	var wg sync.WaitGroup
+	wg.Add(len(c.pvcNames))
+	for i := 0; i < len(c.pvcNames); i++ {
+		go k8stest.CreatePvc(&c.optsList[i], &c.createErrs[i], &c.uuid[i], &wg)
+	}
+	wg.Wait()
+	c.verifyVolumesCreation()
+	wg.Add(len(c.pvcNames))
+	for i := 0; i < len(c.pvcNames); i++ {
+		go k8stest.DeletePvc(c.pvcNames[i], common.NSDefault, &c.createErrs[i], &wg)
+	}
+	wg.Wait()
+	c.verifyVolumesDeletion()
+	c.deleteSC()
+}
+
+func (c *pvcConcurrentConfig) pvcSerialTest() {
+	c.createStorageClass()
+
+	for _, pvcName := range c.pvcNames {
+		c.createSerialPVC(pvcName)
+	}
+	for _, pvcName := range c.pvcNames {
+		c.deleteSerialPVC(pvcName)
+	}
+	c.deleteSC()
 }
