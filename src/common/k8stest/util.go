@@ -478,13 +478,15 @@ func WaitPodComplete(podName string, sleepTimeSecs, timeoutSecs int) error {
 func MspGrpcStateToCrdstate(mspState grpc.PoolState) string {
 	switch mspState {
 	case 0:
-		return "unknown"
+		return "pending"
 	case 1:
 		return "online"
 	case 2:
 		return "degraded"
-	default:
+	case 3:
 		return "faulted"
+	default:
+		return "offline"
 	}
 }
 

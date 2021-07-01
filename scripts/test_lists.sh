@@ -26,6 +26,7 @@ csi
 resource_check
 primitive_msp_state
 primitive_replicas
+primitive_msp_deletion
 "
 
 profiles[c1]="
@@ -87,6 +88,7 @@ control_plane_rescheduling
 expand_msp_disk
 pvc_waitforfirstconsumer
 synchronous_replication
+primitive_msp_deletion
 msv_rebuild
 pvc_delete
 maximum_vols_io
