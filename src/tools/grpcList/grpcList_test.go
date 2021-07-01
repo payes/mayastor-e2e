@@ -34,6 +34,7 @@ var _ = Describe("Mayastor utility: gRPC lists", func() {
 			nexuses, err := mayastorclient.ListNexuses(addrs)
 			logf.Log.Info(node.NodeName, "IP address", node.IPAddress)
 			if err == nil {
+				logf.Log.Info("nexuses", "count", len(nexuses))
 				for _, nexus := range nexuses {
 					logf.Log.Info("", "nexus", nexus)
 				}
@@ -42,6 +43,7 @@ var _ = Describe("Mayastor utility: gRPC lists", func() {
 			}
 			replicas, err := mayastorclient.ListReplicas(addrs)
 			if err == nil {
+				logf.Log.Info("replicas", "count", len(replicas))
 				for _, replica := range replicas {
 					logf.Log.Info("", "replica", replica)
 				}
@@ -49,6 +51,7 @@ var _ = Describe("Mayastor utility: gRPC lists", func() {
 				logf.Log.Info("replicas", "error", err)
 			}
 			pools, err := mayastorclient.ListPools(addrs)
+			logf.Log.Info("pools", "count", len(pools))
 			if err == nil {
 				for _, pool := range pools {
 					logf.Log.Info("", "pool", pool)
