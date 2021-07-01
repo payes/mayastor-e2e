@@ -180,6 +180,11 @@ type E2EConfig struct {
 		MayastorRestartTimeout int    `yaml:"mayastorRestartTimeout" env-default:"240"`
 		Iterations             int    `yaml:"iterations" env-default:"100"`
 	} `yaml:"primitiveMspDelete"`
+	ConcurrentPvcCreate struct {
+		Replicas    int `yaml:"replicas" env-default:"3"`
+		VolSize     int `yaml:"volMb" env-default:"10"`
+		VolumeCount int `yaml:"volumeCount" env-default:"100"`
+	} `yaml:"concurrentPvcCreate"`
 }
 
 var once sync.Once
