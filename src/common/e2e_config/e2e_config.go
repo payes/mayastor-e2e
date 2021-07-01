@@ -173,6 +173,12 @@ type E2EConfig struct {
 		PoolUsageSleepTimeSecs string `yaml:"poolUsageSleepTimeSecs" env-default:"2s"`
 		IterationCount         int    `yaml:"iterationCount" env-default:"100"`
 	} `yaml:"primitiveMspState"`
+	PrimitiveReplicas struct {
+		Iterations  int `yaml:"iterations" env-default:"100"`
+		StartSizeMb int `yaml:"startSizeMb" env-default:"128"`
+		EndSizeMb   int `yaml:"endSizeMb" env-default:"4096"`
+		SizeStepMb  int `yaml:"sizeStepMb" env-default:"64"`
+	} `yaml:"primitiveReplicas"`
 }
 
 var once sync.Once

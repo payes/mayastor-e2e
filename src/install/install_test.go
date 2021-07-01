@@ -2,6 +2,7 @@ package install
 
 import (
 	"fmt"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"mayastor-e2e/common/custom_resources"
 	"os/exec"
 	"testing"
@@ -43,9 +44,29 @@ func generateYamlFiles(imageTag string, mayastorNodes []string, e2eCfg *e2e_conf
 		locations.GetGeneratedYamlsDir(),
 		imageTag, registryDirective, coresDirective, poolDirectives,
 	)
+	logf.Log.Info("About to execute", "command", bashCmd)
 	cmd := exec.Command("bash", "-c", bashCmd)
 	out, err := cmd.CombinedOutput()
 	Expect(err).ToNot(HaveOccurred(), "%s", out)
+}
+
+func WaitForPoolCrd() bool {
+	const timoSleepSecs = 5
+	const timoSecs = 60
+	for ix := 0; ix < timoSecs; ix += timoSleepSecs {
+		_, err := custom_resources.ListMsPools()
+		if err != nil {
+			logf.Log.Info("WaitForPoolCrd", "error", err)
+			if k8serrors.IsNotFound(err) {
+				logf.Log.Info("WaitForPoolCrd, error := IsNotFound")
+			} else {
+				Expect(err).ToNot(HaveOccurred(), "%v", err)
+			}
+		} else {
+			return true
+		}
+	}
+	return false
 }
 
 // Install mayastor on the cluster under test.
@@ -79,7 +100,6 @@ func installMayastor() {
 	logf.Log.Info("Install", "tag", imageTag, "registry", registry, "# of mayastor instances", numMayastorInstances)
 
 	generateYamlFiles(imageTag, mayastorNodes, &e2eCfg)
-	deployDir := locations.GetMayastorDeployDir()
 	yamlsDir := locations.GetGeneratedYamlsDir()
 
 	k8stest.EnsureE2EAgent()
@@ -87,7 +107,7 @@ func installMayastor() {
 	err = k8stest.MkNamespace(common.NSMayastor())
 	Expect(err).ToNot(HaveOccurred())
 	k8stest.KubeCtlApplyYaml("moac-rbac.yaml", yamlsDir)
-	k8stest.KubeCtlApplyYaml("mayastorpoolcrd.yaml", deployDir)
+
 	k8stest.KubeCtlApplyYaml("etcd", yamlsDir)
 	k8stest.KubeCtlApplyYaml("nats-deployment.yaml", yamlsDir)
 	k8stest.KubeCtlApplyYaml("csi-daemonset.yaml", yamlsDir)
@@ -97,6 +117,9 @@ func installMayastor() {
 	ready, err := k8stest.MayastorReady(2, 540)
 	Expect(err).ToNot(HaveOccurred())
 	Expect(ready).To(BeTrue())
+
+	crdReady := WaitForPoolCrd()
+	Expect(crdReady).To(BeTrue())
 
 	// Now create configured pools on all nodes.
 	k8stest.CreateConfiguredPools()

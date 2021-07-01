@@ -25,6 +25,7 @@ profiles[nightly]="
 csi
 resource_check
 primitive_msp_state
+primitive_replicas
 "
 
 profiles[c1]="
@@ -92,6 +93,7 @@ maximum_vols_io
 single_msn_shutdown
 node_shutdown
 node_failure
+primitive_replicas
 "
 
 profiles[ondemand]="

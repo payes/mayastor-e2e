@@ -389,7 +389,7 @@ func ListReplicasInCluster() ([]mayastorclient.MayastorReplica, error) {
 func RmReplicasInCluster() error {
 	nodeAddrs, err := getClusterMayastorNodeIPAddrs()
 	if err == nil {
-		return mayastorclient.RmReplicas(nodeAddrs)
+		return mayastorclient.RmNodeReplicas(nodeAddrs)
 	}
 	return err
 }
@@ -486,4 +486,11 @@ func MspGrpcStateToCrdstate(mspState grpc.PoolState) string {
 	default:
 		return "faulted"
 	}
+}
+
+// WorkaroundForMQ1536 work around required for MQ-1536
+// TODO revisit.
+func WorkaroundForMQ1536() {
+	_, err := DeleteAllPoolFinalizers()
+	Expect(err).ToNot(HaveOccurred(), "failed to delete all pool finalizers (WorkaroundForMQ1536)")
 }

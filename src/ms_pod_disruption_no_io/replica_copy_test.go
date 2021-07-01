@@ -398,7 +398,7 @@ func (env *DisruptionEnv) PodLossTestDataCopy() {
 
 func TestMayastorPodLossNoIo(t *testing.T) {
 	// Initialise test and set class and file names for reports
-	k8stest.InitTesting(t, "Replica pod removal tests", "ms_pod_disruption")
+	k8stest.InitTesting(t, "Replica pod removal tests", "ms_pod_disruption_no_io")
 }
 
 var _ = Describe("Mayastor replica pod removal test", func() {
