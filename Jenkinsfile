@@ -67,21 +67,9 @@ pipeline {
             KUBECONFIG = "${env.WORKSPACE}/${e2e_environment}/modules/k8s/secrets/admin.conf"
           }
           steps {
-            // FIXME(arne-rusek): move hcloud's config to top-level dir in TF scripts
-            sh """
-              mkdir -p "${e2e_environment}/modules/k8s/secrets"
-            """
-            copyArtifacts(
-              projectName: "${k8s_job.getProjectName()}",
-              selector: specific("${k8s_job.getNumber()}"),
-              filter: "${e2e_environment}/modules/k8s/secrets/admin.conf",
-              target: "",
-              fingerprintArtifacts: true
-            )
-            sh 'kubectl get nodes -o wide'
-
             script {
               common = load "./pipelines/common/common.groovy"
+              common.GetClusterAdminConf(e2e_environment, k8s_job)
               loki_run_id = common.GetLokiRunId()
               sh "mkdir -p ./${e2e_reports_dir}"
 

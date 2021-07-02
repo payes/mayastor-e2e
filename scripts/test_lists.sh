@@ -24,6 +24,8 @@ ms_pod_disruption_rm_msv
 profiles[nightly]="
 csi
 resource_check
+primitive_msp_deletion
+primitive_max_volumes_in_pool
 "
 
 profiles[c1]="
@@ -85,12 +87,14 @@ control_plane_rescheduling
 expand_msp_disk
 pvc_waitforfirstconsumer
 synchronous_replication
+primitive_msp_deletion
 msv_rebuild
 pvc_delete
 maximum_vols_io
 single_msn_shutdown
 node_shutdown
 node_failure
+primitive_replicas
 "
 
 profiles[ondemand]="

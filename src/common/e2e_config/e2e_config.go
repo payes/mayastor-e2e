@@ -169,6 +169,21 @@ type E2EConfig struct {
 		VolMb       int `yaml:"volMb" env-default:"100"`
 		VolumeCount int `yaml:"volumeCountPerPod" env-default:"102"`
 	} `yaml:"primitiveMaxVolsInPool"`
+	PrimitiveReplicas struct {
+		Iterations  int `yaml:"iterations" env-default:"100"`
+		StartSizeMb int `yaml:"startSizeMb" env-default:"128"`
+		EndSizeMb   int `yaml:"endSizeMb" env-default:"4096"`
+		SizeStepMb  int `yaml:"sizeStepMb" env-default:"64"`
+	} `yaml:"primitiveReplicas"`
+	PrimitiveMspDelete struct {
+		ReplicaSize            int    `yaml:"replicaSize" env-default:"10000000"`
+		ReplicasTimeoutSecs    string `yaml:"replicasTimeoutSecs" env-default:"30s"`
+		PoolUsageTimeoutSecs   string `yaml:"poolUsageTimeoutSecs" env-default:"30s"`
+		PoolDeleteTimeoutSecs  string `yaml:"poolDeleteTimeoutSecs" env-default:"40s"`
+		PoolCreateTimeoutSecs  string `yaml:"poolCreateTimeoutSecs" env-default:"20s"`
+		MayastorRestartTimeout int    `yaml:"mayastorRestartTimeout" env-default:"240"`
+		Iterations             int    `yaml:"iterations" env-default:"100"`
+	} `yaml:"primitiveMspDelete"`
 }
 
 var once sync.Once
