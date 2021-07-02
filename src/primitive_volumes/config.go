@@ -28,7 +28,7 @@ type pvcConcurrentConfig struct {
 	volumeCount    int
 }
 
-func generatePvcConcurrentConfig(testName string, volumeCount int) *pvcConcurrentConfig {
+func generatePvcConcurrentConfig(testName string, volCount int) *pvcConcurrentConfig {
 	params := e2e_config.GetConfig().ConcurrentPvcCreate
 	c := &pvcConcurrentConfig{
 		protocol:       common.ShareProtoNvmf,
@@ -39,11 +39,11 @@ func generatePvcConcurrentConfig(testName string, volumeCount int) *pvcConcurren
 		iterations:     params.Iterations,
 		replicas:       params.Replicas,
 		scName:         testName + "-sc",
-		createErrs:     make([]error, volumeCount),
-		deleteErrs:     make([]error, volumeCount),
-		uuid:           make([]string, volumeCount),
-		volumeCount:    volumeCount,
 	}
+	c.volumeCount = volCount * params.VolumeMultipler
+	c.createErrs = make([]error, c.volumeCount)
+	c.deleteErrs = make([]error, c.volumeCount)
+	c.uuid = make([]string, c.volumeCount)
 
 	for ix := 0; ix < c.volumeCount; ix++ {
 		//generate pvc name

@@ -181,9 +181,10 @@ type E2EConfig struct {
 		Iterations             int    `yaml:"iterations" env-default:"100"`
 	} `yaml:"primitiveMspDelete"`
 	ConcurrentPvcCreate struct {
-		Replicas   int `yaml:"replicas" env-default:"1"`
-		VolSize    int `yaml:"volMb" env-default:"64"`
-		Iterations int `yaml:"iterations" env-default:"100"`
+		Replicas        int `yaml:"replicas" env-default:"1"`
+		VolSize         int `yaml:"volMb" env-default:"64"`
+		Iterations      int `yaml:"iterations" env-default:"100"`
+		VolumeMultipler int `yaml:"volumeMultipler" env-default:"2"`
 	} `yaml:"concurrentPvcCreate"`
 }
 
