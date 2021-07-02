@@ -125,26 +125,9 @@ func (c *mspStateConfig) createReplica() {
 }
 
 // remove replicas
-func (c *mspStateConfig) removeReplica() {
-	nodes, err := k8stest.GetNodeLocs()
-	Expect(err).ToNot(HaveOccurred())
-	var address []string
-	for _, node := range nodes {
-		if !node.MayastorNode {
-			continue
-		}
-		logf.Log.Info("", "node", node)
-		address = append(address, node.IPAddress)
-	}
-	Eventually(func() error {
-		err = mayastorclient.RmNodeReplicas(address)
-		Expect(err).ToNot(HaveOccurred(), "failed to remove replicas")
-		return nil
-	},
-		c.poolDeleteTimeout.Seconds(), // timeout
-		"1s",                          // polling interval
-	).Should(BeNil(), "Failed to delete pool")
-
+func removeReplica() {
+	err := k8stest.RmReplicasInCluster()
+	Expect(err).ToNot(HaveOccurred(), "Failed to remove replicas from cluster")
 }
 
 // checkPoolUsedSize verify mayastor pool used size

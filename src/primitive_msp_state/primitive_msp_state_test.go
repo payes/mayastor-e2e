@@ -53,7 +53,7 @@ func (c *mspStateConfig) mspCrdPresenceTest() {
 		verifyMspCrdAndGrpcState()
 		c.createReplica()
 		c.verifyMspUsedSize(c.replicaSize)
-		c.removeReplica()
+		removeReplica()
 		c.verifyMspUsedSize(0)
 	}
 }
