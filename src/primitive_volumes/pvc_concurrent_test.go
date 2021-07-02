@@ -40,11 +40,13 @@ var _ = Describe("Primitive large number of volume operations", func() {
 		Expect(err).ToNot(HaveOccurred())
 	})
 	It("should verify serial volume creation", func() {
-		c := generatePvcConcurrentConfig("serial-pvc-create")
+		volCount := msnList()
+		c := generatePvcConcurrentConfig("serial-pvc-create", volCount)
 		c.pvcSerialTest()
 	})
 	It("should verify concurrent volume creation", func() {
-		c := generatePvcConcurrentConfig("concurrent-pvc-create")
+		volCount := msnList()
+		c := generatePvcConcurrentConfig("concurrent-pvc-create", volCount)
 		c.pvcConcurrentTest()
 	})
 })

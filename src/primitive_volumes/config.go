@@ -17,7 +17,7 @@ type pvcConcurrentConfig struct {
 	volType        common.VolumeType
 	volBindingMode storageV1.VolumeBindingMode
 	replicas       int
-	volCount       int
+	iterations     int
 	scName         string
 	pvcNames       []string
 	pvcSize        int
@@ -25,9 +25,10 @@ type pvcConcurrentConfig struct {
 	createErrs     []error
 	deleteErrs     []error
 	optsList       []coreV1.PersistentVolumeClaim
+	volumeCount    int
 }
 
-func generatePvcConcurrentConfig(testName string) *pvcConcurrentConfig {
+func generatePvcConcurrentConfig(testName string, volumeCount int) *pvcConcurrentConfig {
 	params := e2e_config.GetConfig().ConcurrentPvcCreate
 	c := &pvcConcurrentConfig{
 		protocol:       common.ShareProtoNvmf,
@@ -35,15 +36,16 @@ func generatePvcConcurrentConfig(testName string) *pvcConcurrentConfig {
 		fsType:         common.Ext4FsType,
 		volBindingMode: storageV1.VolumeBindingImmediate,
 		pvcSize:        params.VolSize,
-		volCount:       params.VolumeCount,
+		iterations:     params.Iterations,
 		replicas:       params.Replicas,
 		scName:         testName + "-sc",
-		createErrs:     make([]error, params.VolumeCount),
-		deleteErrs:     make([]error, params.VolumeCount),
-		uuid:           make([]string, params.VolumeCount),
+		createErrs:     make([]error, volumeCount),
+		deleteErrs:     make([]error, volumeCount),
+		uuid:           make([]string, volumeCount),
+		volumeCount:    volumeCount,
 	}
 
-	for ix := 0; ix < c.volCount; ix++ {
+	for ix := 0; ix < c.volumeCount; ix++ {
 		//generate pvc name
 		pvcName := fmt.Sprintf("%s-pvc-%d", testName, ix)
 		volSizeMbStr := fmt.Sprintf("%dMi", c.pvcSize)

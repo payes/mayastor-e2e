@@ -65,29 +65,45 @@ func (c *pvcConcurrentConfig) verifyVolumesDeletion() {
 func (c *pvcConcurrentConfig) pvcConcurrentTest() {
 	c.createStorageClass()
 	var wg sync.WaitGroup
-	wg.Add(len(c.pvcNames))
-	for i := 0; i < len(c.pvcNames); i++ {
-		go k8stest.CreatePvc(&c.optsList[i], &c.createErrs[i], &c.uuid[i], &wg)
+	for ix := 0; ix < c.iterations; ix++ {
+		wg.Add(len(c.pvcNames))
+		for i := 0; i < len(c.pvcNames); i++ {
+			go k8stest.CreatePvc(&c.optsList[i], &c.createErrs[i], &c.uuid[i], &wg)
+		}
+		wg.Wait()
+		c.verifyVolumesCreation()
+		wg.Add(len(c.pvcNames))
+		for i := 0; i < len(c.pvcNames); i++ {
+			go k8stest.DeletePvc(c.pvcNames[i], common.NSDefault, &c.createErrs[i], &wg)
+		}
+		wg.Wait()
+		c.verifyVolumesDeletion()
 	}
-	wg.Wait()
-	c.verifyVolumesCreation()
-	wg.Add(len(c.pvcNames))
-	for i := 0; i < len(c.pvcNames); i++ {
-		go k8stest.DeletePvc(c.pvcNames[i], common.NSDefault, &c.createErrs[i], &wg)
-	}
-	wg.Wait()
-	c.verifyVolumesDeletion()
 	c.deleteSC()
 }
 
 func (c *pvcConcurrentConfig) pvcSerialTest() {
 	c.createStorageClass()
-
-	for _, pvcName := range c.pvcNames {
-		c.createSerialPVC(pvcName)
-	}
-	for _, pvcName := range c.pvcNames {
-		c.deleteSerialPVC(pvcName)
+	for ix := 0; ix < c.iterations; ix++ {
+		for _, pvcName := range c.pvcNames {
+			c.createSerialPVC(pvcName)
+		}
+		for _, pvcName := range c.pvcNames {
+			c.deleteSerialPVC(pvcName)
+		}
+		for _, pvcName := range c.pvcNames {
+			Eventually(func() bool {
+				return k8stest.IsPVCDeleted(pvcName, common.NSDefault)
+			},
+				defTimeoutSecs, // timeout
+				"1s",           // polling interval
+			).Should(Equal(true))
+		}
 	}
 	c.deleteSC()
+}
+func msnList() int {
+	msnList, err := k8stest.GetMayastorNodeNames()
+	Expect(err).ToNot(HaveOccurred())
+	return len(msnList)
 }
