@@ -37,6 +37,13 @@ func listPool(address string) ([]MayastorPool, error) {
 		logf.Log.Info("listPool", "error", err)
 		return poolInfos, err
 	}
+	defer func(conn *grpc.ClientConn) {
+		err := conn.Close()
+		if err != nil {
+			logf.Log.Info("listPool", "error on close", err)
+		}
+	}(conn)
+
 	c := mayastorGrpc.NewMayastorClient(conn)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -60,10 +67,6 @@ func listPool(address string) ([]MayastorPool, error) {
 		}
 	} else {
 		logf.Log.Info("listPool", "error", err)
-	}
-	closeErr := conn.Close()
-	if closeErr != nil {
-		logf.Log.Info("listPool", "error on close ", closeErr)
 	}
 	return poolInfos, err
 }

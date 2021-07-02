@@ -42,6 +42,13 @@ func listReplica(address string) ([]MayastorReplica, error) {
 		logf.Log.Info("listReplica", "error", err)
 		return replicaInfos, err
 	}
+	defer func(conn *grpc.ClientConn) {
+		err := conn.Close()
+		if err != nil {
+			logf.Log.Info("listReplicas", "error on close", err)
+		}
+	}(conn)
+
 	c := mayastorGrpc.NewMayastorClient(conn)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -67,10 +74,6 @@ func listReplica(address string) ([]MayastorReplica, error) {
 	} else {
 		logf.Log.Info("listReplicas", "error", err)
 	}
-	closeErr := conn.Close()
-	if closeErr != nil {
-		logf.Log.Info("listReplicas", "error on close", closeErr)
-	}
 	return replicaInfos, err
 }
 
@@ -83,8 +86,15 @@ func RmReplica(address string, uuid string) error {
 		logf.Log.Info("rmReplicas", "error", err)
 		return err
 	}
+	defer func(conn *grpc.ClientConn) {
+		err := conn.Close()
+		if err != nil {
+			logf.Log.Info("RmReplicas", "error on close", err)
+		}
+	}(conn)
 	c := mayastorGrpc.NewMayastorClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	// TODO: Remove unusually large timeout on destroy replica
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
 
 	req := mayastorGrpc.DestroyReplicaRequest{Uuid: uuid}
@@ -101,6 +111,12 @@ func CreateReplicaExt(address string, uuid string, size uint64, pool string, thi
 		logf.Log.Info("rmReplicas", "error", err)
 		return err
 	}
+	defer func(conn *grpc.ClientConn) {
+		err := conn.Close()
+		if err != nil {
+			logf.Log.Info("CreateReplicaExt", "error on close", err)
+		}
+	}(conn)
 	c := mayastorGrpc.NewMayastorClient(conn)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
