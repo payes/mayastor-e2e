@@ -40,12 +40,12 @@ var _ = Describe("Large number of volumes in pool tests", func() {
 		Expect(err).ToNot(HaveOccurred())
 	})
 	It("should verify serial creation of maximum number of  volumes in pool test", func() {
-		c := generatePrimitiveMaxVolConfig("primitive-max-volume-pool", 3)
+		c := generatePrimitiveMaxVolConfig("primitive-max-volume-pool")
 		c.serialMaxVolumeInPoolTest()
 	})
 
 	It("should verify concurrent creation of maximum number of  volumes in pool test", func() {
-		c := generatePrimitiveMaxVolConfig("primitive-max-volume-pool", 3)
+		c := generatePrimitiveMaxVolConfig("primitive-max-volume-pool")
 		c.concurrentMaxVolumeInPoolTest()
 	})
 

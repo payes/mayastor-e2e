@@ -166,8 +166,9 @@ type E2EConfig struct {
 		PodRescheduleTimeoutSecs int `yaml:"podRnscheduleTimeoutSecs" env-default:"180"`
 	} `yaml:"pvcDelete"`
 	PrimitiveMaxVolsInPool struct {
-		VolMb       int `yaml:"volMb" env-default:"100"`
-		VolumeCount int `yaml:"volumeCountPerPod" env-default:"102"`
+		VolMb              int `yaml:"volMb" env-default:"64"`
+		VolumeCountPerPool int `yaml:"volumeCountPerPod" env-default:"110"`
+		Replicas           int `yaml:"replicas" env-default:"1"`
 	} `yaml:"primitiveMaxVolsInPool"`
 	PrimitiveReplicas struct {
 		Iterations  int `yaml:"iterations" env-default:"100"`
