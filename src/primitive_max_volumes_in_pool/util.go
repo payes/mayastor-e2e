@@ -36,9 +36,10 @@ func (c *primitiveMaxVolConfig) deleteSC() {
 // createPVCs will create pvc
 func (c *primitiveMaxVolConfig) createPVCs() *primitiveMaxVolConfig {
 	// Create the volumes
-	for _, pvc := range c.pvcNames {
-		uid := k8stest.MkPVC(c.pvcSize, pvc, c.scName, common.VolFileSystem, common.NSDefault)
-		c.uuid = append(c.uuid, uid)
+	for i := 0; i < len(c.pvcNames); i++ {
+		pvc, err := k8stest.CreatePVC(&c.optsList[i], common.NSDefault)
+		c.createErrs[i] = err
+		c.uuid[i] = string(pvc.UID)
 	}
 	return c
 }

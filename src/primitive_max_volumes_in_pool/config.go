@@ -57,10 +57,6 @@ func generatePrimitiveMaxVolConfig(testName string) *primitiveMaxVolConfig {
 			volSizeMbStr := fmt.Sprintf("%dMi", c.pvcSize)
 			// VolumeMode: Filesystem
 			var fileSystemVolumeMode = coreV1.PersistentVolumeFilesystem
-			//node selector
-			nodeSelector := map[string]string{
-				"kubernetes.io/hostname": nodeName,
-			}
 			opts := coreV1.PersistentVolumeClaim{
 				ObjectMeta: metaV1.ObjectMeta{
 					Name:      pvcName,
@@ -75,9 +71,6 @@ func generatePrimitiveMaxVolConfig(testName string) *primitiveMaxVolConfig {
 						},
 					},
 					VolumeMode: &fileSystemVolumeMode,
-					Selector: &metaV1.LabelSelector{
-						MatchLabels: nodeSelector,
-					},
 				},
 			}
 			c.optsList = append(c.optsList, opts)

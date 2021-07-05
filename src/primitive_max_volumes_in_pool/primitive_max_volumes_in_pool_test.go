@@ -54,6 +54,7 @@ var _ = Describe("Large number of volumes in pool tests", func() {
 func (c *primitiveMaxVolConfig) serialMaxVolumeInPoolTest() {
 	c.createSC()
 	c.createPVCs()
+	c.verifyVolumesCreation()
 	c.verifyMspUsedSize(int64(1024 * 1024 * c.pvcSize * c.volumeCount))
 	c.deletePVC()
 	c.deleteSC()
