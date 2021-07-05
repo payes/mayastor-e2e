@@ -6,6 +6,7 @@ import (
 	"mayastor-e2e/common/custom_resources"
 	"mayastor-e2e/common/custom_resources/api/types/v1alpha1"
 	"mayastor-e2e/common/k8stest"
+	"mayastor-e2e/common/mayastorclient"
 	"sync"
 	"time"
 
@@ -79,7 +80,9 @@ func (c *primitiveMaxVolConfig) verifyMspUsedSize(size int64) {
 	crdPools, err := custom_resources.ListMsPools()
 	Expect(err).ToNot(HaveOccurred(), "List pools via CRD failed")
 	for _, crdPool := range crdPools {
-		err := checkPoolUsedSize(crdPool.Name, size)
+		replicaCount := poolReplicaCount(crdPool.Name, crdPool.Spec.Node)
+		expectedUsedPoolSize := 1024 * 1024 * size * int64(replicaCount)
+		err := checkPoolUsedSize(crdPool.Name, expectedUsedPoolSize)
 		Expect(err).ShouldNot(HaveOccurred(), "failed to verify used size of pool %s error %v", crdPool.Name, err)
 	}
 }
@@ -187,4 +190,31 @@ func (c *primitiveMaxVolConfig) verifyVolumesDeletion() {
 		).Should(Equal(true))
 
 	}
+}
+
+func poolReplicaCount(poolName string, nodeName string) int {
+	nodes, err := k8stest.GetNodeLocs()
+	Expect(err).To(BeNil(), "failed to get nodes")
+	var addrs []string
+	var count int
+	for _, node := range nodes {
+		if !node.MayastorNode {
+			continue
+		}
+		if node.NodeName == nodeName {
+			addrs = []string{node.IPAddress}
+			break
+		}
+	}
+	if len(addrs) != 0 {
+		replicas, err := mayastorclient.ListReplicas(addrs)
+		Expect(err).To(BeNil(), "failed to list replica on node %s", nodeName)
+		for _, replica := range replicas {
+			if replica.Pool == poolName {
+				count++
+			}
+		}
+	}
+
+	return count
 }
