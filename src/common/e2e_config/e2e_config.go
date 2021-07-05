@@ -183,8 +183,8 @@ type E2EConfig struct {
 	ConcurrentPvcCreate struct {
 		Replicas        int `yaml:"replicas" env-default:"1"`
 		VolSize         int `yaml:"volMb" env-default:"64"`
-		Iterations      int `yaml:"iterations" env-default:"100"`
-		VolumeMultipler int `yaml:"volumeMultipler" env-default:"2"`
+		Iterations      int `yaml:"iterations" env-default:"10"`
+		VolumeMultipler int `yaml:"volumeMultipler" env-default:"10"`
 	} `yaml:"concurrentPvcCreate"`
 }
 
