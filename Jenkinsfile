@@ -23,7 +23,7 @@ xray_self_ci_testplan='MQ-482'
 pipeline {
   agent none
   options {
-    timeout(time: 3, unit: 'HOURS')
+    timeout(time: 90, unit: 'MINUTES')
   }
 
   stages {

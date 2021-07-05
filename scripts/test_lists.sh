@@ -24,6 +24,7 @@ ms_pod_disruption_rm_msv
 profiles[nightly]="
 csi
 resource_check
+primitive_replicas
 primitive_msp_deletion
 primitive_max_volumes_in_pool
 "

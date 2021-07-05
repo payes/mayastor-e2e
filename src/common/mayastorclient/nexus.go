@@ -42,6 +42,13 @@ func listNexuses(address string) ([]MayastorNexus, error) {
 		logf.Log.Info("listNexuses", "error", err)
 		return nexusInfos, err
 	}
+	defer func(conn *grpc.ClientConn) {
+		err := conn.Close()
+		if err != nil {
+			logf.Log.Info("ListPools", "error on close", err)
+		}
+	}(conn)
+
 	c := mayastorGrpc.NewMayastorClient(conn)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -66,10 +73,6 @@ func listNexuses(address string) ([]MayastorNexus, error) {
 		}
 	} else {
 		logf.Log.Info("ListPools", "error", err)
-	}
-	closeErr := conn.Close()
-	if closeErr != nil {
-		logf.Log.Info("ListPools", "error on close", err)
 	}
 	return nexusInfos, err
 }
@@ -102,6 +105,13 @@ func FaultNexusChild(address string, Uuid string, Uri string) error {
 		logf.Log.Info("FaultNexusChild", "error", err)
 		return err
 	}
+	defer func(conn *grpc.ClientConn) {
+		err := conn.Close()
+		if err != nil {
+			logf.Log.Info("FaultNexusChild", "error on close", err)
+		}
+	}(conn)
+
 	c := mayastorGrpc.NewMayastorClient(conn)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -119,9 +129,5 @@ func FaultNexusChild(address string, Uuid string, Uri string) error {
 		logf.Log.Info("FaultNexusChild", "error", err)
 	}
 
-	closeErr := conn.Close()
-	if closeErr != nil {
-		logf.Log.Info("FaultNexusChild", "error", err)
-	}
 	return err
 }
