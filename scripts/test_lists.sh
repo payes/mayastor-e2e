@@ -27,6 +27,7 @@ resource_check
 primitive_msp_state
 primitive_replicas
 primitive_msp_deletion
+primitive_volumes
 "
 
 profiles[c1]="
