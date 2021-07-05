@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"mayastor-e2e/common/custom_resources"
 	"mayastor-e2e/common/e2e_config"
+	"mayastor-e2e/common/mayastorclient/grpc"
 	"os/exec"
 	"regexp"
 	"time"
@@ -471,6 +472,22 @@ func WaitPodComplete(podName string, sleepTimeSecs, timeoutSecs int) error {
 		}
 	}
 	return errors.Errorf("pod did not complete, phase %v", podPhase)
+}
+
+// MspGrpcStateToCrdstate return corresponding msp crd state
+func MspGrpcStateToCrdstate(mspState grpc.PoolState) string {
+	switch mspState {
+	case 0:
+		return "pending"
+	case 1:
+		return "online"
+	case 2:
+		return "degraded"
+	case 3:
+		return "faulted"
+	default:
+		return "offline"
+	}
 }
 
 // WorkaroundForMQ1536 work around required for MQ-1536
