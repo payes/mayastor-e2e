@@ -11,6 +11,11 @@ import (
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	timeoutSec   = 90
+	sleepTimeSec = 2
+)
+
 type pvcConcurrentConfig struct {
 	protocol       common.ShareProto
 	fsType         common.FileSystemType

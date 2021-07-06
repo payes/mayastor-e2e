@@ -1,11 +1,16 @@
 package primitive_volumes
 
 import (
+	"fmt"
 	"mayastor-e2e/common"
+	"mayastor-e2e/common/custom_resources"
 	"mayastor-e2e/common/k8stest"
 	"sync"
+	"time"
 
 	. "github.com/onsi/gomega"
+	"github.com/pkg/errors"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 var defTimeoutSecs = "90s"
@@ -80,6 +85,7 @@ func (c *pvcConcurrentConfig) pvcConcurrentTest() {
 		c.verifyVolumesDeletion()
 	}
 	c.deleteSC()
+	c.waitForMspUsedSize(0)
 }
 
 func (c *pvcConcurrentConfig) pvcSerialTest() {
@@ -91,19 +97,37 @@ func (c *pvcConcurrentConfig) pvcSerialTest() {
 		for _, pvcName := range c.pvcNames {
 			c.deleteSerialPVC(pvcName)
 		}
-		for _, pvcName := range c.pvcNames {
-			Eventually(func() bool {
-				return k8stest.IsPVCDeleted(pvcName, common.NSDefault)
-			},
-				defTimeoutSecs, // timeout
-				"1s",           // polling interval
-			).Should(Equal(true))
-		}
 	}
 	c.deleteSC()
+	c.waitForMspUsedSize(0)
 }
 func msnList() int {
 	msnList, err := k8stest.GetMayastorNodeNames()
 	Expect(err).ToNot(HaveOccurred())
 	return len(msnList)
+}
+
+// verify msp used size
+func (c *pvcConcurrentConfig) waitForMspUsedSize(size int64) {
+	// List Pools by CRDs
+	crdPools, err := custom_resources.ListMsPools()
+	Expect(err).ToNot(HaveOccurred(), "List pools via CRD failed")
+	for _, crdPool := range crdPools {
+		err := checkPoolUsedSize(crdPool.Name, size)
+		Expect(err).ShouldNot(HaveOccurred(), "failed to verify used size of pool %s error %v", crdPool.Name, err)
+	}
+}
+
+// checkPoolUsedSize verify mayastor pool used size
+func checkPoolUsedSize(poolName string, usedSize int64) error {
+	logf.Log.Info("Waiting for pool used size", "name", poolName)
+	for ix := 0; ix < (timeoutSec+sleepTimeSec-1)/sleepTimeSec; ix++ {
+		time.Sleep(time.Duration(sleepTimeSec) * time.Second)
+		pool, err := custom_resources.GetMsPool(poolName)
+		Expect(err).ToNot(HaveOccurred(), fmt.Sprintf("failed to get mayastor pool %s %v", poolName, err))
+		if pool.Status.Used == usedSize {
+			return nil
+		}
+	}
+	return errors.Errorf("pool %s used size did not reconcile in %d seconds", poolName, timeoutSec)
 }
