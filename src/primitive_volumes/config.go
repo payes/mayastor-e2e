@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	timeoutSec   = 90
+	timeoutSec   = 120
 	sleepTimeSec = 2
 )
 
