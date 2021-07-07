@@ -70,8 +70,6 @@ csi
 resource_check
 dynamic_provisioning
 pvc_stress_fio
-replica
-rebuild
 io_soak
 multiple_vols_pod_io
 mayastorpool_schema
