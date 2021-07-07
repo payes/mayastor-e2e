@@ -89,14 +89,12 @@ control_plane_rescheduling
 expand_msp_disk
 pvc_waitforfirstconsumer
 synchronous_replication
-primitive_msp_deletion
 msv_rebuild
 pvc_delete
 maximum_vols_io
 single_msn_shutdown
 node_shutdown
 node_failure
-primitive_replicas
 "
 
 profiles[ondemand]="
