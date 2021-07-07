@@ -24,11 +24,11 @@ ms_pod_disruption_rm_msv
 profiles[nightly]="
 csi
 resource_check
-primitive_msp_state
 primitive_replicas
 primitive_msp_deletion
-primitive_volumes
 "
+#primitive_msp_state
+#primitive_volumes
 
 profiles[c1]="
 basic_volume_io
