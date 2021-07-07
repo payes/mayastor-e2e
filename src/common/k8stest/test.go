@@ -244,7 +244,7 @@ func BeforeEachCheck() error {
 			logf.Log.Info("BeforeEachCheck failed", "error", err)
 		}
 	}
-	return err
+	return fmt.Errorf("unclean test cluster!!!\n%v", err)
 }
 
 // AfterEachCheck asserts that the state of mayastor resources has been restored.
