@@ -41,5 +41,4 @@ These commands will update the following files
 * Copy the appropriate yaml files across from the moac repository
 * The execute
   * ``` ./genGoCrdTypes.py ./mayastor*.yaml```
-  * ``` gofmt -w api/types/v1alpha1/mayastor*.go ```
 * Commit the changed files and raise a Pull Request

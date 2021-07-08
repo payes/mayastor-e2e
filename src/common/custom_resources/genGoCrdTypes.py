@@ -43,8 +43,7 @@ crdTypeMap = {
     'mayastornode':  'MayastorNode',
 }
 
-template = """
-package v1alpha1
+template = """package v1alpha1
 
 import metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -132,20 +131,29 @@ class GenGoCrd():
             contents = fp.read()
             ymls = list(yaml.safe_load_all(contents))
             if len(ymls) != 1:
-                raise Exception('{} contains multiple streams'.format(yamlfile))
+                raise Exception('{} contains multiple streams'.format(
+                                yamlfile))
 
-            schema = ymls[0]['spec']['versions'][0]['schema']['openAPIV3Schema']
-            spec = schema['properties']['spec']
-            status = schema['properties']['status']
+            schema = ymls[0]['spec']['versions'][0]['schema']
+            spec = schema['openAPIV3Schema']['properties']['spec']
+            status = schema['openAPIV3Schema']['properties']['status']
 
+            # ordered array of go structs as python dictionaries,
+            # format {name:{field1:type, field2:type}}
+            # ordered so that when rendered structs are declared before
+            # first use.
             goStructs = []
+
             specType = parseYaml(spec, goStructs, '_spec')
             statusType = parseYaml(status, goStructs, '_status')
             specType = self.fixupTypeName(specType)
             statusType = self.fixupTypeName(statusType)
+
+            # lines of text which are go statements defining the go structs
             defs = []
             for goStruct in goStructs:
                 defs.extend(self.fixupGoStructs(goStruct))
+
             self.templateDict = {
                 'defs': '\n'.join(defs),
                 'crdType': crdTypeMap[self.key],
@@ -200,6 +208,7 @@ class GenGoCrd():
         contents = template.format(**self.templateDict)
         with open(f, "w") as fp:
             fp.write(contents)
+        os.system('gofmt -w {}'.format(f))
 
 
 if __name__ == '__main__':
