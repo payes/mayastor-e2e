@@ -244,6 +244,9 @@ func BeforeEachCheck() error {
 			logf.Log.Info("BeforeEachCheck failed", "error", err)
 		}
 	}
+	if err != nil {
+		err = fmt.Errorf("not running test case, k8s cluster is not \"clean\"!!!\n%v", err)
+	}
 	return err
 }
 
