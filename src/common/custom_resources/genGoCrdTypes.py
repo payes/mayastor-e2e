@@ -11,6 +11,12 @@ yamltypes2go = {
     'string': 'string'
 }
 
+# type name mapping for structs and sub structs found within a CRD.
+# we want some of the sub structs to be visible to calling code,
+# so that we can return instances/arrays of these types.
+# _spec and _status are top level tokens, selected to avoid collision
+# with naturally occurring tokens like spec,
+# because for example the MSV status has a Spec field.
 typeNameMaps = {
     'mayastorvolume': {
         '_spec': 'MayastorVolumeSpec',
@@ -62,6 +68,10 @@ type {crdListType} struct {{
 
 
 def parseYamlArray(ydict, goStructs, name):
+    """
+    parse the yaml dictiontary (ydict) array entry and
+    populate the list of go structs (goStructs)
+    """
     typ = ydict['type']
     format = ydict.get('format')
     if typ in ['array']:
@@ -77,6 +87,10 @@ def parseYamlArray(ydict, goStructs, name):
 
 
 def parseYaml(ydict, goStructs, name):
+    """
+    parse the yaml dictiontary (ydict) and
+    populate the list of go structs (goStructs)
+    """
     if ydict['type'] not in ['object', 'array']:
         return ydict['type']
     elif ydict['type'] == 'object':
@@ -101,10 +115,13 @@ def parseYaml(ydict, goStructs, name):
 
 
 def capitalize(s):
+    """
+    Capitalise just the 1st element without lower casing the other elements
+    """
     return s[0:1].capitalize() + s[1:]
 
 
-class genGoCrd():
+class GenGoCrd():
     def __init__(self, yamlfile):
         self.key = os.path.basename(yamlfile).split('.')[0]
         self.typeNameMap = typeNameMaps.get(self.key)
@@ -114,6 +131,9 @@ class genGoCrd():
         with open(yamlfile, mode='r') as fp:
             contents = fp.read()
             ymls = list(yaml.safe_load_all(contents))
+            if len(ymls) != 1:
+                raise Exception('{} contains multiple streams'.format(yamlfile))
+
             schema = ymls[0]['spec']['versions'][0]['schema']['openAPIV3Schema']
             spec = schema['properties']['spec']
             status = schema['properties']['status']
@@ -176,7 +196,7 @@ class genGoCrd():
                 '{}.go'.format(self.key)
                 )
             )
-        print(f)
+        print('Generating file {}'.format(f))
         contents = template.format(**self.templateDict)
         with open(f, "w") as fp:
             fp.write(contents)
@@ -184,5 +204,5 @@ class genGoCrd():
 
 if __name__ == '__main__':
     for file in sys.argv[1:]:
-        g = genGoCrd(file)
+        g = GenGoCrd(file)
         g.generateGoFile()

@@ -6,20 +6,25 @@ The definitions are cotained in following files
 * `mayastorpool.yaml`
 * `mayastornode.yaml`
 
-These files are copied from the moac repository and represent the current shape of Mayastor custom resources
+These files are copied from the moac repository and represent the current shape
+ of Mayastor custom resources
 
 To use these resources we have implemented a clientset,
 the sources of which are in `api` and `clientset` subdirectories,
 and `util.go`.
 
-A point worth noting  is that for E2E testing these CRDs should match the definitions contained in the yaml files within the install bundle.
+A point worth noting  is that for E2E testing these CRDs should match the
+ definitions contained in the yaml files within the install bundle.
 
 This is achieved by extracting the install bundle,
 and regenerating the type definitions to match.
-The python script `genGoCrdTypes.py` generates the appropriate definitions from the yaml files.
+
+The python script `genGoCrdTypes.py` generates the appropriate definitions from
+the yaml files.
 
 To generate the files run the following command lines (with
 working directory set to the mayastor e2e repo root directory).
+
 `XXXX` is the mayastor build tag
 
 ```
