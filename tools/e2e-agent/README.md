@@ -2,11 +2,7 @@
 
 ## Introduction
 Derived from `ubuntu`
-This agent runs as a daemonset in the cluster to help perform the following e2e related tasks:
-1. Node reboot
-2. Create rules to drop connections from other k8s nodes
-3. Create rules to accept connections from other k8s nodes
-4. Create rules to accept connections from the e2e host machine
+This agent runs as a daemonset in the cluster to help run commands remotely.
 
 ## Building
 Run `./build.sh`

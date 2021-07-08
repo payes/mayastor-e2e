@@ -24,6 +24,18 @@ type NodeLocation struct {
 	MasterNode   bool
 }
 
+func GetNodeLocsMap() (map[string]NodeLocation, error) {
+	NodeLocsMap := make(map[string]NodeLocation)
+	nodeLocs, err := GetNodeLocs()
+	if err != nil {
+		return nil, err
+	}
+	for _, node := range nodeLocs {
+		NodeLocsMap[node.NodeName] = node
+	}
+	return NodeLocsMap, nil
+}
+
 // returns vector of populated NodeLocation structs
 func GetNodeLocs() ([]NodeLocation, error) {
 	nodeList := coreV1.NodeList{}

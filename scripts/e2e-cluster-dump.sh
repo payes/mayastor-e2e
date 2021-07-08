@@ -224,7 +224,7 @@ function getSystemCmdOutputs {
         nodes=$(kubectl get nodes -o jsonpath='{ $.items[*].status.addresses[?(@.type=="InternalIP")].address }')
         for node in $nodes
         do
-                curl --connect-timeout 5 -XPOST http://$node:10012/exec -H "Content-Type: application/json" -d '{"cmd": "nvme list -v -o json"}' >& "$dest/$node-nvme-list"
+                curl --connect-timeout 5 -XPOST http://$node:10012/exec -H "Content-Type: application/json" -d '{"cmd": "nvme list -o json"}' >& "$dest/$node-nvme-list"
                 curl --connect-timeout 5 -XPOST http://$node:10012/exec -H "Content-Type: application/json" -d '{"cmd": "findmnt -J"}' >& "$dest/$node-findmnt"
                 curl --connect-timeout 5 -XPOST http://$node:10012/exec -H "Content-Type: application/json" -d '{"cmd": "lsblk -J"}' >& "$dest/$node-lsblk"
                 curl --connect-timeout 5 -XPOST http://$node:10012/exec -H "Content-Type: application/json" -d '{"cmd": "cat /host/var/log/syslog"}' >& "$dest/$node-syslog"

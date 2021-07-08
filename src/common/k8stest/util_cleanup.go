@@ -271,7 +271,7 @@ func DeleteAllPools() bool {
 			}
 			err = custom_resources.DeleteMsPool(pool.GetName())
 			if err != nil {
-				logf.Log.Info("DeleteAllPools: failed to delete pool", pool.GetName(), "error", err)
+				logf.Log.Info("DeleteAllPools: failed to delete pool", "pool", pool.GetName(), "error", err)
 			}
 		}
 	}
