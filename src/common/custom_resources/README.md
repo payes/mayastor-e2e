@@ -25,12 +25,11 @@ the yaml files.
 To generate the files run the following command lines (with
 working directory set to the mayastor e2e repo root directory).
 
-`XXXX` is the mayastor build tag
+```
+./scripts/genGoCrdTypes.py artifacts/install/XXXX/csi/moac/crds/mayastor*.yaml
+```
 
-```
-./src/common/custom_resources/genGoCrdTypes.py artifacts/install/XXXX/csi/moac/crds/mayastor*.yaml
-gofmt -w src/common/custom_resources/api/types/v1alpha1/mayastor*.go
-```
+where `XXXX` is the mayastor build tag
 
 These commands will update the following files
 * `./api/types/v1alpha1/mayastorvolume.go`
@@ -38,7 +37,7 @@ These commands will update the following files
 * `./api/types/v1alpha1/mayastornode.go`
 
 ## Update procedure
-* Copy the appropriate yaml files across from the moac repository
+* Copy the appropriate yaml files across from the moac repository to `src/common/custom_resources`
 * The execute
   * ``` ./genGoCrdTypes.py ./mayastor*.yaml```
 * Commit the changed files and raise a Pull Request

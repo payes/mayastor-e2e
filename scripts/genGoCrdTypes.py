@@ -121,9 +121,15 @@ def capitalize(s):
 
 
 class GenGoCrd():
-    def __init__(self, yamlfile):
+    def __init__(self, yamlfile, dest):
         self.key = os.path.basename(yamlfile).split('.')[0]
         self.typeNameMap = typeNameMaps.get(self.key)
+        self.dest = os.path.abspath(dest)
+        if not os.path.exists(self.dest):
+            raise Exception('path {} does not exist'.format(self.dest))
+        if not os.path.isdir(self.dest):
+            raise Exception('path {} is not a directory'.format(self.dest))
+
         if self.typeNameMap is None:
             raise Exception('unknown yamlfile {}'.format(self.key))
 
@@ -196,14 +202,10 @@ class GenGoCrd():
         return txt
 
     def generateGoFile(self):
-        script_path = os.path.dirname(__file__)
-        f = os.path.abspath(
-            os.path.join(
-                script_path,
-                'api/types/v1alpha1/',
-                '{}.go'.format(self.key)
-                )
-            )
+        f = os.path.join(
+            self.dest,
+            '{}.go'.format(self.key)
+        )
         print('Generating file {}'.format(f))
         contents = template.format(**self.templateDict)
         with open(f, "w") as fp:
@@ -212,6 +214,25 @@ class GenGoCrd():
 
 
 if __name__ == '__main__':
-    for file in sys.argv[1:]:
-        g = GenGoCrd(file)
+    from argparse import ArgumentParser
+    parser = ArgumentParser()
+    parser.add_argument(
+        'yamlfiles', nargs='+', default=[],
+        help="paths to yaml files"
+    )
+    parser.add_argument(
+        '-t', dest='targetdir',
+        default=os.path.abspath(
+            os.path.join(
+                os.path.dirname(__file__),
+                '../src/common/custom_resources/api/types/v1alpha1/',
+            )
+        ),
+        help='path to generate go files'
+    )
+    args = parser.parse_args()
+    print(args)
+
+    for yamlfile in args.yamlfiles:
+        g = GenGoCrd(yamlfile, args.targetdir)
         g.generateGoFile()
