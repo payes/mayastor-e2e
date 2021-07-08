@@ -27,8 +27,6 @@ resource_check
 primitive_replicas
 primitive_msp_deletion
 "
-#primitive_msp_state
-#primitive_volumes
 
 profiles[c1]="
 basic_volume_io
@@ -131,4 +129,10 @@ io_soak
 
 profiles[validation]="
 validate_integrity_test
+"
+
+profiles[staging]="
+primitive_msp_state
+primitive_volumes
+primitive_msp_stress
 "

@@ -196,10 +196,15 @@ func ResourceCheck() error {
 
 	// gRPC calls can only be executed successfully is the e2e-agent daemonSet has been deployed successfully.
 	if EnsureE2EAgent() {
-		poolUsage, err := GetPoolUsageInCluster()
-		if err != nil {
-			errorMsg += fmt.Sprintf("%s %v", errorMsg, err)
-			logf.Log.Info("ResourceEachCheck: failed to retrieve pools usage")
+		var poolUsage uint64 = 1
+		// Wait 60 seconds for pool usage to drop to 0
+		for ix := 0; ix < 30 && poolUsage != 0; ix += 1 {
+			time.Sleep(2 * time.Second)
+			poolUsage, err = GetPoolUsageInCluster()
+			if err != nil {
+				errorMsg += fmt.Sprintf("%s %v", errorMsg, err)
+				logf.Log.Info("ResourceEachCheck: failed to retrieve pools usage")
+			}
 		}
 		logf.Log.Info("ResourceCheck:", "poolUsage", poolUsage)
 		Expect(poolUsage).To(BeZero(), "pool usage reported via mayastor client is %d", poolUsage)
