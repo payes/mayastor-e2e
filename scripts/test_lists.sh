@@ -24,11 +24,8 @@ ms_pod_disruption_rm_msv
 profiles[nightly]="
 csi
 resource_check
-primitive_msp_state
 primitive_replicas
 primitive_msp_deletion
-primitive_max_volumes_in_pool
-primitive_volumes
 "
 
 profiles[c1]="
@@ -71,8 +68,6 @@ csi
 resource_check
 dynamic_provisioning
 pvc_stress_fio
-replica
-rebuild
 io_soak
 multiple_vols_pod_io
 mayastorpool_schema
@@ -90,14 +85,12 @@ control_plane_rescheduling
 expand_msp_disk
 pvc_waitforfirstconsumer
 synchronous_replication
-primitive_msp_deletion
 msv_rebuild
 pvc_delete
 maximum_vols_io
 single_msn_shutdown
 node_shutdown
 node_failure
-primitive_replicas
 "
 
 profiles[ondemand]="
@@ -136,4 +129,10 @@ io_soak
 
 profiles[validation]="
 validate_integrity_test
+"
+
+profiles[staging]="
+primitive_msp_state
+primitive_volumes
+primitive_msp_stress
 "

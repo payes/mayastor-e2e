@@ -287,6 +287,12 @@ case "$profile" in
     profile="nightly_full"
     echo "Overriding config file to nightly_full_config.yaml"
     config_file="nightly_full_config.yaml"
+    echo "Overriding policy_cleanup_before=true"
+    policy_cleanup_before="true"
+    ;;
+  nightly)
+    echo "Overriding policy_cleanup_before=true"
+    policy_cleanup_before="true"
     ;;
   selfci|self_ci)
     profile="self_ci"

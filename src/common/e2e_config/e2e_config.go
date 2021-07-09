@@ -168,13 +168,13 @@ type E2EConfig struct {
 	PrimitiveMaxVolsInPool struct {
 		VolMb              int `yaml:"volMb" env-default:"64"`
 		VolumeCountPerPool int `yaml:"volumeCountPerPod" env-default:"110"`
-		Replicas           int `yaml:"replicas" env-default:"1"`
+		Replicas           int `yaml:"replicas" env-default:"2"`
 	} `yaml:"primitiveMaxVolsInPool"`
 	PrimitiveMspState struct {
 		ReplicaSize            int    `yaml:"replicaSize" env-default:"1073741824"`
 		PoolDeleteTimeoutSecs  string `yaml:"poolDeleteTimeoutSecs" env-default:"30s"`
 		PoolCreateTimeoutSecs  string `yaml:"poolCreateTimeoutSecs" env-default:"20s"`
-		PoolUsageTimeoutSecs   string `yaml:"poolUsageTimeoutSecs" env-default:"45s"`
+		PoolUsageTimeoutSecs   string `yaml:"poolUsageTimeoutSecs" env-default:"90s"`
 		PoolUsageSleepTimeSecs string `yaml:"poolUsageSleepTimeSecs" env-default:"2s"`
 		IterationCount         int    `yaml:"iterationCount" env-default:"100"`
 	} `yaml:"primitiveMspState"`
@@ -193,6 +193,11 @@ type E2EConfig struct {
 		MayastorRestartTimeout int    `yaml:"mayastorRestartTimeout" env-default:"240"`
 		Iterations             int    `yaml:"iterations" env-default:"100"`
 	} `yaml:"primitiveMspDelete"`
+	PrimitiveMspStressTest struct {
+		PartitionSizeInGiB int `yaml:"partitionSizeInGiB" env-default:"1"`
+		PartitionCount     int `yaml:"partitionCount" env-default:"5"`
+		Iterations         int `yaml:"iterations" env-default:"10"`
+	} `yaml:"PrimitiveMspStressTest"`
 	ConcurrentPvcCreate struct {
 		Replicas        int `yaml:"replicas" env-default:"1"`
 		VolSize         int `yaml:"volMb" env-default:"64"`

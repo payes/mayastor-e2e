@@ -8,7 +8,9 @@ import (
 	mayastorGrpc "mayastor-e2e/common/mayastorclient/grpc"
 
 	"google.golang.org/grpc"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -69,6 +71,19 @@ func listPool(address string) ([]MayastorPool, error) {
 		logf.Log.Info("listPool", "error", err)
 	}
 	return poolInfos, err
+}
+
+func GetPool(name, addr string) (*MayastorPool, error) {
+	poolInfo, err := listPool(addr)
+	if err != nil {
+		return nil, err
+	}
+	for _, pool := range poolInfo {
+		if pool.Name == name {
+			return &pool, nil
+		}
+	}
+	return nil, k8serrors.NewNotFound(schema.GroupResource{}, "")
 }
 
 // ListPools given a list of node ip addresses, enumerate the set of pools on mayastor using gRPC on each of those nodes
