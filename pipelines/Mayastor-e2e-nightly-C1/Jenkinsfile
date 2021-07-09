@@ -13,7 +13,7 @@ def test_tag=""
 e2e_reports_dir='artifacts/reports/'
 e2e_test_profile = 'c1'
 
-String cron_schedule = "0 0 * * *"
+String cron_schedule = "H 12 * * *"
 
 xray_send_report=true
 xray_nightly_C1_testplan='MQ-1486'
