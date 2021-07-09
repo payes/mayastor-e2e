@@ -78,5 +78,5 @@ primitiveReplicas:
     sizeStepMb: 64
 primitiveMaxVolsInPool:
   volMb: 64
-  volumeCountPerPod: 110
+  volumeCountPerPool: 110
   replicas: 1

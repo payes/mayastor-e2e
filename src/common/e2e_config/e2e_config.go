@@ -167,7 +167,7 @@ type E2EConfig struct {
 	} `yaml:"pvcDelete"`
 	PrimitiveMaxVolsInPool struct {
 		VolMb              int `yaml:"volMb" env-default:"64"`
-		VolumeCountPerPool int `yaml:"volumeCountPerPod" env-default:"110"`
+		VolumeCountPerPool int `yaml:"volumeCountPerPool" env-default:"110"`
 		Replicas           int `yaml:"replicas" env-default:"2"`
 	} `yaml:"primitiveMaxVolsInPool"`
 	PrimitiveMspState struct {
