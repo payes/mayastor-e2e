@@ -16,18 +16,18 @@ const (
 )
 
 type primitiveFaultInjectionConfig struct {
-	protocol      common.ShareProto
-	fsType        common.FileSystemType
-	replicas      int
-	scName        string
-	pvcName       string
-	fioPodName    string
-	pvcSize       int
-	uuid          string
-	nexusIP       string
-	nexusLocalRep string
-	duration      time.Duration
-	thinkTime     time.Duration
+	protocol    common.ShareProto
+	fsType      common.FileSystemType
+	replicas    int
+	scName      string
+	pvcName     string
+	fioPodName  string
+	pvcSize     int
+	uuid        string
+	nexusNodeIP string
+	nexusRep    string
+	duration    time.Duration
+	thinkTime   time.Duration
 }
 
 func generatePrimitiveFaultInjectionConfig(testName string) *primitiveFaultInjectionConfig {

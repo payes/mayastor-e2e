@@ -43,7 +43,7 @@ func (c *primitiveFaultInjectionConfig) deletePVC() {
 
 // createFio will create fio pod and run fio
 func (c *primitiveFaultInjectionConfig) createFio() {
-
+	var volFioArgs [][]string
 	// fio pod container
 	podContainer := coreV1.Container{
 		Name:            c.fioPodName,
@@ -72,8 +72,11 @@ func (c *primitiveFaultInjectionConfig) createFio() {
 	Expect(err).ToNot(HaveOccurred(), "Generating fio pod definition %s", c.fioPodName)
 	Expect(podObj).ToNot(BeNil(), "failed to generate fio pod definition")
 
-	// Construct argument list for fio to run a single instance of fio,
-	// with multiple jobs, one for each volume.
+	volFioArgs = append(volFioArgs, []string{
+		fmt.Sprintf("--filename=/volume-%s/fio-test-file", c.pvcName),
+		fmt.Sprintf("--size=%dm", common.DefaultFioSizeMb),
+	})
+	// Construct argument list for fio
 	var podArgs []string
 
 	podArgs = append(podArgs, "--")
@@ -84,6 +87,11 @@ func (c *primitiveFaultInjectionConfig) createFio() {
 		fmt.Sprintf("--thinktime=%d", int(c.thinkTime.Microseconds())),
 	}...,
 	)
+	for ix, v := range volFioArgs {
+		podArgs = append(podArgs, v...)
+		podArgs = append(podArgs, fmt.Sprintf("--name=benchtest-%d", ix))
+	}
+	podArgs = append(podArgs, "&")
 	logf.Log.Info("fio", "arguments", podArgs)
 	podObj.Spec.Containers[0].Args = podArgs
 	// Create fio pod
@@ -106,8 +114,7 @@ func (c *primitiveFaultInjectionConfig) deleteFio() {
 }
 
 // Identify the nexus IP address,
-// the uri of the replica local to the nexus,
-// and the non-nexus node hosting a replica.
+// the uri of the replica ,
 func (c *primitiveFaultInjectionConfig) getNexusDetail() {
 	nodeList, err := k8stest.GetNodeLocs()
 	Expect(err).ToNot(HaveOccurred(), "Failed to get mayastor nodes")
@@ -116,41 +123,43 @@ func (c *primitiveFaultInjectionConfig) getNexusDetail() {
 	Expect(nexus).NotTo(Equal(""), "failed to get Nexus")
 
 	// identify the nexus IP address
-	nexusIP := ""
+	var nexusIP []string
 	for _, node := range nodeList {
-		if node.NodeName == nexus {
-			nexusIP = node.IPAddress
-			break
-		}
+		nexusIP = append(nexusIP, node.IPAddress)
 	}
-	Expect(nexusIP).NotTo(Equal(""), "failed to get Nexus IP")
-	c.nexusIP = nexusIP
+	Expect(len(nexusIP)).NotTo(Equal(BeZero()), "failed to get Nexus IPs")
 
-	var nxList []string
-	nxList = append(nxList, nexusIP)
-
-	nexusList, _ := mayastorclient.ListNexuses(nxList)
-	Expect(len(nexusList)).To(Equal(1), "Expected to find 1 nexus")
+	nexusList, _ := mayastorclient.ListNexuses(nexusIP)
+	logf.Log.Info("Nexus", "list", nexusList)
+	Expect(len(nexusList)).NotTo(Equal(BeZero()), "Expected to find at least 1 nexus")
 	nx := nexusList[0]
 
 	// identify the replica local to the nexus
-	nxChild := ""
+	nxChildUri := ""
+	nxNodeIP := ""
 	for _, ch := range nx.Children {
-		if strings.HasPrefix(ch.Uri, "bdev:///") {
-			Expect(nxChild).To(Equal(""), "More than 1 nexus local replica found")
-			nxChild = ch.Uri
+		if strings.HasPrefix(ch.Uri, "nvmf://") {
+			for _, nodeIP := range nexusIP {
+				if strings.Contains(ch.Uri, nodeIP) {
+					nxNodeIP = nodeIP
+					nxChildUri = ch.Uri
+					break
+				}
+			}
 			break
 		}
 	}
-	Expect(nxChild).NotTo(Equal(""), "Could not find nexus local replica")
-	c.nexusLocalRep = nxChild
-	logf.Log.Info("Nexus details", "nexus IP", c.nexusIP, "local replica", c.nexusLocalRep)
+	Expect(nxChildUri).NotTo(Equal(""), "Could not find nexus replica")
+	Expect(nxNodeIP).NotTo(Equal(""), "Could not find nexus node")
+	c.nexusRep = nxChildUri
+	c.nexusNodeIP = nxNodeIP
+	logf.Log.Info("Nexus details", "nexus IP", c.nexusNodeIP, "replica", c.nexusRep)
 }
 
 // Fault the replica hosted on the nexus node
 func (c *primitiveFaultInjectionConfig) faultNexusChild() {
 	logf.Log.Info("faulting the nexus replica")
-	err := mayastorclient.FaultNexusChild(c.nexusIP, c.uuid, c.nexusLocalRep)
+	err := mayastorclient.FaultNexusChild(c.nexusNodeIP, c.uuid, c.nexusRep)
 	Expect(err).ToNot(HaveOccurred(), "failed to fault local replica")
 }
 
