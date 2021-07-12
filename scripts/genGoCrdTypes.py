@@ -231,7 +231,6 @@ if __name__ == '__main__':
         help='path to generate go files'
     )
     args = parser.parse_args()
-    print(args)
 
     for yamlfile in args.yamlfiles:
         g = GenGoCrd(yamlfile, args.targetdir)
