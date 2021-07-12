@@ -4,9 +4,12 @@ import (
 	"fmt"
 	"mayastor-e2e/common"
 	"mayastor-e2e/common/custom_resources"
+	"mayastor-e2e/common/custom_resources/api/types/v1alpha1"
 	"mayastor-e2e/common/k8stest"
 	"sync"
 	"time"
+
+	coreV1 "k8s.io/api/core/v1"
 
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
@@ -49,6 +52,55 @@ func (c *pvcConcurrentConfig) verifyVolumesCreation() {
 	for ix := 0; ix < len(c.pvcNames); ix++ {
 		// Confirm that the PVC has been created
 		Expect(c.createErrs[ix]).To(BeNil(), "failed to create PVC %s", c.pvcNames[ix])
+		namespace := common.NSDefault
+		volName := c.pvcNames[ix]
+		pvc, getPvcErr := k8stest.GetPVC(volName, namespace)
+		Expect(getPvcErr).To(BeNil(), "Failed to get PVC %s", volName)
+		Expect(pvc).ToNot(BeNil())
+
+		// Wait for the PVC to be bound.
+		Eventually(func() coreV1.PersistentVolumeClaimPhase {
+			return k8stest.GetPvcStatusPhase(volName, namespace)
+		},
+			defTimeoutSecs, // timeout
+			"1s",           // polling interval
+		).Should(Equal(coreV1.ClaimBound))
+
+		// Refresh the PVC contents, so that we can get the PV name.
+		pvc, getPvcErr = k8stest.GetPVC(volName, namespace)
+		Expect(getPvcErr).To(BeNil())
+		Expect(pvc).ToNot(BeNil())
+		logf.Log.Info("Created", "volume", pvc.Spec.VolumeName, "uuid", pvc.ObjectMeta.UID)
+
+		// Wait for the PV to be provisioned
+		Eventually(func() *coreV1.PersistentVolume {
+			pv, getPvErr := k8stest.GetPV(pvc.Spec.VolumeName)
+			if getPvErr != nil {
+				return nil
+			}
+			return pv
+
+		},
+			defTimeoutSecs, // timeout
+			"1s",           // polling interval
+		).Should(Not(BeNil()))
+
+		// Wait for the PV to be bound.
+		Eventually(func() coreV1.PersistentVolumePhase {
+			return k8stest.GetPvStatusPhase(pvc.Spec.VolumeName)
+		},
+			defTimeoutSecs, // timeout
+			"1s",           // polling interval
+		).Should(Equal(coreV1.VolumeBound))
+
+		Eventually(func() *v1alpha1.MayastorVolume {
+			return k8stest.GetMSV(string(pvc.ObjectMeta.UID))
+		},
+			defTimeoutSecs,
+			"1s",
+		).Should(Not(BeNil()))
+
+		logf.Log.Info("Created", "volume", volName, "uuid", pvc.ObjectMeta.UID, "storageClass", c.scName)
 	}
 }
 
@@ -60,6 +112,13 @@ func (c *pvcConcurrentConfig) verifyVolumesDeletion() {
 		// Wait for the PVC to be deleted.
 		Eventually(func() bool {
 			return k8stest.IsPVCDeleted(c.pvcNames[ix], common.NSDefault)
+		},
+			defTimeoutSecs, // timeout
+			"1s",           // polling interval
+		).Should(Equal(true))
+		// Wait for the MSV to be deleted.
+		Eventually(func() bool {
+			return custom_resources.IsMsVolDeleted(c.uuid[ix])
 		},
 			defTimeoutSecs, // timeout
 			"1s",           // polling interval
