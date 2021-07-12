@@ -204,6 +204,13 @@ type E2EConfig struct {
 		Iterations      int `yaml:"iterations" env-default:"10"`
 		VolumeMultipler int `yaml:"volumeMultipler" env-default:"10"`
 	} `yaml:"concurrentPvcCreate"`
+	PrimitiveFaultInjection struct {
+		VolMb     int    `yaml:"volMb" env-default:"64"`
+		Replicas  int    `yaml:"replicas" env-default:"2"`
+		Duration  string `yaml:"duration" env-default:"240s"`
+		Timeout   string `yaml:"timeout" env-default:"360s"`
+		ThinkTime string `yaml:"thinkTime" env-default:"10ms"`
+	} `yaml:"primitiveFaultInjection"`
 }
 
 var once sync.Once
