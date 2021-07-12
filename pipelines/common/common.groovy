@@ -83,15 +83,26 @@ def BuildImages(mayastorBranch, moacBranch, test_tag) {
 }
 
 def BuildCluster(e2e_build_cluster_job, e2e_environment) {
+  def uuid = sh(
+    script: 'printf $(uuidgen -r)',
+    returnStdout: true
+  )
   return build(
     job: "${e2e_build_cluster_job}",
     propagate: true,
     wait: true,
-    parameters: [[
-      $class: 'StringParameterValue',
-      name: "ENVIRONMENT",
-      value: "${e2e_environment}"
-    ]]
+    parameters: [
+      [
+        $class: 'StringParameterValue',
+        name: "ENVIRONMENT",
+        value: "${e2e_environment}"
+      ],
+      [
+        $class: 'StringParameterValue',
+        name: "UUID",
+        value: "${uuid}"
+      ]
+    ]
   )
 }
 
