@@ -3,41 +3,41 @@ package v1alpha1
 import metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 type MayastorVolumeSpec struct {
-	ReplicaCount   int      `json:"replicaCount"`
+	LimitBytes     int      `json:"limitBytes"`
 	Local          bool     `json:"local"`
 	PreferredNodes []string `json:"preferredNodes"`
-	RequiredNodes  []string `json:"requiredNodes"`
-	RequiredBytes  int      `json:"requiredBytes"`
-	LimitBytes     int      `json:"limitBytes"`
 	Protocol       string   `json:"protocol"`
+	ReplicaCount   int      `json:"replicaCount"`
+	RequiredBytes  int      `json:"requiredBytes"`
+	RequiredNodes  []string `json:"requiredNodes"`
 }
 
 type NexusChild struct {
-	Uri   string `json:"uri"`
 	State string `json:"state"`
+	Uri   string `json:"uri"`
 }
 
 type Nexus struct {
-	Node      string       `json:"node"`
-	DeviceUri string       `json:"deviceUri"`
-	State     string       `json:"state"`
 	Children  []NexusChild `json:"children"`
+	DeviceUri string       `json:"deviceUri"`
+	Node      string       `json:"node"`
+	State     string       `json:"state"`
 }
 
 type Replica struct {
 	Node    string `json:"node"`
+	Offline bool   `json:"offline"`
 	Pool    string `json:"pool"`
 	Uri     string `json:"uri"`
-	Offline bool   `json:"offline"`
 }
 
 type MayastorVolumeStatus struct {
+	Nexus       Nexus     `json:"nexus"`
+	Reason      string    `json:"reason"`
+	Replicas    []Replica `json:"replicas"`
 	Size        int64     `json:"size"`
 	State       string    `json:"state"`
-	Reason      string    `json:"reason"`
 	TargetNodes []string  `json:"targetNodes"`
-	Nexus       Nexus     `json:"nexus"`
-	Replicas    []Replica `json:"replicas"`
 }
 
 type MayastorVolume struct {

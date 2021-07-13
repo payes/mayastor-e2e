@@ -16,6 +16,7 @@ EXITV_INVALID_OPTION=1
 EXITV_MISSING_OPTION=2
 EXITV_FAILED=4
 EXITV_FILE_MISMATCH=5
+EXITV_CRD_GO_GEN=6
 EXITV_FAILED_CLUSTER_OK=255
 
 platform_config_file="hetzner.yaml"
@@ -226,6 +227,14 @@ if [ -z "$mayastor_root_dir" ]; then
         exit $EXITV_INVALID_OPTION
     fi
     export mayastor_root_dir="$ARTIFACTSDIR/install/$tag"
+    # "$mayastor_root_dir/csi/moac/crds/mayastor*.yaml" doesn't work
+    # in that the script does not receive a list of yaml files but instead
+    # gets mayastor*.yaml. Hence the odd double quoting style
+    # "$mayastor_root_dir"/csi/moac/crds/mayastor*.yaml
+    if ! "$SCRIPTDIR/genGoCrdTypes.py"  "$mayastor_root_dir"/csi/moac/crds/mayastor*.yaml ; then
+        echo "Failed to generate Go CRD types"
+        exit $EXITV_CRD_GO_GEN
+    fi
 fi
 export e2e_mayastor_root_dir=$mayastor_root_dir
 

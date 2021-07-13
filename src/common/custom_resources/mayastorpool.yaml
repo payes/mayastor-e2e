@@ -71,6 +71,11 @@ spec:
                   type: integer
                   format: int64
                   minimum: 0
+                avail:
+                  description: Free space in the pool in bytes.
+                  type: integer
+                  format: int64
+                  minimum: 0
       additionalPrinterColumns:
       - name: Node
         type: string
@@ -80,9 +85,21 @@ spec:
         type: string
         description: State of the storage pool
         jsonPath: .status.state
-      - name: Age
-        type: date
-        jsonPath: .metadata.creationTimestamp
+      - name: Capacity
+        type: integer
+        description: Capacity of the pool in bytes.
+        format: int64
+        jsonPath: .status.capacity
+      - name: Used
+        type: integer
+        description: How many bytes are used in the pool.
+        format: int64
+        jsonPath: .status.used
+      - name: Avail
+        type: integer
+        description: Free space in the pool in bytes.
+        format: int64
+        jsonPath: .status.avail
   scope: Namespaced
   names:
     kind: MayastorPool
