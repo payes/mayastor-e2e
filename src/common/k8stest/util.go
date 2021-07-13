@@ -394,6 +394,15 @@ func RmReplicasInCluster() error {
 	return err
 }
 
+// ListNvmeContorllersInCluster use mayastorclient to enumerate the set of mayastor nvme controllers present in the cluster
+func ListNvmeControllersInCluster() ([]mayastorclient.NvmeController, error) {
+	nodeAddrs, err := getClusterMayastorNodeIPAddrs()
+	if err == nil {
+		return mayastorclient.ListNvmeControllers(nodeAddrs)
+	}
+	return []mayastorclient.NvmeController{}, err
+}
+
 // GetPoolUsageInCluster use mayastorclient to enumerate the set of pools and sum up the pool usage in the cluster
 func GetPoolUsageInCluster() (uint64, error) {
 	var poolUsage uint64

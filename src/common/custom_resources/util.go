@@ -118,6 +118,39 @@ func CheckAllMsPoolsAreOnline() error {
 	return err
 }
 
+func MakeAccumulatedError(accErr error, err error) error {
+	if accErr == nil {
+		return err
+	}
+	return fmt.Errorf("%v; %v", accErr, err)
+}
+
+// CheckAllMsPoolFinalizers check
+//	1) that finalizers exist for pools with replicas (used size != 0)
+//  2) that finalizers DO NOT EXIST for pools with no replicas (used size == 0)
+func CheckAllMsPoolFinalizers() error {
+	var accErr error
+	pools, err := ListMsPools()
+	if err != nil {
+		return err
+	}
+	if len(pools) != 0 {
+		for _, pool := range pools {
+			finalizer := pool.Finalizers
+			if pool.Status.Used == 0 {
+				if finalizer != nil {
+					accErr = MakeAccumulatedError(accErr, fmt.Errorf("finalizer set on pool %s with 0 used bytes", pool.Name))
+				}
+			} else {
+				if finalizer == nil {
+					accErr = MakeAccumulatedError(accErr, fmt.Errorf(" missing finalizer on pool %s with %d used bytes", pool.Name, pool.Status.Used))
+				}
+			}
+		}
+	}
+	return accErr
+}
+
 // == Mayastor Nodes ======================
 
 func GetMsNode(nodeName string) (v1alpha1Api.MayastorNode, error) {
@@ -189,6 +222,7 @@ func ListMsVols() ([]v1alpha1Api.MayastorVolume, error) {
 }
 
 // Helper functions
+
 // GetMsVolState convenience function to retrieve the volume state.
 func GetMsVolState(volName string) (string, error) {
 	msv, err := GetMsVol(volName)

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"mayastor-e2e/common/custom_resources"
 	"mayastor-e2e/common/custom_resources/api/types/v1alpha1"
+	"mayastor-e2e/common/mayastorclient"
 	"strings"
 	"sync"
 
@@ -24,7 +25,7 @@ import (
 
 var defTimeoutSecs = "90s"
 
-// Check for a deleted Persistent Volume Claim,
+// IsPVCDeleted Check for a deleted Persistent Volume Claim,
 // either the object does not exist
 // or the status phase is invalid.
 func IsPVCDeleted(volName string, nameSpace string) bool {
@@ -50,7 +51,7 @@ func IsPVCDeleted(volName string, nameSpace string) bool {
 	}
 }
 
-// Check for a deleted Persistent Volume,
+// IsPVDeleted Check for a deleted Persistent Volume,
 // either the object does not exist
 // or the status phase is invalid.
 func IsPVDeleted(volName string) bool {
@@ -83,7 +84,7 @@ func IsPvcBound(pvcName string, nameSpace string) bool {
 	return GetPvcStatusPhase(pvcName, nameSpace) == coreV1.ClaimBound
 }
 
-// Retrieve status phase of a Persistent Volume Claim
+// GetPvcStatusPhase Retrieve status phase of a Persistent Volume Claim
 func GetPvcStatusPhase(volname string, nameSpace string) (phase coreV1.PersistentVolumeClaimPhase) {
 	pvc, getPvcErr := gTestEnv.KubeInt.CoreV1().PersistentVolumeClaims(nameSpace).Get(context.TODO(), volname, metaV1.GetOptions{})
 	Expect(getPvcErr).To(BeNil())
@@ -91,7 +92,7 @@ func GetPvcStatusPhase(volname string, nameSpace string) (phase coreV1.Persisten
 	return pvc.Status.Phase
 }
 
-// Retrieve status phase of a Persistent Volume
+// GetPvStatusPhase Retrieve status phase of a Persistent Volume
 func GetPvStatusPhase(volname string) (phase coreV1.PersistentVolumePhase) {
 	pv, getPvErr := gTestEnv.KubeInt.CoreV1().PersistentVolumes().Get(context.TODO(), volname, metaV1.GetOptions{})
 	Expect(getPvErr).To(BeNil())
@@ -99,7 +100,7 @@ func GetPvStatusPhase(volname string) (phase coreV1.PersistentVolumePhase) {
 	return pv.Status.Phase
 }
 
-// Create a PVC and verify that
+// MkPVC Create a PVC and verify that
 //	1. The PVC status transitions to bound,
 //	2. The associated PV is created and its status transitions bound
 //	3. The associated MV is created and has a State "healthy"
@@ -190,11 +191,60 @@ func MkPVC(volSizeMb int, volName string, scName string, volType common.VolumeTy
 		"1s",
 	).Should(Not(BeNil()))
 
+	MsvConsistencyCheck(string(pvc.ObjectMeta.UID))
+
 	logf.Log.Info("Created", "volume", volName, "uuid", pvc.ObjectMeta.UID, "storageClass", scName, "volume type", volType)
 	return string(pvc.ObjectMeta.UID)
 }
 
-// Delete a PVC in the default namespace and verify that
+// MsvConsistencyCheck check consistency of  MSV Spec, Status, and associated objects returned by gRPC
+func MsvConsistencyCheck(uuid string) {
+	msv := GetMSV(uuid)
+	Expect(int64(msv.Spec.RequiredBytes)).To(Equal(msv.Status.Size),
+		"msv spec required bytes %d != msv status size %d",
+		msv.Spec.RequiredBytes, msv.Status.Size,
+	)
+	Expect(msv.Spec.ReplicaCount).To(Equal(len(msv.Status.Replicas)),
+		"msv spec replica count %d != msv status replicas %d",
+		msv.Spec.ReplicaCount, len(msv.Status.Replicas),
+	)
+
+	gReplicas, err := mayastorclient.FindReplicas(uuid, GetMayastorNodeIPAddresses())
+	for _, gReplica := range gReplicas {
+		Expect(gReplica.Size).To(Equal(uint64(msv.Status.Size)),
+			"replica size  %d != msv status size %d",
+			gReplica.Size,
+			msv.Status.Size,
+		)
+	}
+
+	Expect(err).ToNot(HaveOccurred(), "failed to find replicas using gRPC")
+	Expect(msv.Spec.ReplicaCount).To(Equal(len(gReplicas)),
+		"msv spec replica count %d != list matching replicas found using gRPC %d",
+		msv.Spec.ReplicaCount, len(gReplicas),
+	)
+	nexus := msv.Status.Nexus
+	// The nexus is only present when a volume is mounted by a pod.
+	if nexus.Node != "" {
+		Expect(msv.Spec.ReplicaCount).To(Equal(len(msv.Status.Nexus.Children)),
+			"msv spec replica count %d != msv status nexus children %d",
+			msv.Spec.ReplicaCount, len(msv.Status.Nexus.Children),
+		)
+		nexusNodeIp, err := GetNodeIPAddress(nexus.Node)
+		Expect(err).ToNot(HaveOccurred(), "failed to resolve nexus node IP address")
+		grpcNexus, err := mayastorclient.FindNexus(uuid, []string{*nexusNodeIp})
+		Expect(err).ToNot(HaveOccurred(), "failed to list nexuses gRPC")
+		Expect(grpcNexus).ToNot(BeNil(), "failed to find nexus gRPC")
+		Expect(grpcNexus.Size).To(Equal(uint64(msv.Status.Size)), "nexus size mismatch msv and grpc")
+		Expect(len(grpcNexus.Children)).To(Equal(msv.Spec.ReplicaCount), "msv replica count != grpc nexus children")
+		Expect(grpcNexus.State.String()).To(Equal(msv.Status.Nexus.State), "msv nexus state != grpc nexus state")
+	} else {
+		logf.Log.Info("MsvConsistencyCheck nexus unavailable")
+	}
+	logf.Log.Info("MsvConsistencyCheck OK")
+}
+
+// RmPVC Delete a PVC in the default namespace and verify that
 //	1. The PVC is deleted
 //	2. The associated PV is deleted
 //  3. The associated MV is deleted
@@ -241,22 +291,22 @@ func RmPVC(volName string, scName string, nameSpace string) {
 	).Should(Equal(true))
 }
 
-/// Create a PVC in default namespace, no options and no context
+// CreatePVC Create a PVC in default namespace, no options and no context
 func CreatePVC(pvc *v1.PersistentVolumeClaim, nameSpace string) (*v1.PersistentVolumeClaim, error) {
 	return gTestEnv.KubeInt.CoreV1().PersistentVolumeClaims(nameSpace).Create(context.TODO(), pvc, metaV1.CreateOptions{})
 }
 
-/// Retrieve a PVC in default namespace, no options and no context
+// GetPVC Retrieve a PVC in default namespace, no options and no context
 func GetPVC(volName string, nameSpace string) (*v1.PersistentVolumeClaim, error) {
 	return gTestEnv.KubeInt.CoreV1().PersistentVolumeClaims(nameSpace).Get(context.TODO(), volName, metaV1.GetOptions{})
 }
 
-/// Delete a PVC in default namespace, no options and no context
+// DeletePVC Delete a PVC in default namespace, no options and no context
 func DeletePVC(volName string, nameSpace string) error {
 	return gTestEnv.KubeInt.CoreV1().PersistentVolumeClaims(nameSpace).Delete(context.TODO(), volName, metaV1.DeleteOptions{})
 }
 
-/// Retrieve a PV in default namespace, no options and no context
+// GetPV Retrieve a PV in default namespace, no options and no context
 func GetPV(volName string) (*v1.PersistentVolume, error) {
 	return gTestEnv.KubeInt.CoreV1().PersistentVolumes().Get(context.TODO(), volName, metaV1.GetOptions{})
 }
@@ -333,7 +383,9 @@ func CreatePvc(createOpts *coreV1.PersistentVolumeClaim, errBuf *error, uuid *st
 	// Create the PVC.
 	pvc, err := gTestEnv.KubeInt.CoreV1().PersistentVolumeClaims(createOpts.ObjectMeta.Namespace).Create(context.TODO(), createOpts, metaV1.CreateOptions{})
 	*errBuf = err
-	*uuid = string(pvc.UID)
+	if pvc != nil {
+		*uuid = string(pvc.UID)
+	}
 	wg.Done()
 }
 

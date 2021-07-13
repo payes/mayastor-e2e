@@ -122,6 +122,21 @@ func AfterSuiteCleanup() {
 	logf.Log.Info("AfterSuiteCleanup")
 }
 
+// CheckMsPoolFinalizers check
+//	1) that finalizers exist for pools with replicas (used size != 0)
+//  2) that finalizers DO NOT EXIST for pools with no replicas (used size == 0)
+//  with timeout to allow MOAC state sync.
+func CheckMsPoolFinalizers() error {
+	err := custom_resources.CheckAllMsPoolFinalizers()
+	logf.Log.Info("Checking pool finalizers", "timeout seconds", e2e_config.GetConfig().MoacSyncTimeoutSeconds)
+	for ix := 1; ix < e2e_config.GetConfig().MoacSyncTimeoutSeconds && err != nil; ix += 1 {
+		time.Sleep(1 * time.Second)
+		err = custom_resources.CheckAllMsPoolFinalizers()
+	}
+	logf.Log.Info("Checking pool finalizers", "error", err)
+	return err
+}
+
 // ResourceCheck  Fit for purpose checks
 // - No pods
 // - No PVCs
@@ -196,34 +211,51 @@ func ResourceCheck() error {
 
 	// gRPC calls can only be executed successfully is the e2e-agent daemonSet has been deployed successfully.
 	if EnsureE2EAgent() {
-		var poolUsage uint64 = 1
-		// Wait 60 seconds for pool usage to drop to 0
-		for ix := 0; ix < 30 && poolUsage != 0; ix += 1 {
-			time.Sleep(2 * time.Second)
-			poolUsage, err = GetPoolUsageInCluster()
+		// check pools
+		{
+			var poolUsage uint64 = 1
+			// Wait 60 seconds for pool usage to drop to 0
+			for ix := 0; ix < 30 && poolUsage != 0; ix += 1 {
+				time.Sleep(2 * time.Second)
+				poolUsage, err = GetPoolUsageInCluster()
+				if err != nil {
+					errorMsg += fmt.Sprintf("%s %v", errorMsg, err)
+					logf.Log.Info("ResourceEachCheck: failed to retrieve pools usage")
+				}
+			}
+			logf.Log.Info("ResourceCheck:", "poolUsage", poolUsage)
+			Expect(poolUsage).To(BeZero(), "pool usage reported via mayastor client is %d", poolUsage)
+		}
+		// check nexuses
+		{
+			nexuses, err := ListNexusesInCluster()
 			if err != nil {
 				errorMsg += fmt.Sprintf("%s %v", errorMsg, err)
-				logf.Log.Info("ResourceEachCheck: failed to retrieve pools usage")
+				logf.Log.Info("ResourceEachCheck: failed to retrieve list of nexuses")
 			}
+			logf.Log.Info("ResourceCheck:", "num nexuses", len(nexuses))
+			Expect(len(nexuses)).To(BeZero(), "count of nexuses reported via mayastor client is %d", len(nexuses))
 		}
-		logf.Log.Info("ResourceCheck:", "poolUsage", poolUsage)
-		Expect(poolUsage).To(BeZero(), "pool usage reported via mayastor client is %d", poolUsage)
-
-		nexuses, err := ListNexusesInCluster()
-		if err != nil {
-			errorMsg += fmt.Sprintf("%s %v", errorMsg, err)
-			logf.Log.Info("ResourceEachCheck: failed to retrieve list of nexuses")
+		// check replicas
+		{
+			replicas, err := ListReplicasInCluster()
+			if err != nil {
+				errorMsg += fmt.Sprintf("%s %v", errorMsg, err)
+				logf.Log.Info("ResourceEachCheck: failed to retrieve list of replicas")
+			}
+			logf.Log.Info("ResourceCheck:", "num replicas", len(replicas))
+			Expect(len(replicas)).To(BeZero(), "count of replicas reported via mayastor client is %d", len(replicas))
 		}
-		logf.Log.Info("ResourceCheck:", "num nexuses", len(nexuses))
-		Expect(len(nexuses)).To(BeZero(), "count of nexuses reported via mayastor client is %d", len(nexuses))
-
-		replicas, err := ListReplicasInCluster()
-		if err != nil {
-			errorMsg += fmt.Sprintf("%s %v", errorMsg, err)
-			logf.Log.Info("ResourceEachCheck: failed to retrieve list of replicas")
+		// check nvmeControllers
+		{
+			nvmeControllers, err := ListNvmeControllersInCluster()
+			if err != nil {
+				errorMsg += fmt.Sprintf("%s %v", errorMsg, err)
+				logf.Log.Info("ResourceEachCheck: failed to retrieve list of nvme controllers")
+			}
+			logf.Log.Info("ResourceCheck:", "num nvme controllers", len(nvmeControllers))
+			Expect(len(nvmeControllers)).To(BeZero(), "count of replicas reported via mayastor client is %d", len(nvmeControllers))
 		}
-		logf.Log.Info("ResourceCheck:", "num replicas", len(replicas))
-		Expect(len(replicas)).To(BeZero(), "count of replicas reported via mayastor client is %d", len(nexuses))
 	} else {
 		logf.Log.Info("WARNING: the e2e-agent has not been deployed successfully, all checks cannot be run")
 	}
@@ -259,8 +291,8 @@ func BeforeEachCheck() error {
 func AfterEachCheck() error {
 	logf.Log.Info("AfterEachCheck")
 	err := ResourceCheck()
-	if err != nil {
-		logf.Log.Info("AfterEachCheck failed", "error", err)
+	if err == nil {
+		err = CheckMsPoolFinalizers()
 	}
 	return err
 }
