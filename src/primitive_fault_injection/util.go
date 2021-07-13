@@ -119,9 +119,6 @@ func (c *primitiveFaultInjectionConfig) getNexusDetail() {
 	nodeList, err := k8stest.GetNodeLocs()
 	Expect(err).ToNot(HaveOccurred(), "Failed to get mayastor nodes")
 
-	nexus, _ := k8stest.GetMsvNodes(c.uuid)
-	Expect(nexus).NotTo(Equal(""), "failed to get Nexus")
-
 	// identify the nexus IP address
 	var nexusIP []string
 	for _, node := range nodeList {
@@ -134,7 +131,7 @@ func (c *primitiveFaultInjectionConfig) getNexusDetail() {
 	Expect(len(nexusList)).NotTo(Equal(BeZero()), "Expected to find at least 1 nexus")
 	nx := nexusList[0]
 
-	// identify the replica local to the nexus
+	// identify the nexus child to be faulted
 	nxChildUri := ""
 	nxNodeIP := ""
 	for _, ch := range nx.Children {
@@ -165,8 +162,31 @@ func (c *primitiveFaultInjectionConfig) faultNexusChild() {
 
 // Validate that all state representations have converged in the expected state (gRPC and CRD)
 func (c *primitiveFaultInjectionConfig) verifyVolumeStateOverGrpcAndCrd() {
-	//msv := k8stest.GetMSV(c.uuid)
-	// TODO verify msv state
+	msv := k8stest.GetMSV(c.uuid)
+	nexusChildren := msv.Status.Nexus.Children
+	for _, nxChild := range nexusChildren {
+		Expect(nxChild.State).Should(Equal("CHILD_ONLINE"), "Nexus child  is not online")
+	}
+
+	nodeList, err := k8stest.GetNodeLocs()
+	Expect(err).ToNot(HaveOccurred(), "Failed to get mayastor nodes")
+
+	// identify the nexus IP address
+	var nexusIP []string
+	for _, node := range nodeList {
+		nexusIP = append(nexusIP, node.IPAddress)
+	}
+	Expect(len(nexusIP)).NotTo(Equal(BeZero()), "failed to get Nexus IPs")
+
+	nexusList, _ := mayastorclient.ListNexuses(nexusIP)
+	logf.Log.Info("Nexus", "list", nexusList)
+	Expect(len(nexusList)).NotTo(Equal(BeZero()), "Expected to find at least 1 nexus")
+	nx := nexusList[0]
+
+	for _, ch := range nx.Children {
+		Expect(ch.State).NotTo(Equal(1), "Nexus child is not online")
+	}
+
 }
 
 // verify status of IO after fault injection

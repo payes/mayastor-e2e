@@ -34,8 +34,6 @@ func generatePrimitiveFaultInjectionConfig(testName string) *primitiveFaultInjec
 	params := e2e_config.GetConfig().PrimitiveFaultInjection
 	fioDuration, err := time.ParseDuration(params.Duration)
 	Expect(err).ToNot(HaveOccurred(), "Duration configuration string format is invalid.")
-	// fioCheckTimeout, err := time.ParseDuration(params.Timeout)
-	// Expect(err).ToNot(HaveOccurred(), "Timeout configuration string format is invalid.")
 	fioThinkTime, err := time.ParseDuration(params.ThinkTime)
 	Expect(err).ToNot(HaveOccurred(), "Think time configuration string format is invalid.")
 	c := &primitiveFaultInjectionConfig{
