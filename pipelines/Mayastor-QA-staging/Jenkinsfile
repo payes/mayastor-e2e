@@ -68,4 +68,5 @@ pipeline {
         }
       }//post
     }//stage 'run e2e'
+  }
 }
