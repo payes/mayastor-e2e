@@ -54,6 +54,8 @@ func (c *primitiveFaultInjectionConfig) faultInjectionTest() {
 	c.verifyUninterruptedIO()
 	c.getNexusDetail()
 	c.faultNexusChild()
+	c.patchMsvReplica()
+	c.verifyMsvStatus()
 	c.verifyUninterruptedIO()
 	c.verifyVolumeStateOverGrpcAndCrd()
 	c.deleteFio()

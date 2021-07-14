@@ -11,8 +11,7 @@ import (
 var defTimeoutSecs = "90s"
 
 const (
-	timeoutSec   = 90
-	sleepTimeSec = 2
+	replicaCountToPatch = 2
 )
 
 type primitiveFaultInjectionConfig struct {

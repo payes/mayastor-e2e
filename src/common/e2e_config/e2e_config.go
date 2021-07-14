@@ -206,7 +206,7 @@ type E2EConfig struct {
 	} `yaml:"concurrentPvcCreate"`
 	PrimitiveFaultInjection struct {
 		VolMb     int    `yaml:"volMb" env-default:"64"`
-		Replicas  int    `yaml:"replicas" env-default:"2"`
+		Replicas  int    `yaml:"replicas" env-default:"3"`
 		Duration  string `yaml:"duration" env-default:"520s"`
 		Timeout   string `yaml:"timeout" env-default:"360s"`
 		ThinkTime string `yaml:"thinkTime" env-default:"10ms"`

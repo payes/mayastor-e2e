@@ -3,6 +3,8 @@ package primitive_fault_injection
 import (
 	"fmt"
 	"mayastor-e2e/common"
+	"mayastor-e2e/common/custom_resources"
+	"mayastor-e2e/common/custom_resources/api/types/v1alpha1"
 	"mayastor-e2e/common/k8stest"
 	"mayastor-e2e/common/mayastorclient"
 	"strings"
@@ -119,37 +121,36 @@ func (c *primitiveFaultInjectionConfig) getNexusDetail() {
 	nodeList, err := k8stest.GetNodeLocs()
 	Expect(err).ToNot(HaveOccurred(), "Failed to get mayastor nodes")
 
-	// identify the nexus IP address
-	var nexusIP []string
-	for _, node := range nodeList {
-		nexusIP = append(nexusIP, node.IPAddress)
-	}
-	Expect(len(nexusIP)).NotTo(Equal(BeZero()), "failed to get Nexus IPs")
+	nexus, _ := k8stest.GetMsvNodes(c.uuid)
+	Expect(nexus).NotTo(Equal(""), "Nexus not found")
 
-	nexusList, _ := mayastorclient.ListNexuses(nexusIP)
-	logf.Log.Info("Nexus", "list", nexusList)
+	// identify the nexus IP address
+	nexusIP := ""
+	for _, node := range nodeList {
+		if node.NodeName == nexus {
+			nexusIP = node.IPAddress
+			break
+		}
+	}
+	Expect(nexusIP).NotTo(Equal(""), "Nexus IP not found")
+	c.nexusNodeIP = nexusIP
+	var nxList []string
+	nxList = append(nxList, nexusIP)
+
+	nexusList, _ := mayastorclient.ListNexuses(nxList)
 	Expect(len(nexusList)).NotTo(Equal(BeZero()), "Expected to find at least 1 nexus")
 	nx := nexusList[0]
 
-	// identify the nexus child to be faulted
+	// identify the local replica to be faulted
 	nxChildUri := ""
-	nxNodeIP := ""
 	for _, ch := range nx.Children {
-		if strings.HasPrefix(ch.Uri, "nvmf://") {
-			for _, nodeIP := range nexusIP {
-				if strings.Contains(ch.Uri, nodeIP) {
-					nxNodeIP = nodeIP
-					nxChildUri = ch.Uri
-					break
-				}
-			}
+		if strings.HasPrefix(ch.Uri, "bdev:///") {
+			nxChildUri = ch.Uri
 			break
 		}
 	}
 	Expect(nxChildUri).NotTo(Equal(""), "Could not find nexus replica")
-	Expect(nxNodeIP).NotTo(Equal(""), "Could not find nexus node")
 	c.nexusRep = nxChildUri
-	c.nexusNodeIP = nxNodeIP
 	logf.Log.Info("Nexus details", "nexus IP", c.nexusNodeIP, "replica", c.nexusRep)
 }
 
@@ -179,7 +180,6 @@ func (c *primitiveFaultInjectionConfig) verifyVolumeStateOverGrpcAndCrd() {
 	Expect(len(nexusIP)).NotTo(Equal(BeZero()), "failed to get Nexus IPs")
 
 	nexusList, _ := mayastorclient.ListNexuses(nexusIP)
-	logf.Log.Info("Nexus", "list", nexusList)
 	Expect(len(nexusList)).NotTo(Equal(BeZero()), "Expected to find at least 1 nexus")
 	nx := nexusList[0]
 
@@ -193,4 +193,64 @@ func (c *primitiveFaultInjectionConfig) verifyVolumeStateOverGrpcAndCrd() {
 func (c *primitiveFaultInjectionConfig) verifyUninterruptedIO() {
 	status := k8stest.IsPodRunning(c.fioPodName, common.NSDefault)
 	Expect(status).To(Equal(true), "fio pod %s not running", c.fioPodName)
+}
+
+// patch msv with replication factor to 2
+func (c *primitiveFaultInjectionConfig) patchMsvReplica() {
+	msv := k8stest.GetMSV(c.uuid)
+	msv.Spec.ReplicaCount = replicaCountToPatch
+	_, err := custom_resources.UpdateMsVol(msv)
+	Expect(err).ToNot(HaveOccurred(), "Failed to patch Mayastor volume %s", c.uuid)
+}
+
+// check volume statau
+func (c *primitiveFaultInjectionConfig) verifyMsvStatus() {
+	namespace := common.NSDefault
+	volName := c.pvcName
+	pvc, getPvcErr := k8stest.GetPVC(volName, namespace)
+	Expect(getPvcErr).To(BeNil(), "Failed to get PVC %s", volName)
+	Expect(pvc).ToNot(BeNil())
+
+	// Wait for the PVC to be bound.
+	Eventually(func() coreV1.PersistentVolumeClaimPhase {
+		return k8stest.GetPvcStatusPhase(volName, namespace)
+	},
+		defTimeoutSecs, // timeout
+		"1s",           // polling interval
+	).Should(Equal(coreV1.ClaimBound))
+
+	// Refresh the PVC contents, so that we can get the PV name.
+	pvc, getPvcErr = k8stest.GetPVC(volName, namespace)
+	Expect(getPvcErr).To(BeNil())
+	Expect(pvc).ToNot(BeNil())
+	logf.Log.Info("Created", "volume", pvc.Spec.VolumeName, "uuid", pvc.ObjectMeta.UID)
+
+	// Wait for the PV to be provisioned
+	Eventually(func() *coreV1.PersistentVolume {
+		pv, getPvErr := k8stest.GetPV(pvc.Spec.VolumeName)
+		if getPvErr != nil {
+			return nil
+		}
+		return pv
+
+	},
+		defTimeoutSecs, // timeout
+		"1s",           // polling interval
+	).Should(Not(BeNil()))
+
+	// Wait for the PV to be bound.
+	Eventually(func() coreV1.PersistentVolumePhase {
+		return k8stest.GetPvStatusPhase(pvc.Spec.VolumeName)
+	},
+		defTimeoutSecs, // timeout
+		"1s",           // polling interval
+	).Should(Equal(coreV1.VolumeBound))
+
+	Eventually(func() *v1alpha1.MayastorVolume {
+		return k8stest.GetMSV(string(pvc.ObjectMeta.UID))
+	},
+		defTimeoutSecs,
+		"1s",
+	).Should(Not(BeNil()))
+
 }
