@@ -23,10 +23,15 @@ type CmdList struct {
 }
 
 func sendRequest(reqType, url string, data interface{}) error {
+	_, err := sendRequestGetResponse(reqType, url, data, true)
+	return err
+}
+
+func sendRequestGetResponse(reqType, url string, data interface{}, verbose bool) (string, error) {
 	client := &http.Client{}
 	reqData := new(bytes.Buffer)
 	if err := json.NewEncoder(reqData).Encode(data); err != nil {
-		return err
+		return "", err
 	}
 	req, err := http.NewRequest(reqType, url, reqData)
 	if err != nil {
@@ -36,15 +41,17 @@ func sendRequest(reqType, url string, data interface{}) error {
 	req.Header.Add("Content-Type", "application/json")
 	resp, err := client.Do(req)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer resp.Body.Close()
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return err
+		return "", err
 	}
-	fmt.Printf("resp: %s\n", bodyBytes)
-	return nil
+	if verbose {
+		fmt.Printf("resp: %s\n", bodyBytes)
+	}
+	return string(bodyBytes), nil
 }
 
 // UngracefulReboot crashes and reboots the host machine
@@ -99,11 +106,11 @@ func DiskPartition(serverAddr string, cmd string) error {
 }
 
 // Exec sends the shell command to the e2e-agent
-func Exec(serverAddr string, command string) error {
+func Exec(serverAddr string, command string) (string, error) {
 	logf.Log.Info("Executing command on node", "command", command, "addr", serverAddr)
 	url := "http://" + serverAddr + ":" + RestPort + "/exec"
 	data := CmdList{
 		Cmd: command,
 	}
-	return sendRequest("POST", url, data)
+	return sendRequestGetResponse("POST", url, data, false)
 }
