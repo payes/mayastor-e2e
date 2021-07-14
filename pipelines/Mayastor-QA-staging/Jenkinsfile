@@ -17,7 +17,7 @@ e2e_test_profile = 'staging'
 String cron_schedule = "H */8 * * *"
 
 xray_send_report=true
-xray_nightly_stable_testplan='MQ-1619'
+xray_test_plan='MQ-1619'
 
 pipeline {
   agent none
@@ -61,8 +61,8 @@ pipeline {
             if (xray_send_report == true) {
               common = load "${env.WORKSPACE}/pipelines/common/common.groovy"
               pipeline = common.GetJobBaseName()
-              summary = "Pipeline: ${pipeline}, test plan: ${xray_nightly_stable_testplan}, git branch: ${env.BRANCH_name}, tested image tag: ${e2e_image_tag}"
-              common.SendXrayReport(xray_nightly_stable_testplan, summary, e2e_reports_dir)
+              summary = "Pipeline: ${pipeline}, test plan: ${xray_test_plan}, git branch: ${env.BRANCH_name}, tested image tag: ${e2e_image_tag}"
+              common.SendXrayReport(xray_test_plan, summary, e2e_reports_dir)
             }
           }
         }
