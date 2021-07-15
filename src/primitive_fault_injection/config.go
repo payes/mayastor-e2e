@@ -12,6 +12,7 @@ var defTimeoutSecs = "90s"
 
 const (
 	replicaCountToPatch = 2
+	sleepTime           = 2
 )
 
 type primitiveFaultInjectionConfig struct {
@@ -25,8 +26,10 @@ type primitiveFaultInjectionConfig struct {
 	uuid        string
 	nexusNodeIP string
 	nexusRep    string
+	replicaIPs  []string
 	duration    time.Duration
 	thinkTime   time.Duration
+	timeout     time.Duration
 }
 
 func generatePrimitiveFaultInjectionConfig(testName string) *primitiveFaultInjectionConfig {
@@ -35,6 +38,8 @@ func generatePrimitiveFaultInjectionConfig(testName string) *primitiveFaultInjec
 	Expect(err).ToNot(HaveOccurred(), "Duration configuration string format is invalid.")
 	fioThinkTime, err := time.ParseDuration(params.ThinkTime)
 	Expect(err).ToNot(HaveOccurred(), "Think time configuration string format is invalid.")
+	fioTimeout, err := time.ParseDuration(params.Timeout)
+	Expect(err).ToNot(HaveOccurred(), "Timeout configuration string format is invalid.")
 	c := &primitiveFaultInjectionConfig{
 		protocol:   common.ShareProtoNvmf,
 		fsType:     common.Ext4FsType,
@@ -45,6 +50,7 @@ func generatePrimitiveFaultInjectionConfig(testName string) *primitiveFaultInjec
 		fioPodName: testName + "-fio",
 		duration:   fioDuration,
 		thinkTime:  fioThinkTime,
+		timeout:    fioTimeout,
 	}
 	return c
 }

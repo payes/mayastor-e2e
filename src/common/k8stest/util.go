@@ -8,7 +8,6 @@ import (
 	"mayastor-e2e/common/mayastorclient/grpc"
 	"os/exec"
 	"regexp"
-	"strings"
 	"time"
 
 	"mayastor-e2e/common"
@@ -16,8 +15,6 @@ import (
 
 	. "github.com/onsi/gomega"
 	errors "github.com/pkg/errors"
-
-	agent "mayastor-e2e/common/e2e-agent"
 
 	appsV1 "k8s.io/api/apps/v1"
 	coreV1 "k8s.io/api/core/v1"
@@ -498,87 +495,4 @@ func MspGrpcStateToCrdstate(mspState grpc.PoolState) string {
 func WorkaroundForMQ1536() {
 	_, err := DeleteAllPoolFinalizers()
 	Expect(err).ToNot(HaveOccurred(), "failed to delete all pool finalizers (WorkaroundForMQ1536)")
-}
-
-// data intigrity check across replica
-func checksumReplica(initiatorIP string, targetIP string, uri string, remoteDevice string) (string, error) {
-	logf.Log.Info("checksumReplica", "nexusIP", initiatorIP, "nodeIP", targetIP, "uri", uri)
-
-	nqnoffset := strings.Index(uri, "nqn.")
-	nqnlong := uri[nqnoffset:]
-	tailoffset := strings.Index(nqnlong, "?")
-	nqn := nqnlong[:tailoffset]
-
-	cmdArgs := []string{
-		"nvme",
-		"connect",
-		"-a", targetIP,
-		"-t", "tcp",
-		"-s", "8420",
-		"-n", nqn,
-	}
-	args := strings.Join(cmdArgs, " ")
-	resp, err := agent.Exec(initiatorIP, args)
-	resp = strings.TrimSpace(resp)
-	if err != nil {
-		logf.Log.Info("Running agent failed", "error", err)
-		return "", err
-	} else {
-		Expect(resp).To(Equal(""), resp) // connect should be silent
-		logf.Log.Info("Executing", "cmd", args, "got", resp)
-	}
-
-	cmdArgs = []string{
-		"ls", "/dev/",
-	}
-	args = strings.Join(cmdArgs, " ")
-	resp, err = agent.Exec(initiatorIP, args)
-	if err != nil {
-		logf.Log.Info("Running agent failed", "error", err)
-		return "", err
-	}
-	logf.Log.Info("Executed", "cmd", args, "got", resp)
-
-	// checksum the device
-	// the returned format is <checksum> <size> <device>
-	// e.g. "924018992 61849088 /dev/nvme1n1p2"
-	cmdArgs = []string{
-		"cksum", "/dev/" + remoteDevice,
-	}
-	args = strings.Join(cmdArgs, " ")
-	cksumText, err := agent.Exec(initiatorIP, args)
-	if err != nil {
-		logf.Log.Info("Running agent failed", "error", err)
-		return "", err
-	}
-	cksumText = strings.TrimSpace(cksumText)
-	logf.Log.Info("Executed", "cmd", args, "got", cksumText)
-	// double check the response contains the device name
-	if strings.Contains(cksumText, remoteDevice) == false {
-		return "", fmt.Errorf("Unexpected result from cksum %v", cksumText)
-	}
-
-	cmdArgs = []string{
-		"nvme",
-		"disconnect",
-		"-n", nqn,
-	}
-	args = strings.Join(cmdArgs, " ")
-	resp, err = agent.Exec(initiatorIP, args)
-	if err != nil {
-		logf.Log.Info("Running agent failed", "error", err)
-		return "", err
-	}
-	logf.Log.Info("Executing", "cmd", args, "got", resp)
-
-	// check that the device no longer exists
-	resp, err = agent.Exec(initiatorIP, "ls /dev/")
-	if err != nil {
-		logf.Log.Info("Running agent failed", "error", err)
-		return "", err
-	}
-	if strings.Contains(resp, remoteDevice) {
-		return "", fmt.Errorf("device %s still exists", remoteDevice)
-	}
-	return cksumText, nil
 }

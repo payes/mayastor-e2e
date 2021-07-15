@@ -121,7 +121,7 @@ func (c *primitiveFaultInjectionConfig) getNexusDetail() {
 	nodeList, err := k8stest.GetNodeLocs()
 	Expect(err).ToNot(HaveOccurred(), "Failed to get mayastor nodes")
 
-	nexus, _ := k8stest.GetMsvNodes(c.uuid)
+	nexus, replicaNodes := k8stest.GetMsvNodes(c.uuid)
 	Expect(nexus).NotTo(Equal(""), "Nexus not found")
 
 	// identify the nexus IP address
@@ -152,6 +152,30 @@ func (c *primitiveFaultInjectionConfig) getNexusDetail() {
 	Expect(nxChildUri).NotTo(Equal(""), "Could not find nexus replica")
 	c.nexusRep = nxChildUri
 	logf.Log.Info("Nexus details", "nexus IP", c.nexusNodeIP, "replica", c.nexusRep)
+
+	// changed, err := k8stest.ExcludeNexusReplica(nexusIP, c.uuid)
+	// Expect(err).ToNot(HaveOccurred(), "%v", err)
+
+	// if changed {
+	// 	nexus, replicaNodes = k8stest.GetMsvNodes(c.uuid) // names of nodes in volume
+	// }
+	var replicaIPs []string
+
+	for _, node := range nodeList {
+		if node.NodeName != nexus {
+			for _, replica := range replicaNodes {
+				if replica == node.NodeName {
+					replicaIPs = append(replicaIPs, node.IPAddress)
+					break
+				}
+			}
+		}
+	}
+
+	Expect(len(replicaIPs)).To(Equal(2), "Expected to find 2 non-nexus replicas")
+	c.replicaIPs = replicaIPs
+
+	logf.Log.Info("identified", "nexus", c.nexusNodeIP, "replica1", c.replicaIPs[0], "replica2", c.replicaIPs[1])
 }
 
 // Fault the replica hosted on the nexus node
@@ -253,4 +277,35 @@ func (c *primitiveFaultInjectionConfig) verifyMsvStatus() {
 		"1s",
 	).Should(Not(BeNil()))
 
+}
+
+// use the e2e-agent run on each non-nexus node:
+//    for each non-nexus replica node
+//        nvme connect from one to the other replica
+//        checksum /dev/nvme0n1p2
+//        disconnect
+//    compare the checksum results, they should match
+func (c *primitiveFaultInjectionConfig) PrimitiveDataIntegrity() {
+
+	// the first replica checksummed from the second node
+	replicas, err := mayastorclient.ListReplicas([]string{c.replicaIPs[0]})
+	Expect(err).ToNot(HaveOccurred(), "%v", err)
+	Expect(len(replicas)).To(Equal(1), "Expected to find 1 replica")
+	uri := replicas[0].Uri
+	logf.Log.Info("uri", "uri", uri)
+	firstchecksum, err := k8stest.ChecksumReplica(c.replicaIPs[1], c.replicaIPs[0], uri)
+	Expect(err).ToNot(HaveOccurred(), "%v", err)
+
+	// the second replica checksummed from the first node
+	replicas, err = mayastorclient.ListReplicas([]string{c.replicaIPs[1]})
+	Expect(err).ToNot(HaveOccurred(), "%v", err)
+	Expect(len(replicas)).To(Equal(1), "Expected to find 1 replica")
+	uri = replicas[0].Uri
+	logf.Log.Info("uri", "uri", uri)
+	secondchecksum, err := k8stest.ChecksumReplica(c.replicaIPs[0], c.replicaIPs[1], uri)
+	Expect(err).ToNot(HaveOccurred(), "%v", err)
+
+	// verify that they match
+	logf.Log.Info("match", "first", firstchecksum, "this", secondchecksum)
+	Expect(secondchecksum).To(Equal(firstchecksum), "checksums differ")
 }

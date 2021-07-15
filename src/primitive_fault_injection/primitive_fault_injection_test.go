@@ -58,6 +58,8 @@ func (c *primitiveFaultInjectionConfig) faultInjectionTest() {
 	c.verifyMsvStatus()
 	c.verifyUninterruptedIO()
 	c.verifyVolumeStateOverGrpcAndCrd()
+	k8stest.WaitPodComplete(c.fioPodName, sleepTime, int(c.timeout))
+	c.PrimitiveDataIntegrity()
 	c.deleteFio()
 	c.deletePVC()
 	c.deleteSC()
