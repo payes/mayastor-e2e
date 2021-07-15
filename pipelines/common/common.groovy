@@ -83,10 +83,7 @@ def BuildImages(mayastorBranch, moacBranch, test_tag) {
 }
 
 def BuildCluster(e2e_build_cluster_job, e2e_environment) {
-  def uuid = sh(
-    script: 'printf $(uuidgen -r)',
-    returnStdout: true
-  )
+  def uuid = UUID.randomUUID()
   return build(
     job: "${e2e_build_cluster_job}",
     propagate: true,
