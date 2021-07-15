@@ -206,7 +206,7 @@ type E2EConfig struct {
 		VolumeMultipler int `yaml:"volumeMultipler" env-default:"10"`
 	} `yaml:"concurrentPvcCreate"`
 	PrimitiveDataIntegrity struct {
-		VolMb int `yaml:"volMb" env-default:"64"`
+		VolMb int `yaml:"volMb" env-default:"1024"`
 	} `yaml:"primitiveDataIntegrity"`
 }
 

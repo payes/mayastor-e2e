@@ -21,7 +21,7 @@ const (
 )
 
 type IntegrityEnv struct {
-	uuid           string
+	volUuid        string
 	pvc            string
 	storageClass   string
 	fioPodName     string
@@ -36,7 +36,7 @@ func (env *IntegrityEnv) setupReplicas() {
 	nodeList, err := k8stest.GetNodeLocs() // all 3 nodes as IP address + name
 	Expect(err).ToNot(HaveOccurred(), "%v", err)
 
-	nexus, replicaNodes := k8stest.GetMsvNodes(env.uuid) // names of nodes in volume
+	nexus, replicaNodes := k8stest.GetMsvNodes(env.volUuid) // names of nodes in volume
 	Expect(nexus).NotTo(Equal(""), "Nexus not found")
 
 	// identify the nexus IP address
@@ -51,11 +51,11 @@ func (env *IntegrityEnv) setupReplicas() {
 	env.nexusIP = nexusIP
 
 	// if necessary, reconfigure the volume not to include the nexus node as a replica
-	changed, err := k8stest.ExcludeNexusReplica(nexusIP, env.uuid)
+	changed, err := k8stest.ExcludeNexusReplica(nexusIP, env.volUuid)
 	Expect(err).ToNot(HaveOccurred(), "%v", err)
 
 	if changed {
-		nexus, replicaNodes = k8stest.GetMsvNodes(env.uuid) // names of nodes in volume
+		nexus, replicaNodes = k8stest.GetMsvNodes(env.volUuid) // names of nodes in volume
 	}
 	var replicaIPs []string
 
@@ -84,7 +84,7 @@ func setup(pvcName string, storageClassName string, fioPodName string) Integrity
 
 	env.pvc = pvcName
 	env.storageClass = storageClassName
-	env.uuid = k8stest.MkPVC(volMb, pvcName, storageClassName, common.VolRawBlock, common.NSDefault)
+	env.volUuid = k8stest.MkPVC(volMb, pvcName, storageClassName, common.VolRawBlock, common.NSDefault)
 
 	podObj := k8stest.CreateFioPodDef(fioPodName, pvcName, common.VolRawBlock, common.NSDefault)
 	_, err := k8stest.CreatePod(podObj, common.NSDefault)
@@ -192,7 +192,7 @@ func (env *IntegrityEnv) fioWriteAndVerify(fioPodName string) error {
 // 3) get fio to write to the entire volume
 // 4) use the e2e-agent running on each non-nexus node:
 //    for each non-nexus replica node
-//        nvme connect from one to the other replica
+//        nvme connect to its own target
 //        cksum /dev/nvme0n1p2
 //        nvme disconnect
 //    compare the checksum results, they should match
@@ -201,22 +201,22 @@ func (env *IntegrityEnv) PrimitiveDataIntegrity() {
 	err := env.fioWriteAndVerify(env.fioPodName)
 	Expect(err).ToNot(HaveOccurred(), "%v", err)
 
-	// the first replica checksummed from the second node
+	// the first replica
 	replicas, err := mayastorclient.ListReplicas([]string{env.replicaIPs[0]})
 	Expect(err).ToNot(HaveOccurred(), "%v", err)
 	Expect(len(replicas)).To(Equal(1), "Expected to find 1 replica")
 	uri := replicas[0].Uri
 	logf.Log.Info("uri", "uri", uri)
-	firstchecksum, err := k8stest.ChecksumReplica(env.replicaIPs[1], env.replicaIPs[0], uri)
+	firstchecksum, err := k8stest.ChecksumReplica(env.replicaIPs[0], env.replicaIPs[0], uri)
 	Expect(err).ToNot(HaveOccurred(), "%v", err)
 
-	// the second replica checksummed from the first node
+	// the second replica
 	replicas, err = mayastorclient.ListReplicas([]string{env.replicaIPs[1]})
 	Expect(err).ToNot(HaveOccurred(), "%v", err)
 	Expect(len(replicas)).To(Equal(1), "Expected to find 1 replica")
 	uri = replicas[0].Uri
 	logf.Log.Info("uri", "uri", uri)
-	secondchecksum, err := k8stest.ChecksumReplica(env.replicaIPs[0], env.replicaIPs[1], uri)
+	secondchecksum, err := k8stest.ChecksumReplica(env.replicaIPs[1], env.replicaIPs[1], uri)
 	Expect(err).ToNot(HaveOccurred(), "%v", err)
 
 	// verify that they match
@@ -226,10 +226,10 @@ func (env *IntegrityEnv) PrimitiveDataIntegrity() {
 
 func TestPrimitiveDataIntegrity(t *testing.T) {
 	// Initialise test and set class and file names for reports
-	k8stest.InitTesting(t, "Primitive data integrity", "primitive_data_integrity")
+	k8stest.InitTesting(t, "MQ-1510", "MQ-1510")
 }
 
-var _ = Describe("Primitive data integrity", func() {
+var _ = Describe("Primitive data integrity:", func() {
 
 	BeforeEach(func() {
 		// Check ready to run
