@@ -59,6 +59,15 @@ var _ = Describe("Mayastor utility: gRPC lists", func() {
 			} else {
 				logf.Log.Info("pools", "error", err)
 			}
+			nvmeControllers, err := mayastorclient.ListNvmeControllers(addrs)
+			logf.Log.Info("nvmeControllers", "count", len(nvmeControllers))
+			if err == nil {
+				for _, controller := range nvmeControllers {
+					logf.Log.Info("", "nvmeController", controller)
+				}
+			} else {
+				logf.Log.Info("nvmeControllers", "error", err)
+			}
 		}
 	})
 })

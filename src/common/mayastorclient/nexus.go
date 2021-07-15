@@ -131,3 +131,26 @@ func FaultNexusChild(address string, Uuid string, Uri string) error {
 
 	return err
 }
+
+// FindNexus given a list of node ip addresses, return the MayastorNexus with matching uuid
+// returns accumulated errors if gRPC communication failed.
+func FindNexus(uuid string, addrs []string) (*MayastorNexus, error) {
+	var accErr error
+	for _, address := range addrs {
+		nexusInfos, err := listNexuses(address)
+		if err == nil {
+			for _, ni := range nexusInfos {
+				if ni.Uuid == uuid {
+					return &ni, nil
+				}
+			}
+		} else {
+			if accErr != nil {
+				accErr = fmt.Errorf("%v;%v", accErr, err)
+			} else {
+				accErr = err
+			}
+		}
+	}
+	return nil, accErr
+}
