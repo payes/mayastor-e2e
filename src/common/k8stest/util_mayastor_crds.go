@@ -2,9 +2,10 @@ package k8stest
 
 // Utility functions for Mayastor CRDs
 import (
-	. "github.com/onsi/gomega"
 	"mayastor-e2e/common/custom_resources"
 	v1alpha1Api "mayastor-e2e/common/custom_resources/api/types/v1alpha1"
+
+	. "github.com/onsi/gomega"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 

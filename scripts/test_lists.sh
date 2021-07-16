@@ -135,4 +135,5 @@ profiles[staging]="
 primitive_msp_state
 primitive_volumes
 primitive_msp_stress
+primitive_data_integrity
 "
