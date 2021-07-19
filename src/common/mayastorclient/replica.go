@@ -180,3 +180,27 @@ func RmNodeReplicas(addrs []string) error {
 	}
 	return accErr
 }
+
+// FindReplicas given a list of node ip addresses, enumerate the set of replicas on mayastor using gRPC on each of those nodes
+// returns accumulated errors if gRPC communication failed.
+func FindReplicas(uuid string, addrs []string) ([]MayastorReplica, error) {
+	var accErr error
+	var replicaInfos []MayastorReplica
+	for _, address := range addrs {
+		replicaInfo, err := listReplica(address)
+		if err == nil {
+			for _, repl := range replicaInfo {
+				if repl.Uuid == uuid {
+					replicaInfos = append(replicaInfos, repl)
+				}
+			}
+		} else {
+			if accErr != nil {
+				accErr = fmt.Errorf("%v;%v", accErr, err)
+			} else {
+				accErr = err
+			}
+		}
+	}
+	return replicaInfos, accErr
+}

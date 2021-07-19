@@ -113,6 +113,18 @@ func IsPodRunning(podName string, nameSpace string) bool {
 	if gTestEnv.K8sClient.Get(context.TODO(), types.NamespacedName{Name: podName, Namespace: nameSpace}, &pod) != nil {
 		return false
 	}
+	if pod.Status.Phase == v1.PodRunning {
+		for _, vol := range pod.Spec.Volumes {
+			volSrc := vol.VolumeSource
+			vsPvc := volSrc.PersistentVolumeClaim
+			if vsPvc != nil {
+				pvc, err := gTestEnv.KubeInt.CoreV1().PersistentVolumeClaims(nameSpace).Get(context.TODO(), vsPvc.ClaimName, metaV1.GetOptions{})
+				if err == nil {
+					MsvConsistencyCheck(string(pvc.ObjectMeta.UID))
+				}
+			}
+		}
+	}
 	return pod.Status.Phase == v1.PodRunning
 }
 

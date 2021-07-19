@@ -36,7 +36,7 @@ func GetNodeLocsMap() (map[string]NodeLocation, error) {
 	return NodeLocsMap, nil
 }
 
-// returns vector of populated NodeLocation structs
+// GetNodeLocs returns vector of populated NodeLocation structs
 func GetNodeLocs() ([]NodeLocation, error) {
 	nodeList := coreV1.NodeList{}
 
@@ -79,6 +79,37 @@ func GetNodeLocs() ([]NodeLocation, error) {
 	return NodeLocs, nil
 }
 
+// GetNodeIPAddress returns IP address of a node
+func GetNodeIPAddress(nodeName string) (*string, error) {
+	nodeLocs, err := GetNodeLocs()
+	if err != nil {
+		return nil, err
+	}
+	for _, nl := range nodeLocs {
+		if nodeName == nl.NodeName {
+			return &nl.IPAddress, nil
+		}
+	}
+	return nil, fmt.Errorf("node %s not found", nodeName)
+}
+
+// GetMayastorNodeIPAddresses return an array of IP addresses for nodes
+// running mayastor. On error an empty array is returned.
+func GetMayastorNodeIPAddresses() []string {
+	var addrs []string
+	nodes, err := GetNodeLocs()
+	if err != nil {
+		return addrs
+	}
+
+	for _, node := range nodes {
+		if node.MayastorNode {
+			addrs = append(addrs, node.IPAddress)
+		}
+	}
+	return addrs
+}
+
 func GetMayastorNodeNames() ([]string, error) {
 	var nodeNames []string
 	nodes, err := GetNodeLocs()
@@ -94,10 +125,11 @@ func GetMayastorNodeNames() ([]string, error) {
 	return nodeNames, err
 }
 
-// TODO remove dependency on kubectl
+// LabelNode add a label to a node
 // label is a string in the form "key=value"
 // function still succeeds if label already present
 func LabelNode(nodename string, label string, value string) {
+	// TODO remove dependency on kubectl
 	labelAssign := fmt.Sprintf("%s=%s", label, value)
 	cmd := exec.Command("kubectl", "label", "node", nodename, labelAssign, "--overwrite=true")
 	cmd.Dir = ""
@@ -105,9 +137,10 @@ func LabelNode(nodename string, label string, value string) {
 	Expect(err).ToNot(HaveOccurred())
 }
 
-// TODO remove dependency on kubectl
+// UnlabelNode remove a label from a node
 // function still succeeds if label not present
 func UnlabelNode(nodename string, label string) {
+	// TODO remove dependency on kubectl
 	cmd := exec.Command("kubectl", "label", "node", nodename, label+"-")
 	cmd.Dir = ""
 	_, err := cmd.CombinedOutput()

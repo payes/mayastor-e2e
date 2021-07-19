@@ -8,11 +8,9 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var defTimeoutSecs = "90s"
-
 const (
-	replicaCountToPatch = 2
-	sleepTime           = 2
+	sleepTime      = 2
+	defTimeoutSecs = "90s"
 )
 
 type primitiveFaultInjectionConfig struct {

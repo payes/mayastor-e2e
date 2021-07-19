@@ -68,11 +68,11 @@ func blankCentreBlock(nodeIP string, device string, sizeMB int) {
 	args := strings.Join(cmdArgs, " ")
 	logf.Log.Info("Executing", "cmd", args)
 
-	err := client.Exec(nodeIP, args)
+	_, err := client.Exec(nodeIP, args)
 	if err != nil {
 		logf.Log.Info("Running agent failed", "error", err)
 	}
-	err = client.Exec(nodeIP, "sync")
+	_, err = client.Exec(nodeIP, "sync")
 	if err != nil {
 		logf.Log.Info("Running agent failed", "error", err)
 	}

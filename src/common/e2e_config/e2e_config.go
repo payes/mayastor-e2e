@@ -56,6 +56,10 @@ type E2EConfig struct {
 	CleanupOnBeforeEach bool `yaml:"cleanupOnBeforeEach" env-default:"false" env:"e2e_policy_cleanup_before"`
 	// Default replica count, used by tests which do not have a config section.
 	DefaultReplicaCount int `yaml:"defaultReplicaCount" env-default:"2" env:"e2e_default_replica_count"`
+	// Timeout for MOAC CR state reconciliation in seconds, some CR state is not update promptly for example pool usage
+	// and finalizers. On hcloud the time lag between synchronisation has been observed to be in the order of
+	// a minute.
+	MoacSyncTimeoutSeconds int `yaml:"moacSyncTimeoutSeconds" env-default:"120"`
 
 	// Run configuration
 	ReportsDir string `yaml:"reportsDir" env:"e2e_reports_dir"`
@@ -193,6 +197,7 @@ type E2EConfig struct {
 		MayastorRestartTimeout int    `yaml:"mayastorRestartTimeout" env-default:"240"`
 		Iterations             int    `yaml:"iterations" env-default:"100"`
 	} `yaml:"primitiveMspDelete"`
+
 	PrimitiveMspStressTest struct {
 		PartitionSizeInGiB int `yaml:"partitionSizeInGiB" env-default:"1"`
 		PartitionCount     int `yaml:"partitionCount" env-default:"5"`
@@ -211,6 +216,9 @@ type E2EConfig struct {
 		Timeout   string `yaml:"timeout" env-default:"360s"`
 		ThinkTime string `yaml:"thinkTime" env-default:"10ms"`
 	} `yaml:"primitiveFaultInjection"`
+	PrimitiveDataIntegrity struct {
+		VolMb int `yaml:"volMb" env-default:"1024"`
+	} `yaml:"primitiveDataIntegrity"`
 }
 
 var once sync.Once

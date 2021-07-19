@@ -135,7 +135,6 @@ func ExcludeNexusReplica(nexusIP string, uuid string) (bool, error) {
 						return false, fmt.Errorf("More than 1 nexus local replica found")
 					}
 					nxChild = ch.Uri
-					break
 				}
 			}
 			if nxChild == "" { // there is no local replica so we are done
@@ -145,30 +144,42 @@ func ExcludeNexusReplica(nexusIP string, uuid string) (bool, error) {
 		}
 	}
 	if nxChild == "" {
-		return false, fmt.Errorf("failed to find local replica")
+		return false, fmt.Errorf("failed to find the nexus")
 	}
 
-	// fault the device
+	// fault the replica
+	logf.Log.Info("Faulting local replica", "replica", nxChild)
 	err = mayastorclient.FaultNexusChild(nexusIP, uuid, nxChild)
 	if err != nil {
 		return false, fmt.Errorf("Failed to fault child, err=%v", err)
 	}
-	state := ""
+
+	// wait for the replica to disappear from the msv
 	const sleepTime = 10
-	const timeOut = 120
+	const timeOut = 240
+	var found bool
 	for ix := 0; ix < (timeOut-1)/sleepTime; ix++ {
-		state, err = custom_resources.GetMsVolState(uuid)
+		found = false
+		replicas, err := custom_resources.GetMsVolReplicas(uuid)
 		if err != nil {
-			return false, fmt.Errorf("Failed to get state, err=%v", err)
+			return false, fmt.Errorf("Failed to get replicas, err=%v", err)
 		}
-		if state == "degraded" {
+		for _, r := range replicas {
+			if r.Uri == nxChild {
+				found = true
+				break
+			}
+		}
+		if !found {
 			break
 		}
 		time.Sleep(sleepTime * time.Second)
 	}
-	if state != "degraded" {
-		return true, fmt.Errorf("timeo out waiting for volume to become degraded")
+	if found {
+		return true, fmt.Errorf("timed out waiting for faulted replica to be removed")
 	}
+	// wait for the msv to become healthy - now rebuilt with a non-nexus replica
+	state := ""
 	for ix := 0; ix < (timeOut-1)/sleepTime; ix++ {
 		state, err = custom_resources.GetMsVolState(uuid)
 		if err != nil {
@@ -180,7 +191,7 @@ func ExcludeNexusReplica(nexusIP string, uuid string) (bool, error) {
 		time.Sleep(sleepTime * time.Second)
 	}
 	if state != "healthy" {
-		return true, fmt.Errorf("time out waiting for volume to become healthy")
+		return true, fmt.Errorf("timed out waiting for volume to become healthy")
 	}
 	return true, nil
 }

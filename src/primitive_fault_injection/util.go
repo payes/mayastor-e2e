@@ -34,7 +34,7 @@ func (c *primitiveFaultInjectionConfig) deleteSC() {
 
 // createPVCs will create pvc
 func (c *primitiveFaultInjectionConfig) createPVC() *primitiveFaultInjectionConfig {
-	c.uuid = k8stest.MkPVC(c.pvcSize, c.pvcName, c.scName, common.VolFileSystem, common.NSDefault)
+	c.uuid = k8stest.MkPVC(c.pvcSize, c.pvcName, c.scName, common.VolRawBlock, common.NSDefault)
 	return c
 }
 
@@ -70,13 +70,12 @@ func (c *primitiveFaultInjectionConfig) createFio() {
 		WithRestartPolicy(coreV1.RestartPolicyNever).
 		WithContainer(podContainer).
 		WithVolume(volume).
-		WithVolumeDeviceOrMount(common.VolFileSystem).Build()
+		WithVolumeDeviceOrMount(common.VolRawBlock).Build()
 	Expect(err).ToNot(HaveOccurred(), "Generating fio pod definition %s", c.fioPodName)
 	Expect(podObj).ToNot(BeNil(), "failed to generate fio pod definition")
 
 	volFioArgs = append(volFioArgs, []string{
-		fmt.Sprintf("--filename=/volume-%s/fio-test-file", c.pvcName),
-		fmt.Sprintf("--size=%dm", common.DefaultFioSizeMb),
+		fmt.Sprintf("--filename=%s", common.FioBlockFilename),
 	})
 	// Construct argument list for fio
 	var podArgs []string
@@ -153,12 +152,6 @@ func (c *primitiveFaultInjectionConfig) getNexusDetail() {
 	c.nexusRep = nxChildUri
 	logf.Log.Info("Nexus details", "nexus IP", c.nexusNodeIP, "replica", c.nexusRep)
 
-	// changed, err := k8stest.ExcludeNexusReplica(nexusIP, c.uuid)
-	// Expect(err).ToNot(HaveOccurred(), "%v", err)
-
-	// if changed {
-	// 	nexus, replicaNodes = k8stest.GetMsvNodes(c.uuid) // names of nodes in volume
-	// }
 	var replicaIPs []string
 
 	for _, node := range nodeList {
@@ -172,7 +165,7 @@ func (c *primitiveFaultInjectionConfig) getNexusDetail() {
 		}
 	}
 
-	Expect(len(replicaIPs)).To(Equal(2), "Expected to find 2 non-nexus replicas")
+	Expect(len(replicaIPs)).To(Equal(c.replicas-1), "Expected to find %d non-nexus replicas", c.replicas-1)
 	c.replicaIPs = replicaIPs
 
 	logf.Log.Info("identified", "nexus", c.nexusNodeIP, "replica1", c.replicaIPs[0], "replica2", c.replicaIPs[1])
@@ -222,7 +215,7 @@ func (c *primitiveFaultInjectionConfig) verifyUninterruptedIO() {
 // patch msv with replication factor to 2
 func (c *primitiveFaultInjectionConfig) patchMsvReplica() {
 	msv := k8stest.GetMSV(c.uuid)
-	msv.Spec.ReplicaCount = replicaCountToPatch
+	msv.Spec.ReplicaCount = c.replicas - 1 // reduce replication factor by 1
 	patchMSV, err := custom_resources.UpdateMsVol(msv)
 	logf.Log.Info("Patched", "msv", patchMSV)
 	Expect(err).ToNot(HaveOccurred(), "Failed to patch Mayastor volume %s", c.uuid)
@@ -248,7 +241,6 @@ func (c *primitiveFaultInjectionConfig) verifyMsvStatus() {
 	pvc, getPvcErr = k8stest.GetPVC(volName, namespace)
 	Expect(getPvcErr).To(BeNil())
 	Expect(pvc).ToNot(BeNil())
-	logf.Log.Info("Created", "volume", pvc.Spec.VolumeName, "uuid", pvc.ObjectMeta.UID)
 
 	// Wait for the PV to be provisioned
 	Eventually(func() *coreV1.PersistentVolume {
@@ -282,11 +274,11 @@ func (c *primitiveFaultInjectionConfig) verifyMsvStatus() {
 
 // use the e2e-agent run on each non-nexus node:
 //    for each non-nexus replica node
-//        nvme connect from one to the other replica
+//        nvme connect to its own target
 //        checksum /dev/nvme0n1p2
 //        disconnect
 //    compare the checksum results, they should match
-func (c *primitiveFaultInjectionConfig) PrimitiveDataIntegrity() {
+func (c *primitiveFaultInjectionConfig) dataIntegrityCheck() {
 
 	// the first replica checksummed from the second node
 	replicas, err := mayastorclient.ListReplicas([]string{c.replicaIPs[0]})
