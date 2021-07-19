@@ -3,6 +3,7 @@ package k8stest
 // Utility functions for cleaning up a cluster
 import (
 	"context"
+	"fmt"
 	"mayastor-e2e/common/custom_resources"
 	"os/exec"
 	"strings"
@@ -231,7 +232,8 @@ func DeleteAllMsvs() (int, error) {
 // handle resource conflict errors by reloading the CR and retrying removal of finalizers.
 // also handle concurrent removal of the pool gracefully
 func deletePoolFinalizer(poolName string) (bool, error) {
-	for {
+	const sleepTime = 5
+	for ix := 1; ix < 30; ix += sleepTime {
 		msp, err := custom_resources.GetMsPool(poolName)
 		if err != nil {
 			if k8serrors.IsNotFound(err) {
@@ -266,7 +268,9 @@ func deletePoolFinalizer(poolName string) (bool, error) {
 			logf.Log.Info("On pool update finalizer", "error", err)
 			return false, err
 		}
+		time.Sleep(sleepTime * time.Second)
 	}
+	return false, fmt.Errorf("failed to remove pool finalizer (conflict)")
 }
 
 func DeleteAllPoolFinalizers() (bool, error) {
