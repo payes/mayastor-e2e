@@ -11,7 +11,7 @@ import (
 
 func TestPrimitiveFaultInjection(t *testing.T) {
 	// Initialise test and set class and file names for reports
-	k8stest.InitTesting(t, "Primitive fault injection test", "primitive_fault_injection")
+	k8stest.InitTesting(t, "MQ-1499", "primitive_fault_injection")
 }
 
 var _ = BeforeSuite(func(done Done) {
@@ -26,7 +26,7 @@ var _ = AfterSuite(func() {
 	k8stest.TeardownTestEnv()
 })
 
-var _ = Describe("Primitive fault injection tests", func() {
+var _ = Describe("Primitive fault injection tests:", func() {
 
 	BeforeEach(func() {
 		// Check ready to run

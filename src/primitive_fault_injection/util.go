@@ -223,7 +223,8 @@ func (c *primitiveFaultInjectionConfig) verifyUninterruptedIO() {
 func (c *primitiveFaultInjectionConfig) patchMsvReplica() {
 	msv := k8stest.GetMSV(c.uuid)
 	msv.Spec.ReplicaCount = replicaCountToPatch
-	_, err := custom_resources.UpdateMsVol(msv)
+	patchMSV, err := custom_resources.UpdateMsVol(msv)
+	logf.Log.Info("Patched", "msv", patchMSV)
 	Expect(err).ToNot(HaveOccurred(), "Failed to patch Mayastor volume %s", c.uuid)
 }
 
