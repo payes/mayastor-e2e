@@ -94,7 +94,7 @@ type E2EConfig struct {
 		} `yaml:"fioDutyCycles"`
 	} `yaml:"ioSoakTest"`
 	CSI struct {
-		Replicas       int    `yaml:"replicas" env-default:"1"`
+		Replicas       int    `yaml:"replicas" env-default:"2"`
 		SmallClaimSize string `yaml:"smallClaimSize" env-default:"50Mi"`
 		LargeClaimSize string `yaml:"largeClaimSize" env-default:"500Mi"`
 	} `yaml:"csi"`
