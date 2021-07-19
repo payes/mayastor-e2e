@@ -209,7 +209,18 @@ func (c *primitiveFaultInjectionConfig) verifyVolumeStateOverGrpcAndCrd() {
 // verify status of IO after fault injection
 func (c *primitiveFaultInjectionConfig) verifyUninterruptedIO() {
 	status := k8stest.IsPodRunning(c.fioPodName, common.NSDefault)
-	Expect(status).To(Equal(true), "fio pod %s not running", c.fioPodName)
+	var fioPodPhase coreV1.PodPhase
+	var err error
+	if !status {
+		// check pod phase
+		fioPodPhase, err = k8stest.CheckPodContainerCompleted(c.fioPodName, common.NSDefault)
+		Expect(err).ToNot(HaveOccurred(), "Failed to get %s pod phase ", c.fioPodName)
+	}
+	if fioPodPhase == coreV1.PodSucceeded {
+		logf.Log.Info("pod", "name", c.fioPodName, "phase", fioPodPhase)
+	} else {
+		Expect(status).To(Equal(true), "fio pod %s phase is %v", c.fioPodName, fioPodPhase)
+	}
 }
 
 // patch msv with replication factor to 2
