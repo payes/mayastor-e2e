@@ -505,3 +505,10 @@ func WorkaroundForMQ1536() {
 	_, err := DeleteAllPoolFinalizers()
 	Expect(err).ToNot(HaveOccurred(), "failed to delete all pool finalizers (WorkaroundForMQ1536)")
 }
+
+func MakeAccumulatedError(accErr error, err error) error {
+	if accErr == nil {
+		return err
+	}
+	return fmt.Errorf("%v; %v", accErr, err)
+}
