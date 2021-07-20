@@ -63,7 +63,8 @@ pipeline {
               def cmd = "./scripts/e2e-test.sh --device /dev/sdb --tag \"${test_tag}\" --logs --onfail reinstall --profile \"${e2e_selfci_test_profile}\" --loki_run_id \"${loki_run_id}\" --reportsdir \"${env.WORKSPACE}/${e2e_reports_dir}\" --registry \"${env.REGISTRY}\" "
 
               withCredentials([
-                usernamePassword(credentialsId: 'GRAFANA_API', usernameVariable: 'grafana_api_user', passwordVariable: 'grafana_api_pw')
+                usernamePassword(credentialsId: 'GRAFANA_API', usernameVariable: 'grafana_api_user', passwordVariable: 'grafana_api_pw'),
+                string(credentialsId: 'HCLOUD_TOKEN', variable: 'HCLOUD_TOKEN')
               ]) {
                 common.LokiInstall(test_tag)
                 sh "nix-shell --run '${cmd}'"

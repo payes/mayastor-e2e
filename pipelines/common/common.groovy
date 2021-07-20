@@ -213,7 +213,8 @@ def RunTestsOnePerCluster(e2e_test_profile,
     cmd = "./scripts/e2e-test.sh --device /dev/sdb --tag \"${test_tag}\" --logs --onfail stop --tests \"${testset}\" --loki_run_id \"${loki_run_id}\" --reportsdir \"${env.WORKSPACE}/${e2e_reports_dir}\" --registry \"${env.REGISTRY}\" "
 
     withCredentials([
-      usernamePassword(credentialsId: 'GRAFANA_API', usernameVariable: 'grafana_api_user', passwordVariable: 'grafana_api_pw')
+      usernamePassword(credentialsId: 'GRAFANA_API', usernameVariable: 'grafana_api_user', passwordVariable: 'grafana_api_pw'),
+      string(credentialsId: 'HCLOUD_TOKEN', variable: 'HCLOUD_TOKEN')
     ]) {
       LokiInstall(test_tag)
       try {
