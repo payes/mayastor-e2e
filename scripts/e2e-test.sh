@@ -58,7 +58,7 @@ Options:
                             Note: the last 2 tests should be (if they are to be run)
                                 - ms_pod_disruption
                                 - uninstall
-  --profile <continuous|nightly|nightly_full|ondemand|self_ci|soak|validation>
+  --profile <continuous|nightly-stable|nightly_full|ondemand|self_ci|soak|validation>
                             Run the tests corresponding to the profile (default: run all tests)
   --resportsdir <path>       Path to use for junit xml test reports (default: repo root)
   --logs                    Generate logs and cluster state dump at the end of successful test run,
@@ -299,7 +299,7 @@ case "$profile" in
     echo "Overriding policy_cleanup_before=true"
     policy_cleanup_before="true"
     ;;
-  nightly)
+  nightly|nightly-stable)
     echo "Overriding policy_cleanup_before=true"
     policy_cleanup_before="true"
     ;;
