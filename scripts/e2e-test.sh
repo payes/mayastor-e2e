@@ -55,10 +55,8 @@ Options:
   --registry <host[:port]>  Registry to pull the mayastor images from. (default: "ci-registry.mayastor-ci.mayadata.io")
                             'dockerhub' means use DockerHub
   --tests <list of tests>   Lists of tests to run, delimited by spaces (default: "$tests")
-                            Note: the last 2 tests should be (if they are to be run)
-                                - ms_pod_disruption
-                                - uninstall
-  --profile <continuous|nightly-stable|nightly_full|ondemand|self_ci|soak|validation>
+                            Note: the last test should be uninstall (if it is to be run)
+  --profile <c1|nightly-stable|ondemand|self_ci|staging|validation>
                             Run the tests corresponding to the profile (default: run all tests)
   --resportsdir <path>       Path to use for junit xml test reports (default: repo root)
   --logs                    Generate logs and cluster state dump at the end of successful test run,
@@ -292,13 +290,6 @@ export e2e_docker_registry="$registry" # can be empty string
 export e2e_root_dir="$E2EROOT"
 
 case "$profile" in
-  nightlyfull|nightly_full)
-    profile="nightly_full"
-    echo "Overriding config file to nightly_full_config.yaml"
-    config_file="nightly_full_config.yaml"
-    echo "Overriding policy_cleanup_before=true"
-    policy_cleanup_before="true"
-    ;;
   nightly|nightly-stable)
     echo "Overriding policy_cleanup_before=true"
     policy_cleanup_before="true"
@@ -307,10 +298,6 @@ case "$profile" in
     profile="self_ci"
     echo "Overriding config file to selfci_config.yaml"
     config_file="selfci_config.yaml"
-    ;;
-  soak)
-    echo "Overriding config file to soak_config.yaml"
-    config_file="soak_config.yaml"
     ;;
 esac
 
