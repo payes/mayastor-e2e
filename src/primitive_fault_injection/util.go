@@ -175,6 +175,7 @@ func (c *primitiveFaultInjectionConfig) faultNexusChild() {
 
 // Validate that all state representations have converged in the expected state (gRPC and CRD)
 func (c *primitiveFaultInjectionConfig) verifyVolumeStateOverGrpcAndCrd() {
+	logf.Log.Info("Verify crd and grpc status", "msv", c.uuid)
 	msv := k8stest.GetMSV(c.uuid)
 	nexusChildren := msv.Status.Nexus.Children
 	for _, nxChild := range nexusChildren {
@@ -203,9 +204,17 @@ func (c *primitiveFaultInjectionConfig) verifyVolumeStateOverGrpcAndCrd() {
 
 // verify status of IO after fault injection
 func (c *primitiveFaultInjectionConfig) verifyUninterruptedIO() {
-	status := k8stest.IsPodRunning(c.fioPodName, common.NSDefault)
+	logf.Log.Info("Verify status", "pod", c.fioPodName)
 	var fioPodPhase coreV1.PodPhase
 	var err error
+	var status bool
+	Eventually(func() bool {
+		status = k8stest.IsPodRunning(c.fioPodName, common.NSDefault)
+		return status
+	},
+		defTimeoutSecs,
+		"1s",
+	).Should(Equal(true))
 	if !status {
 		// check pod phase
 		fioPodPhase, err = k8stest.CheckPodContainerCompleted(c.fioPodName, common.NSDefault)
@@ -229,6 +238,7 @@ func (c *primitiveFaultInjectionConfig) patchMsvReplica() {
 
 // check volume status
 func (c *primitiveFaultInjectionConfig) verifyMsvStatus() {
+	logf.Log.Info("Verify msv", "uuid", c.uuid)
 	namespace := common.NSDefault
 	volName := c.pvcName
 	pvc, getPvcErr := k8stest.GetPVC(volName, namespace)
