@@ -318,3 +318,9 @@ func (c *primitiveFaultInjectionConfig) dataIntegrityCheck() {
 	logf.Log.Info("match", "first", firstchecksum, "this", secondchecksum)
 	Expect(secondchecksum).To(Equal(firstchecksum), "checksums differ")
 }
+
+// patch msv with existing replication factor minus one
+func (c *primitiveFaultInjectionConfig) waitForFioPodCompletion() {
+	err := k8stest.WaitPodComplete(c.fioPodName, sleepTime, int(c.timeout))
+	Expect(err).ToNot(HaveOccurred(), "Failed to check %s pod completion status", c.fioPodName)
+}
