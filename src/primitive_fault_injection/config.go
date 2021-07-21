@@ -14,20 +14,20 @@ const (
 )
 
 type primitiveFaultInjectionConfig struct {
-	protocol    common.ShareProto
-	fsType      common.FileSystemType
-	replicas    int
-	scName      string
-	pvcName     string
-	fioPodName  string
-	pvcSize     int
-	uuid        string
-	nexusNodeIP string
-	nexusRep    string
-	replicaIPs  []string
-	duration    time.Duration
-	thinkTime   time.Duration
-	timeout     time.Duration
+	protocol     common.ShareProto
+	fsType       common.FileSystemType
+	replicaCount int
+	scName       string
+	pvcName      string
+	fioPodName   string
+	pvcSize      int
+	uuid         string
+	nexusNodeIP  string
+	nexusRep     string
+	replicaIPs   []string
+	duration     time.Duration
+	thinkTime    time.Duration
+	timeout      time.Duration
 }
 
 func generatePrimitiveFaultInjectionConfig(testName string) *primitiveFaultInjectionConfig {
@@ -39,16 +39,16 @@ func generatePrimitiveFaultInjectionConfig(testName string) *primitiveFaultInjec
 	fioTimeout, err := time.ParseDuration(params.Timeout)
 	Expect(err).ToNot(HaveOccurred(), "Timeout configuration string format is invalid.")
 	c := &primitiveFaultInjectionConfig{
-		protocol:   common.ShareProtoNvmf,
-		fsType:     common.Ext4FsType,
-		pvcSize:    params.VolMb,
-		replicas:   params.Replicas,
-		scName:     testName + "-sc",
-		pvcName:    testName + "-pvc",
-		fioPodName: testName + "-fio",
-		duration:   fioDuration,
-		thinkTime:  fioThinkTime,
-		timeout:    fioTimeout,
+		protocol:     common.ShareProtoNvmf,
+		fsType:       common.Ext4FsType,
+		pvcSize:      params.VolMb,
+		replicaCount: params.Replicas,
+		scName:       testName + "-sc",
+		pvcName:      testName + "-pvc",
+		fioPodName:   testName + "-fio",
+		duration:     fioDuration,
+		thinkTime:    fioThinkTime,
+		timeout:      fioTimeout,
 	}
 	return c
 }

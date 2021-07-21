@@ -20,7 +20,7 @@ func (c *primitiveFaultInjectionConfig) createSC() {
 		WithName(c.scName).
 		WithNamespace(common.NSDefault).
 		WithProtocol(c.protocol).
-		WithReplicas(c.replicas).
+		WithReplicas(c.replicaCount).
 		WithFileSystemType(c.fsType).
 		BuildAndCreate()
 	Expect(err).ToNot(HaveOccurred(), "Creating storage class %s", c.scName)
@@ -165,7 +165,7 @@ func (c *primitiveFaultInjectionConfig) getNexusDetail() {
 		}
 	}
 
-	Expect(len(replicaIPs)).To(Equal(c.replicas-1), "Expected to find %d non-nexus replicas", c.replicas-1)
+	Expect(len(replicaIPs)).To(Equal(c.replicaCount-1), "Expected to find %d non-nexus replicas", c.replicaCount-1)
 	c.replicaIPs = replicaIPs
 
 	logf.Log.Info("identified", "nexus", c.nexusNodeIP, "replica1", c.replicaIPs[0], "replica2", c.replicaIPs[1])
@@ -223,16 +223,16 @@ func (c *primitiveFaultInjectionConfig) verifyUninterruptedIO() {
 	}
 }
 
-// patch msv with replication factor to 2
+// patch msv with existing replication factor minus one
 func (c *primitiveFaultInjectionConfig) patchMsvReplica() {
 	msv := k8stest.GetMSV(c.uuid)
-	msv.Spec.ReplicaCount = c.replicas - 1 // reduce replication factor by 1
+	msv.Spec.ReplicaCount = c.replicaCount - 1 // reduce replication factor by 1
 	patchMSV, err := custom_resources.UpdateMsVol(msv)
 	logf.Log.Info("Patched", "msv", patchMSV)
 	Expect(err).ToNot(HaveOccurred(), "Failed to patch Mayastor volume %s", c.uuid)
 }
 
-// check volume statau
+// check volume status
 func (c *primitiveFaultInjectionConfig) verifyMsvStatus() {
 	namespace := common.NSDefault
 	volName := c.pvcName
