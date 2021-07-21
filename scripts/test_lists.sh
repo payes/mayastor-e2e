@@ -64,6 +64,7 @@ single_msn_shutdown
 "
 
 profiles[notrun]="
+basic_volume_io_iscsi
 rebuild
 replica
 "
