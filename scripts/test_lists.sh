@@ -21,11 +21,17 @@ ms_pod_disruption_no_io
 ms_pod_disruption_rm_msv
 "
 
+# deprecated use nightly-stable instead
 profiles[nightly]="
-csi
-resource_check
 primitive_replicas
 primitive_msp_deletion
+"
+
+profiles[nightly-stable]="
+primitive_msp_deletion
+primitive_msp_state
+primitive_replicas
+primitive_volumes
 "
 
 profiles[c1]="
@@ -132,8 +138,8 @@ validate_integrity_test
 "
 
 profiles[staging]="
-primitive_msp_state
-primitive_volumes
+csi
+resource_check
 primitive_msp_stress
 primitive_data_integrity
 "

@@ -3,6 +3,7 @@ package k8stest
 // Utility functions for cleaning up a cluster
 import (
 	"context"
+	"fmt"
 	"mayastor-e2e/common/custom_resources"
 	"os/exec"
 	"strings"
@@ -10,6 +11,7 @@ import (
 
 	"mayastor-e2e/common"
 
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -226,32 +228,69 @@ func DeleteAllMsvs() (int, error) {
 	return numMsvs, err
 }
 
+// deletePoolFinalizer, delete finalizers on a pool -if any.
+// handle resource conflict errors by reloading the CR and retrying removal of finalizers.
+// also handle concurrent removal of the pool gracefully
+func deletePoolFinalizer(poolName string) (bool, error) {
+	const sleepTime = 5
+	for ix := 1; ix < 30; ix += sleepTime {
+		msp, err := custom_resources.GetMsPool(poolName)
+		if err != nil {
+			if k8serrors.IsNotFound(err) {
+				// The pool was deleted whilst trying to delete the pool finalizer
+				// which means the pool finalizer was deleted by MOAC.
+				// Nothing to do.
+				return false, nil
+			}
+			// Failed to retrieve the MSP
+			return false, err
+		}
+		if len(msp.Finalizers) == 0 {
+			// No finalizers to remove
+			return false, nil
+		}
+		msp.SetFinalizers(make([]string, 0))
+		_, err = custom_resources.UpdateMsPool(msp)
+		if err == nil {
+			// Successfully removed finalizers
+			return true, nil
+		}
+		// If the error is resource conflict try again
+		if k8serrors.IsConflict(err) {
+			logf.Log.Info("On pool update finalizer, got resource conflict error, retrying...")
+		} else {
+			if k8serrors.IsNotFound(err) {
+				// The pool was deleted whilst trying to delete the pool finalizer
+				// which means the pool finalizer was deleted by MOAC.
+				// Nothing to do.
+				return false, nil
+			}
+			logf.Log.Info("On pool update finalizer", "error", err)
+			return false, err
+		}
+		time.Sleep(sleepTime * time.Second)
+	}
+	return false, fmt.Errorf("failed to remove pool finalizer (conflict)")
+}
+
 func DeleteAllPoolFinalizers() (bool, error) {
 	deletedFinalizer := false
 	var deleteErr error
 
 	pools, err := custom_resources.ListMsPools()
 	if err != nil {
-		logf.Log.Info("DeleteAllPoolFinalisers: list MSPs failed.", "Error", err)
+		logf.Log.Info("DeleteAllPoolFinalizers: list MSPs failed.", "Error", err)
 		return false, err
-	} else if len(pools) != 0 {
-		for _, pool := range pools {
-			empty := make([]string, 0)
-			logf.Log.Info("DeleteAllPoolFinalizers", "pool", pool.GetName())
-			finalizers := pool.GetFinalizers()
-			if finalizers != nil {
-				logf.Log.Info("Removing all finalizers", "pool", pool.GetName(), "finalizer", finalizers)
-				pool.SetFinalizers(empty)
-				_, err = custom_resources.UpdateMsPool(pool)
-				if err != nil {
-					deleteErr = err
-					logf.Log.Info("Pool update finalizer", "error", err)
-				} else {
-					deletedFinalizer = true
-				}
-			}
-		}
 	}
+
+	for _, pool := range pools {
+		deleted, err := deletePoolFinalizer(pool.GetName())
+		if err != nil {
+			deleteErr = MakeAccumulatedError(deleteErr, err)
+		}
+		deletedFinalizer = deletedFinalizer || deleted
+	}
+
 	return deletedFinalizer, deleteErr
 }
 
