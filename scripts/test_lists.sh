@@ -9,18 +9,6 @@ rebuild
 ms_pod_disruption
 "
 
-profiles[continuous]="
-basic_volume_io
-csi
-resource_check
-rebuild
-io_soak
-volume_filesystem
-ms_pod_disruption
-ms_pod_disruption_no_io
-ms_pod_disruption_rm_msv
-"
-
 # deprecated use nightly-stable instead
 profiles[nightly]="
 primitive_replicas
@@ -68,36 +56,6 @@ rebuild
 replica
 "
 
-profiles[nightly_full]="
-basic_volume_io
-csi
-resource_check
-dynamic_provisioning
-pvc_stress_fio
-io_soak
-mayastorpool_schema
-ms_pod_restart
-nexus_location
-pool_modify
-pvc_readwriteonce
-volume_filesystem
-ms_pod_disruption
-ms_pod_disruption_no_io
-ms_pod_disruption_rm_msv
-ms_pool_delete
-check_mayastornode
-control_plane_rescheduling
-expand_msp_disk
-pvc_waitforfirstconsumer
-synchronous_replication
-msv_rebuild
-pvc_delete
-maximum_vols_io
-single_msn_shutdown
-node_shutdown
-node_failure
-"
-
 profiles[ondemand]="
 basic_volume_io
 csi
@@ -126,10 +84,6 @@ nexus_location
 pvc_readwriteonce
 pvc_delete
 control_plane_rescheduling
-"
-
-profiles[soak]="
-io_soak
 "
 
 profiles[validation]="
