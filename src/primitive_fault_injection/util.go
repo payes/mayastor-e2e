@@ -123,16 +123,28 @@ func (c *primitiveFaultInjectionConfig) getNexusDetail() {
 	nexus, replicaNodes := k8stest.GetMsvNodes(c.uuid)
 	Expect(nexus).NotTo(Equal(""), "Nexus not found")
 
+	var replicaIPs []string
 	// identify the nexus IP address
 	nexusIP := ""
 	for _, node := range nodeList {
 		if node.NodeName == nexus {
 			nexusIP = node.IPAddress
-			break
+		} else {
+			for _, replica := range replicaNodes {
+				if replica == node.NodeName {
+					replicaIPs = append(replicaIPs, node.IPAddress)
+					break
+				}
+			}
+
 		}
 	}
 	Expect(nexusIP).NotTo(Equal(""), "Nexus IP not found")
 	c.nexusNodeIP = nexusIP
+
+	Expect(len(replicaIPs)).To(Equal(c.replicaCount-1), "Expected to find %d non-nexus replicas", c.replicaCount-1)
+	c.replicaIPs = replicaIPs
+
 	var nxList []string
 	nxList = append(nxList, nexusIP)
 
@@ -150,23 +162,6 @@ func (c *primitiveFaultInjectionConfig) getNexusDetail() {
 	}
 	Expect(nxChildUri).NotTo(Equal(""), "Could not find nexus replica")
 	c.nexusRep = nxChildUri
-	logf.Log.Info("Nexus details", "nexus IP", c.nexusNodeIP, "replica", c.nexusRep)
-
-	var replicaIPs []string
-
-	for _, node := range nodeList {
-		if node.NodeName != nexus {
-			for _, replica := range replicaNodes {
-				if replica == node.NodeName {
-					replicaIPs = append(replicaIPs, node.IPAddress)
-					break
-				}
-			}
-		}
-	}
-
-	Expect(len(replicaIPs)).To(Equal(c.replicaCount-1), "Expected to find %d non-nexus replicas", c.replicaCount-1)
-	c.replicaIPs = replicaIPs
 
 	logf.Log.Info("identified", "nexus", c.nexusNodeIP, "replica1", c.replicaIPs[0], "replica2", c.replicaIPs[1])
 }
