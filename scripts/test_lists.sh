@@ -49,21 +49,22 @@ pvc_waitforfirstconsumer
 volume_filesystem
 synchronous_replication
 io_soak
-ms_pod_disruption_rm_msv
 pool_modify
 pvc_delete
 dynamic_provisioning
 msv_rebuild
-ms_pod_disruption_no_io
 ms_pod_disruption
+ms_pod_disruption_no_io
+ms_pod_disruption_rm_msv
 maximum_vols_io
+multiple_vols_pod_io
 node_failure
 node_shutdown
 single_msn_shutdown
 "
 
 profiles[notrun]="
-multiple_vols_pod_io
+basic_volume_io_iscsi
 rebuild
 replica
 "
@@ -75,7 +76,6 @@ resource_check
 dynamic_provisioning
 pvc_stress_fio
 io_soak
-multiple_vols_pod_io
 mayastorpool_schema
 ms_pod_restart
 nexus_location
