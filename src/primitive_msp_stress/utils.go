@@ -84,10 +84,16 @@ func CreateDeletePools(nodeList map[string]k8stest.NodeLocation, poolSuffix stri
 
 func verifyPoolCreated(nodeAddr, poolName string, capacity int64) bool {
 	grpcPool, err := mayastorclient.GetPool(poolName, nodeAddr)
-	Expect(err).ToNot(HaveOccurred(), "failed to list pools via grpc")
+	if err != nil {
+		logf.Log.Info("failed to get pool via grpc")
+		return false
+	}
 
 	crdPool, err := custom_resources.GetMsPool(poolName)
-	Expect(err).ToNot(HaveOccurred(), "List pools via CRD failed")
+	if err != nil {
+		logf.Log.Info("failed to get pool via crd")
+		return false
+	}
 
 	if ok := (grpcPool.State == grpc.PoolState_POOL_ONLINE && crdPool.Status.State == "online"); !ok {
 		logf.Log.Info("Failed to verify state", "Expected State", "PoolState_POOL_ONLINE", "grpcPool.State", grpcPool.State, "crdPool.Status.State", crdPool.Status.State)
