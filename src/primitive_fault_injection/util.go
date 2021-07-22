@@ -176,7 +176,9 @@ func (c *primitiveFaultInjectionConfig) faultNexusChild() {
 // Validate that all state representations have converged in the expected state (gRPC and CRD)
 func (c *primitiveFaultInjectionConfig) verifyVolumeStateOverGrpcAndCrd() {
 	logf.Log.Info("Verify crd and grpc status", "msv", c.uuid)
-	msv := k8stest.GetMSV(c.uuid)
+	msv, err := k8stest.GetMSV(c.uuid)
+	Expect(err).ToNot(HaveOccurred(), "%v", err)
+	Expect(msv).ToNot(BeNil(), "got nil msv for %v", c.uuid)
 	nexusChildren := msv.Status.Nexus.Children
 	for _, nxChild := range nexusChildren {
 		Expect(nxChild.State).Should(Equal("CHILD_ONLINE"), "Nexus child  is not online")
@@ -229,7 +231,9 @@ func (c *primitiveFaultInjectionConfig) verifyUninterruptedIO() {
 
 // patch msv with existing replication factor minus one
 func (c *primitiveFaultInjectionConfig) patchMsvReplica() {
-	msv := k8stest.GetMSV(c.uuid)
+	msv, err := k8stest.GetMSV(c.uuid)
+	Expect(err).ToNot(HaveOccurred(), "%v", err)
+	Expect(msv).ToNot(BeNil(), "got nil msv for %v", c.uuid)
 	msv.Spec.ReplicaCount = c.replicaCount - 1 // reduce replication factor by 1
 	patchMSV, err := custom_resources.UpdateMsVol(msv)
 	logf.Log.Info("Patched", "msv", patchMSV)
@@ -280,7 +284,9 @@ func (c *primitiveFaultInjectionConfig) verifyMsvStatus() {
 	).Should(Equal(coreV1.VolumeBound))
 
 	Eventually(func() *v1alpha1.MayastorVolume {
-		return k8stest.GetMSV(string(pvc.ObjectMeta.UID))
+		msv, err := k8stest.GetMSV(string(pvc.ObjectMeta.UID))
+		Expect(err).ToNot(HaveOccurred(), "%v", err)
+		return msv
 	},
 		defTimeoutSecs,
 		"1s",
