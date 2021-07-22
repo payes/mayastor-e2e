@@ -17,7 +17,6 @@ primitive_msp_deletion
 
 profiles[nightly-stable]="
 primitive_msp_deletion
-primitive_msp_state
 primitive_replicas
 primitive_volumes
 "
@@ -94,6 +93,7 @@ validate_integrity_test
 profiles[staging]="
 csi
 resource_check
+primitive_msp_state
 primitive_msp_stress
 primitive_data_integrity
 "
