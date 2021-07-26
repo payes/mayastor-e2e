@@ -43,6 +43,14 @@ var _ = BeforeSuite(func(done Done) {
 		err = custom_resources.DeleteMsPool(pool.Name)
 		Expect(err).To(BeNil(), "Failed to delete pool")
 	}
+	Eventually(func() int {
+		pools, err := custom_resources.ListMsPools()
+		Expect(err).To(BeNil(), "Failed to list pools")
+		return len(pools)
+	},
+		defTimeoutSecs, // timeout
+		"5s",           // polling interval
+	).Should(Equal(0))
 	close(done)
 }, 60)
 
