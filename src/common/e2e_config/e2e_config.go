@@ -219,6 +219,15 @@ type E2EConfig struct {
 	PrimitiveDataIntegrity struct {
 		VolMb int `yaml:"volMb" env-default:"1024"`
 	} `yaml:"primitiveDataIntegrity"`
+	MsvRebuild struct {
+		Replicas       int    `yaml:"replicas" env-default:"1"`
+		UpdatedReplica int    `yaml:"updatedreplica" env-default:"2"`
+		VolSize        int    `yaml:"volSize" env-default:"50"`
+		Timeout        string `yaml:"timeout" env-default:"90s"`
+		PollPeriod     string `yaml:"pollPeriod" env-default:"1s"`
+		DurationSecs   int    `yaml:"durationSecs" env-default:"180"`
+		SleepSecs      int    `yaml:"sleepSecs" env-default:"3"`
+	} `yaml:"msvRebuild"`
 }
 
 var once sync.Once
