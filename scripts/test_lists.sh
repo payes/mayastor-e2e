@@ -16,8 +16,13 @@ primitive_msp_deletion
 "
 
 profiles[nightly-stable]="
+basic_volume_io
+check_mayastornode
+control_plane_rescheduling
 csi
 resource_check
+dynamic_provisioning
+expand_msp_disk
 primitive_data_integrity
 primitive_msp_deletion
 primitive_replicas
@@ -25,10 +30,6 @@ primitive_volumes
 "
 
 profiles[c1]="
-basic_volume_io
-check_mayastornode
-control_plane_rescheduling
-expand_msp_disk
 mayastorpool_schema
 ms_pod_restart
 ms_pool_delete
@@ -41,7 +42,6 @@ synchronous_replication
 io_soak
 pool_modify
 pvc_delete
-dynamic_provisioning
 msv_rebuild
 ms_pod_disruption
 ms_pod_disruption_no_io
