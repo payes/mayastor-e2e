@@ -92,7 +92,7 @@ pipeline {
             always {
               archiveArtifacts 'artifacts/**/*.*'
               // handle junit results on success or failure
-              junit "${e2e_reports_dir}/*.xml"
+              junit "${e2e_reports_dir}/**/*.xml"
               script {
                 common = load "${env.WORKSPACE}/pipelines/common/common.groovy"
                 common.DestroyCluster(e2e_destroy_cluster_job, k8s_job)

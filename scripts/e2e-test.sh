@@ -26,7 +26,7 @@ config_file="mayastor_ci_hcloud_e2e_config.yaml"
 #  test configuration state variables
 loki_run_id=
 device=
-session="_noname"
+session="$(date +%Y%m%d-%H%M%S-)$(uuidgen -r)"
 registry="ci-registry.mayastor-ci.mayadata.io"
 tag="nightly-stable"
 #  script state variables
@@ -78,7 +78,7 @@ Options:
                             If this is specified the install test uses the install yaml files from this tree
                             instead of the tagged image.
   --session                 session name, adds a subdirectory with session name to artifacts, logs and reports
-                            direcrtories to facilitate concurrent execution of test runs (default "$session")
+                            directories to facilitate concurrent execution of test runs (default timestamp-uuid)
 
 Examples:
   $0 --device /dev/nvme0n1 --registry 127.0.0.1:5000 --tag a80ce0c

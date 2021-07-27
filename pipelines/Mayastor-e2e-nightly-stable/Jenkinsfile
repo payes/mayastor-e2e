@@ -76,7 +76,7 @@ pipeline {
             always {
               archiveArtifacts 'artifacts/**/*.*'
               // handle junit results on success or failure
-              junit "${e2e_reports_dir}/*.xml"
+              junit "${e2e_reports_dir}/**/*.xml"
               script {
                 if (xray_send_report == true) {
                   common = load "${env.WORKSPACE}/pipelines/common/common.groovy"
