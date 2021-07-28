@@ -34,6 +34,7 @@ pipeline {
   agent none
   options {
     timeout(time: 6, unit: 'HOURS')
+    buildDiscarder(logRotator(numToKeepStr: '100', artifactNumToKeepStr: '100'))
   }
   parameters {
     string(defaultValue: 'install,uninstall', name: 'tests', trim: true, description: 'comma or space separated list of tests to run, always should start with install')
