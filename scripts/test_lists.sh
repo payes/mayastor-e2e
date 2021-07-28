@@ -42,7 +42,6 @@ synchronous_replication
 io_soak
 pool_modify
 pvc_delete
-msv_rebuild
 ms_pod_disruption
 ms_pod_disruption_rm_msv
 maximum_vols_io
@@ -96,4 +95,5 @@ validate_integrity_test
 profiles[staging]="
 primitive_msp_state
 primitive_msp_stress
+msv_rebuild
 "
