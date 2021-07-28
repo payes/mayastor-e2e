@@ -67,7 +67,7 @@ func createFioPod(fioPodName string, pvcName string, durationSecs int, volSize i
 	return err
 }
 
-func getChildrenCount(uuid string, replicas int) bool {
+func verifyChildrenCount(uuid string, replicas int) bool {
 	children, err := custom_resources.GetMsVolNexusChildren(uuid)
 	if err != nil {
 		panic("Failed to get children")

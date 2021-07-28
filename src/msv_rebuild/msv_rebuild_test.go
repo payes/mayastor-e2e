@@ -81,7 +81,7 @@ func mayastorRebuildTest() {
 
 		// Verify children count should equal to replicas
 		Eventually(func() bool {
-			return getChildrenCount(uuid, params.UpdatedReplica)
+			return verifyChildrenCount(uuid, params.UpdatedReplica)
 		},
 			params.Timeout,
 			params.PollPeriod,
