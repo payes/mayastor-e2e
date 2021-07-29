@@ -1,4 +1,4 @@
-package ms_pod_disruption
+package ms_pod_disruption_no_io
 
 import (
 	"fmt"
