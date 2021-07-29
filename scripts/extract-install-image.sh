@@ -26,7 +26,7 @@ Options:
   --installroot              install root directory
 
 Examples:
-  $(basename $0) --registry 127.0.0.1:5000 --alias-tag customized-tag --installdir <path>
+  $(basename $0) --registry 127.0.0.1:5000 --alias-tag customized-tag --installroot <path>
 EOF
 }
 
