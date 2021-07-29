@@ -219,8 +219,8 @@ func ResourceCheck() error {
 		// check pools
 		{
 			var poolUsage uint64 = 1
-			// Wait 60 seconds for pool usage to drop to 0
-			for ix := 0; ix < 30 && poolUsage != 0; ix += 1 {
+			// Wait 120 seconds for pool usage to drop to 0
+			for ix := 0; ix < 60 && poolUsage != 0; ix += 1 {
 				time.Sleep(2 * time.Second)
 				poolUsage, err = GetPoolUsageInCluster()
 				if err != nil {
