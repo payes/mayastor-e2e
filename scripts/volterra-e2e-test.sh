@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+echo "Deprecated"
+exit 1
+
 set -eu
 
 SCRIPTDIR=$(dirname "$(realpath "$0")")

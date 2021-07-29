@@ -226,20 +226,20 @@ done
 export loki_run_id="$loki_run_id" # can be empty string
 
 if [ -z "$session" ]; then
-    session_dir="$ARTIFACTSDIR"
+    sessiondir="$ARTIFACTSDIR"
 else
-    session_dir="$ARTIFACTSDIR/sessions/$session"
+    sessiondir="$ARTIFACTSDIR/sessions/$session"
     logsdir="$logsdir/$session"
     reportsdir="$reportsdir/$session"
 fi
 
 if [ -z "$mayastor_root_dir" ]; then
-    if ! "$SCRIPTDIR/extract-install-image.sh" --alias-tag "$tag" --installroot "$session_dir"
+    if ! "$SCRIPTDIR/extract-install-image.sh" --alias-tag "$tag" --installroot "$sessiondir"
     then
         echo "Unable to extract install files for $tag"
         exit $EXITV_INVALID_OPTION
     fi
-    export mayastor_root_dir="$session_dir/install/$tag"
+    export mayastor_root_dir="$sessiondir/install/$tag"
     # "$mayastor_root_dir/csi/moac/crds/mayastor*.yaml" doesn't work
     # in that the script does not receive a list of yaml files but instead
     # gets mayastor*.yaml. Hence the odd double quoting style
@@ -250,7 +250,7 @@ if [ -z "$mayastor_root_dir" ]; then
     fi
 fi
 export e2e_mayastor_root_dir=$mayastor_root_dir
-export e2e_session_dir=$session_dir
+export e2e_session_dir=$sessiondir
 
 # grpc proto compatibility check
 if ! cmp src/common/mayastorclient/grpc/mayastor.proto "$mayastor_root_dir/rpc/proto/mayastor.proto"
@@ -337,7 +337,7 @@ else
     export e2e_uninstall_cleanup=1
 fi
 
-mkdir -p "$session_dir"
+mkdir -p "$sessiondir"
 mkdir -p "$reportsdir"
 mkdir -p "$logsdir"
 
