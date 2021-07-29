@@ -1,15 +1,16 @@
 package uninstall
 
 import (
-	"mayastor-e2e/common/custom_resources"
 	"os/exec"
 	"testing"
 	"time"
 
 	"mayastor-e2e/common"
+	"mayastor-e2e/common/custom_resources"
 	"mayastor-e2e/common/e2e_config"
 	"mayastor-e2e/common/k8stest"
 	"mayastor-e2e/common/locations"
+	"mayastor-e2e/install"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -76,6 +77,7 @@ func teardownMayastor() {
 	Expect(poolsDeleted).To(BeTrue())
 
 	logf.Log.Info("Cleanup done, Uninstalling mayastor")
+	install.GenerateYamlFiles()
 	yamlsDir := locations.GetGeneratedYamlsDir()
 
 	// Deletes can stall indefinitely, try to mitigate this
