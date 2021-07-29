@@ -43,6 +43,7 @@ io_soak
 pool_modify
 pvc_delete
 ms_pod_disruption
+ms_pod_disruption_no_io
 ms_pod_disruption_rm_msv
 maximum_vols_io
 multiple_vols_pod_io
@@ -53,7 +54,6 @@ single_msn_shutdown
 
 profiles[notrun]="
 basic_volume_io_iscsi
-ms_pod_disruption_no_io
 rebuild
 replica
 "
