@@ -86,7 +86,7 @@ pipeline {
               loki_run_id = common.GetLokiRunId()
               sh "mkdir -p ${env.WORKSPACE}/${e2e_reports_dir}"
 
-              def cmd = "./scripts/${e2e_script} --device /dev/sdb --tag \"${params.image_tag}\" --logs --tests \'${params.tests}\' --loki_run_id \"${loki_run_id}\" --reportsdir \"${env.WORKSPACE}/${e2e_reports_dir}\" "
+              def cmd = "./scripts/${e2e_script} --device /dev/sdb --tag \"${params.image_tag}\" --logs --tests \'${params.tests}\' --loki_run_id \"${loki_run_id}\" --reportsdir \"${env.WORKSPACE}/${e2e_reports_dir}\" --session=\"custom\" "
 
               if (params.use_ci_registry == true) {
                 cmd = cmd + " --registry \"" + env.REGISTRY + "\""
