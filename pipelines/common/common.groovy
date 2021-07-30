@@ -243,7 +243,7 @@ def SendXrayReport(xray_testplan, summary, e2e_reports_dir) {
     step([
       $class: 'XrayImportBuilder',
       endpointName: '/junit/multipart',
-      importFilePath: "${e2e_reports_dir}/*.xml",
+      importFilePath: "${e2e_reports_dir}/**/*.xml",
       importToSameExecution: 'true',
       projectKey: "${xray_projectkey}",
       testPlanKey: "${xray_testplan}",
