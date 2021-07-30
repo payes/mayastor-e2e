@@ -133,13 +133,10 @@ func CheckMsPoolFinalizers() error {
 		time.Sleep(1 * time.Second)
 		err = custom_resources.CheckAllMsPoolFinalizers()
 	}
-	// TODO MQ-1635
-	// logf.Log.Info("Checking pool finalizers", "error", err)
-	// return err
 	if err != nil {
-		logf.Log.Info("WARNING: Check pool finalizers yielded:", "error", err)
+		logf.Log.Info("Checking pool finalizers", "error", err)
 	}
-	return nil
+	return err
 }
 
 // ResourceCheck  Fit for purpose checks
