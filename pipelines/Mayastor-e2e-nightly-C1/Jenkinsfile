@@ -22,6 +22,7 @@ pipeline {
   agent none
   options {
     timeout(time: 23, unit: 'HOURS')
+    buildDiscarder(logRotator(numToKeepStr: '365', artifactNumToKeepStr: '365'))
   }
   triggers {
     cron(cron_schedule)

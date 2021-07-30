@@ -24,6 +24,7 @@ pipeline {
   agent none
   options {
     timeout(time: 90, unit: 'MINUTES')
+    buildDiscarder(logRotator(numToKeepStr: '200', artifactNumToKeepStr: '200'))
   }
 
   stages {
