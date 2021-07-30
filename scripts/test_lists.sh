@@ -15,6 +15,7 @@ primitive_replicas
 primitive_msp_deletion
 "
 
+# NOTE resource_check must follow csi
 profiles[nightly-stable]="
 basic_volume_io
 check_mayastornode
@@ -29,17 +30,18 @@ ms_pool_delete
 pool_modify
 primitive_data_integrity
 primitive_msp_deletion
+primitive_msp_stress
 primitive_replicas
 primitive_volumes
 pvc_readwriteonce
+pvc_stress_fio
+pvc_waitforfirstconsumer
+synchronous_replication
+volume_filesystem
 "
 
 profiles[c1]="
 nexus_location
-pvc_stress_fio
-pvc_waitforfirstconsumer
-volume_filesystem
-synchronous_replication
 io_soak
 pvc_delete
 ms_pod_disruption
@@ -94,6 +96,5 @@ validate_integrity_test
 
 profiles[staging]="
 primitive_msp_state
-primitive_msp_stress
 msv_rebuild
 "
