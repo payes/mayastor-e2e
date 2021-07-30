@@ -8,15 +8,13 @@ REGISTRY="ci-registry.mayastor-ci.mayadata.io"
 TAG=""
 SCRIPTDIR=$(dirname "$(realpath "$0")")
 E2EROOT=$(realpath "$SCRIPTDIR/..")
-ARTIFACTSDIR=$(realpath "$E2EROOT/artifacts")
-INSTALLROOT="$ARTIFACTSDIR/install"
+INSTALLROOT=""
 
 
 help() {
   cat <<EOF
 This scriopt extracts the templates and files required for E2E to install mayastor
 from a mayastor install image.
-The files will be extracted to a location under "$INSTALLROOT"
 
 Usage: $(basename $0) [OPTIONS]
 
@@ -25,9 +23,10 @@ Options:
   --registry <host[:port]>   Registry to pull the install-image from
                              default is ${REGISTRY}
   --alias-tag                Tag of install image to use, default is ${TAG}
+  --installroot              install root directory
 
 Examples:
-  $(basename $0) --registry 127.0.0.1:5000 --alias-tag customized-tag
+  $(basename $0) --registry 127.0.0.1:5000 --alias-tag customized-tag --installroot <path>
 EOF
 }
 
@@ -49,6 +48,13 @@ while [ "$#" -gt 0 ]; do
       TAG=$1
       shift
       ;;
+    --installroot)
+      shift
+      if [ -n "$1" ]; then
+            INSTALLROOT="$1/install"
+      fi
+      shift
+      ;;
     *)
       echo "Unknown option: $1"
       exit 1
@@ -58,6 +64,11 @@ done
 
 if [ -z "$TAG" ] ; then
     echo "tag not specified"
+    help
+fi
+
+if [ -z "$INSTALLROOT" ] ; then
+    echo "install root not specified"
     help
 fi
 

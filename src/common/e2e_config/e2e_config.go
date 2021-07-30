@@ -35,6 +35,7 @@ type E2EConfig struct {
 	// Generic configuration files used for CI and automation should not define MayastorRootDir and E2eRootDir
 	MayastorRootDir string `yaml:"mayastorRootDir" env:"e2e_mayastor_root_dir"`
 	E2eRootDir      string `yaml:"e2eRootDir" env:"e2e_root_dir"`
+	SessionDir      string `yaml:"sessionDir" env:"e2e_session_dir"`
 	// Operational parameters
 	Cores int `yaml:"cores,omitempty"`
 	// Registry from where mayastor images are retrieved
@@ -298,10 +299,12 @@ func GetConfig() E2EConfig {
 		}
 
 		cfgBytes, _ := yaml.Marshal(e2eConfig)
-		cfgUsedFile := path.Clean(e2eConfig.E2eRootDir + "/artifacts/used-" + e2eConfig.ConfigName + "-" + e2eConfig.Platform.Name + ".yaml")
+		cfgUsedFile := path.Clean(e2eConfig.SessionDir + "/used-" + e2eConfig.ConfigName + "-" + e2eConfig.Platform.Name + ".yaml")
 		err = ioutil.WriteFile(cfgUsedFile, cfgBytes, 0644)
 		if err == nil {
 			fmt.Printf("Resolved config written to %s\n", cfgUsedFile)
+		} else {
+			fmt.Printf("Resolved config not written to %s\n%v\n", cfgUsedFile, err)
 		}
 	})
 

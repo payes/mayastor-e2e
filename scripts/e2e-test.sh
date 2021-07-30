@@ -26,6 +26,7 @@ config_file="mayastor_ci_hcloud_e2e_config.yaml"
 #  test configuration state variables
 loki_run_id=
 device=
+session="$(date +%Y%m%d-%H%M%S-)$(uuidgen -r)"
 registry="ci-registry.mayastor-ci.mayadata.io"
 tag="nightly-stable"
 #  script state variables
@@ -35,7 +36,7 @@ on_fail="stop"
 uninstall_cleanup="n"
 generate_logs=0
 logsdir="$ARTIFACTSDIR/logs"
-resportsdir="$ARTIFACTSDIR/reports"
+reportsdir="$ARTIFACTSDIR/reports"
 mayastor_root_dir=""
 policy_cleanup_before="${e2e_policy_cleanup_before:-false}"
 profile_test_list=""
@@ -58,7 +59,7 @@ Options:
                             Note: the last test should be uninstall (if it is to be run)
   --profile <c1|nightly-stable|ondemand|self_ci|staging|validation>
                             Run the tests corresponding to the profile (default: run all tests)
-  --resportsdir <path>       Path to use for junit xml test reports (default: repo root)
+  --reportsdir <path>       Path to use for junit xml test reports (default: repo root)
   --logs                    Generate logs and cluster state dump at the end of successful test run,
                             prior to uninstall.
   --logsdir <path>          Location to generate logs (default: emit to stdout).
@@ -76,6 +77,8 @@ Options:
   --mayastor                path to the mayastor source tree to use for testing.
                             If this is specified the install test uses the install yaml files from this tree
                             instead of the tagged image.
+  --session                 session name, adds a subdirectory with session name to artifacts, logs and reports
+                            directories to facilitate concurrent execution of test runs (default timestamp-uuid)
 
 Examples:
   $0 --device /dev/nvme0n1 --registry 127.0.0.1:5000 --tag a80ce0c
@@ -136,7 +139,7 @@ while [ "$#" -gt 0 ]; do
       ;;
     -R|--reportsdir)
       shift
-      resportsdir="$1"
+      reportsdir="$1"
       ;;
     -h|--help)
       help
@@ -207,6 +210,10 @@ while [ "$#" -gt 0 ]; do
         shift
         platform_config_file="$1"
         ;;
+    --session)
+        shift
+        session="$1"
+        ;;
     *)
       echo "Unknown option: $1"
       help
@@ -218,13 +225,21 @@ done
 
 export loki_run_id="$loki_run_id" # can be empty string
 
+if [ -z "$session" ]; then
+    sessiondir="$ARTIFACTSDIR"
+else
+    sessiondir="$ARTIFACTSDIR/sessions/$session"
+    logsdir="$logsdir/$session"
+    reportsdir="$reportsdir/$session"
+fi
+
 if [ -z "$mayastor_root_dir" ]; then
-    if ! "$SCRIPTDIR/extract-install-image.sh" --alias-tag "$tag"
+    if ! "$SCRIPTDIR/extract-install-image.sh" --alias-tag "$tag" --installroot "$sessiondir"
     then
         echo "Unable to extract install files for $tag"
         exit $EXITV_INVALID_OPTION
     fi
-    export mayastor_root_dir="$ARTIFACTSDIR/install/$tag"
+    export mayastor_root_dir="$sessiondir/install/$tag"
     # "$mayastor_root_dir/csi/moac/crds/mayastor*.yaml" doesn't work
     # in that the script does not receive a list of yaml files but instead
     # gets mayastor*.yaml. Hence the odd double quoting style
@@ -235,6 +250,7 @@ if [ -z "$mayastor_root_dir" ]; then
     fi
 fi
 export e2e_mayastor_root_dir=$mayastor_root_dir
+export e2e_session_dir=$sessiondir
 
 # grpc proto compatibility check
 if ! cmp src/common/mayastorclient/grpc/mayastor.proto "$mayastor_root_dir/rpc/proto/mayastor.proto"
@@ -313,7 +329,7 @@ else
     tests="$profile_test_list"
 fi
 
-export e2e_reports_dir="$resportsdir"
+export e2e_reports_dir="$reportsdir"
 
 if [ "$uninstall_cleanup" == 'n' ] ; then
     export e2e_uninstall_cleanup=0
@@ -321,8 +337,8 @@ else
     export e2e_uninstall_cleanup=1
 fi
 
-mkdir -p "$ARTIFACTSDIR"
-mkdir -p "$resportsdir"
+mkdir -p "$sessiondir"
+mkdir -p "$reportsdir"
 mkdir -p "$logsdir"
 
 test_failed=0
@@ -375,6 +391,7 @@ export e2e_policy_cleanup_before="$policy_cleanup_before"
 tests=${tests//,/ }
 
 echo "Environment:"
+echo "    e2e_session_dir=$e2e_session_dir"
 echo "    e2e_mayastor_root_dir=$e2e_mayastor_root_dir"
 echo "    loki_run_id=$loki_run_id"
 echo "    e2e_root_dir=$e2e_root_dir"

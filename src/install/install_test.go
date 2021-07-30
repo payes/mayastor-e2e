@@ -1,10 +1,7 @@
 package install
 
 import (
-	"fmt"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"mayastor-e2e/common/custom_resources"
-	"os/exec"
 	"testing"
 	"time"
 
@@ -19,56 +16,6 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func generateYamlFiles(imageTag string, mayastorNodes []string, e2eCfg *e2e_config.E2EConfig) {
-	coresDirective := ""
-	if e2eCfg.Cores != 0 {
-		coresDirective = fmt.Sprintf("%s -c %d", coresDirective, e2eCfg.Cores)
-	}
-
-	poolDirectives := ""
-	if len(e2eCfg.PoolDevice) != 0 {
-		poolDevice := e2eCfg.PoolDevice
-		for _, mayastorNode := range mayastorNodes {
-			poolDirectives += fmt.Sprintf(" -p '%s,%s'", mayastorNode, poolDevice)
-		}
-	}
-
-	registryDirective := ""
-	if len(e2eCfg.Registry) != 0 {
-		registryDirective = fmt.Sprintf(" -r '%s'", e2eCfg.Registry)
-	}
-
-	bashCmd := fmt.Sprintf(
-		"%s/generate-deploy-yamls.sh -o %s -t '%s' %s %s %s test",
-		locations.GetMayastorScriptsDir(),
-		locations.GetGeneratedYamlsDir(),
-		imageTag, registryDirective, coresDirective, poolDirectives,
-	)
-	logf.Log.Info("About to execute", "command", bashCmd)
-	cmd := exec.Command("bash", "-c", bashCmd)
-	out, err := cmd.CombinedOutput()
-	Expect(err).ToNot(HaveOccurred(), "%s", out)
-}
-
-func WaitForPoolCrd() bool {
-	const timoSleepSecs = 5
-	const timoSecs = 60
-	for ix := 0; ix < timoSecs; ix += timoSleepSecs {
-		_, err := custom_resources.ListMsPools()
-		if err != nil {
-			logf.Log.Info("WaitForPoolCrd", "error", err)
-			if k8serrors.IsNotFound(err) {
-				logf.Log.Info("WaitForPoolCrd, error := IsNotFound")
-			} else {
-				Expect(err).ToNot(HaveOccurred(), "%v", err)
-			}
-		} else {
-			return true
-		}
-	}
-	return false
-}
-
 // Install mayastor on the cluster under test.
 // We deliberately call out to kubectl, rather than constructing the client-go
 // objects, so that we can verify the local deploy yaml files are correct.
@@ -80,26 +27,15 @@ func installMayastor() {
 	Expect(e2eCfg.PoolDevice != "").To(BeTrue(),
 		"configuration error pools are not defined.")
 
-	imageTag := e2eCfg.ImageTag
-	registry := e2eCfg.Registry
-
-	nodes, err := k8stest.GetNodeLocs()
+	mayastorNodes, err := k8stest.GetMayastorNodeNames()
 	Expect(err).ToNot(HaveOccurred())
 
-	var mayastorNodes []string
-	numMayastorInstances := 0
-
-	for _, node := range nodes {
-		if node.MayastorNode && !node.MasterNode {
-			mayastorNodes = append(mayastorNodes, node.NodeName)
-			numMayastorInstances += 1
-		}
-	}
+	numMayastorInstances := len(mayastorNodes)
 	Expect(numMayastorInstances).ToNot(Equal(0))
 
-	logf.Log.Info("Install", "tag", imageTag, "registry", registry, "# of mayastor instances", numMayastorInstances)
+	logf.Log.Info("Install", "tag", e2eCfg.ImageTag, "registry", e2eCfg.Registry, "# of mayastor instances", numMayastorInstances)
 
-	generateYamlFiles(imageTag, mayastorNodes, &e2eCfg)
+	GenerateYamlFiles()
 	yamlsDir := locations.GetGeneratedYamlsDir()
 
 	k8stest.EnsureE2EAgent()
