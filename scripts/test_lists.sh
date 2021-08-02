@@ -4,8 +4,6 @@ profiles[default]="
 basic_volume_io
 csi
 resource_check
-replica
-rebuild
 ms_pod_disruption
 "
 
@@ -56,8 +54,6 @@ single_msn_shutdown
 
 profiles[notrun]="
 basic_volume_io_iscsi
-rebuild
-replica
 "
 
 profiles[ondemand]="
