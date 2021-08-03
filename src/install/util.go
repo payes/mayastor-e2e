@@ -23,13 +23,20 @@ func GenerateYamlFiles() {
 		coresDirective = fmt.Sprintf("%s -c %d", coresDirective, e2eCfg.Cores)
 	}
 
-	mayastorNodes, err := k8stest.GetMayastorNodeNames()
-	Expect(err).ToNot(HaveOccurred(), "GetMayastorNodeNames failed %v", err)
+	nodeLocs, err := k8stest.GetNodeLocs()
+	Expect(err).ToNot(HaveOccurred(), "GetNodeLocs failed %v", err)
 	poolDirectives := ""
+	masterNode := ""
 	if len(e2eCfg.PoolDevice) != 0 {
 		poolDevice := e2eCfg.PoolDevice
-		for _, mayastorNode := range mayastorNodes {
-			poolDirectives += fmt.Sprintf(" -p '%s,%s'", mayastorNode, poolDevice)
+		for _, node := range nodeLocs {
+			if node.MasterNode {
+				masterNode = node.NodeName
+			}
+			if !node.MayastorNode {
+				continue
+			}
+			poolDirectives += fmt.Sprintf(" -p '%s,%s'", node.NodeName, poolDevice)
 		}
 	}
 
@@ -40,9 +47,11 @@ func GenerateYamlFiles() {
 
 	imageTag := e2eCfg.ImageTag
 
+	etcdOptions := "etcd.replicaCount=1,etcd.nodeSelector=kubernetes.io/hostname: " + masterNode + ",etcd.tolerations=- key: node-role.kubernetes.io/master"
 	bashCmd := fmt.Sprintf(
-		"%s/generate-deploy-yamls.sh -o %s -t '%s' %s %s %s test",
+		"%s/generate-deploy-yamls.sh -s '%s' -o %s -t '%s' %s %s %s test",
 		locations.GetMayastorScriptsDir(),
+		etcdOptions,
 		locations.GetGeneratedYamlsDir(),
 		imageTag, registryDirective, coresDirective, poolDirectives,
 	)
