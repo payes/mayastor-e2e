@@ -47,9 +47,7 @@ ms_pod_disruption_no_io
 ms_pod_disruption_rm_msv
 maximum_vols_io
 multiple_vols_pod_io
-node_failure
 node_shutdown
-single_msn_shutdown
 "
 
 profiles[notrun]="
@@ -91,6 +89,8 @@ validate_integrity_test
 "
 
 profiles[staging]="
-primitive_msp_state
 msv_rebuild
+node_failure
+primitive_msp_state
+single_msn_shutdown
 "
