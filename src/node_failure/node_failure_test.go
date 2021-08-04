@@ -177,8 +177,6 @@ func (c *failureConfig) RebootDesiredNodes(uuid string) {
 		Expect(c.platform.PowerOffNode(nexusNode)).ToNot(HaveOccurred(), "PowerOffNode")
 
 		time.Sleep(c.DownTime)
-		c.verifyNodeNotReady(nonNexusNodes[0])
-		c.verifyNodeNotReady(nonNexusNodes[1])
 		c.verifyNodeNotReady(nexusNode)
 
 		Expect(c.platform.PowerOnNode(nexusNode)).ToNot(HaveOccurred(), "PowerOffNode")
@@ -356,10 +354,12 @@ var _ = Describe("Mayastor node failure tests", func() {
 		err := k8stest.AfterEachCheck()
 		Expect(err).ToNot(HaveOccurred())
 	})
+
 	It("should verify data integrity after one non nexus node is rebooted with 1 min downtime", func() {
 		c := generateFailureConfig(RebootOneNonNexusNode, 1*time.Minute, "reboot-one-non-nexus-node-test-1min-downtime")
 		c.nodeRebootTests()
 	})
+
 	It("should verify data integrity after one non nexus node is rebooted with 6 mins downtime", func() {
 		c := generateFailureConfig(RebootOneNonNexusNode, 6*time.Minute, "reboot-one-non-nexus-node-test-6min-downtime")
 		c.nodeRebootTests()
@@ -379,6 +379,7 @@ var _ = Describe("Mayastor node failure tests", func() {
 		c := generateFailureConfig(RebootAllNodes, 1*time.Minute, "reboot-all-nodes-test-1min-downtime")
 		c.nodeRebootTests()
 	})
+
 	It("should verify data integrity after all nodes rebooted with 6 min downtime", func() {
 		c := generateFailureConfig(RebootAllNodes, 6*time.Minute, "reboot-all-nodes-test-6min-downtime")
 		c.nodeRebootTests()
@@ -388,10 +389,12 @@ var _ = Describe("Mayastor node failure tests", func() {
 		c := generateFailureConfig(RebootNexusNode, 1*time.Minute, "reboot-nexus-node-test-1min-downtime")
 		c.nodeRebootTests()
 	})
+
 	It("should verify data integrity after nexus node is rebooted with 6 mins downtime", func() {
 		c := generateFailureConfig(RebootNexusNode, 6*time.Minute, "reboot-nexus-node-test-6min-downtime")
 		c.nodeRebootTests()
 	})
+
 })
 
 var _ = BeforeSuite(func(done Done) {
