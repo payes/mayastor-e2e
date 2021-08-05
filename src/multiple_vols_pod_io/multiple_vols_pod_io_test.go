@@ -25,7 +25,9 @@ func TestMultipleVolumeIO(t *testing.T) {
 	k8stest.InitTesting(t, "Multiple volumes single pod IO tests", "multiple_vols_pod_io")
 }
 
-func multipleVolumeIOTest(replicas int, volumeCount int, protocol common.ShareProto, volumeType common.VolumeType, binding storageV1.VolumeBindingMode, duration time.Duration, timeout time.Duration) {
+func multipleVolumeIOTest(replicas int, volumeCount int, protocol common.ShareProto,
+	volumeType common.VolumeType, volSize int, binding storageV1.VolumeBindingMode, local bool,
+	timeout time.Duration, fioLoops int) {
 	logf.Log.Info("MultipleVolumeIOTest", "replicas", replicas, "volumeCount", volumeCount, "protocol", protocol, "volumeType", volumeType, "binding", binding)
 	scName := strings.ToLower(fmt.Sprintf("msv-repl-%d-%s-%s-%s", replicas, string(protocol), volumeType, binding))
 	err := k8stest.NewScBuilder().
@@ -34,6 +36,7 @@ func multipleVolumeIOTest(replicas int, volumeCount int, protocol common.SharePr
 		WithProtocol(protocol).
 		WithNamespace(common.NSDefault).
 		WithVolumeBindingMode(binding).
+		WithLocal(local).
 		BuildAndCreate()
 	Expect(err).ToNot(HaveOccurred(), "failed to create storage class %s", scName)
 
@@ -46,7 +49,7 @@ func multipleVolumeIOTest(replicas int, volumeCount int, protocol common.SharePr
 	// Create the volumes and associated bits
 	for ix := 1; ix <= volumeCount; ix += 1 {
 		volName := fmt.Sprintf("ms-vol-%s-%d", protocol, ix)
-		uid := k8stest.MkPVC(common.DefaultVolumeSizeMb, volName, scName, volumeType, common.NSDefault)
+		uid := k8stest.MkPVC(volSize, volName, scName, volumeType, common.NSDefault)
 		logf.Log.Info("Volume", "uid", uid)
 		volNames = append(volNames, volName)
 
@@ -61,23 +64,25 @@ func multipleVolumeIOTest(replicas int, volumeCount int, protocol common.SharePr
 
 		volumes = append(volumes, vol)
 
+		vname := fmt.Sprintf("ms-volume-%d", ix)
 		if volumeType == common.VolFileSystem {
 			mount := coreV1.VolumeMount{
-				Name:      fmt.Sprintf("ms-volume-%d", ix),
+				Name:      vname,
 				MountPath: fmt.Sprintf("/volume-%d", ix),
 			}
 			volMounts = append(volMounts, mount)
 			volFioArgs = append(volFioArgs, []string{
-				fmt.Sprintf("--filename=/volume-%d/fio-test-file", ix),
-				fmt.Sprintf("--size=%dm", common.DefaultFioSizeMb),
+				fmt.Sprintf("--name=%s", vname),
+				fmt.Sprintf("--filename=/volume-%d/%s.test", ix, vname),
 			})
 		} else {
 			device := coreV1.VolumeDevice{
-				Name:       fmt.Sprintf("ms-volume-%d", ix),
+				Name:       vname,
 				DevicePath: fmt.Sprintf("/dev/sdm-%d", ix),
 			}
 			volDevices = append(volDevices, device)
 			volFioArgs = append(volFioArgs, []string{
+				fmt.Sprintf("--name=%s", vname),
 				fmt.Sprintf("--filename=/dev/sdm-%d", ix),
 			})
 		}
@@ -88,41 +93,54 @@ func multipleVolumeIOTest(replicas int, volumeCount int, protocol common.SharePr
 	// Create the fio Pod
 	fioPodName := "fio-multi-vol"
 
-	pod := k8stest.CreateFioPodDef(fioPodName, "aa", volumeType, common.NSDefault)
-	pod.Spec.Volumes = volumes
-	switch volumeType {
-	case common.VolFileSystem:
-		pod.Spec.Containers[0].VolumeMounts = volMounts
-	case common.VolRawBlock:
-		pod.Spec.Containers[0].VolumeDevices = volDevices
-	}
-
 	// Construct argument list for fio to run a single instance of fio,
 	// with multiple jobs, one for each volume.
 	var podArgs []string
 
 	// 1) directives for all fio jobs
-	podArgs = append(podArgs, "--")
+	podArgs = append(podArgs, []string{"---", "fio"}...)
 	podArgs = append(podArgs, common.GetDefaultFioArguments()...)
-	podArgs = append(podArgs, []string{
-		"--time_based",
-		fmt.Sprintf("--runtime=%d", int(duration.Seconds())),
-	}...,
-	)
 
-	// 2) per volume directives (filename, size, and testname)
-	for ix, v := range volFioArgs {
-		podArgs = append(podArgs, v...)
-		podArgs = append(podArgs, fmt.Sprintf("--name=benchtest-%d", ix))
+	if volumeType == common.VolFileSystem {
+		// for FS play safe use filesize which is 75% of volume size
+		podArgs = append(podArgs, fmt.Sprintf("--size=%dm", (volSize*75)/100))
 	}
+
+	if fioLoops != 0 {
+		podArgs = append(podArgs, fmt.Sprintf("--loops=%d", fioLoops))
+	}
+
+	// 2) per volume directives
+	for _, v := range volFioArgs {
+		podArgs = append(podArgs, v...)
+	}
+
+	// e2e-fio commandline is
+	logf.Log.Info(fmt.Sprintf("commandline: %s", strings.Join(podArgs[1:], " ")))
 	podArgs = append(podArgs, "&")
+	logf.Log.Info("pod", "args", podArgs)
 
-	logf.Log.Info("fio", "arguments", podArgs)
-	pod.Spec.Containers[0].Args = podArgs
+	container := k8stest.MakeFioContainer(fioPodName, podArgs)
+	podBuilder := k8stest.NewPodBuilder().
+		WithName(fioPodName).
+		WithNamespace(common.NSDefault).
+		WithContainer(container).
+		WithVolumes(volumes)
 
-	pod, err = k8stest.CreatePod(pod, common.NSDefault)
-	Expect(err).ToNot(HaveOccurred())
-	Expect(pod).ToNot(BeNil())
+	if len(volDevices) != 0 {
+		podBuilder.WithVolumeDevices(volDevices)
+	}
+
+	if len(volMounts) != 0 {
+		podBuilder.WithVolumeMounts(volMounts)
+	}
+
+	podObj, err := podBuilder.Build()
+	Expect(err).ToNot(HaveOccurred(), "failed to build fio test pod object")
+
+	pod, err := k8stest.CreatePod(podObj, common.NSDefault)
+	Expect(err).ToNot(HaveOccurred(), "Creating fio pod %s", fioPodName)
+	Expect(pod).ToNot(BeNil(), "got nil pointer to test pod")
 
 	// Wait for the fio Pod to transition to running
 	Eventually(func() bool {
@@ -132,15 +150,13 @@ func multipleVolumeIOTest(replicas int, volumeCount int, protocol common.SharePr
 		"1s",
 	).Should(Equal(true))
 
-	logf.Log.Info("Waiting for run to complete", "duration", duration, "timeout", timeout)
-	tSecs := 0
+	logf.Log.Info("Waiting for run to complete", "timeout", timeout)
+
+	elapsedTime := 0
+	const sleepTime = 2
 	var phase coreV1.PodPhase
-	for {
-		if tSecs > int(timeout.Seconds()) {
-			break
-		}
-		time.Sleep(1 * time.Second)
-		tSecs += 1
+	for elapsedTime = 0; elapsedTime < int(timeout.Seconds()); elapsedTime += sleepTime {
+		time.Sleep(sleepTime * time.Second)
 		phase, err = k8stest.CheckPodCompleted(fioPodName, common.NSDefault)
 		Expect(err).To(BeNil(), "CheckPodComplete got error %s", err)
 		if phase != coreV1.PodRunning {
@@ -148,7 +164,7 @@ func multipleVolumeIOTest(replicas int, volumeCount int, protocol common.SharePr
 		}
 	}
 	Expect(phase == coreV1.PodSucceeded).To(BeTrue(), "fio pod phase is %s", phase)
-	logf.Log.Info("fio completed", "duration", tSecs)
+	logf.Log.Info("fio completed", "duration (secs)", elapsedTime)
 
 	// Delete the fio pod
 	err = k8stest.DeletePod(fioPodName, common.NSDefault)
@@ -178,28 +194,35 @@ var _ = Describe("Mayastor Volume IO test", func() {
 	})
 
 	cfg := e2e_config.GetConfig().MultipleVolumesPodIO
-	duration, err := time.ParseDuration(cfg.Duration)
-	Expect(err).ToNot(HaveOccurred(), "Duration configuration string format is invalid.")
 	timeout, err := time.ParseDuration(cfg.Timeout)
 	Expect(err).ToNot(HaveOccurred(), "Timeout configuration string format is invalid.")
 
 	logf.Log.Info("MultipleVolumeIO test", "configuration", cfg)
 
 	It("should verify mayastor can process IO on multiple filesystem volumes with multiple replicas mounted on a single pod with immediate binding", func() {
-		multipleVolumeIOTest(cfg.MultipleReplicaCount, cfg.VolumeCount, common.ShareProtoNvmf, common.VolFileSystem, storageV1.VolumeBindingImmediate, duration, timeout)
-	})
-
-	It("should verify mayastor can process IO on multiple raw block volumes with multiple replicas mounted on a single pod with immediate binding", func() {
-		multipleVolumeIOTest(cfg.MultipleReplicaCount, cfg.VolumeCount, common.ShareProtoNvmf, common.VolRawBlock, storageV1.VolumeBindingImmediate, duration, timeout)
+		multipleVolumeIOTest(cfg.MultipleReplicaCount, cfg.VolumeCount, common.ShareProtoNvmf,
+			common.VolFileSystem, cfg.VolumeSizeMb, storageV1.VolumeBindingImmediate, false,
+			timeout, cfg.FioLoops)
 	})
 
 	It("should verify mayastor can process IO on multiple filesystem volumes with multiple replicas mounted on a single pod with late binding", func() {
-		multipleVolumeIOTest(cfg.MultipleReplicaCount, cfg.VolumeCount, common.ShareProtoNvmf, common.VolFileSystem, storageV1.VolumeBindingWaitForFirstConsumer, duration, timeout)
+		multipleVolumeIOTest(cfg.MultipleReplicaCount, cfg.VolumeCount, common.ShareProtoNvmf,
+			common.VolFileSystem, cfg.VolumeSizeMb, storageV1.VolumeBindingWaitForFirstConsumer, true,
+			timeout, cfg.FioLoops)
+	})
+
+	It("should verify mayastor can process IO on multiple raw block volumes with multiple replicas mounted on a single pod with immediate binding", func() {
+		multipleVolumeIOTest(cfg.MultipleReplicaCount, cfg.VolumeCount, common.ShareProtoNvmf,
+			common.VolRawBlock, cfg.VolumeSizeMb, storageV1.VolumeBindingImmediate, false,
+			timeout, cfg.FioLoops)
 	})
 
 	It("should verify mayastor can process IO on multiple raw block volumes with multiple replicas mounted on a single pod with late binding", func() {
-		multipleVolumeIOTest(cfg.MultipleReplicaCount, cfg.VolumeCount, common.ShareProtoNvmf, common.VolRawBlock, storageV1.VolumeBindingWaitForFirstConsumer, duration, timeout)
+		multipleVolumeIOTest(cfg.MultipleReplicaCount, cfg.VolumeCount, common.ShareProtoNvmf,
+			common.VolRawBlock, cfg.VolumeSizeMb, storageV1.VolumeBindingWaitForFirstConsumer, true,
+			timeout, cfg.FioLoops)
 	})
+
 })
 
 var _ = BeforeSuite(func(done Done) {

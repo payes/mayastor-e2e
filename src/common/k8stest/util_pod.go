@@ -188,8 +188,8 @@ func (b *PodBuilder) WithServiceAccountName(serviceAccountName string) *PodBuild
 	return b
 }
 
-// WithVolumesMount sets the Volumes field in Pod with provided arguments
-func (b *PodBuilder) WithVolumesMount(volMounts []corev1.VolumeMount) *PodBuilder {
+// WithVolumeMounts sets the Volumes field in Pod with provided arguments
+func (b *PodBuilder) WithVolumeMounts(volMounts []corev1.VolumeMount) *PodBuilder {
 	if len(volMounts) == 0 {
 		b.errs = append(
 			b.errs,
@@ -203,7 +203,7 @@ func (b *PodBuilder) WithVolumesMount(volMounts []corev1.VolumeMount) *PodBuilde
 
 // WithVolumeMount sets the Volumes field in Pod with provided arguments
 func (b *PodBuilder) WithVolumeMount(volMount corev1.VolumeMount) *PodBuilder {
-	return b.WithVolumesMount([]corev1.VolumeMount{volMount})
+	return b.WithVolumeMounts([]corev1.VolumeMount{volMount})
 }
 
 // WithVolumeDevices sets the Volumes field in Pod with provided arguments
