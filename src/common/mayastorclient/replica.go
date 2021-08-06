@@ -72,6 +72,7 @@ func listReplica(address string) ([]MayastorReplica, error) {
 			logf.Log.Info("listReplicas", "error", err)
 		}
 	} else {
+		err = niceError(err)
 		logf.Log.Info("listReplicas", "error", err)
 	}
 	return replicaInfos, err
@@ -99,7 +100,7 @@ func RmReplica(address string, uuid string) error {
 
 	req := mayastorGrpc.DestroyReplicaRequest{Uuid: uuid}
 	_, err = c.DestroyReplica(ctx, &req)
-	return err
+	return niceError(err)
 }
 
 // CreateReplicaExt create a replica on a mayastor node
@@ -108,7 +109,7 @@ func CreateReplicaExt(address string, uuid string, size uint64, pool string, thi
 	addrPort := fmt.Sprintf("%s:%d", address, mayastorPort)
 	conn, err := grpc.Dial(addrPort, grpc.WithInsecure())
 	if err != nil {
-		logf.Log.Info("rmReplicas", "error", err)
+		logf.Log.Info("createReplica", "error", err)
 		return err
 	}
 	defer func(conn *grpc.ClientConn) {
@@ -118,7 +119,7 @@ func CreateReplicaExt(address string, uuid string, size uint64, pool string, thi
 		}
 	}(conn)
 	c := mayastorGrpc.NewMayastorClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	req := mayastorGrpc.CreateReplicaRequest{
@@ -129,7 +130,7 @@ func CreateReplicaExt(address string, uuid string, size uint64, pool string, thi
 		Share: shareProto,
 	}
 	_, err = c.CreateReplica(ctx, &req)
-	return err
+	return niceError(err)
 }
 
 // CreateReplica create a replica on a mayastor node, with parameters
