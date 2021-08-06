@@ -2,13 +2,15 @@ package maximum_vols_io
 
 import (
 	"fmt"
-	"mayastor-e2e/common"
-	"mayastor-e2e/common/k8stest"
+	"strings"
 	"time"
 
-	coreV1 "k8s.io/api/core/v1"
+	"mayastor-e2e/common"
+	"mayastor-e2e/common/k8stest"
 
 	. "github.com/onsi/gomega"
+
+	coreV1 "k8s.io/api/core/v1"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -85,8 +87,8 @@ func (c *maxVolConfig) createFioPods() {
 				}
 				volMounts = append(volMounts, mount)
 				volFioArgs = append(volFioArgs, []string{
+					fmt.Sprintf("--name=benchtest-%d", ix),
 					fmt.Sprintf("--filename=/volume-%s/fio-test-file", c.pvcNames[pvcCount]),
-					fmt.Sprintf("--size=%dm", common.DefaultFioSizeMb),
 				})
 			} else {
 				device := coreV1.VolumeDevice{
@@ -95,6 +97,7 @@ func (c *maxVolConfig) createFioPods() {
 				}
 				volDevices = append(volDevices, device)
 				volFioArgs = append(volFioArgs, []string{
+					fmt.Sprintf("--name=benchtest-%d", ix),
 					fmt.Sprintf("--filename=/dev/sdm-%s", c.pvcNames[pvcCount]),
 				})
 			}
@@ -122,23 +125,23 @@ func (c *maxVolConfig) createFioPods() {
 		var podArgs []string
 
 		// 1) directives for all fio jobs
-		podArgs = append(podArgs, "--")
+		podArgs = append(podArgs, "---")
+		podArgs = append(podArgs, "fio")
 		podArgs = append(podArgs, common.GetDefaultFioArguments()...)
 		podArgs = append(podArgs, []string{
-			"--time_based",
-			fmt.Sprintf("--runtime=%d", int(c.duration.Seconds())),
+			fmt.Sprintf("--size=%dm", common.DefaultFioSizeMb),
 			fmt.Sprintf("--thinktime=%d", int(c.thinkTime.Microseconds())),
 		}...,
 		)
 
 		// 2) per volume directives (filename, size, and testname)
-		for ix, v := range volFioArgs {
+		for _, v := range volFioArgs {
 			podArgs = append(podArgs, v...)
-			podArgs = append(podArgs, fmt.Sprintf("--name=benchtest-%d", ix))
 		}
-		podArgs = append(podArgs, "&")
+		logf.Log.Info("fio", "commandline", strings.Join(podArgs[1:], " "))
 
-		logf.Log.Info("fio", "arguments", podArgs)
+		podArgs = append(podArgs, "&")
+		logf.Log.Info("pod", "arguments", podArgs)
 		podObj.Spec.Containers[0].Args = podArgs
 
 		// Create first fio pod

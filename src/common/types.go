@@ -20,6 +20,7 @@ type VolumeType int
 const (
 	VolFileSystem VolumeType = iota
 	VolRawBlock   VolumeType = iota
+	VolTypeNone   VolumeType = iota
 )
 
 func (volType VolumeType) String() string {

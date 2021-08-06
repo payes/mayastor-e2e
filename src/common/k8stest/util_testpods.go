@@ -140,21 +140,22 @@ func GetPodScheduledStatus(podName string, nameSpace string) (coreV1.ConditionSt
 	return coreV1.ConditionUnknown, "", fmt.Errorf("failed to find pod scheduled condition")
 }
 
-/// Create a Pod in default namespace, no options and no context
+// CreatePod Create a Pod in the specified namespace, no options and no context
 func CreatePod(podDef *coreV1.Pod, nameSpace string) (*coreV1.Pod, error) {
 	logf.Log.Info("Creating", "pod", podDef.Name)
 	return gTestEnv.KubeInt.CoreV1().Pods(nameSpace).Create(context.TODO(), podDef, metaV1.CreateOptions{})
 }
 
-/// Delete a Pod in default namespace, no options and no context
+// DeletePod Delete a Pod in the specified namespace, no options and no context
 func DeletePod(podName string, nameSpace string) error {
 	logf.Log.Info("Deleting", "pod", podName)
 	return gTestEnv.KubeInt.CoreV1().Pods(nameSpace).Delete(context.TODO(), podName, metaV1.DeleteOptions{})
 }
 
+//CreateFioPodDef  deprecated use MakeFioContainer and NewPodBuilder instead
 /// Create a test fio pod in default namespace, no options and no context
 /// for filesystem,  mayastor volume is mounted on /volume
-/// for rawblock, mayastor volume is mounted on /dev/sdm
+/// for raw-block, mayastor volume is mounted on /dev/sdm
 func CreateFioPodDef(podName string, volName string, volType common.VolumeType, nameSpace string) *coreV1.Pod {
 	volMounts := []coreV1.VolumeMount{
 		{
@@ -202,12 +203,14 @@ func CreateFioPodDef(podName string, volName string, volType common.VolumeType, 
 	}
 	if volType == common.VolRawBlock {
 		podDef.Spec.Containers[0].VolumeDevices = volDevices
-	} else {
+	}
+	if volType == common.VolFileSystem {
 		podDef.Spec.Containers[0].VolumeMounts = volMounts
 	}
 	return &podDef
 }
 
+//CreateFioPod deprecated use MakeFioContainer, NewPodBuilder and CreatePod instead
 /// Create a test fio pod in default namespace, no options and no context
 /// mayastor volume is mounted on /volume
 func CreateFioPod(podName string, volName string, volType common.VolumeType, nameSpace string) (*coreV1.Pod, error) {
@@ -216,7 +219,7 @@ func CreateFioPod(podName string, volName string, volType common.VolumeType, nam
 	return CreatePod(podDef, common.NSDefault)
 }
 
-// Check if any test pods exist in the default and e2e related namespaces .
+//CheckForTestPods Check if any test pods exist in the default and e2e related namespaces .
 func CheckForTestPods() (bool, error) {
 	logf.Log.Info("CheckForTestPods")
 	foundPods := false
@@ -252,7 +255,7 @@ func isPodHealthCheckCandidate(podName string, namespace string) bool {
 	return true
 }
 
-// Check test pods in a namespace for restarts and failed/unknown state
+//CheckTestPodsHealth Check test pods in a namespace for restarts and failed/unknown state
 func CheckTestPodsHealth(namespace string) error {
 	podApi := gTestEnv.KubeInt.CoreV1().Pods
 	var errorStrings []string
@@ -435,6 +438,7 @@ func collectNatsPodNames() ([]string, error) {
 	return podNames, nil
 }
 
+// RestartNatsPods restart the nats pods
 func RestartNatsPods(timeoutSecs int) error {
 	var err error
 	podApi := gTestEnv.KubeInt.CoreV1().Pods
@@ -518,7 +522,7 @@ func restartMayastor(restartTOSecs int, readyTOSecs int, poolsTOSecs int) error 
 
 	err = custom_resources.CheckAllMsPoolsAreOnline()
 	if err != nil {
-		return fmt.Errorf("Not all pools are online %v", err)
+		return fmt.Errorf("not all pools are online %v", err)
 	}
 
 	if EnsureE2EAgent() {
@@ -590,4 +594,31 @@ func GetMoacNodeName() (string, error) {
 		}
 	}
 	return "", nil
+}
+
+// MakeFioContainer returns a container object setup to use e2e-fio and run fio with appropriate permissions.
+// Privileged: True, AllowPrivilegeEscalation: True, RunAsUser root,
+// parameters:
+//		name - name of the container (usually the pod name)
+//		args - container arguments, if empty the defaults to "sleep", "1000000"
+func MakeFioContainer(name string, args []string) coreV1.Container {
+	containerArgs := args
+	if len(containerArgs) == 0 {
+		containerArgs = []string{"sleep", "1000000"}
+	}
+	var z64 int64 = 0
+	var vTrue bool = true
+
+	sc := coreV1.SecurityContext{
+		Privileged:               &vTrue,
+		RunAsUser:                &z64,
+		AllowPrivilegeEscalation: &vTrue,
+	}
+	return coreV1.Container{
+		Name:            name,
+		Image:           common.GetFioImage(),
+		ImagePullPolicy: coreV1.PullIfNotPresent,
+		Args:            containerArgs,
+		SecurityContext: &sc,
+	}
 }

@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	defTimeoutSecs = 240
+	defTimeoutSecs = 300
 )
 
 type maxVolConfig struct {
