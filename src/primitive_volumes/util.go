@@ -49,25 +49,44 @@ func (c *pvcConcurrentConfig) deleteSerialPVC(pvcName string) {
 }
 
 func (c *pvcConcurrentConfig) verifyVolumesCreation() {
+	namespace := common.NSDefault
 	for ix := 0; ix < len(c.pvcNames); ix++ {
 		// Confirm that the PVC has been created
 		Expect(c.createErrs[ix]).To(BeNil(), "failed to create PVC %s", c.pvcNames[ix])
-		namespace := common.NSDefault
 		volName := c.pvcNames[ix]
 		pvc, getPvcErr := k8stest.GetPVC(volName, namespace)
 		Expect(getPvcErr).To(BeNil(), "Failed to get PVC %s", volName)
 		Expect(pvc).ToNot(BeNil())
+	}
 
-		// Wait for the PVC to be bound.
-		Eventually(func() coreV1.PersistentVolumeClaimPhase {
-			return k8stest.GetPvcStatusPhase(volName, namespace)
-		},
-			defTimeoutSecs, // timeout
-			"1s",           // polling interval
-		).Should(Equal(coreV1.ClaimBound))
+	elapsedTime := 0
+	const sleepTime = 10
+	allBound := false
+	volBindMap := make(map[string]bool)
+	for ; !allBound && elapsedTime < 300; elapsedTime += sleepTime {
+		allBound = true
+		for ix := 0; ix < len(c.pvcNames); ix++ {
+			volName := c.pvcNames[ix]
+			bound := coreV1.ClaimBound == k8stest.GetPvcStatusPhase(volName, namespace)
+			allBound = allBound && bound
+			volBindMap[volName] = bound
+		}
+		time.Sleep(sleepTime * time.Second)
+	}
+	logf.Log.Info("PVCs bind status", "elapsed (secs)", elapsedTime, "allBound", allBound)
+	if !allBound {
+		for volName, bound := range volBindMap {
+			if !bound {
+				logf.Log.Info("", "unbound vol", volName)
+			}
+		}
+	}
+	Expect(allBound).To(BeTrue(), "all pvcs were not bound")
 
+	for ix := 0; ix < len(c.pvcNames); ix++ {
+		volName := c.pvcNames[ix]
 		// Refresh the PVC contents, so that we can get the PV name.
-		pvc, getPvcErr = k8stest.GetPVC(volName, namespace)
+		pvc, getPvcErr := k8stest.GetPVC(volName, namespace)
 		Expect(getPvcErr).To(BeNil())
 		Expect(pvc).ToNot(BeNil())
 		logf.Log.Info("Created", "volume", pvc.Spec.VolumeName, "uuid", pvc.ObjectMeta.UID)
