@@ -49,9 +49,6 @@ basicVolumeIO:
   volSizeMb: 500
   # fsVolSizeMb units are MiB
   fsVolSizeMb: 450
-multiVolumesPodIO:
-  volumeCount: 6
-  replicas: 2
 maximumVolsIO:
   # 110 volumes
   volMb: 64

@@ -111,10 +111,11 @@ type E2EConfig struct {
 		FsVolSizeMb int `yaml:"fsVolSizeMb" env-default:"900"`
 	} `yaml:"basicVolumeIO"`
 	MultipleVolumesPodIO struct {
-		VolumeCount          int    `yaml:"volumeCount" env-default:"2"`
+		VolumeSizeMb         int    `yaml:"volumeSizeMb" env-default:"500"`
+		VolumeCount          int    `yaml:"volumeCount" env-default:"6"`
 		MultipleReplicaCount int    `yaml:"replicas" env-default:"2"`
-		Duration             string `yaml:"duration" env-default:"30s"`
-		Timeout              string `yaml:"timeout" env-default:"60s"`
+		FioLoops             int    `yaml:"fioLoops" env-default:"0"`
+		Timeout              string `yaml:"timeout" env-default:"180s"`
 	} `yaml:"multiVolumesPodIO"`
 	MsPodDisruption struct {
 		VolMb                    int `yaml:"volMb" env-default:"4096"`

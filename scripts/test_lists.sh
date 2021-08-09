@@ -44,8 +44,6 @@ io_soak
 pvc_delete
 ms_pod_disruption
 ms_pod_disruption_no_io
-maximum_vols_io
-multiple_vols_pod_io
 node_shutdown
 "
 
@@ -88,7 +86,9 @@ validate_integrity_test
 "
 
 profiles[staging]="
+maximum_vols_io
 msv_rebuild
+multiple_vols_pod_io
 node_failure
 primitive_msp_state
 single_msn_shutdown
