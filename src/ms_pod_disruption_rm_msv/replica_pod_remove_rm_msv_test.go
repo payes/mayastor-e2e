@@ -318,16 +318,12 @@ func ReplicaLossVolumeDelete(pvcName string, storageClassName string, fioPodName
 
 	for _, nodeIP := range replicaIPs {
 		Eventually(func() error {
-			_, err = mayastorclient.ListReplicas([]string{nodeIP})
+			reps, err = mayastorclient.ListReplicas([]string{nodeIP})
 			return err
 		},
 			defTimeoutSecs, // timeout
 			"1s",           // polling interval
 		).Should(BeNil(), "Failed to list replica over gRPC")
-	}
-
-	for _, nodeIP := range replicaIPs {
-		reps = listReplicasOnNode(nodeIP)
 		Expect(len(reps)).To(Equal(1), "Expected 1 replica on each replica pod")
 	}
 
