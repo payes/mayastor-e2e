@@ -44,7 +44,6 @@ io_soak
 pvc_delete
 ms_pod_disruption
 ms_pod_disruption_no_io
-ms_pod_disruption_rm_msv
 node_shutdown
 "
 
@@ -93,4 +92,5 @@ multiple_vols_pod_io
 node_failure
 primitive_msp_state
 single_msn_shutdown
+ms_pod_disruption_rm_msv
 "

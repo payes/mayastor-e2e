@@ -317,9 +317,16 @@ func ReplicaLossVolumeDelete(pvcName string, storageClassName string, fioPodName
 	Expect(pools[0].State).To(Equal(mayastorGrpc.PoolState_POOL_ONLINE), "Expected nexus pool to be online")
 
 	for _, nodeIP := range replicaIPs {
-		reps = listReplicasOnNode(nodeIP)
+		Eventually(func() error {
+			reps, err = mayastorclient.ListReplicas([]string{nodeIP})
+			return err
+		},
+			defTimeoutSecs, // timeout
+			"1s",           // polling interval
+		).Should(BeNil(), "Failed to list replica over gRPC")
 		Expect(len(reps)).To(Equal(1), "Expected 1 replica on each replica pod")
 	}
+
 	// verify that the replicas do not get removed
 	logf.Log.Info("wait for 30s before rechecking replicas")
 	time.Sleep(time.Duration(30) * time.Second)
