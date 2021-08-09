@@ -22,13 +22,15 @@ if (params.platform == 'volterra') {
 def k8s_job=""
 
 e2e_image_tag='nightly-stable'
-e2e_reports_dir='artifacts/reports/'
 
 if (params.e2e_branch != '') {
   e2e_mayastor_dir = 'mayastor-e2e'
+  e2e_artifacts_dir = "${e2e_mayastor_dir}/artifacts"
 } else {
   e2e_mayastor_dir = '.'
+  e2e_artifacts_dir = "artifacts" // Jenkins doen't support paths starting with "./"
 }
+e2e_reports_dir = "${e2e_artifacts_dir}/reports"
 
 pipeline {
   agent none
@@ -85,9 +87,10 @@ pipeline {
               common = load "${env.WORKSPACE}/pipelines/common/common.groovy"
               common.GetClusterAdminConf(e2e_environment, k8s_job)
               loki_run_id = common.GetLokiRunId()
-              sh "mkdir -p ${env.WORKSPACE}/${e2e_reports_dir}"
+              abs_e2e_reports_dir = "${env.WORKSPACE}/${e2e_reports_dir}"
+              sh "mkdir -p ${abs_e2e_reports_dir}"
 
-              def cmd = "./scripts/${e2e_script} --device /dev/sdb --tag \"${params.image_tag}\" --logs --tests \'${params.tests}\' --loki_run_id \"${loki_run_id}\" --reportsdir \"${env.WORKSPACE}/${e2e_reports_dir}\" --session \"custom\" "
+              def cmd = "./scripts/${e2e_script} --device /dev/sdb --tag \"${params.image_tag}\" --logs --tests \'${params.tests}\' --loki_run_id \"${loki_run_id}\" --reportsdir \"${abs_e2e_reports_dir}\" --session \"custom\" "
 
               if (params.use_ci_registry == true) {
                 cmd = cmd + " --registry \"" + env.REGISTRY + "\""
@@ -127,7 +130,7 @@ pipeline {
               }
             }
             always {
-              archiveArtifacts 'artifacts/**/*.*'
+              archiveArtifacts "${e2e_artifacts_dir}/**/*.*"
               // handle junit results on success or failure
               junit "${e2e_reports_dir}/**/*.xml"
             }// always
