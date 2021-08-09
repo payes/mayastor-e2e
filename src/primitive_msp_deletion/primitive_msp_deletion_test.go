@@ -111,6 +111,18 @@ func primitiveMspDeletionTest() {
 		"1s",                         // polling interval
 	).Should(BeNil(), "Failed to delete pool")
 
+	// Wait for the custom resources to actually be removed
+	Eventually(func() int {
+		pl, err := custom_resources.ListMsPools()
+		if err != nil {
+			return -1
+		}
+		return len(pl)
+	},
+		"360s", // timeout
+		"2s",   // poll interval
+	).Should(BeIdenticalTo(0))
+
 	// Restart mayastor pods
 	err = k8stest.RestartMayastorPods(params.MayastorRestartTimeout)
 	Expect(err).ToNot(HaveOccurred(), "Restart Mayastor pods")
