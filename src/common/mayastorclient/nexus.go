@@ -72,6 +72,7 @@ func listNexuses(address string) ([]MayastorNexus, error) {
 			logf.Log.Info("ListPools", "error", err)
 		}
 	} else {
+		err = niceError(err)
 		logf.Log.Info("ListPools", "error", err)
 	}
 	return nexusInfos, err
@@ -126,6 +127,7 @@ func FaultNexusChild(address string, Uuid string, Uri string) error {
 			err = fmt.Errorf("nil response to FaultNexusChild")
 		}
 	} else {
+		err = niceError(err)
 		logf.Log.Info("FaultNexusChild", "error", err)
 	}
 
@@ -146,7 +148,7 @@ func FindNexus(uuid string, addrs []string) (*MayastorNexus, error) {
 			}
 		} else {
 			if accErr != nil {
-				accErr = fmt.Errorf("%v;%v", accErr, err)
+				accErr = fmt.Errorf("%v;%v", accErr, niceError(err))
 			} else {
 				accErr = err
 			}

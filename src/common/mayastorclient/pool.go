@@ -68,6 +68,7 @@ func listPool(address string) ([]MayastorPool, error) {
 			logf.Log.Info("listPool", "error", err)
 		}
 	} else {
+		err = niceError(err)
 		logf.Log.Info("listPool", "error", err)
 	}
 	return poolInfos, err
