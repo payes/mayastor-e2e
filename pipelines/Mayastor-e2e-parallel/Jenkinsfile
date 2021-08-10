@@ -76,21 +76,14 @@ pipeline {
                                     failed_tests.add(failed_test)
                                 }
                             }
-                        }  
+                        }
                     }
                 }
                 post {
                     always {
-                        archiveArtifacts 'artifacts/**/*.*'
-                        // handle junit results on success or failure
-                        junit "${e2e_reports_dir}/**/*.xml"
                         script {
-                            if (xray_send_report == true) {
-                                def common = load "${env.WORKSPACE}/pipelines/common/common.groovy"
-                                def pipeline = common.GetJobBaseName()
-                                def summary = "Pipeline: ${pipeline}, test plan: ${xray_test_plan}, git branch: ${env.BRANCH_name}, tested image tag: ${e2e_image_tag}"
-                                common.SendXrayReport(xray_test_plan, summary, e2e_reports_dir)
-                            }
+                            stash includes: "${e2e_reports_dir}/**/*.xml", name: 'run_e2e_part1_junit'
+                            stash includes: 'artifacts/**/*.*', name: 'run_e2e_part1_arts'
                         }
                     }
                 }//post
@@ -120,21 +113,14 @@ pipeline {
                                     failed_tests.add(failed_test)
                                 }
                             }
-                        }  
+                        }
                     }
                 }
                 post {
                     always {
-                        archiveArtifacts 'artifacts/**/*.*'
-                        // handle junit results on success or failure
-                        junit "${e2e_reports_dir}/**/*.xml"
                         script {
-                            if (xray_send_report == true) {
-                                def common = load "${env.WORKSPACE}/pipelines/common/common.groovy"
-                                def pipeline = common.GetJobBaseName()
-                                def summary = "Pipeline: ${pipeline}, test plan: ${xray_test_plan}, git branch: ${env.BRANCH_name}, tested image tag: ${e2e_image_tag}"
-                                common.SendXrayReport(xray_test_plan, summary, e2e_reports_dir)
-                            }
+                            stash includes: "${e2e_reports_dir}/**/*.xml", name: 'run_e2e_part2_junit'
+                            stash includes: 'artifacts/**/*.*', name: 'run_e2e_part2_arts'
                         }
                     }
                 }//post
@@ -164,27 +150,49 @@ pipeline {
                                     failed_tests.add(failed_test)
                                 }
                             }
-                        }  
+                        }
                     }
                 }
                 post {
                     always {
-                        archiveArtifacts 'artifacts/**/*.*'
-                        // handle junit results on success or failure
-                        junit "${e2e_reports_dir}/**/*.xml"
                         script {
-                            if (xray_send_report == true) {
-                                def common = load "${env.WORKSPACE}/pipelines/common/common.groovy"
-                                def pipeline = common.GetJobBaseName()
-                                def summary = "Pipeline: ${pipeline}, test plan: ${xray_test_plan}, git branch: ${env.BRANCH_name}, tested image tag: ${e2e_image_tag}"
-                                common.SendXrayReport(xray_test_plan, summary, e2e_reports_dir)
-                            }
+                            stash includes: "${e2e_reports_dir}/**/*.xml", name: 'run_e2e_part3_junit'
+                            stash includes: 'artifacts/**/*.*', name: 'run_e2e_part3_arts'
                         }
                     }
                 }//post
             }//stage 'run e2e part3'
         }//parallel
     }//stage 'test'
+    stage('archive artifacts'){
+        agent { label 'nixos' }
+        steps {
+            script{
+                unstash 'run_e2e_part1_arts'
+                unstash 'run_e2e_part2_arts'
+                unstash 'run_e2e_part3_arts'
+                archiveArtifacts 'artifacts/**/*.*'
+            }
+        }
+    }
+    stage('handle junit results'){
+        agent { label 'nixos' }
+        steps {
+            script{
+                unstash 'run_e2e_part1_junit'
+                unstash 'run_e2e_part2_junit'
+                unstash 'run_e2e_part3_junit'
+                junit testResults: "${e2e_reports_dir}/**/*.xml", skipPublishingChecks: true
+
+                if (xray_send_report == true) {
+                    def common = load "${env.WORKSPACE}/pipelines/common/common.groovy"
+                    def pipeline = common.GetJobBaseName()
+                    def summary = "Pipeline: ${pipeline}, test plan: ${xray_test_plan}, git branch: ${env.BRANCH_name}, tested image tag: ${e2e_image_tag}"
+                    common.SendXrayReport(xray_test_plan, summary, e2e_reports_dir)
+                }
+            }
+        }
+    }
     stage('check failed tests'){
         steps {
             script{

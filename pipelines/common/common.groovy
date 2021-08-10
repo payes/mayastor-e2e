@@ -230,7 +230,6 @@ def RunTestsOnePerCluster(e2e_test_profile,
           failed_tests = failed_tests + ',' + tests[i]
         }
       }
-      LokiUninstall(test_tag, tests[i])
     }
     DestroyCluster(e2e_destroy_cluster_job, k8s_job)
   } //loop
@@ -263,7 +262,6 @@ def RunOneTestPerCluster(e2e_test,
       } catch(err) {
           failed_tests = e2e_test
       }
-      LokiUninstall(test_tag, e2e_test)
     }
     DestroyCluster(e2e_destroy_cluster_job, k8s_job)
   return failed_tests
