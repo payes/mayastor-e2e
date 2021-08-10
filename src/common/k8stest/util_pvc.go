@@ -217,7 +217,9 @@ func MsvConsistencyCheck(uuid string) error {
 	}
 
 	gReplicas, err := mayastorclient.FindReplicas(uuid, GetMayastorNodeIPAddresses())
-	Expect(err).ToNot(HaveOccurred(), "failed to find replicas using gRPC")
+	if err != nil {
+		return fmt.Errorf("failed to find replicas using gRPC %v", err)
+	}
 	for _, gReplica := range gReplicas {
 		if gReplica.Size != uint64(msv.Status.Size) {
 			return fmt.Errorf("MsvConsistencyCheck: replica size  %d != msv status size %d", gReplica.Size, msv.Status.Size)
