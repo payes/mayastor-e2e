@@ -2,6 +2,7 @@ package k8stest
 
 // Utility functions for Mayastor CRDs
 import (
+	"fmt"
 	"mayastor-e2e/common/custom_resources"
 	v1alpha1Api "mayastor-e2e/common/custom_resources/api/types/v1alpha1"
 
@@ -10,24 +11,28 @@ import (
 )
 
 // GetMSV Get pointer to a mayastor volume custom resource
-// function asserts if the volume CR is not found.
-func GetMSV(uuid string) *v1alpha1Api.MayastorVolume {
+// returns nil and no error if the msv is in pending state.
+func GetMSV(uuid string) (*v1alpha1Api.MayastorVolume, error) {
 	msv, err := custom_resources.GetMsVol(uuid)
 	if err != nil {
-		logf.Log.Info("GetMSV", "error", err)
-		return nil
+		return nil, fmt.Errorf("GetMSV: %v", err)
 	}
 
 	// pending means still being created
 	if msv.Status.State == "pending" {
-		return nil
+		return nil, nil
 	}
 
 	logf.Log.Info("GetMSV", "msv", msv)
 	// Note: msVol.Node can be unassigned here if the volume is not mounted
-	Expect(msv.Status.State).NotTo(Equal(""), "msv.Status=\"%v\"", msv.Status)
-	Expect(len(msv.Status.Replicas)).To(BeNumerically(">", 0))
-	return msv
+	if msv.Status.State == "" {
+		return nil, fmt.Errorf("GetMSV: state not defined, got msv.Status=\"%v\"", msv.Status)
+	}
+
+	if len(msv.Status.Replicas) < 1 {
+		return nil, fmt.Errorf("GetMSV: msv.Status.Replicas=\"%v\"", msv.Status.Replicas)
+	}
+	return msv, nil
 }
 
 // GetMsvNodes Retrieve the nexus node hosting the Mayastor Volume,

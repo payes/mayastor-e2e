@@ -70,7 +70,9 @@ func testPvcWaitForFirstConsumerTest(
 	Expect(pvc).ToNot(BeNil(), "failed to get pvc")
 
 	//check for MayastorVolume CR status
-	Expect(k8stest.GetMSV(uid)).To(BeNil())
+	msv, err := k8stest.GetMSV(uid)
+	Expect(msv).To(BeNil())
+	Expect(err).To(HaveOccurred(), "Get MSV succeeded, expected failure")
 
 	//check PVC status i.e Pending
 	Expect(pvc.Status.Phase).Should(Equal(coreV1.ClaimPending))
@@ -122,7 +124,9 @@ func testPvcWaitForFirstConsumerTest(
 	).Should(Equal(true))
 
 	//check for MayastorVolume CR status
-	Expect(k8stest.GetMSV(uid)).ToNot(BeNil())
+	msv, err = k8stest.GetMSV(uid)
+	Expect(err).ToNot(HaveOccurred(), "%v", err)
+	Expect(msv).ToNot(BeNil())
 
 	//check PVC status i.e Bound
 	Expect(k8stest.GetPvcStatusPhase(volName, common.NSDefault)).Should(Equal(coreV1.ClaimBound))

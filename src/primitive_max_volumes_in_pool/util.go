@@ -158,7 +158,9 @@ func (c *primitiveMaxVolConfig) verifyVolumesCreation() {
 		).Should(Equal(coreV1.VolumeBound))
 
 		Eventually(func() *v1alpha1.MayastorVolume {
-			return k8stest.GetMSV(string(pvc.ObjectMeta.UID))
+			msv, err := k8stest.GetMSV(string(pvc.ObjectMeta.UID))
+			Expect(err).ToNot(HaveOccurred(), "%v", err)
+			return msv
 		},
 			defTimeoutSecs,
 			"1s",

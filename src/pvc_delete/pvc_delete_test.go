@@ -76,7 +76,9 @@ func testPvcDeleteTest(
 	Expect(fioPodName).ToNot(BeNil(), "failed to get fio pod name")
 
 	//check for MayastorVolume CR status
-	Expect(k8stest.GetMSV(uid)).ToNot(BeNil())
+	msv, err := k8stest.GetMSV(uid)
+	Expect(err).ToNot(HaveOccurred(), "%v", err)
+	Expect(msv).ToNot(BeNil(), "failed to get msv")
 
 	// Delete the fio pod
 	err = k8stest.DeletePod(fioPodName, common.NSDefault)
@@ -139,7 +141,9 @@ func testPvcDeleteTest(
 	logf.Log.Info("Volume", "uid", uidSec)
 
 	//check for MayastorVolume CR status
-	Expect(k8stest.GetMSV(uidSec)).ToNot(BeNil(), "failed to get msv")
+	msv, err = k8stest.GetMSV(uidSec)
+	Expect(err).ToNot(HaveOccurred(), "%v", err)
+	Expect(msv).ToNot(BeNil(), "failed to get msv")
 
 	// verify orphaned replica status, it should not be part of any msv
 	status, err = verifyOrphanedReplicas(uidSec, replica)
