@@ -25,6 +25,7 @@ config_file="mayastor_ci_hcloud_e2e_config.yaml"
 # Global state variables
 #  test configuration state variables
 loki_run_id=
+loki_test_label=
 device=
 session="$(date +%Y%m%d-%H%M%S-)$(uuidgen -r)"
 registry="ci-registry.mayastor-ci.mayadata.io"
@@ -52,6 +53,7 @@ Usage: $0 [OPTIONS]
 Options:
   --build_number <number>   Build number, for use when sending Loki markers
   --loki_run_id <Loki run id>  ID string, for use when sending Loki markers
+  --loki_test_label <Loki custom test label> Test label value, for use when sending Loki markers
   --device <path>           Device path to use for storage pools.
   --registry <host[:port]>  Registry to pull the mayastor images from. (default: "ci-registry.mayastor-ci.mayadata.io")
                             'dockerhub' means use DockerHub
@@ -153,6 +155,10 @@ while [ "$#" -gt 0 ]; do
       shift
       loki_run_id="$1"
       ;;
+    --loki_test_label)
+      shift
+      loki_test_label="$1"
+      ;;
     --logs)
       generate_logs=1
       ;;
@@ -224,6 +230,15 @@ while [ "$#" -gt 0 ]; do
 done
 
 export loki_run_id="$loki_run_id" # can be empty string
+export loki_test_label="$loki_test_label"
+
+if [ -z "$session" ]; then
+    sessiondir="$ARTIFACTSDIR"
+else
+    sessiondir="$ARTIFACTSDIR/sessions/$session"
+    logsdir="$logsdir/$session"
+    reportsdir="$reportsdir/$session"
+fi
 
 if [ -z "$session" ]; then
     sessiondir="$ARTIFACTSDIR"
@@ -394,6 +409,7 @@ echo "Environment:"
 echo "    e2e_session_dir=$e2e_session_dir"
 echo "    e2e_mayastor_root_dir=$e2e_mayastor_root_dir"
 echo "    loki_run_id=$loki_run_id"
+echo "    loki_test_label=$loki_test_label"
 echo "    e2e_root_dir=$e2e_root_dir"
 echo "    e2e_pool_device=$e2e_pool_device"
 echo "    e2e_image_tag=$e2e_image_tag"
