@@ -283,7 +283,10 @@ func IsMsVolPublished(uuid string) bool {
 
 // IsMsVolDeleted check for a deleted Mayastor Volume, the object does not exist if deleted
 func IsMsVolDeleted(uuid string) bool {
-	_, err := GetMsVol(uuid)
+	msv, err := GetMsVol(uuid)
+	if msv.Status.State == "destroyed" {
+		return false
+	}
 	if err != nil && errors.IsNotFound(err) {
 		return true
 	}

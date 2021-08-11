@@ -271,7 +271,7 @@ func RmPVC(volName string, scName string, nameSpace string) {
 
 	PVCApi := gTestEnv.KubeInt.CoreV1().PersistentVolumeClaims
 
-	// Confirm the PVC has been created.
+	// Confirm the PVC has been deleted.
 	pvc, getPvcErr := PVCApi(nameSpace).Get(context.TODO(), volName, metaV1.GetOptions{})
 	if k8serrors.IsNotFound(getPvcErr) {
 		return
@@ -279,7 +279,6 @@ func RmPVC(volName string, scName string, nameSpace string) {
 		Expect(getPvcErr).To(BeNil())
 		Expect(pvc).ToNot(BeNil())
 	}
-
 	// Delete the PVC
 	deleteErr := PVCApi(nameSpace).Delete(context.TODO(), volName, metaV1.DeleteOptions{})
 	Expect(deleteErr).To(BeNil())
@@ -291,21 +290,26 @@ func RmPVC(volName string, scName string, nameSpace string) {
 		defTimeoutSecs, // timeout
 		"1s",           // polling interval
 	).Should(Equal(true))
-
 	// Wait for the PV to be deleted.
 	Eventually(func() bool {
-		return IsPVDeleted(pvc.Spec.VolumeName)
+		// This check is required here because it will check for pv name
+		// when pvc is in pending state at that time we will not
+		// get pv name inside pvc spec i.e pvc.Spec.VolumeName
+		if pvc.Spec.VolumeName != "" {
+			return IsPVDeleted(pvc.Spec.VolumeName)
+		}
+		return true
 	},
-		defTimeoutSecs, // timeout
-		"1s",           // polling interval
+		"360s", // timeout
+		"1s",   // polling interval
 	).Should(Equal(true))
 
 	// Wait for the MSV to be deleted.
 	Eventually(func() bool {
 		return custom_resources.IsMsVolDeleted(string(pvc.ObjectMeta.UID))
 	},
-		defTimeoutSecs, // timeout
-		"1s",           // polling interval
+		"360s", // timeout
+		"1s",   // polling interval
 	).Should(Equal(true))
 }
 

@@ -93,4 +93,5 @@ node_failure
 primitive_msp_state
 single_msn_shutdown
 ms_pod_disruption_rm_msv
+primitive_fuzz_msv
 "
