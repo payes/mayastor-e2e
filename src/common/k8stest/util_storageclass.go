@@ -133,6 +133,10 @@ func (b *ScBuilder) Build() (*storagev1.StorageClass, error) {
 	if len(b.errs) > 0 {
 		return nil, errors.Errorf("%+v", b.errs)
 	}
+	if b.sc.object.Parameters[common.ScProtocol] == string(common.ShareProtoNvmf) && b.sc.object.Parameters[common.IOTimeout] == "" {
+		b.sc.object.Parameters[common.IOTimeout] = "30"
+		logf.Log.Info("NewScBuilder: \"defaulting\" ioTimeout", "value", b.sc.object.Parameters[common.IOTimeout])
+	}
 	return b.sc.object, nil
 }
 
