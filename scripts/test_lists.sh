@@ -86,11 +86,12 @@ validate_integrity_test
 "
 
 profiles[staging]="
+primitive_msp_state
+primitive_fault_injection
 maximum_vols_io
 msv_rebuild
 multiple_vols_pod_io
 node_failure
-primitive_msp_state
 single_msn_shutdown
 ms_pod_disruption_rm_msv
 "
