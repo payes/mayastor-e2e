@@ -512,3 +512,20 @@ func MakeAccumulatedError(accErr error, err error) error {
 	}
 	return fmt.Errorf("%v; %v", accErr, err)
 }
+
+// DeleteVolumeAttachmets deletes volume attachments for a node
+func DeleteVolumeAttachments(nodeName string) {
+	volumeAttachments, err := gTestEnv.KubeInt.StorageV1().VolumeAttachments().List(context.TODO(), metaV1.ListOptions{})
+	if err == nil {
+		for _, volumeAttachment := range volumeAttachments.Items {
+			if volumeAttachment.Spec.NodeName != nodeName {
+				continue
+			}
+			logf.Log.Info("DeleteVolumeAttachments: Deleting", "volumeAttachment", volumeAttachment.Name)
+			delErr := gTestEnv.KubeInt.StorageV1().VolumeAttachments().Delete(context.TODO(), volumeAttachment.Name, metaV1.DeleteOptions{})
+			if delErr != nil {
+				logf.Log.Info("DeleteVolumeAttachments: failed to delete the volumeAttachment", "volumeAttachment", volumeAttachment.Name, "error", delErr)
+			}
+		}
+	}
+}
