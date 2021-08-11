@@ -2,6 +2,7 @@ package mayastorclient
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -53,7 +54,15 @@ func listReplica(address string) ([]MayastorReplica, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	response, err := c.ListReplicas(ctx, &null)
+	var response *mayastorGrpc.ListReplicasReply
+	for _, timo := range []time.Duration{5, 10, 20, 40, 80, 160, 240} {
+		response, err = c.ListReplicas(ctx, &null)
+		if errors.Is(err, context.DeadlineExceeded) {
+			time.Sleep(timo * time.Second)
+		} else {
+			break
+		}
+	}
 	if err == nil {
 		if response != nil {
 			for _, replica := range response.Replicas {
@@ -95,11 +104,18 @@ func RmReplica(address string, uuid string) error {
 	}(conn)
 	c := mayastorGrpc.NewMayastorClient(conn)
 	// TODO: Remove unusually large timeout on destroy replica
-	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	req := mayastorGrpc.DestroyReplicaRequest{Uuid: uuid}
-	_, err = c.DestroyReplica(ctx, &req)
+	for _, timo := range []time.Duration{5, 10, 20, 40, 80, 160, 240} {
+		_, err = c.DestroyReplica(ctx, &req)
+		if errors.Is(err, context.DeadlineExceeded) {
+			time.Sleep(timo * time.Second)
+		} else {
+			break
+		}
+	}
 	return niceError(err)
 }
 
@@ -107,7 +123,10 @@ func RmReplica(address string, uuid string) error {
 func CreateReplicaExt(address string, uuid string, size uint64, pool string, thin bool, shareProto mayastorGrpc.ShareProtocolReplica) error {
 	logf.Log.Info("CreateReplica", "address", address, "UUID", uuid, "size", size, "pool", pool, "Thin", thin, "Share", shareProto)
 	addrPort := fmt.Sprintf("%s:%d", address, mayastorPort)
-	conn, err := grpc.Dial(addrPort, grpc.WithInsecure())
+	var err error
+	var conn *grpc.ClientConn
+
+	conn, err = grpc.Dial(addrPort, grpc.WithInsecure())
 	if err != nil {
 		logf.Log.Info("createReplica", "error", err)
 		return err
@@ -119,7 +138,7 @@ func CreateReplicaExt(address string, uuid string, size uint64, pool string, thi
 		}
 	}(conn)
 	c := mayastorGrpc.NewMayastorClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	req := mayastorGrpc.CreateReplicaRequest{
@@ -129,7 +148,14 @@ func CreateReplicaExt(address string, uuid string, size uint64, pool string, thi
 		Pool:  pool,
 		Share: shareProto,
 	}
-	_, err = c.CreateReplica(ctx, &req)
+	for _, timo := range []time.Duration{5, 10, 20, 40, 80, 160, 240} {
+		_, err = c.CreateReplica(ctx, &req)
+		if errors.Is(err, context.DeadlineExceeded) {
+			time.Sleep(timo * time.Second)
+		} else {
+			break
+		}
+	}
 	return niceError(err)
 }
 

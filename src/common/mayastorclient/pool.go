@@ -2,6 +2,7 @@ package mayastorclient
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -50,7 +51,13 @@ func listPool(address string) ([]MayastorPool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	response, err := c.ListPools(ctx, &null)
+	var response *mayastorGrpc.ListPoolsReply
+	for _, timo := range []time.Duration{5, 10, 20, 40, 80, 160, 240} {
+		response, err = c.ListPools(ctx, &null)
+		if errors.Is(err, context.DeadlineExceeded) {
+			time.Sleep(timo * time.Second)
+		}
+	}
 	if err == nil {
 		if response != nil {
 			for _, pool := range response.Pools {

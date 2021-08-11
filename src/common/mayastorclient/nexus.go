@@ -3,6 +3,7 @@ package mayastorclient
 import (
 	"context"
 	"fmt"
+	"github.com/pkg/errors"
 	"time"
 
 	mayastorGrpc "mayastor-e2e/common/mayastorclient/grpc"
@@ -53,7 +54,16 @@ func listNexuses(address string) ([]MayastorNexus, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	response, err := c.ListNexus(ctx, &null)
+	var response *mayastorGrpc.ListNexusReply
+	for _, timo := range []time.Duration{5, 10, 20, 40, 80, 160, 240} {
+		response, err = c.ListNexus(ctx, &null)
+		if errors.Is(err, context.DeadlineExceeded) {
+			time.Sleep(timo * time.Second)
+		} else {
+			break
+		}
+	}
+
 	if err == nil {
 		if response != nil {
 			for _, nexus := range response.NexusList {
@@ -121,7 +131,16 @@ func FaultNexusChild(address string, Uuid string, Uri string) error {
 		Uuid: Uuid,
 		Uri:  Uri,
 	}
-	response, err := c.FaultNexusChild(ctx, &faultRequest)
+	var response *mayastorGrpc.Null
+	for _, timo := range []time.Duration{5, 10, 20, 40, 80, 160, 240} {
+		response, err = c.FaultNexusChild(ctx, &faultRequest)
+		if errors.Is(err, context.DeadlineExceeded) {
+			time.Sleep(timo * time.Second)
+		} else {
+			break
+		}
+	}
+
 	if err == nil {
 		if response == nil {
 			err = fmt.Errorf("nil response to FaultNexusChild")
