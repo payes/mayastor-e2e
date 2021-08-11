@@ -61,15 +61,15 @@ pipeline {
               k8s_job = common.BuildCluster(e2e_build_cluster_job, e2e_environment)
               common.GetClusterAdminConf(e2e_environment, k8s_job)
 
-              def cmd = "./scripts/e2e-test.sh --device /dev/sdb --tag \"${test_tag}\" --logs --onfail reinstall --profile \"${e2e_selfci_test_profile}\" --loki_run_id \"${loki_run_id}\" --reportsdir \"${env.WORKSPACE}/${e2e_reports_dir}\" --registry \"${env.REGISTRY}\" --session \"self-ci-image-builder\" "
+              def cmd = "./scripts/e2e-test.sh --device /dev/sdb --tag \"${test_tag}\" --logs --onfail reinstall --profile \"${e2e_selfci_test_profile}\" --loki_run_id \"${loki_run_id}\" --loki_test_label \"${e2e_selfci_test_profile}\" --reportsdir \"${env.WORKSPACE}/${e2e_reports_dir}\" --registry \"${env.REGISTRY}\" --session \"self-ci-image-builder\" "
 
               withCredentials([
                 usernamePassword(credentialsId: 'GRAFANA_API', usernameVariable: 'grafana_api_user', passwordVariable: 'grafana_api_pw'),
                 string(credentialsId: 'HCLOUD_TOKEN', variable: 'HCLOUD_TOKEN')
               ]) {
-                common.LokiInstall(test_tag)
+                common.LokiInstall(test_tag, e2e_selfci_test_profile)
                 sh "nix-shell --run '${cmd}'"
-                common.LokiUninstall(test_tag)
+                common.LokiUninstall(test_tag, e2e_selfci_test_profile)
               }
               common.DestroyCluster(e2e_destroy_cluster_job, k8s_job)
               k8s_job=""

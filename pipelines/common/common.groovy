@@ -1,5 +1,7 @@
 #!/usr/bin/env groovy
 
+import java.util.concurrent.LinkedBlockingQueue
+
 // In the case of multi-branch pipelines, the pipeline
 // name a.k.a. job base name, will be the
 // 2nd-to-last item of env.JOB_NAME which
@@ -164,19 +166,19 @@ def WarnOrphanCluster(k8s_job) {
 }
 
 // Install Loki on the cluster
-def LokiInstall(tag) {
+def LokiInstall(tag, test) {
   String loki_run_id = GetLokiRunId()
   sh 'kubectl apply -f ./loki/promtail_namespace_e2e.yaml'
   sh 'kubectl apply -f ./loki/promtail_rbac_e2e.yaml'
   sh 'kubectl apply -f ./loki/promtail_configmap_e2e.yaml'
-  def cmd = "run=\"${loki_run_id}\" version=\"${tag}\" envsubst -no-unset < ./loki/promtail_daemonset_e2e.template.yaml | kubectl apply -f -"
+  def cmd = "run=\"${loki_run_id}\" version=\"${tag}\" test=\"${test}\" envsubst -no-unset < ./loki/promtail_daemonset_e2e.template.yaml | kubectl apply -f -"
   sh "nix-shell --run '${cmd}'"
 }
 
-// Unnstall Loki
-def LokiUninstall(tag) {
+// Uninstall Loki tag
+def LokiUninstall(tag, test) {
   String loki_run_id = GetLokiRunId()
-  def cmd = "run=\"${loki_run_id}\" version=\"${tag}\" envsubst -no-unset < ./loki/promtail_daemonset_e2e.template.yaml | kubectl delete -f -"
+  def cmd = "run=\"${loki_run_id}\" version=\"${tag}\" test=\"${test}\" envsubst -no-unset < ./loki/promtail_daemonset_e2e.template.yaml | kubectl delete -f -"
   sh "nix-shell --run '${cmd}'"
   sh 'kubectl delete -f ./loki/promtail_configmap_e2e.yaml'
   sh 'kubectl delete -f ./loki/promtail_rbac_e2e.yaml'
@@ -212,13 +214,13 @@ def RunTestsOnePerCluster(e2e_test_profile,
     session_id = "${tests[i]}"
     session_id = session_id.replaceAll(",", "-")
 
-    cmd = "./scripts/e2e-test.sh --device /dev/sdb --tag \"${test_tag}\" --logs --onfail stop --tests \"${testset}\" --loki_run_id \"${loki_run_id}\" --reportsdir \"${env.WORKSPACE}/${e2e_reports_dir}\" --registry \"${env.REGISTRY}\" --session \"${session_id}\" "
+    cmd = "./scripts/e2e-test.sh --device /dev/sdb --tag \"${test_tag}\" --logs --onfail stop --tests \"${testset}\" --loki_run_id \"${loki_run_id}\" --loki_test_label \"${tests[i]}\" --reportsdir \"${env.WORKSPACE}/${e2e_reports_dir}\" --registry \"${env.REGISTRY}\" --session \"${session_id}\" "
 
     withCredentials([
       usernamePassword(credentialsId: 'GRAFANA_API', usernameVariable: 'grafana_api_user', passwordVariable: 'grafana_api_pw'),
       string(credentialsId: 'HCLOUD_TOKEN', variable: 'HCLOUD_TOKEN')
     ]) {
-      LokiInstall(test_tag)
+      LokiInstall(test_tag, tests[i])
       try {
         sh "nix-shell --run '${cmd}'"
       } catch(err) {
@@ -228,16 +230,63 @@ def RunTestsOnePerCluster(e2e_test_profile,
           failed_tests = failed_tests + ',' + tests[i]
         }
       }
-      LokiUninstall(test_tag)
+      LokiUninstall(test_tag, tests[i])
     }
     DestroyCluster(e2e_destroy_cluster_job, k8s_job)
   } //loop
   return failed_tests
 }
 
+def RunOneTestPerCluster(e2e_test,
+                          test_tag,
+                          loki_run_id,
+                          e2e_build_cluster_job,
+                          e2e_destroy_cluster_job,
+                          e2e_environment,
+                          e2e_reports_dir) {
+    def failed_tests=""
+    def k8s_job=""
+    def testset = "install ${e2e_test} uninstall"
+    println testset
+    k8s_job = BuildCluster(e2e_build_cluster_job, e2e_environment)
+    GetClusterAdminConf(e2e_environment, k8s_job)
+    def session_id = e2e_test.replaceAll(",", "-")
+
+    def cmd = "./scripts/e2e-test.sh --device /dev/sdb --tag \"${test_tag}\" --logs --onfail stop --tests \"${testset}\" --loki_run_id \"${loki_run_id}\" --loki_test_label \"${e2e_test}\" --reportsdir \"${env.WORKSPACE}/${e2e_reports_dir}\" --registry \"${env.REGISTRY}\" --session \"${session_id}\" "
+    withCredentials([
+      usernamePassword(credentialsId: 'GRAFANA_API', usernameVariable: 'grafana_api_user', passwordVariable: 'grafana_api_pw'),
+      string(credentialsId: 'HCLOUD_TOKEN', variable: 'HCLOUD_TOKEN')
+    ]) {
+      LokiInstall(test_tag, e2e_test)
+      try {
+        sh "nix-shell --run '${cmd}'"
+      } catch(err) {
+          failed_tests = e2e_test
+      }
+      LokiUninstall(test_tag, e2e_test)
+    }
+    DestroyCluster(e2e_destroy_cluster_job, k8s_job)
+  return failed_tests
+}
+
+def BuildTestsQueue(profile) {
+  def list = sh(
+    script: "scripts/e2e-get-test-list.sh '${profile}'",
+    returnStdout: true
+  )
+  def tests = list.split()
+  LinkedBlockingQueue testsQueue = [] as LinkedBlockingQueue
+  //loop over list
+  for (int i = 0; i < tests.size(); i++) {
+    testsQueue.add(tests[i])
+  }
+  println testsQueue
+  return testsQueue
+}
+
 def SendXrayReport(xray_testplan, summary, e2e_reports_dir) {
-  xray_projectkey = 'MQ'
   xray_test_execution_type = '10059'
+  xray_projectkey = xray_testplan.split('-')[0]
 
   try {
     step([

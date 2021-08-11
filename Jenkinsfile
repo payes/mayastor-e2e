@@ -74,7 +74,7 @@ pipeline {
               loki_run_id = common.GetLokiRunId()
               sh "mkdir -p ./${e2e_reports_dir}"
 
-              def cmd = "./scripts/e2e-test.sh --device /dev/sdb --tag \"${e2e_image_tag}\" --logs --profile \"${e2e_test_profile}\" --loki_run_id \"${loki_run_id}\" --reportsdir \"${env.WORKSPACE}/${e2e_reports_dir}\" --session \"self-ci\" "
+              def cmd = "./scripts/e2e-test.sh --device /dev/sdb --tag \"${e2e_image_tag}\" --logs --profile \"${e2e_test_profile}\" --loki_run_id \"${loki_run_id}\" --loki_test_label \"${e2e_test_profile}\" --reportsdir \"${env.WORKSPACE}/${e2e_reports_dir}\" --session \"self-ci\" "
               if (e2e_local_registry == true) {
                 cmd = cmd + " --registry \"" + env.REGISTRY + "\""
               }
@@ -83,9 +83,9 @@ pipeline {
                 usernamePassword(credentialsId: 'GRAFANA_API', usernameVariable: 'grafana_api_user', passwordVariable: 'grafana_api_pw'),
                 string(credentialsId: 'HCLOUD_TOKEN', variable: 'HCLOUD_TOKEN')
               ]) {
-                common.LokiInstall(e2e_image_tag)
+                common.LokiInstall(e2e_image_tag, e2e_test_profile)
                 sh "nix-shell --run '${cmd}'"
-                common.LokiUninstall(e2e_image_tag)
+                common.LokiUninstall(e2e_image_tag, e2e_test_profile)
               }
             }
           }

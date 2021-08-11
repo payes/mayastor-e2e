@@ -90,7 +90,7 @@ pipeline {
               abs_e2e_reports_dir = "${env.WORKSPACE}/${e2e_reports_dir}"
               sh "mkdir -p ${abs_e2e_reports_dir}"
 
-              def cmd = "./scripts/${e2e_script} --device /dev/sdb --tag \"${params.image_tag}\" --logs --tests \'${params.tests}\' --loki_run_id \"${loki_run_id}\" --reportsdir \"${abs_e2e_reports_dir}\" --session \"custom\" "
+              def cmd = "./scripts/${e2e_script} --device /dev/sdb --tag \"${params.image_tag}\" --logs --tests \'${params.tests}\' --loki_run_id \"${loki_run_id}\" --loki_test_label \"custom\" --reportsdir \"${abs_e2e_reports_dir}\" --session \"custom\" "
 
               if (params.use_ci_registry == true) {
                 cmd = cmd + " --registry \"" + env.REGISTRY + "\""
@@ -105,9 +105,9 @@ pipeline {
                 usernamePassword(credentialsId: 'GRAFANA_API', usernameVariable: 'grafana_api_user', passwordVariable: 'grafana_api_pw'),
                 string(credentialsId: 'HCLOUD_TOKEN', variable: 'HCLOUD_TOKEN')
               ]) {
-                common.LokiInstall(params.image_tag)
+                common.LokiInstall(params.image_tag, "custom")
                 sh "nix-shell --run 'cd ${env.WORKSPACE}/${e2e_mayastor_dir} && ${cmd}'"
-                common.LokiUninstall(params.image_tag) // so that, if we keep the cluster, the next Loki instance can use different parameters
+                common.LokiUninstall(params.image_tag, "custom") // so that, if we keep the cluster, the next Loki instance can use different parameters
               }
             }
           }

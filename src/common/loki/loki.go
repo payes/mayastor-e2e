@@ -17,6 +17,7 @@ import (
 var g_apiUser string
 var g_apiPw string
 var g_loki_run_id string
+var g_loki_test_label string
 var g_enabled = false
 var g_once sync.Once
 
@@ -25,10 +26,11 @@ func SendLokiMarker(text string) {
 		g_apiUser = os.Getenv("grafana_api_user")
 		g_apiPw = os.Getenv("grafana_api_pw")
 		g_loki_run_id = os.Getenv("loki_run_id")
+		g_loki_test_label = os.Getenv("loki_test_label")
 
-		if g_apiUser != "" && g_apiPw != "" && g_loki_run_id != "" {
+		if g_apiUser != "" && g_apiPw != "" && g_loki_run_id != "" && g_loki_test_label != "" {
 			g_enabled = true
-		} else if g_apiUser != "" || g_apiPw != "" || g_loki_run_id != "" { // all should be defined or none
+		} else if g_apiUser != "" || g_apiPw != "" || g_loki_run_id != "" || g_loki_test_label != "" { // all should be defined or none
 			errorStr := "Invalid combination of environment variables"
 			if g_apiUser == "" {
 				errorStr += ", user is not defined"
@@ -38,6 +40,9 @@ func SendLokiMarker(text string) {
 			}
 			if g_loki_run_id == "" {
 				errorStr += ", loki_run_id is not defined"
+			}
+			if g_loki_test_label == "" {
+				errorStr += ", loki_test_label is not defined"
 			}
 			logf.Log.Info("Invalid Loki config", "reason", errorStr)
 		}
@@ -57,7 +62,8 @@ func SendLokiMarker(text string) {
 				"stream": {
 					"run": "` + g_loki_run_id + `",
 					"version": "` + imageTag + `",
-					"app": "marker"
+					"app": "marker",
+					"test": "` + g_loki_test_label + `"
 				},
 				"values": [
 					["` + timestamp + `","` + text + `"]
