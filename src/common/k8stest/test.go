@@ -129,12 +129,16 @@ func AfterSuiteCleanup() {
 func CheckMsPoolFinalizers() error {
 	err := custom_resources.CheckAllMsPoolFinalizers()
 	logf.Log.Info("Checking pool finalizers", "timeout seconds", e2e_config.GetConfig().MoacSyncTimeoutSeconds)
-	for ix := 1; ix < e2e_config.GetConfig().MoacSyncTimeoutSeconds && err != nil; ix += 1 {
-		time.Sleep(1 * time.Second)
+	const sleepTime = 5
+	t0 := time.Now()
+	for ix := 0; ix < e2e_config.GetConfig().MoacSyncTimeoutSeconds && err != nil; ix += sleepTime {
+		time.Sleep(sleepTime * time.Second)
 		err = custom_resources.CheckAllMsPoolFinalizers()
 	}
 	if err != nil {
 		logf.Log.Info("Checking pool finalizers", "error", err)
+	} else {
+		logf.Log.Info("Checking pool finalizers, done.", "waiting time", time.Since(t0))
 	}
 	return err
 }
@@ -211,21 +215,45 @@ func ResourceCheck() error {
 		logf.Log.Info("ResourceCheck: not all pools are online")
 	}
 
+	{
+		var mspUsage int64 = 1
+		const sleepTime = 10
+		t0 := time.Now()
+		// Wait for pool usage reported by CRS to drop to 0
+		for ix := 0; ix < (60*sleepTime) && mspUsage != 0; ix += sleepTime {
+			time.Sleep(sleepTime * time.Second)
+			msPools, err := custom_resources.ListMsPools()
+			if err != nil {
+				errorMsg += fmt.Sprintf("%s %v", errorMsg, err)
+				logf.Log.Info("ResourceCheck: unable to list msps")
+			} else {
+				mspUsage = 0
+				for _, pool := range msPools {
+					mspUsage += pool.Status.Used
+				}
+			}
+		}
+		logf.Log.Info("ResourceCheck:", "mspool Usage", mspUsage, "waiting time", time.Since(t0))
+		Expect(mspUsage).To(BeZero(), "pool usage reported via custom resources %d", mspUsage)
+	}
+
 	// gRPC calls can only be executed successfully is the e2e-agent daemonSet has been deployed successfully.
 	if EnsureE2EAgent() {
 		// check pools
 		{
 			var poolUsage uint64 = 1
-			// Wait 120 seconds for pool usage to drop to 0
-			for ix := 0; ix < 60 && poolUsage != 0; ix += 1 {
-				time.Sleep(2 * time.Second)
+			const sleepTime = 2
+			t0 := time.Now()
+			// Wait for pool usage to drop to 0
+			for ix := 0; ix < 120 && poolUsage != 0; ix += sleepTime {
+				time.Sleep(sleepTime * time.Second)
 				poolUsage, err = GetPoolUsageInCluster()
 				if err != nil {
 					errorMsg += fmt.Sprintf("%s %v", errorMsg, err)
 					logf.Log.Info("ResourceEachCheck: failed to retrieve pools usage")
 				}
 			}
-			logf.Log.Info("ResourceCheck:", "poolUsage", poolUsage)
+			logf.Log.Info("ResourceCheck:", "poolUsage", poolUsage, "waiting time", time.Since(t0))
 			Expect(poolUsage).To(BeZero(), "pool usage reported via mayastor client is %d", poolUsage)
 		}
 		// check nexuses

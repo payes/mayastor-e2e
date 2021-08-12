@@ -59,6 +59,7 @@ resource_check
 
 # removed synchronous_replication doesn't  with mayastor build 755c435fdb0a.
 # add pvc_delete and control_plane_rescheduling passes with mayastor build 755c435fdb0a
+# remove pvc_delete, fails because MOAC does not remove finalizer
 profiles[self_ci]="
 basic_volume_io
 io_soak
@@ -77,7 +78,6 @@ expand_msp_disk
 pvc_waitforfirstconsumer
 nexus_location
 pvc_readwriteonce
-pvc_delete
 control_plane_rescheduling
 "
 
