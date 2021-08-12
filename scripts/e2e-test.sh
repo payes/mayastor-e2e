@@ -240,14 +240,6 @@ else
     reportsdir="$reportsdir/$session"
 fi
 
-if [ -z "$session" ]; then
-    sessiondir="$ARTIFACTSDIR"
-else
-    sessiondir="$ARTIFACTSDIR/sessions/$session"
-    logsdir="$logsdir/$session"
-    reportsdir="$reportsdir/$session"
-fi
-
 if [ -z "$mayastor_root_dir" ]; then
     if ! "$SCRIPTDIR/extract-install-image.sh" --alias-tag "$tag" --installroot "$sessiondir"
     then
