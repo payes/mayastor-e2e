@@ -3,8 +3,6 @@ package mayastorclient
 import (
 	"context"
 	"fmt"
-	"time"
-
 	mayastorGrpc "mayastor-e2e/common/mayastorclient/grpc"
 
 	"google.golang.org/grpc"
@@ -50,7 +48,7 @@ func listNexuses(address string) ([]MayastorNexus, error) {
 	}(conn)
 
 	c := mayastorGrpc.NewMayastorClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), ctxTimeout)
 	defer cancel()
 
 	var response *mayastorGrpc.ListNexusReply
@@ -119,7 +117,7 @@ func FaultNexusChild(address string, Uuid string, Uri string) error {
 	}(conn)
 
 	c := mayastorGrpc.NewMayastorClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), ctxTimeout)
 	defer cancel()
 
 	faultRequest := mayastorGrpc.FaultNexusChildRequest{

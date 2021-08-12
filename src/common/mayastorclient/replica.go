@@ -3,8 +3,6 @@ package mayastorclient
 import (
 	"context"
 	"fmt"
-	"time"
-
 	mayastorGrpc "mayastor-e2e/common/mayastorclient/grpc"
 
 	"google.golang.org/grpc"
@@ -50,7 +48,7 @@ func listReplica(address string) ([]MayastorReplica, error) {
 	}(conn)
 
 	c := mayastorGrpc.NewMayastorClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), ctxTimeout)
 	defer cancel()
 
 	var response *mayastorGrpc.ListReplicasReply
@@ -100,7 +98,7 @@ func RmReplica(address string, uuid string) error {
 	}(conn)
 	c := mayastorGrpc.NewMayastorClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), ctxTimeout)
 	defer cancel()
 
 	req := mayastorGrpc.DestroyReplicaRequest{Uuid: uuid}
@@ -117,9 +115,8 @@ func CreateReplicaExt(address string, uuid string, size uint64, pool string, thi
 	logf.Log.Info("CreateReplica", "address", address, "UUID", uuid, "size", size, "pool", pool, "Thin", thin, "Share", shareProto)
 	addrPort := fmt.Sprintf("%s:%d", address, mayastorPort)
 	var err error
-	var conn *grpc.ClientConn
 
-	conn, err = grpc.Dial(addrPort, grpc.WithInsecure())
+	conn, err := grpc.Dial(addrPort, grpc.WithInsecure())
 	if err != nil {
 		logf.Log.Info("createReplica", "error", err)
 		return err
@@ -131,7 +128,7 @@ func CreateReplicaExt(address string, uuid string, size uint64, pool string, thi
 		}
 	}(conn)
 	c := mayastorGrpc.NewMayastorClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), ctxTimeout)
 	defer cancel()
 
 	req := mayastorGrpc.CreateReplicaRequest{

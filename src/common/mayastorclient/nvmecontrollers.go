@@ -3,8 +3,6 @@ package mayastorclient
 import (
 	"context"
 	"fmt"
-	"time"
-
 	mayastorGrpc "mayastor-e2e/common/mayastorclient/grpc"
 
 	"google.golang.org/grpc"
@@ -44,7 +42,7 @@ func listNvmeController(address string) ([]NvmeController, error) {
 	}(conn)
 
 	c := mayastorGrpc.NewMayastorClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), ctxTimeout)
 	defer cancel()
 
 	var response *mayastorGrpc.ListNvmeControllersReply
