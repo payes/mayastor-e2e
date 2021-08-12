@@ -75,6 +75,8 @@ func RunFio(podName string, duration int, filename string, sizeMb int, args ...s
 	return output, err
 }
 
+// IsPodWithLabelsRunning expects that at any time only one application pod will be in running state
+// if there are more then one pod in terminating state then it will return the last terminating pod.
 func IsPodWithLabelsRunning(labels, namespace string) (string, bool, error) {
 	var podName string
 	pods, err := gTestEnv.KubeInt.CoreV1().Pods(namespace).List(context.TODO(), metaV1.ListOptions{LabelSelector: labels})

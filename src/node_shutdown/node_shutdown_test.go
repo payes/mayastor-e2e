@@ -91,7 +91,8 @@ func (c *shutdownConfig) nodeShutdownTest() {
 
 	Expect(k8stest.ForceDeleteTerminatingPods("", common.NSDefault)).To(BeNil())
 	time.Sleep(1 * time.Minute)
-	k8stest.DeleteVolumeAttachments(oldNexusNode)
+	err = k8stest.DeleteVolumeAttachments(oldNexusNode)
+	Expect(err).To(BeNil(), "Failed to delete volume attachments")
 	time.Sleep(2 * time.Minute)
 	// Verify the application comes back in running state on a different node
 	c.verifyApplicationPodRunning(true)
@@ -101,6 +102,8 @@ func (c *shutdownConfig) nodeShutdownTest() {
 		msv, _ := k8stest.GetMSV(uuid)
 		Expect(msv).NotTo(BeNil())
 		Expect(msv.Status.Nexus).NotTo(BeNil())
+		Expect(msv.Status.Nexus.Node).NotTo(Equal(oldNexusNode))
+
 		// Verify that msv has removed the powered off replica node from the list of replica nodes
 		Expect(len(msv.Status.Nexus.Children)).To(Equal(2))
 

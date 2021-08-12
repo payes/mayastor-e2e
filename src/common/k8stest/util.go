@@ -514,18 +514,22 @@ func MakeAccumulatedError(accErr error, err error) error {
 }
 
 // DeleteVolumeAttachmets deletes volume attachments for a node
-func DeleteVolumeAttachments(nodeName string) {
+func DeleteVolumeAttachments(nodeName string) error {
 	volumeAttachments, err := gTestEnv.KubeInt.StorageV1().VolumeAttachments().List(context.TODO(), metaV1.ListOptions{})
-	if err == nil {
-		for _, volumeAttachment := range volumeAttachments.Items {
-			if volumeAttachment.Spec.NodeName != nodeName {
-				continue
-			}
-			logf.Log.Info("DeleteVolumeAttachments: Deleting", "volumeAttachment", volumeAttachment.Name)
-			delErr := gTestEnv.KubeInt.StorageV1().VolumeAttachments().Delete(context.TODO(), volumeAttachment.Name, metaV1.DeleteOptions{})
-			if delErr != nil {
-				logf.Log.Info("DeleteVolumeAttachments: failed to delete the volumeAttachment", "volumeAttachment", volumeAttachment.Name, "error", delErr)
-			}
+	Expect(err).ToNot(HaveOccurred(), "failed to list volume attachments")
+	if len(volumeAttachments.Items) == 0 {
+		return nil
+	}
+	for _, volumeAttachment := range volumeAttachments.Items {
+		if volumeAttachment.Spec.NodeName != nodeName {
+			continue
+		}
+		logf.Log.Info("DeleteVolumeAttachments: Deleting", "volumeAttachment", volumeAttachment.Name)
+		delErr := gTestEnv.KubeInt.StorageV1().VolumeAttachments().Delete(context.TODO(), volumeAttachment.Name, metaV1.DeleteOptions{})
+		if delErr != nil {
+			logf.Log.Info("DeleteVolumeAttachments: failed to delete the volumeAttachment", "volumeAttachment", volumeAttachment.Name, "error", delErr)
+			return err
 		}
 	}
+	return nil
 }
