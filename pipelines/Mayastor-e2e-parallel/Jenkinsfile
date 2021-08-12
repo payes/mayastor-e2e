@@ -182,10 +182,16 @@ pipeline {
                 unstash 'run_e2e_part1_junit'
                 unstash 'run_e2e_part2_junit'
                 unstash 'run_e2e_part3_junit'
+
                 junit testResults: "${e2e_reports_dir}/**/*.xml", skipPublishingChecks: true
 
+                // The dedupe alters the junit files, so this step
+                // should be last one accessing the report artifacts
+                // other than XRay.
+                def common = load "./pipelines/common/common.groovy"
+                common.DeDupeInstallReports(e2e_reports_dir)
+
                 if (xray_send_report == true) {
-                    def common = load "${env.WORKSPACE}/pipelines/common/common.groovy"
                     def pipeline = common.GetJobBaseName()
                     def summary = "Pipeline: ${pipeline}, test plan: ${xray_test_plan}, git branch: ${env.BRANCH_name}, tested image tag: ${e2e_image_tag}"
                     common.SendXrayReport(xray_test_plan, summary, e2e_reports_dir)
