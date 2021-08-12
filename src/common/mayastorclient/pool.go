@@ -2,7 +2,6 @@ package mayastorclient
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -52,13 +51,10 @@ func listPool(address string) ([]MayastorPool, error) {
 	defer cancel()
 
 	var response *mayastorGrpc.ListPoolsReply
-	for ito := 0; ito < len(backOffTimes); ito += 1 {
+	retryBackoff(func() error {
 		response, err = c.ListPools(ctx, &null)
-		if !errors.Is(err, context.DeadlineExceeded) {
-			break
-		}
-		time.Sleep(backOffTimes[ito])
-	}
+		return err
+	})
 
 	if err == nil {
 		if response != nil {

@@ -2,7 +2,6 @@ package mayastorclient
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -55,13 +54,11 @@ func listReplica(address string) ([]MayastorReplica, error) {
 	defer cancel()
 
 	var response *mayastorGrpc.ListReplicasReply
-	for ito := 0; ito < len(backOffTimes); ito += 1 {
+	retryBackoff(func() error {
 		response, err = c.ListReplicas(ctx, &null)
-		if !errors.Is(err, context.DeadlineExceeded) {
-			break
-		}
-		time.Sleep(backOffTimes[ito])
-	}
+		return err
+	})
+
 	if err == nil {
 		if response != nil {
 			for _, replica := range response.Replicas {
@@ -107,13 +104,10 @@ func RmReplica(address string, uuid string) error {
 	defer cancel()
 
 	req := mayastorGrpc.DestroyReplicaRequest{Uuid: uuid}
-	for ito := 0; ito < len(backOffTimes); ito += 1 {
+	retryBackoff(func() error {
 		_, err = c.DestroyReplica(ctx, &req)
-		if !errors.Is(err, context.DeadlineExceeded) {
-			break
-		}
-		time.Sleep(backOffTimes[ito])
-	}
+		return err
+	})
 
 	return niceError(err)
 }
@@ -147,13 +141,11 @@ func CreateReplicaExt(address string, uuid string, size uint64, pool string, thi
 		Pool:  pool,
 		Share: shareProto,
 	}
-	for ito := 0; ito < len(backOffTimes); ito += 1 {
+
+	retryBackoff(func() error {
 		_, err = c.CreateReplica(ctx, &req)
-		if !errors.Is(err, context.DeadlineExceeded) {
-			break
-		}
-		time.Sleep(backOffTimes[ito])
-	}
+		return err
+	})
 
 	return niceError(err)
 }
