@@ -2,6 +2,7 @@ package mayastorclient
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -47,7 +48,15 @@ func listNvmeController(address string) ([]NvmeController, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
-	response, err := c.ListNvmeControllers(ctx, &null)
+	var response *mayastorGrpc.ListNvmeControllersReply
+	for ito := 0; ito < len(backOffTimes); ito += 1 {
+		response, err = c.ListNvmeControllers(ctx, &null)
+		if !errors.Is(err, context.DeadlineExceeded) {
+			break
+		}
+		time.Sleep(backOffTimes[ito])
+	}
+
 	if err == nil {
 		if response != nil {
 			for _, nvmeController := range response.Controllers {

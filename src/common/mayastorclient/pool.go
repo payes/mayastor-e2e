@@ -52,12 +52,14 @@ func listPool(address string) ([]MayastorPool, error) {
 	defer cancel()
 
 	var response *mayastorGrpc.ListPoolsReply
-	for _, timo := range []time.Duration{5, 10, 20, 40, 80, 160, 240} {
+	for ito := 0; ito < len(backOffTimes); ito += 1 {
 		response, err = c.ListPools(ctx, &null)
-		if errors.Is(err, context.DeadlineExceeded) {
-			time.Sleep(timo * time.Second)
+		if !errors.Is(err, context.DeadlineExceeded) {
+			break
 		}
+		time.Sleep(backOffTimes[ito])
 	}
+
 	if err == nil {
 		if response != nil {
 			for _, pool := range response.Pools {

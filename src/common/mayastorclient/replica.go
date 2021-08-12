@@ -55,13 +55,12 @@ func listReplica(address string) ([]MayastorReplica, error) {
 	defer cancel()
 
 	var response *mayastorGrpc.ListReplicasReply
-	for _, timo := range []time.Duration{5, 10, 20, 40, 80, 160, 240} {
+	for ito := 0; ito < len(backOffTimes); ito += 1 {
 		response, err = c.ListReplicas(ctx, &null)
-		if errors.Is(err, context.DeadlineExceeded) {
-			time.Sleep(timo * time.Second)
-		} else {
+		if !errors.Is(err, context.DeadlineExceeded) {
 			break
 		}
+		time.Sleep(backOffTimes[ito])
 	}
 	if err == nil {
 		if response != nil {
@@ -103,19 +102,19 @@ func RmReplica(address string, uuid string) error {
 		}
 	}(conn)
 	c := mayastorGrpc.NewMayastorClient(conn)
-	// TODO: Remove unusually large timeout on destroy replica
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	req := mayastorGrpc.DestroyReplicaRequest{Uuid: uuid}
-	for _, timo := range []time.Duration{5, 10, 20, 40, 80, 160, 240} {
+	for ito := 0; ito < len(backOffTimes); ito += 1 {
 		_, err = c.DestroyReplica(ctx, &req)
-		if errors.Is(err, context.DeadlineExceeded) {
-			time.Sleep(timo * time.Second)
-		} else {
+		if !errors.Is(err, context.DeadlineExceeded) {
 			break
 		}
+		time.Sleep(backOffTimes[ito])
 	}
+
 	return niceError(err)
 }
 
@@ -148,14 +147,14 @@ func CreateReplicaExt(address string, uuid string, size uint64, pool string, thi
 		Pool:  pool,
 		Share: shareProto,
 	}
-	for _, timo := range []time.Duration{5, 10, 20, 40, 80, 160, 240} {
+	for ito := 0; ito < len(backOffTimes); ito += 1 {
 		_, err = c.CreateReplica(ctx, &req)
-		if errors.Is(err, context.DeadlineExceeded) {
-			time.Sleep(timo * time.Second)
-		} else {
+		if !errors.Is(err, context.DeadlineExceeded) {
 			break
 		}
+		time.Sleep(backOffTimes[ito])
 	}
+
 	return niceError(err)
 }
 

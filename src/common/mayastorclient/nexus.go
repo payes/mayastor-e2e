@@ -55,13 +55,12 @@ func listNexuses(address string) ([]MayastorNexus, error) {
 	defer cancel()
 
 	var response *mayastorGrpc.ListNexusReply
-	for _, timo := range []time.Duration{5, 10, 20, 40, 80, 160, 240} {
+	for ito := 0; ito < len(backOffTimes); ito += 1 {
 		response, err = c.ListNexus(ctx, &null)
-		if errors.Is(err, context.DeadlineExceeded) {
-			time.Sleep(timo * time.Second)
-		} else {
+		if !errors.Is(err, context.DeadlineExceeded) {
 			break
 		}
+		time.Sleep(backOffTimes[ito])
 	}
 
 	if err == nil {
@@ -132,13 +131,12 @@ func FaultNexusChild(address string, Uuid string, Uri string) error {
 		Uri:  Uri,
 	}
 	var response *mayastorGrpc.Null
-	for _, timo := range []time.Duration{5, 10, 20, 40, 80, 160, 240} {
+	for ito := 0; ito < len(backOffTimes); ito += 1 {
 		response, err = c.FaultNexusChild(ctx, &faultRequest)
-		if errors.Is(err, context.DeadlineExceeded) {
-			time.Sleep(timo * time.Second)
-		} else {
+		if !errors.Is(err, context.DeadlineExceeded) {
 			break
 		}
+		time.Sleep(backOffTimes[ito])
 	}
 
 	if err == nil {
