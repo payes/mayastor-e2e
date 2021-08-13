@@ -94,4 +94,5 @@ multiple_vols_pod_io
 node_failure
 single_msn_shutdown
 ms_pod_disruption_rm_msv
+primitive_fuzz_msv
 "

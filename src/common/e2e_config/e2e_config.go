@@ -230,6 +230,18 @@ type E2EConfig struct {
 		DurationSecs   int    `yaml:"durationSecs" env-default:"180"`
 		SleepSecs      int    `yaml:"sleepSecs" env-default:"3"`
 	} `yaml:"msvRebuild"`
+	PrimitiveMsvFuzz struct {
+		VolMb               int    `yaml:"volMb" env-default:"64"`
+		VolumeCountPerPool  int    `yaml:"volumeCountPerPool" env-default:"2"`
+		Iterations          int    `yaml:"iterations" env-default:"2"`
+		Replicas            int    `yaml:"replicas" env-default:"1"`
+		InvalidReplicaCount int    `yaml:"invalidReplicaCount" env-default:"-1"`
+		UnsupportedProtocol string `yaml:"unsupportedProtocol" env-default:"xyz"`
+		UnsupportedFsType   string `yaml:"unsupportedFsType" env-default:"xyz"`
+		IncorrectScName     string `yaml:"incorrectScName" env-default:"xyz"`
+		LargePvcSize        int    `yaml:"largePvcSize" env-default:"11000000000000"`
+		VolCount            int    `yaml:"volCount" env-default:"115"`
+	} `yaml:"primitiveMsvFuzz"`
 }
 
 var once sync.Once
