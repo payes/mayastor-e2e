@@ -225,7 +225,7 @@ type E2EConfig struct {
 		Replicas       int    `yaml:"replicas" env-default:"1"`
 		UpdatedReplica int    `yaml:"updatedreplica" env-default:"2"`
 		VolSize        int    `yaml:"volSize" env-default:"50"`
-		Timeout        string `yaml:"timeout" env-default:"90s"`
+		Timeout        string `yaml:"timeout" env-default:"120s"`
 		PollPeriod     string `yaml:"pollPeriod" env-default:"1s"`
 		DurationSecs   int    `yaml:"durationSecs" env-default:"180"`
 		SleepSecs      int    `yaml:"sleepSecs" env-default:"3"`
