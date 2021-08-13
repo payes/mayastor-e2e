@@ -75,6 +75,8 @@ func RunFio(podName string, duration int, filename string, sizeMb int, args ...s
 	return output, err
 }
 
+// IsPodWithLabelsRunning expects that at any time only one application pod will be in running state
+// if there are more then one pod in terminating state then it will return the last terminating pod.
 func IsPodWithLabelsRunning(labels, namespace string) (string, bool, error) {
 	var podName string
 	pods, err := gTestEnv.KubeInt.CoreV1().Pods(namespace).List(context.TODO(), metaV1.ListOptions{LabelSelector: labels})
@@ -85,12 +87,34 @@ func IsPodWithLabelsRunning(labels, namespace string) (string, bool, error) {
 		return "", false, nil
 	}
 	for _, pod := range pods.Items {
-		if pod.Status.Phase != v1.PodRunning {
-			return pod.Name, false, nil
+		if pod.Status.Phase == v1.PodRunning {
+			return pod.Name, true, nil
 		}
 		podName = pod.Name
 	}
-	return podName, true, nil
+	return podName, false, nil
+}
+
+// ForceDeleteTerminatingPods force deletes the pod this function is required because
+// sometimes after powering off the node some pods stuck in terminating state.
+func ForceDeleteTerminatingPods(labels, namespace string) error {
+	deletionTime := int64(0)
+	pods, err := gTestEnv.KubeInt.CoreV1().Pods(namespace).List(context.TODO(), metaV1.ListOptions{LabelSelector: labels})
+	if err != nil {
+		return err
+	}
+	if len(pods.Items) == 0 {
+		return nil
+	}
+	for _, pod := range pods.Items {
+		if pod.DeletionTimestamp != nil {
+			err = gTestEnv.KubeInt.CoreV1().Pods(namespace).Delete(context.TODO(), pod.Name, metaV1.DeleteOptions{GracePeriodSeconds: &deletionTime})
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func GetNodeListForPods(labels, namespace string) (map[string]v1.PodPhase, error) {

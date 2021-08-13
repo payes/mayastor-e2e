@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	defTimeoutSecs   = 240  // in seconds
+	defTimeoutSecs   = 800  // in seconds
 	durationSecs     = 600  // in seconds
 	volumeFileSizeMb = 250  // in Mb
 	thinkTime        = 1000 // in milliseconds
