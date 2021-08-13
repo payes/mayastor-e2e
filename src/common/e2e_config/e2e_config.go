@@ -132,7 +132,7 @@ type E2EConfig struct {
 		VolumeCountPerPod int    `yaml:"volumeCountPerPod" env-default:"10"`
 		PodCount          int    `yaml:"podCount" env-default:"11"`
 		Duration          string `yaml:"duration" env-default:"240s"`
-		Timeout           string `yaml:"timeout" env-default:"360s"`
+		Timeout           string `yaml:"timeout" env-default:"420s"`
 		ThinkTime         string `yaml:"thinkTime" env-default:"10ms"`
 	} `yaml:"maximumVolsIO"`
 	ControlPlaneRescheduling struct {
