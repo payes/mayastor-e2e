@@ -185,8 +185,7 @@ func MkPVC(volSizeMb int, volName string, scName string, volType common.VolumeTy
 	).Should(Equal(coreV1.VolumeBound))
 
 	Eventually(func() *v1alpha1.MayastorVolume {
-		msv, err := GetMSV(string(pvc.ObjectMeta.UID))
-		Expect(err).ToNot(HaveOccurred(), "%v", err)
+		msv, _ := GetMSV(string(pvc.ObjectMeta.UID))
 		return msv
 	},
 		defTimeoutSecs,

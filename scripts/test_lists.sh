@@ -86,7 +86,6 @@ validate_integrity_test
 "
 
 profiles[staging]="
-primitive_msp_state
 primitive_fault_injection
 maximum_vols_io
 msv_rebuild
@@ -95,4 +94,6 @@ node_failure
 single_msn_shutdown
 ms_pod_disruption_rm_msv
 primitive_fuzz_msv
+primitive_msp_state
+MQ-1498-primitive_device_retirement
 "

@@ -18,6 +18,7 @@ import (
 
 	appsV1 "k8s.io/api/apps/v1"
 	coreV1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -258,10 +259,28 @@ func MayastorInstancesReady(numMayastorInstances int, sleepTime int, duration in
 	ready := false
 	for ix := 0; ix < count && !ready; ix++ {
 		time.Sleep(time.Duration(sleepTime) * time.Second)
-		ready = mayastorReadyPodCount() == numMayastorInstances && moacReady() && mayastorCSIReadyPodCount() == numMayastorInstances
+		ready = mayastorReadyPodCount() == numMayastorInstances && moacReady() && mayastorCSIReadyPodCount() == numMayastorInstances && msnOnlineCount() == numMayastorInstances
 	}
 
 	return ready, nil
+}
+
+func msnOnlineCount() int {
+	msns, err := custom_resources.ListMsNodes()
+	if err != nil {
+		logf.Log.Info("Failed to List nodes", "error", err)
+		return -1
+	}
+	count := 0
+	if len(msns) != 0 {
+		for _, msn := range msns {
+			if msn.Status == "online" {
+				count++
+			}
+		}
+	}
+	logf.Log.Info("msn online", "count", count)
+	return count
 }
 
 func mayastorCSIReadyPodCount() int {
@@ -478,6 +497,8 @@ func WaitPodComplete(podName string, sleepTimeSecs, timeoutSecs int) error {
 		Expect(err).ToNot(HaveOccurred(), fmt.Sprintf("failed to access pod status %s %v", podName, err))
 		if podPhase == coreV1.PodSucceeded {
 			return nil
+		} else if podPhase == corev1.PodFailed {
+			break
 		}
 	}
 	return errors.Errorf("pod did not complete, phase %v", podPhase)

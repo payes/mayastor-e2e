@@ -30,6 +30,27 @@ func (h *hcloud) PowerOnNode(node string) error {
 	return err
 }
 
+func (h *hcloud) RebootNode(node string) error {
+	logf.Log.Info("Reboot", "node", node)
+	cmd := exec.Command("sh", "-c", fmt.Sprintf("hcloud server reboot %s", node))
+	_, err := cmd.Output()
+	return err
+}
+
+func (h *hcloud) DetachVolume(volName string) error {
+	logf.Log.Info("Detach Volume ", "volName", volName)
+	cmd := exec.Command("sh", "-c", fmt.Sprintf("hcloud volume detach %s", volName))
+	_, err := cmd.Output()
+	return err
+}
+
+func (h *hcloud) AttachVolume(volName, node string) error {
+	logf.Log.Info("Attach Volume to node", "volName", volName, "node", node)
+	cmd := exec.Command("sh", "-c", fmt.Sprintf("hcloud volume attach %s --server %s", volName, node))
+	_, err := cmd.Output()
+	return err
+}
+
 func (h *hcloud) GetNodeStatus(node string) (string, error) {
 	logf.Log.Info("Get status", "node", node)
 	cmd := exec.Command("bash", "-c", fmt.Sprintf("hcloud  server list | grep %s", node))
