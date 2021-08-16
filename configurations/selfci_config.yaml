@@ -2,6 +2,7 @@
 # and is used for mayastor-e2e CI runs
 # Defining feature is that long running tests have attenuated durations
 configName: e2e_ci
+selfTest: true
 pvcStress:
   replicas: 1
   cdCycles: 1
