@@ -132,7 +132,7 @@ type E2EConfig struct {
 		VolumeCountPerPod int    `yaml:"volumeCountPerPod" env-default:"10"`
 		PodCount          int    `yaml:"podCount" env-default:"11"`
 		Duration          string `yaml:"duration" env-default:"240s"`
-		Timeout           string `yaml:"timeout" env-default:"360s"`
+		Timeout           string `yaml:"timeout" env-default:"420s"`
 		ThinkTime         string `yaml:"thinkTime" env-default:"10ms"`
 	} `yaml:"maximumVolsIO"`
 	ControlPlaneRescheduling struct {
@@ -225,7 +225,7 @@ type E2EConfig struct {
 		Replicas       int    `yaml:"replicas" env-default:"1"`
 		UpdatedReplica int    `yaml:"updatedreplica" env-default:"2"`
 		VolSize        int    `yaml:"volSize" env-default:"50"`
-		Timeout        string `yaml:"timeout" env-default:"90s"`
+		Timeout        string `yaml:"timeout" env-default:"120s"`
 		PollPeriod     string `yaml:"pollPeriod" env-default:"1s"`
 		DurationSecs   int    `yaml:"durationSecs" env-default:"180"`
 		SleepSecs      int    `yaml:"sleepSecs" env-default:"3"`
