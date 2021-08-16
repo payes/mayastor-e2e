@@ -98,6 +98,10 @@ func createFioPod(fioPodName string, volumeName string, volumeType common.Volume
 		defTimeoutSecs,
 		"1s",
 	).Should(Equal(true))
+
+	err = k8stest.MsvConsistencyCheckAll(common.NSDefault)
+	Expect(err).ToNot(HaveOccurred(), "%v", err)
+
 	logf.Log.Info("fio test pod is running.")
 }
 
@@ -193,6 +197,9 @@ func ReplicaLossVolumeDelete(pvcName string, storageClassName string, fioPodName
 		defTimeoutSecs, // timeout
 		"1s",           // polling interval
 	).Should(Equal(false))
+
+	err = k8stest.MsvConsistencyCheckAll(common.NSDefault)
+	Expect(err).ToNot(HaveOccurred(), "%v", err)
 
 	// get the nodes comprising the volume
 	nexus, replicaNodes := k8stest.GetMsvNodes(env.uuid)

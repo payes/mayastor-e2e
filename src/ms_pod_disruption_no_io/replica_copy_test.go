@@ -158,6 +158,8 @@ func setup(pvcName string, storageClassName string, fioPodName string) Disruptio
 		"1s",           // polling interval
 	).Should(Equal(true))
 
+	// FIXME: add call to k8stest.MsvConsistencyCheck/k8stest.MsvConsistencyCheckAll
+
 	env.getNodes()
 	return env
 }

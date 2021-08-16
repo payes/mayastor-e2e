@@ -103,6 +103,9 @@ func (c *primitiveFaultInjectionConfig) createFio() {
 		defTimeoutSecs,
 		"1s",
 	).Should(Equal(true))
+
+	// FIXME: add call to k8stest.MsvConsistencyCheck/k8stest.MsvConsistencyCheckAll
+
 }
 
 // delete fio pod

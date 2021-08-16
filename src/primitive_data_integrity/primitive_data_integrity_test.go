@@ -99,6 +99,9 @@ func setup(pvcName string, storageClassName string, fioPodName string) Integrity
 		"1s",           // polling interval
 	).Should(Equal(true))
 
+	err = k8stest.MsvConsistencyCheckAll(common.NSDefault)
+	Expect(err).ToNot(HaveOccurred(), "%v", err)
+
 	env.setupReplicas()
 	return env
 }

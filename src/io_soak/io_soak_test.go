@@ -111,6 +111,11 @@ func monitor() error {
 				"Running", podsRunning, "Succeeded", podsSucceeded, "Failed", podsFailed,
 			)
 		}
+
+		err = k8stest.MsvConsistencyCheckAll(common.NSDefault)
+		if err != nil {
+			break
+		}
 	}
 
 	if err == nil && len(failedJobs) != 0 {

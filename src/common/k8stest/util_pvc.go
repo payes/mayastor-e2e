@@ -215,11 +215,26 @@ func MsvConsistencyCheck(uuid string) error {
 		return fmt.Errorf("MsvConsistencyCheck: msv spec replica count %d != msv status replicas %d", msv.Spec.ReplicaCount, len(msv.Status.Replicas))
 	}
 
-	if mayastorclient.CanConnect() {
+	nexus := msv.Status.Nexus
+	var nexusNodeIp *string
+	// The nexus is only present when a volume is mounted by a pod.
+	if nexus.Node != "" {
+		if msv.Spec.ReplicaCount != len(msv.Status.Nexus.Children) {
+			return fmt.Errorf("MsvConsistencyCheck: msv spec replica count %d != msv status nexus children %d",
+				msv.Spec.ReplicaCount, len(msv.Status.Nexus.Children))
+		}
+		nexusNodeIp, err = GetNodeIPAddress(nexus.Node)
+		if err != nil {
+			return fmt.Errorf("MsvConsistencyCheck: failed to resolve nexus node IP address, %v", err)
+		}
+	} else {
+		logf.Log.Info("MsvConsistencyCheck nexus unavailable")
+	}
 
+	if mayastorclient.CanConnect() {
 		gReplicas, err := mayastorclient.FindReplicas(uuid, GetMayastorNodeIPAddresses())
 		if err != nil {
-			return fmt.Errorf("failed to find replicas using gRPC %v", err)
+			return fmt.Errorf("failed to find replicas %v using gRPC %v", uuid, err)
 		}
 		for _, gReplica := range gReplicas {
 			if gReplica.Size != uint64(msv.Status.Size) {
@@ -228,36 +243,37 @@ func MsvConsistencyCheck(uuid string) error {
 		}
 
 		if msv.Spec.ReplicaCount != len(gReplicas) {
-			return fmt.Errorf("MsvConsistencyCheck: msv spec replica count %d != list matching replicas found using gRPC %d", msv.Spec.ReplicaCount, len(gReplicas))
+			return fmt.Errorf("MsvConsistencyCheck: %v, msv spec replica count %d != list matching replicas found using gRPC %d",
+				uuid, msv.Spec.ReplicaCount, len(gReplicas))
 		}
-		nexus := msv.Status.Nexus
-		// The nexus is only present when a volume is mounted by a pod.
-		if nexus.Node != "" {
-			if msv.Spec.ReplicaCount != len(msv.Status.Nexus.Children) {
-				return fmt.Errorf("MsvConsistencyCheck: msv spec replica count %d != msv status nexus children %d", msv.Spec.ReplicaCount, len(msv.Status.Nexus.Children))
-			}
-			nexusNodeIp, err := GetNodeIPAddress(nexus.Node)
-			if err != nil {
-				return fmt.Errorf("MsvConsistencyCheck: failed to resolve nexus node IP address, %v", err)
-			}
+
+		if nexusNodeIp != nil {
 			grpcNexus, err := mayastorclient.FindNexus(uuid, []string{*nexusNodeIp})
 			if err != nil {
-				return fmt.Errorf("MsvConsistencyCheck: failed to list nexuses gRPC, %v", err)
+				return fmt.Errorf("MsvConsistencyCheck: failed to list nexuses gRPC, uuid: %v, IP:%v, error:%v",
+					uuid,
+					*nexusNodeIp,
+					err)
 			}
 			if grpcNexus == nil {
-				return fmt.Errorf("MsvConsistencyCheck: failed to find nexus gRPC")
+				return fmt.Errorf("MsvConsistencyCheck: failed to find nexus gRPC uuid:%v IP:%v", uuid, *nexusNodeIp)
 			}
 			if grpcNexus.Size != uint64(msv.Status.Size) {
-				return fmt.Errorf("MsvConsistencyCheck: nexus size mismatch msv and grpc")
+				return fmt.Errorf("MsvConsistencyCheck: nexus size mismatch msv (%v) and grpc (%v)",
+					uint64(msv.Status.Size), grpcNexus.Size,
+				)
 			}
 			if len(grpcNexus.Children) != msv.Spec.ReplicaCount {
-				return fmt.Errorf("MsvConsistencyCheck: msv replica count != grpc nexus children")
+				return fmt.Errorf("MsvConsistencyCheck: msv replica count (%v) != grpc nexus children (%v)",
+					msv.Spec.ReplicaCount, len(grpcNexus.Children),
+				)
 			}
 			if grpcNexus.State.String() != msv.Status.Nexus.State {
-				return fmt.Errorf("MsvConsistencyCheck: msv nexus state != grpc nexus state")
+				return fmt.Errorf("MsvConsistencyCheck: msv nexus state (%v) != grpc nexus state (%v)",
+					msv.Status.Nexus.State,
+					grpcNexus.State.String(),
+				)
 			}
-		} else {
-			logf.Log.Info("MsvConsistencyCheck nexus unavailable")
 		}
 	} else {
 		logf.Log.Info("MsvConsistencyCheck,  gRPC calls to mayastor are not enabled, not checking MSVs using gRPC calls")
@@ -265,6 +281,36 @@ func MsvConsistencyCheck(uuid string) error {
 
 	logf.Log.Info("MsvConsistencyCheck OK")
 	return nil
+}
+
+// MsvConsistencyCheckAll enumerate all PVCs and check that the associated MSV state is consistent.
+func MsvConsistencyCheckAll(nameSpace string) error {
+	logf.Log.Info("MsvConsistencyCheckAll")
+	mayastorStorageClasses, err := getMayastorScMap()
+	if err != nil {
+		return err
+	}
+
+	if 0 == len(mayastorStorageClasses) {
+		return nil
+	}
+
+	// Check all mayastor PVCs
+	pvcs, err := gTestEnv.KubeInt.CoreV1().PersistentVolumeClaims(nameSpace).List(context.TODO(), metaV1.ListOptions{})
+	if err != nil {
+		logf.Log.Info("MsvConsistencyCheckAll: list PersistentVolumeClaims failed.", "error", err)
+	} else if len(pvcs.Items) != 0 {
+		for _, pvc := range pvcs.Items {
+			if !mayastorStorageClasses[*pvc.Spec.StorageClassName] {
+				continue
+			}
+			err = MsvConsistencyCheck(string(pvc.ObjectMeta.UID))
+			if err != nil {
+				break
+			}
+		}
+	}
+	return err
 }
 
 // RmPVC Delete a PVC in the default namespace and verify that

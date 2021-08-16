@@ -105,6 +105,9 @@ func diskPartitioningTest(protocol common.ShareProto, volumeType common.VolumeTy
 		"1s",
 	).Should(Equal(true))
 
+	err = k8stest.MsvConsistencyCheckAll(common.NSDefault)
+	Expect(err).ToNot(HaveOccurred(), "%v", err)
+
 	// Resize the partitioned disk
 	command = "parted " + expandMspDisk.DiskPath + " resizepart 1 " + expandMspDisk.ResizePartitionDisk
 	for _, node := range nodes {
@@ -145,6 +148,9 @@ func diskPartitioningTest(protocol common.ShareProto, volumeType common.VolumeTy
 		defTimeoutSecs,
 		"1s",
 	).Should(Equal(true))
+
+	err = k8stest.MsvConsistencyCheckAll(common.NSDefault)
+	Expect(err).ToNot(HaveOccurred(), "%v", err)
 
 	// Wait for fio pod to get into completed state
 	err = k8stest.WaitPodComplete(fioPodName, timoSleepSecs, timoSecs)

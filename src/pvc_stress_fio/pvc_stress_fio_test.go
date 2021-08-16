@@ -58,6 +58,9 @@ func testPVC(volName string, protocol common.ShareProto, runFio bool) {
 			"1s",
 		).Should(Equal(true))
 
+		err = k8stest.MsvConsistencyCheckAll(common.NSDefault)
+		Expect(err).ToNot(HaveOccurred(), "%v", err)
+
 		// Run the fio test
 		_, err = k8stest.RunFio(fioPodName, 5, common.FioFsFilename, common.DefaultFioSizeMb)
 		Expect(err).ToNot(HaveOccurred())

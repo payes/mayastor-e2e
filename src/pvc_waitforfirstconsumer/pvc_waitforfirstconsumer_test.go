@@ -123,6 +123,9 @@ func testPvcWaitForFirstConsumerTest(
 		"1s",
 	).Should(Equal(true))
 
+	err = k8stest.MsvConsistencyCheckAll(common.NSDefault)
+	Expect(err).ToNot(HaveOccurred(), "%v", err)
+
 	//check for MayastorVolume CR status
 	msv, err = k8stest.GetMSV(uid)
 	Expect(err).ToNot(HaveOccurred(), "%v", err)

@@ -44,6 +44,8 @@ func mayastorRebuildTest() {
 		params.PollPeriod,
 	).Should(Equal(true))
 
+	// FIXME: add call to k8stest.MsvConsistencyCheck/k8stest.MsvConsistencyCheckAll
+
 	// Check replicas
 	replicas, err := custom_resources.GetMsVolReplicas(uuid)
 	Expect(err).To(BeNil())

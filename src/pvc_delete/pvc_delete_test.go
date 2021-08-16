@@ -304,6 +304,9 @@ func createFioPod(volName string) (string, error) {
 		"1s",
 	).Should(Equal(true))
 
+	err = k8stest.MsvConsistencyCheckAll(common.NSDefault)
+	Expect(err).ToNot(HaveOccurred(), "%v", err)
+
 	return fioPodName, err
 }
 

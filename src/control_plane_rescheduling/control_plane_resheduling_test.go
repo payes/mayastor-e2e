@@ -70,6 +70,9 @@ func controlPlaneReschedulingTest(protocol common.ShareProto, volumeType common.
 			defTimeoutSecs,
 			"1s",
 		).Should(Equal(true))
+
+		err = k8stest.MsvConsistencyCheckAll(common.NSDefault)
+		Expect(err).ToNot(HaveOccurred(), "%v", err)
 	}
 
 	replicas = 0
@@ -99,6 +102,9 @@ func controlPlaneReschedulingTest(protocol common.ShareProto, volumeType common.
 			defTimeoutSecs,
 			"1s",
 		).Should(Equal(true))
+
+		err = k8stest.MsvConsistencyCheckAll(common.NSDefault)
+		Expect(err).ToNot(HaveOccurred(), "%v", err)
 	}
 
 	replicas = 1
@@ -123,6 +129,9 @@ func controlPlaneReschedulingTest(protocol common.ShareProto, volumeType common.
 		"1s",
 	).Should(Equal(true))
 	logf.Log.Info("Moac pod is in running state")
+
+	err = k8stest.MsvConsistencyCheckAll(common.NSDefault)
+	Expect(err).ToNot(HaveOccurred(), "%v", err)
 
 	// Wait for fio pods to get into completed state
 	for _, fioPodName := range fioPodNames {

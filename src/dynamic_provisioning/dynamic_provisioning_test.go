@@ -56,6 +56,9 @@ func dynamicProvisioningTest(protocol common.ShareProto, volumeType common.Volum
 		"1s",
 	).Should(Equal(true))
 
+	err = k8stest.MsvConsistencyCheckAll(common.NSDefault)
+	Expect(err).ToNot(HaveOccurred(), "%v", err)
+
 	// List nexus in the cluster
 	nexuses, err := k8stest.ListNexusesInCluster()
 	if err != nil {

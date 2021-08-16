@@ -68,7 +68,7 @@ var _ = Describe("Mayastor Pool Modification test", func() {
 
 			poolAgain, err := custom_resources.GetMsPool(pool.Name)
 			Expect(err).To(BeNil(), "GetMsPool failed for %s", pool.Name)
-			Expect(reflect.DeepEqual(pool.Status, poolAgain.Status)).To(BeTrue(), "pool status was modified on failed pool update %v", poolAgain.Status)
+			Expect(reflect.DeepEqual(pool.Status, poolAgain.Status)).To(BeTrue(), "pool status was modified on failed pool update from %v to %v", pool.Status, poolAgain.Status)
 		}
 		err = k8stest.RestoreConfiguredPools()
 		Expect(err).To(BeNil(), "Not all pools are online after restoration")

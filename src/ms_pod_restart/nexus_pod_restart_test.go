@@ -111,6 +111,8 @@ func testMsPodRestartTest(
 		"1s",
 	).Should(Equal(true))
 
+	// FIXME: add call to k8stest.MsvConsistencyCheck/k8stest.MsvConsistencyCheckAll
+
 	// Get the nexus node
 	node, _ := k8stest.GetMsvNodes(uid)
 	Expect(node).NotTo(Equal(""), "Nexus not found")

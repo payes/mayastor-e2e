@@ -150,6 +150,9 @@ func multipleVolumeIOTest(replicas int, volumeCount int, protocol common.SharePr
 		"1s",
 	).Should(Equal(true))
 
+	err = k8stest.MsvConsistencyCheckAll(common.NSDefault)
+	Expect(err).ToNot(HaveOccurred(), "%v", err)
+
 	logf.Log.Info("Waiting for run to complete", "timeout", timeout)
 
 	elapsedTime := 0

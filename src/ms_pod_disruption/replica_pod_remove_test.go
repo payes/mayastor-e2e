@@ -164,6 +164,9 @@ func setup(pvcName string, storageClassName string, fioPodName string) Disruptio
 		"1s",           // polling interval
 	).Should(Equal(true))
 
+	err = k8stest.MsvConsistencyCheckAll(common.NSDefault)
+	Expect(err).ToNot(HaveOccurred(), "%v", err)
+
 	env.getNodes()
 	return env
 }

@@ -60,6 +60,9 @@ func pooldeletionTest(protocol common.ShareProto, volumeType common.VolumeType, 
 		"1s",
 	).Should(Equal(true))
 
+	err = k8stest.MsvConsistencyCheckAll(common.NSDefault)
+	Expect(err).ToNot(HaveOccurred(), "%v", err)
+
 	// Get pool name from mayastorvolume
 	replicas, err := custom_resources.GetMsVolReplicas(uid)
 	Expect(err).ToNot(HaveOccurred(), "Failed to get pool name")

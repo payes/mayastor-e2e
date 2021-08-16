@@ -154,6 +154,9 @@ func (c *maxVolConfig) createFioPods() {
 			defTimeoutSecs,
 			"1s",
 		).Should(Equal(true))
+
+		err = k8stest.MsvConsistencyCheckAll(common.NSDefault)
+		Expect(err).ToNot(HaveOccurred(), "%v", err)
 	}
 }
 
