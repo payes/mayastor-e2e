@@ -64,6 +64,7 @@ type E2EConfig struct {
 
 	// Run configuration
 	ReportsDir string `yaml:"reportsDir" env:"e2e_reports_dir"`
+	SelfTest   bool   `yaml:"selfTest" env:"e2e_self_test" env-default:"false"`
 
 	// Individual Test parameters
 	PVCStress struct {

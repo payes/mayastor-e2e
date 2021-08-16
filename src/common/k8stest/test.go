@@ -198,7 +198,11 @@ func ResourceCheck() error {
 	// Check that Mayastor pods are healthy no restarts or fails.
 	err = CheckTestPodsHealth(common.NSMayastor())
 	if err != nil {
-		errorMsg += fmt.Sprintf("%s %v", errorMsg, err)
+		if e2e_config.GetConfig().SelfTest {
+			logf.Log.Info("SelfTesting, ignoring:", "", err)
+		} else {
+			errorMsg += fmt.Sprintf("%s %v", errorMsg, err)
+		}
 	}
 
 	scs, err := CheckForStorageClasses()
@@ -327,6 +331,10 @@ func AfterEachCheck() error {
 	err := ResourceCheck()
 	if err == nil {
 		err = CheckMsPoolFinalizers()
+		if e2e_config.GetConfig().SelfTest {
+			logf.Log.Info("SelfTesting, ignoring:", "", err)
+			err = nil
+		}
 	}
 	return err
 }
