@@ -20,7 +20,7 @@ EXITV_CRD_GO_GEN=6
 EXITV_FAILED_CLUSTER_OK=255
 
 platform_config_file="hetzner.yaml"
-config_file="mayastor_ci_hcloud_e2e_config.yaml"
+config_file="hcloudci_config.yaml"
 
 # Global state variables
 #  test configuration state variables
@@ -362,7 +362,6 @@ function runGoTest {
 
     cd "$1"
     if ! go test -v . -ginkgo.v -ginkgo.progress -timeout 0; then
-        generate_logs=1
         popd
         return 1
     fi

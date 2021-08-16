@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"mayastor-e2e/common/custom_resources"
 	"mayastor-e2e/common/e2e_config"
+	"mayastor-e2e/common/mayastorclient"
 	"os/exec"
 	"strings"
 	"time"
@@ -510,9 +511,7 @@ func restartMayastor(restartTOSecs int, readyTOSecs int, poolsTOSecs int) error 
 	var err error
 	ready := false
 
-	if EnsureE2EAgent() {
-		_ = RmReplicasInCluster()
-	}
+	// note: CleanUp removes replicas
 	CleanUp()
 
 	err = RestartMayastorPods(restartTOSecs)
@@ -532,9 +531,12 @@ func restartMayastor(restartTOSecs int, readyTOSecs int, poolsTOSecs int) error 
 	time.Sleep(30 * time.Second)
 
 	_, _ = DeleteAllPoolFinalizers()
-	_ = DeleteAllPools()
+	// Pool device is not specified so do not re-create the pools
+	if len(e2e_config.GetConfig().PoolDevice) != 0 {
+		_ = DeleteAllPools()
+		CreateConfiguredPools()
+	}
 
-	CreateConfiguredPools()
 	const sleepTime = 10
 	for ix := 0; ix < (poolsTOSecs+sleepTime-1)/sleepTime; ix++ {
 		time.Sleep(sleepTime * time.Second)
@@ -549,13 +551,13 @@ func restartMayastor(restartTOSecs int, readyTOSecs int, poolsTOSecs int) error 
 		return fmt.Errorf("not all pools are online %v", err)
 	}
 
-	if EnsureE2EAgent() {
+	if mayastorclient.CanConnect() {
 		err := RmReplicasInCluster()
 		if err != nil {
 			return fmt.Errorf("RmReplicasInCluster failed %v", err)
 		}
 	} else {
-		logf.Log.Info("WARNING, E2EAgent not active, unable to clear orphan replicas")
+		logf.Log.Info("WARNING: gRPC calls to mayastor are not enabled, unable to clear orphan replicas")
 	}
 	return err
 }
