@@ -40,6 +40,7 @@ pipeline {
   }
   parameters {
     string(defaultValue: 'install,uninstall', name: 'tests', trim: true, description: 'comma or space separated list of tests to run, always should start with install and (optionally) end with uninstall')
+    choice(choices: ['', 'self_ci', 'c1', 'nightly-stable', 'staging'], name: 'profile', description: 'profile, overrides tests')
     booleanParam(defaultValue: true, name: 'delete_cluster_on_failure', description: 'if false, failed tests will leave the cluster running')
     choice(choices: ['generic', 'volterra'], name: 'platform', description: 'server platform')
     booleanParam(defaultValue: true, name: 'use_ci_registry', description: 'true to use the CI registry, false to pull images from DockerHub')
@@ -90,7 +91,7 @@ pipeline {
               abs_e2e_reports_dir = "${env.WORKSPACE}/${e2e_reports_dir}"
               sh "mkdir -p ${abs_e2e_reports_dir}"
 
-              def cmd = "./scripts/${e2e_script} --device /dev/sdb --tag \"${params.image_tag}\" --logs --tests \'${params.tests}\' --loki_run_id \"${loki_run_id}\" --loki_test_label \"custom\" --reportsdir \"${abs_e2e_reports_dir}\" --session \"custom\" "
+              def cmd = "./scripts/${e2e_script} --device /dev/sdb --tag \"${params.image_tag}\" --loki_run_id \"${loki_run_id}\" --loki_test_label \"custom\" --reportsdir \"${abs_e2e_reports_dir}\" --session \"custom\" "
 
               if (params.use_ci_registry == true) {
                 cmd = cmd + " --registry \"" + env.REGISTRY + "\""
@@ -99,6 +100,11 @@ pipeline {
               }
               if (params.config_path != '') {
                 cmd = cmd + " --config \"${params.config_path}\""
+              }
+              if (params.profile != '') {
+                cmd = cmd + " --profile \"${params.profile}\""
+              } else {
+                cmd = cmd + " --tests \"${params.tests}\""
               }
 
               withCredentials([
