@@ -36,6 +36,7 @@ pvc_stress_fio
 pvc_waitforfirstconsumer
 synchronous_replication
 volume_filesystem
+ms_pod_disruption_rm_msv
 "
 
 profiles[c1]="
@@ -92,7 +93,6 @@ msv_rebuild
 multiple_vols_pod_io
 node_failure
 single_msn_shutdown
-ms_pod_disruption_rm_msv
 primitive_fuzz_msv
 primitive_msp_state
 MQ-1498-primitive_device_retirement
