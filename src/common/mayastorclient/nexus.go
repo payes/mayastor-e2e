@@ -3,8 +3,6 @@ package mayastorclient
 import (
 	"context"
 	"fmt"
-	"time"
-
 	mayastorGrpc "mayastor-e2e/common/mayastorclient/grpc"
 
 	"google.golang.org/grpc"
@@ -50,10 +48,15 @@ func listNexuses(address string) ([]MayastorNexus, error) {
 	}(conn)
 
 	c := mayastorGrpc.NewMayastorClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), ctxTimeout)
 	defer cancel()
 
-	response, err := c.ListNexus(ctx, &null)
+	var response *mayastorGrpc.ListNexusReply
+	retryBackoff(func() error {
+		response, err = c.ListNexus(ctx, &null)
+		return err
+	})
+
 	if err == nil {
 		if response != nil {
 			for _, nexus := range response.NexusList {
@@ -114,14 +117,19 @@ func FaultNexusChild(address string, Uuid string, Uri string) error {
 	}(conn)
 
 	c := mayastorGrpc.NewMayastorClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), ctxTimeout)
 	defer cancel()
 
 	faultRequest := mayastorGrpc.FaultNexusChildRequest{
 		Uuid: Uuid,
 		Uri:  Uri,
 	}
-	response, err := c.FaultNexusChild(ctx, &faultRequest)
+	var response *mayastorGrpc.Null
+	retryBackoff(func() error {
+		response, err = c.FaultNexusChild(ctx, &faultRequest)
+		return err
+	})
+
 	if err == nil {
 		if response == nil {
 			err = fmt.Errorf("nil response to FaultNexusChild")
