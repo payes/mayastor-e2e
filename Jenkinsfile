@@ -57,7 +57,7 @@ pipeline {
           agent { label 'nixos' }
           steps {
             script {
-              common = load "${env.WORKSPACE}/pipelines/common/common.groovy"
+              common = load "./pipelines/common/common.groovy"
               k8s_job = common.BuildCluster(e2e_build_cluster_job, e2e_environment)
             }
           }
@@ -71,7 +71,7 @@ pipeline {
             script {
               common = load "./pipelines/common/common.groovy"
               common.GetClusterAdminConf(e2e_environment, k8s_job)
-              loki_run_id = common.GetLokiRunId()
+              def loki_run_id = common.GetLokiRunId()
               sh "mkdir -p ./${e2e_reports_dir}"
 
               def cmd = "./scripts/e2e-test.sh --device /dev/sdb --tag \"${e2e_image_tag}\" --logs --profile \"${e2e_test_profile}\" --loki_run_id \"${loki_run_id}\" --loki_test_label \"${e2e_test_profile}\" --reportsdir \"${env.WORKSPACE}/${e2e_reports_dir}\" --session \"self-ci\" "
@@ -95,12 +95,12 @@ pipeline {
               // handle junit results on success or failure
               junit "${e2e_reports_dir}/**/*.xml"
               script {
-                common = load "${env.WORKSPACE}/pipelines/common/common.groovy"
+                common = load "./pipelines/common/common.groovy"
                 common.DestroyCluster(e2e_destroy_cluster_job, k8s_job)
                 if (xray_send_report == true) {
-                  def pipeline = common.GetJobBaseName()
-                  def summary = "Pipeline: ${pipeline}, test plan: ${xray_self_ci_testplan}, git branch: ${env.BRANCH_name}, tested image tag: ${e2e_image_tag}"
-                  common.SendXrayReport(xray_self_ci_testplan, summary, e2e_reports_dir)
+                  // xray_send_report alters the report artifacts
+                  // so should run after archiveArtifacts and junit
+                  common.SendXrayReport(xray_self_ci_testplan, e2e_image_tag, e2e_reports_dir)
                 }
               }
             }// always

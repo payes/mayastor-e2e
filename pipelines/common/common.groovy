@@ -270,7 +270,7 @@ def RunOneTestPerCluster(e2e_test,
     AlterUninstallReports(e2e_reports_dir, e2e_test)
 
     DestroyCluster(e2e_destroy_cluster_job, k8s_job)
-  return failed_tests
+    return failed_tests
 }
 
 def BuildTestsQueue(profile) {
@@ -288,9 +288,15 @@ def BuildTestsQueue(profile) {
   return testsQueue
 }
 
-def SendXrayReport(xray_testplan, summary, e2e_reports_dir) {
+def SendXrayReport(xray_testplan, test_tag, e2e_reports_dir) {
   xray_test_execution_type = '10059'
-  xray_projectkey = xray_testplan.split('-')[0]
+  def xray_projectkey = xray_testplan.split('-')[0]
+  def pipeline = GetJobBaseName()
+  def summary = "Pipeline: ${pipeline}, test plan: ${xray_testplan}, git branch: ${env.BRANCH_name}, tested image tag: ${test_tag}"
+
+  // Ensure there is only one install junit report
+  // for XRay with failed reports having priority.
+  DeDupeInstallReports(e2e_reports_dir)
 
   try {
     step([

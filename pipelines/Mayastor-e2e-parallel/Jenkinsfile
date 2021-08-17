@@ -44,7 +44,7 @@ pipeline {
         agent { label 'nixos' }
         steps {
             script {
-                def common = load "./pipelines/common/common.groovy"
+                common = load "./pipelines/common/common.groovy"
                 tests_queue = common.BuildTestsQueue(e2e_test_profile)
             }
         }
@@ -58,7 +58,7 @@ pipeline {
                 }
                 steps {
                     script {
-                        def common = load "./pipelines/common/common.groovy"
+                        common = load "./pipelines/common/common.groovy"
                         def loki_run_id = common.GetLokiRunId()
                         sh "mkdir -p ./${e2e_reports_dir}"
                         while (tests_queue.size() > 0) {
@@ -95,7 +95,7 @@ pipeline {
                 }
                 steps {
                     script {
-                        def common = load "./pipelines/common/common.groovy"
+                        common = load "./pipelines/common/common.groovy"
                         def loki_run_id = common.GetLokiRunId()
                         sh "mkdir -p ./${e2e_reports_dir}"
                         while (tests_queue.size() > 0) {
@@ -132,7 +132,7 @@ pipeline {
                 }
                 steps {
                     script {
-                        def common = load "./pipelines/common/common.groovy"
+                        common = load "./pipelines/common/common.groovy"
                         def loki_run_id = common.GetLokiRunId()
                         sh "mkdir -p ./${e2e_reports_dir}"
                         while (tests_queue.size() > 0) {
@@ -185,16 +185,11 @@ pipeline {
 
                 junit testResults: "${e2e_reports_dir}/**/*.xml", skipPublishingChecks: true
 
-                // The dedupe alters the junit files, so this step
-                // should be last one accessing the report artifacts
-                // other than XRay.
-                def common = load "./pipelines/common/common.groovy"
-                common.DeDupeInstallReports(e2e_reports_dir)
-
                 if (xray_send_report == true) {
-                    def pipeline = common.GetJobBaseName()
-                    def summary = "Pipeline: ${pipeline}, test plan: ${xray_test_plan}, git branch: ${env.BRANCH_name}, tested image tag: ${e2e_image_tag}"
-                    common.SendXrayReport(xray_test_plan, summary, e2e_reports_dir)
+                    // xray_send_report alters the report artifacts
+                    // so should run after archiveArtifacts and junit
+                    common = load "./pipelines/common/common.groovy"
+                    common.SendXrayReport(xray_test_plan, e2e_image_tag, e2e_reports_dir)
                 }
             }
         }
