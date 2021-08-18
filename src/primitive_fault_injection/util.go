@@ -359,3 +359,35 @@ func (c *primitiveFaultInjectionConfig) verifyFaultedReplica() {
 	}
 	logf.Log.Info("MSV sync waiting time", "seconds", time.Since(t0))
 }
+
+// verify updated replica state
+func (c *primitiveFaultInjectionConfig) verifyUpdatedReplica() {
+
+	t0 := time.Now()
+	for ix := 0; ix < patchTimeout; ix += patchSleepTime {
+		time.Sleep(time.Second * patchSleepTime)
+		msv, err := k8stest.GetMSV(c.uuid)
+		Expect(err).ToNot(HaveOccurred(), "%v", err)
+		Expect(msv).ToNot(BeNil(), "got nil msv for %v", c.uuid)
+		onlineCount := 0
+		faultedCount := 0
+		otherCount := 0
+		for _, child := range msv.Status.Nexus.Children {
+			if child.State == "CHILD_FAULTED" {
+				faultedCount++
+			} else if child.State == "CHILD_ONLINE" {
+				onlineCount++
+			} else {
+				logf.Log.Info("Children state other then faulted and online", "child.State", child.State)
+				otherCount++
+			}
+		}
+		logf.Log.Info("Replica state", "faulted", faultedCount, "online", onlineCount, "other", otherCount)
+		if faultedCount == 0 && otherCount == 0 && onlineCount == msv.Spec.ReplicaCount {
+			break
+		}
+		Expect(otherCount).To(BeZero())
+		Expect(faultedCount).To(BeZero())
+	}
+	logf.Log.Info("MSV sync waiting time", "seconds", time.Since(t0))
+}
