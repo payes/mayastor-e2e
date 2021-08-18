@@ -331,16 +331,16 @@ func (c *primitiveFaultInjectionConfig) waitForFioPodCompletion() {
 
 // verify faulted replica
 func (c *primitiveFaultInjectionConfig) verifyFaultedReplica() {
-
+	var onlineCount, faultedCount, otherCount int
 	t0 := time.Now()
 	for ix := 0; ix < patchTimeout; ix += patchSleepTime {
 		time.Sleep(time.Second * patchSleepTime)
 		msv, err := k8stest.GetMSV(c.uuid)
 		Expect(err).ToNot(HaveOccurred(), "%v", err)
 		Expect(msv).ToNot(BeNil(), "got nil msv for %v", c.uuid)
-		onlineCount := 0
-		faultedCount := 0
-		otherCount := 0
+		onlineCount = 0
+		faultedCount = 0
+		otherCount = 0
 		for _, child := range msv.Status.Nexus.Children {
 			if child.State == "CHILD_FAULTED" {
 				faultedCount++
@@ -355,23 +355,23 @@ func (c *primitiveFaultInjectionConfig) verifyFaultedReplica() {
 		if faultedCount == 1 && otherCount == 0 && onlineCount != 0 {
 			break
 		}
-		Expect(otherCount).To(BeZero())
 	}
+	Expect(otherCount).To(BeZero(), "Got at least one children state other then faulted or online")
 	logf.Log.Info("MSV sync waiting time", "seconds", time.Since(t0))
 }
 
 // verify updated replica state
 func (c *primitiveFaultInjectionConfig) verifyUpdatedReplica() {
-
+	var onlineCount, faultedCount, otherCount int
 	t0 := time.Now()
 	for ix := 0; ix < patchTimeout; ix += patchSleepTime {
 		time.Sleep(time.Second * patchSleepTime)
 		msv, err := k8stest.GetMSV(c.uuid)
 		Expect(err).ToNot(HaveOccurred(), "%v", err)
 		Expect(msv).ToNot(BeNil(), "got nil msv for %v", c.uuid)
-		onlineCount := 0
-		faultedCount := 0
-		otherCount := 0
+		onlineCount = 0
+		faultedCount = 0
+		otherCount = 0
 		for _, child := range msv.Status.Nexus.Children {
 			if child.State == "CHILD_FAULTED" {
 				faultedCount++
@@ -386,8 +386,8 @@ func (c *primitiveFaultInjectionConfig) verifyUpdatedReplica() {
 		if faultedCount == 0 && otherCount == 0 && onlineCount == msv.Spec.ReplicaCount {
 			break
 		}
-		Expect(otherCount).To(BeZero())
-		Expect(faultedCount).To(BeZero())
 	}
+	Expect(otherCount).To(BeZero(), "Got at least one children state other then faulted or online")
+	Expect(faultedCount).To(BeZero(), "Got at least one children state as faulted")
 	logf.Log.Info("MSV sync waiting time", "seconds", time.Since(t0))
 }
