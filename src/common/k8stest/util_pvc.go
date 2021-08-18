@@ -215,48 +215,54 @@ func MsvConsistencyCheck(uuid string) error {
 		return fmt.Errorf("MsvConsistencyCheck: msv spec replica count %d != msv status replicas %d", msv.Spec.ReplicaCount, len(msv.Status.Replicas))
 	}
 
-	gReplicas, err := mayastorclient.FindReplicas(uuid, GetMayastorNodeIPAddresses())
-	if err != nil {
-		return fmt.Errorf("failed to find replicas using gRPC %v", err)
-	}
-	for _, gReplica := range gReplicas {
-		if gReplica.Size != uint64(msv.Status.Size) {
-			return fmt.Errorf("MsvConsistencyCheck: replica size  %d != msv status size %d", gReplica.Size, msv.Status.Size)
-		}
-	}
+	if mayastorclient.CanConnect() {
 
-	if msv.Spec.ReplicaCount != len(gReplicas) {
-		return fmt.Errorf("MsvConsistencyCheck: msv spec replica count %d != list matching replicas found using gRPC %d", msv.Spec.ReplicaCount, len(gReplicas))
-	}
-	nexus := msv.Status.Nexus
-	// The nexus is only present when a volume is mounted by a pod.
-	if nexus.Node != "" {
-		if msv.Spec.ReplicaCount != len(msv.Status.Nexus.Children) {
-			return fmt.Errorf("MsvConsistencyCheck: msv spec replica count %d != msv status nexus children %d", msv.Spec.ReplicaCount, len(msv.Status.Nexus.Children))
-		}
-		nexusNodeIp, err := GetNodeIPAddress(nexus.Node)
+		gReplicas, err := mayastorclient.FindReplicas(uuid, GetMayastorNodeIPAddresses())
 		if err != nil {
-			return fmt.Errorf("MsvConsistencyCheck: failed to resolve nexus node IP address, %v", err)
+			return fmt.Errorf("failed to find replicas using gRPC %v", err)
 		}
-		grpcNexus, err := mayastorclient.FindNexus(uuid, []string{*nexusNodeIp})
-		if err != nil {
-			return fmt.Errorf("MsvConsistencyCheck: failed to list nexuses gRPC, %v", err)
+		for _, gReplica := range gReplicas {
+			if gReplica.Size != uint64(msv.Status.Size) {
+				return fmt.Errorf("MsvConsistencyCheck: replica size  %d != msv status size %d", gReplica.Size, msv.Status.Size)
+			}
 		}
-		if grpcNexus == nil {
-			return fmt.Errorf("MsvConsistencyCheck: failed to find nexus gRPC")
+
+		if msv.Spec.ReplicaCount != len(gReplicas) {
+			return fmt.Errorf("MsvConsistencyCheck: msv spec replica count %d != list matching replicas found using gRPC %d", msv.Spec.ReplicaCount, len(gReplicas))
 		}
-		if grpcNexus.Size != uint64(msv.Status.Size) {
-			return fmt.Errorf("MsvConsistencyCheck: nexus size mismatch msv and grpc")
-		}
-		if len(grpcNexus.Children) != msv.Spec.ReplicaCount {
-			return fmt.Errorf("MsvConsistencyCheck: msv replica count != grpc nexus children")
-		}
-		if grpcNexus.State.String() != msv.Status.Nexus.State {
-			return fmt.Errorf("MsvConsistencyCheck: msv nexus state != grpc nexus state")
+		nexus := msv.Status.Nexus
+		// The nexus is only present when a volume is mounted by a pod.
+		if nexus.Node != "" {
+			if msv.Spec.ReplicaCount != len(msv.Status.Nexus.Children) {
+				return fmt.Errorf("MsvConsistencyCheck: msv spec replica count %d != msv status nexus children %d", msv.Spec.ReplicaCount, len(msv.Status.Nexus.Children))
+			}
+			nexusNodeIp, err := GetNodeIPAddress(nexus.Node)
+			if err != nil {
+				return fmt.Errorf("MsvConsistencyCheck: failed to resolve nexus node IP address, %v", err)
+			}
+			grpcNexus, err := mayastorclient.FindNexus(uuid, []string{*nexusNodeIp})
+			if err != nil {
+				return fmt.Errorf("MsvConsistencyCheck: failed to list nexuses gRPC, %v", err)
+			}
+			if grpcNexus == nil {
+				return fmt.Errorf("MsvConsistencyCheck: failed to find nexus gRPC")
+			}
+			if grpcNexus.Size != uint64(msv.Status.Size) {
+				return fmt.Errorf("MsvConsistencyCheck: nexus size mismatch msv and grpc")
+			}
+			if len(grpcNexus.Children) != msv.Spec.ReplicaCount {
+				return fmt.Errorf("MsvConsistencyCheck: msv replica count != grpc nexus children")
+			}
+			if grpcNexus.State.String() != msv.Status.Nexus.State {
+				return fmt.Errorf("MsvConsistencyCheck: msv nexus state != grpc nexus state")
+			}
+		} else {
+			logf.Log.Info("MsvConsistencyCheck nexus unavailable")
 		}
 	} else {
-		logf.Log.Info("MsvConsistencyCheck nexus unavailable")
+		logf.Log.Info("MsvConsistencyCheck,  gRPC calls to mayastor are not enabled, not checking MSVs using gRPC calls")
 	}
+
 	logf.Log.Info("MsvConsistencyCheck OK")
 	return nil
 }

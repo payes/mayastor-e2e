@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"mayastor-e2e/common/custom_resources"
 	"mayastor-e2e/common/e2e_config"
+	"mayastor-e2e/common/mayastorclient"
 	"testing"
 	"time"
 
@@ -43,8 +44,13 @@ var gTestEnv TestEnvironment
 func InitTesting(t *testing.T, classname string, reportname string) {
 	RegisterFailHandler(Fail)
 	fmt.Printf("Mayastor namespace is \"%s\"\n", common.NSMayastor())
-	RunSpecsWithDefaultAndCustomReporters(t, classname, reporter.GetReporters(reportname))
-	loki.SendLokiMarker("Start of test " + classname)
+	reporters := reporter.GetReporters(reportname)
+	if len(reporters) != 0 {
+		RunSpecsWithDefaultAndCustomReporters(t, classname, reporter.GetReporters(reportname))
+		loki.SendLokiMarker("Start of test " + classname)
+	} else {
+		RunSpecs(t, reportname)
+	}
 }
 
 func SetupTestEnv() {
@@ -102,6 +108,11 @@ func SetupTestEnv() {
 		TestEnv:       testEnv,
 		DynamicClient: dynamicClient,
 	}
+
+	// Check if gRPC calls are possible and store the result
+	// subsequent calls to mayastorClient.CanConnect retrieves
+	// the result.
+	mayastorclient.CheckAndSetConnect(GetMayastorNodeIPAddresses())
 }
 
 func TeardownTestEnvNoCleanup() {
@@ -242,7 +253,7 @@ func ResourceCheck() error {
 	}
 
 	// gRPC calls can only be executed successfully is the e2e-agent daemonSet has been deployed successfully.
-	if EnsureE2EAgent() {
+	if mayastorclient.CanConnect() {
 		// check pools
 		{
 			var poolUsage uint64 = 1
@@ -291,7 +302,7 @@ func ResourceCheck() error {
 			Expect(len(nvmeControllers)).To(BeZero(), "count of replicas reported via mayastor client is %d", len(nvmeControllers))
 		}
 	} else {
-		logf.Log.Info("WARNING: the e2e-agent has not been deployed successfully, all checks cannot be run")
+		logf.Log.Info("WARNING: gRPC calls to mayastor are not enabled, all checks cannot be run")
 	}
 
 	if len(errorMsg) != 0 {

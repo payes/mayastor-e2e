@@ -437,6 +437,7 @@ func GetPoolUsageInCluster() (uint64, error) {
 // CreateConfiguredPools (re)create pools as defined by the configuration.
 // No check is made on the status of pools
 func CreateConfiguredPools() {
+	Expect(len(e2e_config.GetConfig().PoolDevice)).ToNot(BeZero(), "pool device not configured")
 	disks := []string{e2e_config.GetConfig().PoolDevice}
 	// NO check is made on the status of pools
 	nodes, err := GetNodeLocs()

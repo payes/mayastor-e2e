@@ -5,6 +5,8 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"runtime"
+	"strings"
 	"sync"
 
 	"gopkg.in/yaml.v2"
@@ -13,36 +15,39 @@ import (
 )
 
 const ConfigDir = "/configurations"
-const DefaultConfigFileRelPath = ConfigDir + "/mayastor_ci_hcloud_e2e_config.yaml"
 const PlatformConfigDir = "/configurations/platforms/"
 
 // E2EConfig is a application configuration structure
 type E2EConfig struct {
-	ConfigName string `yaml:"configName"`
-	Platform   struct {
+	ConfigName  string `yaml:"configName" env-default:"default"`
+	ConfigPaths struct {
+		ConfigFile         string `yaml:"configFile" env:"e2e_config_file" env-default:""`
+		PlatformConfigFile string `yaml:"platformConfigFile" env:"e2e_platform_config_file" env-default:""`
+	} `yaml:"configPaths"`
+	Platform struct {
 		// E2ePlatform indicates where the e2e is currently being run from
-		Name string `yaml:"name"`
+		Name string `yaml:"name" env-default:"default"`
 		// Add HostNetwork: true to the spec of test pods.
 		HostNetworkingRequired bool `yaml:"hostNetworkingRequired" env-default:"false"`
 		// Some deployments use a different namespace
 		MayastorNamespace string `yaml:"mayastorNamespace" env-default:"mayastor"`
 		// Some deployments use a different namespace
 		FilteredMayastorPodCheck int `yaml:"filteredMayastorPodCheck" env-default:"0"`
-		// FIXME: temporary for volterra Do not use e2e-agent
-		DisableE2EAgent bool `yaml:"disableE2EAgent" env-default:"false"`
 	} `yaml:"platform"`
 
 	// Generic configuration files used for CI and automation should not define MayastorRootDir and E2eRootDir
 	MayastorRootDir string `yaml:"mayastorRootDir" env:"e2e_mayastor_root_dir"`
-	E2eRootDir      string `yaml:"e2eRootDir" env:"e2e_root_dir"`
+	E2eRootDir      string `yaml:"e2eRootDir"`
 	SessionDir      string `yaml:"sessionDir" env:"e2e_session_dir"`
+
 	// Operational parameters
 	Cores int `yaml:"cores,omitempty"`
 	// Registry from where mayastor images are retrieved
 	Registry string `yaml:"registry" env:"e2e_docker_registry" env-default:"ci-registry.mayastor-ci.mayadata.io"`
-	// Registry from where CI testing images are retrieved
-	CIRegistry  string `yaml:"ciRegistry" env:"e2e_ci_docker_registry" env-default:"ci-registry.mayastor-ci.mayadata.io"`
-	ImageTag    string `yaml:"imageTag" env:"e2e_image_tag" env-default:"ci"`
+	//	// Registry from where CI testing images are retrieved
+	//	CIRegistry string `yaml:"ciRegistry" env:"e2e_ci_docker_registry" env-default:"ci-registry.mayastor-ci.mayadata.io"`
+	ImageTag string `yaml:"imageTag" env:"e2e_image_tag"`
+	// FIXME: handle empty poolDevice
 	PoolDevice  string `yaml:"poolDevice" env:"e2e_pool_device"`
 	E2eFioImage string `yaml:"e2eFioImage" env-default:"mayadata/e2e-fio" env:"e2e_fio_image"`
 	// This is an advisory setting for individual tests
@@ -68,26 +73,26 @@ type E2EConfig struct {
 
 	// Individual Test parameters
 	PVCStress struct {
-		Replicas   int `yaml:"replicas" env-default:"1"`
+		Replicas   int `yaml:"replicas" env-default:"2"`
 		CdCycles   int `yaml:"cdCycles" env-default:"100"`
-		CrudCycles int `yaml:"crudCycles" env-default:"20"`
+		CrudCycles int `yaml:"crudCycles" env-default:"10"`
 	} `yaml:"pvcStress"`
 	IOSoakTest struct {
 		Replicas int    `yaml:"replicas" env-default:"2"`
-		Duration string `yaml:"duration" env-default:"10m"`
+		Duration string `yaml:"duration" env-default:"60m"`
 		// Number of volumes for each mayastor instance
 		// volumes for disruptor pods are allocated from within this "pool"
 		LoadFactor int      `yaml:"loadFactor" env-default:"10"`
 		Protocols  []string `yaml:"protocols" env-default:"nvmf"`
 		// FioStartDelay units are seconds
-		FioStartDelay int    `yaml:"fioStartDelay" env-default:"60"`
-		ReadyTimeout  string `yaml:"readyTimeout" env-default:"300s"`
+		FioStartDelay int    `yaml:"fioStartDelay" env-default:"90"`
+		ReadyTimeout  string `yaml:"readyTimeout" env-default:"600s"`
 		Disrupt       struct {
 			// Number of disruptor pods.
 			PodCount int `yaml:"podCount" env-default:"3"`
 			// FaultAfter units are seconds
-			FaultAfter   int    `yaml:"faultAfter" env-default:"45"`
-			ReadyTimeout string `yaml:"readyTimeout" env-default:"60s"`
+			FaultAfter   int    `yaml:"faultAfter" env-default:"51"`
+			ReadyTimeout string `yaml:"readyTimeout" env-default:"180s"`
 		} `yaml:"disrupt"`
 		FioDutyCycles []struct {
 			// ThinkTime units are microseconds
@@ -101,15 +106,15 @@ type E2EConfig struct {
 		LargeClaimSize string `yaml:"largeClaimSize" env-default:"500Mi"`
 	} `yaml:"csi"`
 	Uninstall struct {
-		Cleanup int `yaml:"cleanup" env:"e2e_uninstall_cleanup"`
+		Cleanup int `yaml:"cleanup" env:"e2e_uninstall_cleanup" env-default:"1"`
 	} `yaml:"uninstall"`
 	BasicVolumeIO struct {
 		// FioTimeout is in seconds
-		FioTimeout int `yaml:"fioTimeout" env-default:"120"`
+		FioTimeout int `yaml:"fioTimeout" env-default:"90"`
 		// VolSizeMb Units are MiB
-		VolSizeMb int `yaml:"volSizeMb" env-default:"1024"`
+		VolSizeMb int `yaml:"volSizeMb" env-default:"500"`
 		// FsVolSizeMb Units are MiB
-		FsVolSizeMb int `yaml:"fsVolSizeMb" env-default:"900"`
+		FsVolSizeMb int `yaml:"fsVolSizeMb" env-default:"450"`
 	} `yaml:"basicVolumeIO"`
 	MultipleVolumesPodIO struct {
 		VolumeSizeMb         int    `yaml:"volumeSizeMb" env-default:"500"`
@@ -251,69 +256,140 @@ var e2eConfig E2EConfig
 // This function is called early from junit and various bits have not been initialised yet
 // so we cannot use logf or Expect instead we use fmt.Print... and panic.
 func GetConfig() E2EConfig {
-	var err error
-	e2eRootDir, okE2eRootDir := os.LookupEnv("e2e_root_dir")
-	// The configuration overrides the e2eRootDir setting,
-	// this makes it possible to use a configuration file written out
-	// previously to replicate a test run configuration.
+
 	once.Do(func() {
-		var configFile string
+		var err error
+		var info os.FileInfo
+		e2eRootDir, haveE2ERootDir := os.LookupEnv("e2e_root_dir")
+		if !haveE2ERootDir {
+			// try to work out the root directory of the mayastor-e2e repo so
+			// that configuration file loading will work
+			_, filename, _, ok := runtime.Caller(0)
+			if ok {
+				comps := strings.Split(filename, "/")
+				for ix, comp := range comps {
+					// Expect mayastor-e2e/src/...
+					if comp == "mayastor-e2e" && len(comps[ix:]) > 2 && comps[ix+1] == "src" {
+						candidate := path.Clean("/" + strings.Join(comps[:ix+1], "/"))
+						info, err = os.Stat(candidate)
+						if err == nil && info.IsDir() {
+							fmt.Printf("Setting e2eRootDir to %v\n", candidate)
+							e2eRootDir = candidate
+							haveE2ERootDir = true
+							break
+						} else {
+							fmt.Printf("Unable to stat path %v error:%v\n", candidate, err)
+						}
+					}
+				}
+			}
+		}
+
+		// Initialise the configuration
+		_ = cleanenv.ReadEnv(&e2eConfig)
+		e2eConfig.IOSoakTest.FioDutyCycles = []struct {
+			ThinkTime       int `yaml:"thinkTime"`
+			ThinkTimeBlocks int `yaml:"thinkTimeBlocks"`
+		}{
+			{500000, 1000},
+			{750000, 1000},
+			{1250000, 2000},
+			{1500000, 3000},
+			{1750000, 3000},
+			{2000000, 4000},
+		}
+
 		// We absorb the complexity of locating the configuration file here
 		// so that scripts invoking the tests can be simpler
 		// - if OS envvar e2e_config is defined
 		//		- if it is a path to a file then that file is used as the config file
 		//		- else try to use a file of the same name in the configuration directory
-		// - Otherwise the config file is defaulted to ci_e2e_config
-		// A configuration file *MUST* be specified.
-		value, ok := os.LookupEnv("e2e_config_file")
-		if !ok {
-			panic("configuration file not specified, use env var e2e_config_file")
-		}
-		configFile = path.Clean(e2eRootDir + ConfigDir + "/" + value)
-		fmt.Printf("Using configuration file %s\n", configFile)
-		err = cleanenv.ReadConfig(configFile, &e2eConfig)
-		if err != nil {
-			panic(fmt.Sprintf("%v", err))
-		}
-
-		value, ok = os.LookupEnv("e2e_platform_config_file")
-		if !ok {
-			panic("Platform configuration file not specified, use env var e2e_platform_config_file")
-		}
-		platformCfg := path.Clean(e2eRootDir + PlatformConfigDir + value)
-		fmt.Printf("Using platform configuration file %s\n", configFile)
-		err = cleanenv.ReadConfig(platformCfg, &e2eConfig)
-		if err != nil {
-			panic(fmt.Sprintf("%v", err))
-		}
-
-		// There are complications because there are 2 possible sources for truth for the e2e root directory
-		// 1. the environment variable
-		// 2. the configuration file
-		// If only one is defined, we use the defined value,
-		// We need to resolve in a well defined manner when
-		// a. neither are defined (panic)
-		// b. both are defined, (environment variable overrides configuration setting)
-		if !okE2eRootDir {
-			if e2eConfig.E2eRootDir == "" {
-				panic("E2E root directory is not specified.")
-			}
+		if e2eConfig.ConfigPaths.ConfigFile == "" {
+			fmt.Println("Configuration file not specified, using defaults.")
+			fmt.Println("	Use environment variable \"e2e_config_file\" to specify configuration file.")
 		} else {
-			if e2eRootDir != e2eConfig.E2eRootDir {
-				fmt.Printf("overriding configuration e2e root dir from %s to %s", e2eConfig.E2eRootDir, e2eRootDir)
+			var configFile string = path.Clean(e2eConfig.ConfigPaths.ConfigFile)
+			info, err = os.Stat(configFile)
+			if os.IsNotExist(err) && haveE2ERootDir {
+				configFile = path.Clean(e2eRootDir + ConfigDir + "/" + e2eConfig.ConfigPaths.ConfigFile)
+				info, err = os.Stat(configFile)
+				if err != nil {
+					panic(fmt.Sprintf("Unable to access configuration file %v", configFile))
+				}
+				e2eConfig.ConfigPaths.ConfigFile = configFile
 			}
-			e2eConfig.E2eRootDir = e2eRootDir
+			if info.IsDir() {
+				panic(fmt.Sprintf("%v is not a file", configFile))
+			}
+			fmt.Printf("Using configuration file %s\n", configFile)
+			err = cleanenv.ReadConfig(configFile, &e2eConfig)
+			if err != nil {
+				panic(fmt.Sprintf("%v", err))
+			}
 		}
 
-		// MayastorRootDir is either set from the environment var mayastor_root_dir
-		// or is pre-configured in the configuration file.
-		// It *cannot* be empty
+		if e2eConfig.ConfigPaths.PlatformConfigFile == "" {
+			fmt.Println("Platform configuration file not specified, using defaults.")
+			fmt.Println("	Use environment variable \"e2e_platform_config_file\" to specify platform configuration.")
+		} else {
+			var platformCfg string = path.Clean(e2eConfig.ConfigPaths.PlatformConfigFile)
+			info, err = os.Stat(platformCfg)
+			if os.IsNotExist(err) && haveE2ERootDir {
+				platformCfg = path.Clean(e2eRootDir + PlatformConfigDir + e2eConfig.ConfigPaths.PlatformConfigFile)
+				info, err = os.Stat(platformCfg)
+				if err != nil {
+					panic(fmt.Sprintf("Unable to access platform configuration file %v", platformCfg))
+				}
+				e2eConfig.ConfigPaths.PlatformConfigFile = platformCfg
+			}
+			if info.IsDir() {
+				panic(fmt.Sprintf("%v is not a file", platformCfg))
+			}
+			fmt.Printf("Using platform configuration file %s\n", platformCfg)
+			err = cleanenv.ReadConfig(platformCfg, &e2eConfig)
+			if err != nil {
+				panic(fmt.Sprintf("%v", err))
+			}
+		}
+
+		// MayastorRootDir is either set from the environment variable
+		// e2e_mayastor_root_dir or is set in the configuration file.
 		if e2eConfig.MayastorRootDir == "" {
-			panic("Configuration error unspecified mayastor directory")
+			fmt.Println("WARNING: mayastor directory not specified, install and uninstall tests will fail!")
+		}
+
+		artifactsDir := ""
+		// if e2e root dir was specified record this in the configuration
+		if haveE2ERootDir {
+			e2eConfig.E2eRootDir = e2eRootDir
+			// and setup the artifacts directory
+			artifactsDir = path.Clean(e2eRootDir + "/artifacts")
+		} else {
+			// use the tmp directory for artifacts
+			artifactsDir = path.Clean("/tmp/mayastor-e2e")
+		}
+		fmt.Printf("artifacts directory is %s\n", artifactsDir)
+
+		if e2eConfig.SessionDir == "" {
+			// The session directory is required for install and uninstall tests
+			// create and use the default one.
+			e2eConfig.SessionDir = artifactsDir + "/sessions/default"
+			err = os.MkdirAll(e2eConfig.SessionDir, os.ModeDir|os.ModePerm)
+			if err != nil {
+				panic(err)
+			}
+		}
+		fmt.Printf("session directory is %s\n", e2eConfig.SessionDir)
+
+		if e2eConfig.ReportsDir == "" {
+			fmt.Println("junit report files will not be generated.")
+			fmt.Println("		Use environment variable \"e2e_reports_dir\" to specify a path for the report directory")
+		} else {
+			fmt.Printf("reports directory is %s\n", e2eConfig.ReportsDir)
 		}
 
 		cfgBytes, _ := yaml.Marshal(e2eConfig)
-		cfgUsedFile := path.Clean(e2eConfig.SessionDir + "/used-" + e2eConfig.ConfigName + "-" + e2eConfig.Platform.Name + ".yaml")
+		cfgUsedFile := path.Clean(e2eConfig.SessionDir + "/resolved-configuration-" + e2eConfig.ConfigName + "-" + e2eConfig.Platform.Name + ".yaml")
 		err = ioutil.WriteFile(cfgUsedFile, cfgBytes, 0644)
 		if err == nil {
 			fmt.Printf("Resolved config written to %s\n", cfgUsedFile)

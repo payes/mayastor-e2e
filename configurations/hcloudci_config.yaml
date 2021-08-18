@@ -1,0 +1,5 @@
+# configuration/parameters for CI/CD e2e test runs
+# note this file intentionally has no parameters
+# default values are encoded in
+#   src/common/e2e_config/e2e_config.go
+configName: hcloudci

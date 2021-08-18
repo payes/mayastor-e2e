@@ -40,8 +40,10 @@ service Mayastor {
   // replication and rebuild in the background.
 
   rpc CreateNexus (CreateNexusRequest) returns (Nexus) {}
+  rpc CreateNexusV2 (CreateNexusV2Request) returns (Nexus) {}
   rpc DestroyNexus (DestroyNexusRequest) returns (Null) {}
   rpc ListNexus (Null) returns (ListNexusReply) {}
+  rpc ListNexusV2 (Null) returns (ListNexusV2Reply) {}
   rpc AddChildNexus (AddChildNexusRequest) returns (Child) {}
   rpc RemoveChildNexus (RemoveChildNexusRequest) returns (Null) {}
   rpc FaultNexusChild (FaultNexusChildRequest) returns (Null) {}
@@ -54,6 +56,9 @@ service Mayastor {
   // NVMe ANA state
   rpc GetNvmeAnaState (GetNvmeAnaStateRequest) returns (GetNvmeAnaStateReply) {}
   rpc SetNvmeAnaState (SetNvmeAnaStateRequest) returns (Null) {}
+
+  // Mayastor instance methods.
+  rpc GetMayastorInfo (Null) returns (MayastorInfoRequest) {}
 
   // Nexus child operations
   rpc ChildOperation(ChildNexusRequest) returns (Null) {}
@@ -78,6 +83,7 @@ service Mayastor {
 
   // NVMe controllers
   rpc ListNvmeControllers (Null) returns (ListNvmeControllersReply) {}
+  rpc StatNvmeControllers (Null) returns (StatNvmeControllersReply) {}
 }
 
 // Means no arguments or no return value.
@@ -200,9 +206,19 @@ message ShareReplicaReply {
 message CreateNexusRequest {
   string uuid = 1; // this UUID will be set in as the UUID
   uint64 size = 2; // size of the device in bytes
-  // replica can be iscsi and nvmf remote targets or a local spdk bdev
+  // replica can be nvmf remote targets or a local spdk bdev
   // (i.e. bdev:///name-of-the-bdev).
   repeated string children = 3; // uris to the targets we connect to
+}
+
+message CreateNexusV2Request {
+  string name = 1; // name of the nexus
+  string uuid = 2; // UUID of the bdev
+  uint64 size = 3; // size of the device in bytes
+  uint32 minCntlId = 4;  // minimum NVMe controller ID
+  uint32 maxCntlId = 5;  // maximum NVMe controller ID
+  uint64 resvKey = 6;    // NVMe reservation key for children
+  repeated string children = 7; // uris to the targets we connect to
 }
 
 // State of the nexus child.
@@ -242,6 +258,24 @@ message Nexus {
 
 message ListNexusReply {
   repeated Nexus nexus_list = 1;
+}
+
+// represents a nexus device
+message NexusV2 {
+  string name = 1;             // name of the nexus
+  string uuid = 2;             // UUID of the bdev
+  uint64 size = 3;             // size of the volume in bytes
+  NexusState state = 4;        // current state of the nexus
+  repeated Child children = 5; // array of children
+  // URI of the device for the volume (missing if not published).
+  // Missing property and empty string are treated the same.
+  string device_uri = 6;
+  uint32 rebuilds = 7;         // total number of rebuild tasks
+  NvmeAnaState ana_state = 8;  // Nexus ANA state.
+}
+
+message ListNexusV2Reply {
+  repeated NexusV2 nexus_list = 1;
 }
 
 message DestroyNexusRequest   {
@@ -300,6 +334,15 @@ message GetNvmeAnaStateReply {
 message SetNvmeAnaStateRequest {
   string uuid = 1;   // uuid of the nexus
   NvmeAnaState ana_state = 2;
+}
+
+message MayastorFeatures {
+  bool asymmetricNamespaceAccess = 1;
+}
+
+message MayastorInfoRequest {
+  string version = 1;
+  MayastorFeatures supportedFeatures = 2;
 }
 
 enum ChildAction {
@@ -491,6 +534,24 @@ message NvmeController {
 
 message ListNvmeControllersReply {
   repeated NvmeController controllers = 1;
+}
+
+message NvmeControllerIoStats {
+  uint64 num_read_ops = 1;
+  uint64 num_write_ops = 2;
+  uint64 bytes_read = 3;
+  uint64 bytes_written = 4;
+  uint64 num_unmap_ops = 5;
+  uint64 bytes_unmapped = 6;
+}
+
+message NvmeControllerStats {
+  string name = 1;                 // NVMe controller name
+  NvmeControllerIoStats stats = 2; // Controller I/O statistics
+}
+
+message StatNvmeControllersReply {
+  repeated NvmeControllerStats controllers = 1;
 }
 
 // SPDK json-rpc proxy service

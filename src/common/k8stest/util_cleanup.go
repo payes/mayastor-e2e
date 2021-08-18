@@ -4,12 +4,13 @@ package k8stest
 import (
 	"context"
 	"fmt"
-	"mayastor-e2e/common/custom_resources"
 	"os/exec"
 	"strings"
 	"time"
 
 	"mayastor-e2e/common"
+	"mayastor-e2e/common/custom_resources"
+	"mayastor-e2e/common/mayastorclient"
 
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -487,7 +488,9 @@ func CleanUp() bool {
 		logf.Log.Info("", "error", err)
 	}
 
-	_ = RmReplicasInCluster()
+	if mayastorclient.CanConnect() {
+		_ = RmReplicasInCluster()
+	}
 
 	return len(errs) == 0
 }
