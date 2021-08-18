@@ -11,6 +11,8 @@ import (
 const (
 	sleepTime      = 2
 	defTimeoutSecs = "90s"
+	patchSleepTime = 10
+	patchTimeout   = 240
 )
 
 type primitiveFaultInjectionConfig struct {

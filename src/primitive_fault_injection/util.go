@@ -8,6 +8,7 @@ import (
 	"mayastor-e2e/common/k8stest"
 	"mayastor-e2e/common/mayastorclient"
 	"strings"
+	"time"
 
 	. "github.com/onsi/gomega"
 	coreV1 "k8s.io/api/core/v1"
@@ -46,13 +47,31 @@ func (c *primitiveFaultInjectionConfig) deletePVC() {
 // createFio will create fio pod and run fio
 func (c *primitiveFaultInjectionConfig) createFio() {
 	var volFioArgs [][]string
-	// fio pod container
-	podContainer := coreV1.Container{
-		Name:            c.fioPodName,
-		Image:           common.GetFioImage(),
-		ImagePullPolicy: coreV1.PullAlways,
-		Args:            []string{"sleep", "1000000"},
+
+	volFioArgs = append(volFioArgs, []string{
+		fmt.Sprintf("--filename=%s", common.FioBlockFilename),
+	})
+	// Construct argument list for fio
+	var podArgs []string
+
+	podArgs = append(podArgs, "--")
+	podArgs = append(podArgs, common.GetDefaultFioArguments()...)
+	podArgs = append(podArgs, []string{
+		"--time_based",
+		fmt.Sprintf("--runtime=%d", int(c.duration.Seconds())),
+		fmt.Sprintf("--thinktime=%d", int(c.thinkTime.Microseconds())),
+		fmt.Sprintf("--status-interval=%d", 30),
+	}...,
+	)
+	for ix, v := range volFioArgs {
+		podArgs = append(podArgs, v...)
+		podArgs = append(podArgs, fmt.Sprintf("--name=benchtest-%d", ix))
 	}
+	podArgs = append(podArgs, "&")
+	logf.Log.Info("fio", "arguments", podArgs)
+
+	// fio pod container
+	podContainer := k8stest.MakeFioContainer(c.fioPodName, podArgs)
 
 	// volume claim details
 	volume := coreV1.Volume{
@@ -74,27 +93,6 @@ func (c *primitiveFaultInjectionConfig) createFio() {
 	Expect(err).ToNot(HaveOccurred(), "Generating fio pod definition %s", c.fioPodName)
 	Expect(podObj).ToNot(BeNil(), "failed to generate fio pod definition")
 
-	volFioArgs = append(volFioArgs, []string{
-		fmt.Sprintf("--filename=%s", common.FioBlockFilename),
-	})
-	// Construct argument list for fio
-	var podArgs []string
-
-	podArgs = append(podArgs, "--")
-	podArgs = append(podArgs, common.GetDefaultFioArguments()...)
-	podArgs = append(podArgs, []string{
-		"--time_based",
-		fmt.Sprintf("--runtime=%d", int(c.duration.Seconds())),
-		fmt.Sprintf("--thinktime=%d", int(c.thinkTime.Microseconds())),
-	}...,
-	)
-	for ix, v := range volFioArgs {
-		podArgs = append(podArgs, v...)
-		podArgs = append(podArgs, fmt.Sprintf("--name=benchtest-%d", ix))
-	}
-	podArgs = append(podArgs, "&")
-	logf.Log.Info("fio", "arguments", podArgs)
-	podObj.Spec.Containers[0].Args = podArgs
 	// Create fio pod
 	_, err = k8stest.CreatePod(podObj, common.NSDefault)
 	Expect(err).ToNot(HaveOccurred(), "Creating fio pod %s", c.fioPodName)
@@ -329,4 +327,67 @@ func (c *primitiveFaultInjectionConfig) dataIntegrityCheck() {
 func (c *primitiveFaultInjectionConfig) waitForFioPodCompletion() {
 	err := k8stest.WaitPodComplete(c.fioPodName, sleepTime, int(c.timeout))
 	Expect(err).ToNot(HaveOccurred(), "Failed to check %s pod completion status", c.fioPodName)
+}
+
+// verify faulted replica
+func (c *primitiveFaultInjectionConfig) verifyFaultedReplica() {
+	var onlineCount, faultedCount, otherCount int
+	t0 := time.Now()
+	for ix := 0; ix < patchTimeout; ix += patchSleepTime {
+		time.Sleep(time.Second * patchSleepTime)
+		msv, err := k8stest.GetMSV(c.uuid)
+		Expect(err).ToNot(HaveOccurred(), "%v", err)
+		Expect(msv).ToNot(BeNil(), "got nil msv for %v", c.uuid)
+		onlineCount = 0
+		faultedCount = 0
+		otherCount = 0
+		for _, child := range msv.Status.Nexus.Children {
+			if child.State == "CHILD_FAULTED" {
+				faultedCount++
+			} else if child.State == "CHILD_ONLINE" {
+				onlineCount++
+			} else {
+				logf.Log.Info("Children state other then faulted and online", "child.State", child.State)
+				otherCount++
+			}
+		}
+		logf.Log.Info("Replica state", "faulted", faultedCount, "online", onlineCount, "other", otherCount)
+		if faultedCount == 1 && otherCount == 0 && onlineCount != 0 {
+			break
+		}
+	}
+	Expect(otherCount).To(BeZero(), "Got at least one children state other then faulted or online")
+	logf.Log.Info("MSV sync waiting time", "seconds", time.Since(t0))
+}
+
+// verify updated replica state
+func (c *primitiveFaultInjectionConfig) verifyUpdatedReplica() {
+	var onlineCount, faultedCount, otherCount int
+	t0 := time.Now()
+	for ix := 0; ix < patchTimeout; ix += patchSleepTime {
+		time.Sleep(time.Second * patchSleepTime)
+		msv, err := k8stest.GetMSV(c.uuid)
+		Expect(err).ToNot(HaveOccurred(), "%v", err)
+		Expect(msv).ToNot(BeNil(), "got nil msv for %v", c.uuid)
+		onlineCount = 0
+		faultedCount = 0
+		otherCount = 0
+		for _, child := range msv.Status.Nexus.Children {
+			if child.State == "CHILD_FAULTED" {
+				faultedCount++
+			} else if child.State == "CHILD_ONLINE" {
+				onlineCount++
+			} else {
+				logf.Log.Info("Children state other then faulted and online", "child.State", child.State)
+				otherCount++
+			}
+		}
+		logf.Log.Info("Replica state", "faulted", faultedCount, "online", onlineCount, "other", otherCount)
+		if faultedCount == 0 && otherCount == 0 && onlineCount == msv.Spec.ReplicaCount {
+			break
+		}
+	}
+	Expect(otherCount).To(BeZero(), "Got at least one children state other then faulted or online")
+	Expect(faultedCount).To(BeZero(), "Got at least one children state as faulted")
+	logf.Log.Info("MSV sync waiting time", "seconds", time.Since(t0))
 }
