@@ -55,7 +55,7 @@ pipeline {
           agent { label 'nixos' }
           steps {
             script {
-              common = load "${env.WORKSPACE}/pipelines/common/common.groovy"
+              common = load "./pipelines/common/common.groovy"
               k8s_job = common.BuildCluster(e2e_build_cluster_job, e2e_environment)
             }
           }
@@ -85,7 +85,7 @@ pipeline {
               }
             }
             script {
-              common = load "${env.WORKSPACE}/pipelines/common/common.groovy"
+              common = load "./pipelines/common/common.groovy"
               common.GetClusterAdminConf(e2e_environment, k8s_job)
               loki_run_id = common.GetLokiRunId()
               abs_e2e_reports_dir = "${env.WORKSPACE}/${e2e_reports_dir}"
@@ -120,7 +120,7 @@ pipeline {
           post {
             failure {
               script {
-                common = load "${env.WORKSPACE}/pipelines/common/common.groovy"
+                common = load "./pipelines/common/common.groovy"
                 if (params.delete_cluster_on_failure) {
                   common.DestroyCluster(e2e_destroy_cluster_job, k8s_job)
                 } else {
@@ -131,7 +131,7 @@ pipeline {
 
             success {
               script {
-                common = load "${env.WORKSPACE}/pipelines/common/common.groovy"
+                common = load "./pipelines/common/common.groovy"
                 common.DestroyCluster(e2e_destroy_cluster_job, k8s_job)
               }
             }

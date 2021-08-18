@@ -231,6 +231,9 @@ def RunTestsOnePerCluster(e2e_test_profile,
         }
       }
     }
+    // associate uninstall test results with this test
+    AlterUninstallReports(e2e_reports_dir, tests[i])
+
     DestroyCluster(e2e_destroy_cluster_job, k8s_job)
   } //loop
   return failed_tests
@@ -263,8 +266,11 @@ def RunOneTestPerCluster(e2e_test,
           failed_tests = e2e_test
       }
     }
+    // associate uninstall test results with this test
+    AlterUninstallReports(e2e_reports_dir, e2e_test)
+
     DestroyCluster(e2e_destroy_cluster_job, k8s_job)
-  return failed_tests
+    return failed_tests
 }
 
 def BuildTestsQueue(profile) {
@@ -282,9 +288,15 @@ def BuildTestsQueue(profile) {
   return testsQueue
 }
 
-def SendXrayReport(xray_testplan, summary, e2e_reports_dir) {
+def SendXrayReport(xray_testplan, test_tag, e2e_reports_dir) {
   xray_test_execution_type = '10059'
-  xray_projectkey = xray_testplan.split('-')[0]
+  def xray_projectkey = xray_testplan.split('-')[0]
+  def pipeline = GetJobBaseName()
+  def summary = "Pipeline: ${pipeline}, test plan: ${xray_testplan}, git branch: ${env.BRANCH_name}, tested image tag: ${test_tag}"
+
+  // Ensure there is only one install junit report
+  // for XRay with failed reports having priority.
+  DeDupeInstallReports(e2e_reports_dir)
 
   try {
     step([
@@ -319,6 +331,51 @@ def SendXrayReport(xray_testplan, summary, e2e_reports_dir) {
       message: "E2E failed to send XRay reports - <$self_url|$self_name>."
     )
   }
+}
+
+def AlterUninstallReports(e2e_reports_dir, e2e_test) {
+    def junit_name = "e2e.uninstall-junit.xml"
+    def junit_find_path = "${e2e_reports_dir}/*"
+    def junit_full_find_path = " ${junit_find_path}/${junit_name}"
+    def junit = sh(
+        script: "find ${junit_find_path} -maxdepth 1 -name ${junit_name} | head -1",
+        returnStdout: true
+    )
+    junit = junit.trim()
+    if (junit != "") {
+        sh "sed -i 's/classname=\"Basic Teardown Suite\"/classname=\"${e2e_test}\"/g' ${junit_full_find_path}"
+        sh "sed -i 's/<testcase name=\"Mayastor setup should teardown using yamls\"/<testcase name=\"${e2e_test} should teardown using yamls\"/g' ${junit_full_find_path}"
+    } else {
+        println("no uninstall junit files found")
+    }
+}
+
+def DeDupeInstallReports(e2e_reports_dir) {
+    def junit_name = "e2e.install-junit.xml"
+    def install_junit_find_path = " ${e2e_reports_dir}/*"
+    def install_junit_full_find_path = " ${install_junit_find_path}/${junit_name}"
+
+    def install_sample_junit = sh(
+        script: "find ${install_junit_find_path} -maxdepth 1 -name ${junit_name} | head -1",
+        returnStdout: true
+    )
+    install_sample_junit = install_sample_junit.trim()
+    if (install_sample_junit == "") {
+        println("no install junit files found")
+        return
+    }
+    // find the first failed install report and use it if it exists
+    def install_fail_junit = sh(
+        script: "grep -lR  '<failure type=\"Failure\">'  ${install_junit_full_find_path} | head -1 || true",
+        returnStdout: true
+    )
+    install_fail_junit = install_fail_junit.trim()
+    if (install_fail_junit != "") {
+        install_sample_junit = install_fail_junit
+    }
+    // rename it to a safe name and delete all others
+    sh "mv ${install_sample_junit} ${install_sample_junit}.sample.xml"
+    sh "rm ${install_junit_full_find_path}"
 }
 
 return this

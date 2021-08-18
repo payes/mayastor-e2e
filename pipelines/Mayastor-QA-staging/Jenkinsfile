@@ -60,10 +60,10 @@ pipeline {
           junit "${e2e_reports_dir}/**/*.xml"
           script {
             if (xray_send_report == true) {
-              common = load "${env.WORKSPACE}/pipelines/common/common.groovy"
-              pipeline = common.GetJobBaseName()
-              summary = "Pipeline: ${pipeline}, test plan: ${xray_test_plan}, git branch: ${env.BRANCH_name}, tested image tag: ${e2e_image_tag}"
-              common.SendXrayReport(xray_test_plan, summary, e2e_reports_dir)
+              // xray_send_report alters the report artifacts
+              // so should run after archiveArtifacts and junit
+              common = load "./pipelines/common/common.groovy"
+              common.SendXrayReport(xray_test_plan, e2e_image_tag, e2e_reports_dir)
             }
           }
         }
