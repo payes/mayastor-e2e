@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"mayastor-e2e/common/custom_resources"
 	"mayastor-e2e/common/e2e_config"
+	"mayastor-e2e/common/mayastorclient"
 	"os/exec"
 	"strings"
 	"time"
@@ -75,6 +76,8 @@ func RunFio(podName string, duration int, filename string, sizeMb int, args ...s
 	return output, err
 }
 
+// IsPodWithLabelsRunning expects that at any time only one application pod will be in running state
+// if there are more then one pod in terminating state then it will return the last terminating pod.
 func IsPodWithLabelsRunning(labels, namespace string) (string, bool, error) {
 	var podName string
 	pods, err := gTestEnv.KubeInt.CoreV1().Pods(namespace).List(context.TODO(), metaV1.ListOptions{LabelSelector: labels})
@@ -85,12 +88,34 @@ func IsPodWithLabelsRunning(labels, namespace string) (string, bool, error) {
 		return "", false, nil
 	}
 	for _, pod := range pods.Items {
-		if pod.Status.Phase != v1.PodRunning {
-			return pod.Name, false, nil
+		if pod.Status.Phase == v1.PodRunning {
+			return pod.Name, true, nil
 		}
 		podName = pod.Name
 	}
-	return podName, true, nil
+	return podName, false, nil
+}
+
+// ForceDeleteTerminatingPods force deletes the pod this function is required because
+// sometimes after powering off the node some pods stuck in terminating state.
+func ForceDeleteTerminatingPods(labels, namespace string) error {
+	deletionTime := int64(0)
+	pods, err := gTestEnv.KubeInt.CoreV1().Pods(namespace).List(context.TODO(), metaV1.ListOptions{LabelSelector: labels})
+	if err != nil {
+		return err
+	}
+	if len(pods.Items) == 0 {
+		return nil
+	}
+	for _, pod := range pods.Items {
+		if pod.DeletionTimestamp != nil {
+			err = gTestEnv.KubeInt.CoreV1().Pods(namespace).Delete(context.TODO(), pod.Name, metaV1.DeleteOptions{GracePeriodSeconds: &deletionTime})
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func GetNodeListForPods(labels, namespace string) (map[string]v1.PodPhase, error) {
@@ -486,9 +511,7 @@ func restartMayastor(restartTOSecs int, readyTOSecs int, poolsTOSecs int) error 
 	var err error
 	ready := false
 
-	if EnsureE2EAgent() {
-		_ = RmReplicasInCluster()
-	}
+	// note: CleanUp removes replicas
 	CleanUp()
 
 	err = RestartMayastorPods(restartTOSecs)
@@ -508,9 +531,12 @@ func restartMayastor(restartTOSecs int, readyTOSecs int, poolsTOSecs int) error 
 	time.Sleep(30 * time.Second)
 
 	_, _ = DeleteAllPoolFinalizers()
-	_ = DeleteAllPools()
+	// Pool device is not specified so do not re-create the pools
+	if len(e2e_config.GetConfig().PoolDevice) != 0 {
+		_ = DeleteAllPools()
+		CreateConfiguredPools()
+	}
 
-	CreateConfiguredPools()
 	const sleepTime = 10
 	for ix := 0; ix < (poolsTOSecs+sleepTime-1)/sleepTime; ix++ {
 		time.Sleep(sleepTime * time.Second)
@@ -525,13 +551,13 @@ func restartMayastor(restartTOSecs int, readyTOSecs int, poolsTOSecs int) error 
 		return fmt.Errorf("not all pools are online %v", err)
 	}
 
-	if EnsureE2EAgent() {
+	if mayastorclient.CanConnect() {
 		err := RmReplicasInCluster()
 		if err != nil {
 			return fmt.Errorf("RmReplicasInCluster failed %v", err)
 		}
 	} else {
-		logf.Log.Info("WARNING, E2EAgent not active, unable to clear orphan replicas")
+		logf.Log.Info("WARNING: gRPC calls to mayastor are not enabled, unable to clear orphan replicas")
 	}
 	return err
 }

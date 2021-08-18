@@ -27,8 +27,10 @@ type MayastorClient interface {
 	StatReplicas(ctx context.Context, in *Null, opts ...grpc.CallOption) (*StatReplicasReply, error)
 	ShareReplica(ctx context.Context, in *ShareReplicaRequest, opts ...grpc.CallOption) (*ShareReplicaReply, error)
 	CreateNexus(ctx context.Context, in *CreateNexusRequest, opts ...grpc.CallOption) (*Nexus, error)
+	CreateNexusV2(ctx context.Context, in *CreateNexusV2Request, opts ...grpc.CallOption) (*Nexus, error)
 	DestroyNexus(ctx context.Context, in *DestroyNexusRequest, opts ...grpc.CallOption) (*Null, error)
 	ListNexus(ctx context.Context, in *Null, opts ...grpc.CallOption) (*ListNexusReply, error)
+	ListNexusV2(ctx context.Context, in *Null, opts ...grpc.CallOption) (*ListNexusV2Reply, error)
 	AddChildNexus(ctx context.Context, in *AddChildNexusRequest, opts ...grpc.CallOption) (*Child, error)
 	RemoveChildNexus(ctx context.Context, in *RemoveChildNexusRequest, opts ...grpc.CallOption) (*Null, error)
 	FaultNexusChild(ctx context.Context, in *FaultNexusChildRequest, opts ...grpc.CallOption) (*Null, error)
@@ -39,6 +41,8 @@ type MayastorClient interface {
 	// NVMe ANA state
 	GetNvmeAnaState(ctx context.Context, in *GetNvmeAnaStateRequest, opts ...grpc.CallOption) (*GetNvmeAnaStateReply, error)
 	SetNvmeAnaState(ctx context.Context, in *SetNvmeAnaStateRequest, opts ...grpc.CallOption) (*Null, error)
+	// Mayastor instance methods.
+	GetMayastorInfo(ctx context.Context, in *Null, opts ...grpc.CallOption) (*MayastorInfoRequest, error)
 	// Nexus child operations
 	ChildOperation(ctx context.Context, in *ChildNexusRequest, opts ...grpc.CallOption) (*Null, error)
 	// Rebuild operations
@@ -57,6 +61,7 @@ type MayastorClient interface {
 	GetResourceUsage(ctx context.Context, in *Null, opts ...grpc.CallOption) (*GetResourceUsageReply, error)
 	// NVMe controllers
 	ListNvmeControllers(ctx context.Context, in *Null, opts ...grpc.CallOption) (*ListNvmeControllersReply, error)
+	StatNvmeControllers(ctx context.Context, in *Null, opts ...grpc.CallOption) (*StatNvmeControllersReply, error)
 }
 
 type mayastorClient struct {
@@ -148,6 +153,15 @@ func (c *mayastorClient) CreateNexus(ctx context.Context, in *CreateNexusRequest
 	return out, nil
 }
 
+func (c *mayastorClient) CreateNexusV2(ctx context.Context, in *CreateNexusV2Request, opts ...grpc.CallOption) (*Nexus, error) {
+	out := new(Nexus)
+	err := c.cc.Invoke(ctx, "/mayastor.Mayastor/CreateNexusV2", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *mayastorClient) DestroyNexus(ctx context.Context, in *DestroyNexusRequest, opts ...grpc.CallOption) (*Null, error) {
 	out := new(Null)
 	err := c.cc.Invoke(ctx, "/mayastor.Mayastor/DestroyNexus", in, out, opts...)
@@ -160,6 +174,15 @@ func (c *mayastorClient) DestroyNexus(ctx context.Context, in *DestroyNexusReque
 func (c *mayastorClient) ListNexus(ctx context.Context, in *Null, opts ...grpc.CallOption) (*ListNexusReply, error) {
 	out := new(ListNexusReply)
 	err := c.cc.Invoke(ctx, "/mayastor.Mayastor/ListNexus", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *mayastorClient) ListNexusV2(ctx context.Context, in *Null, opts ...grpc.CallOption) (*ListNexusV2Reply, error) {
+	out := new(ListNexusV2Reply)
+	err := c.cc.Invoke(ctx, "/mayastor.Mayastor/ListNexusV2", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -223,6 +246,15 @@ func (c *mayastorClient) GetNvmeAnaState(ctx context.Context, in *GetNvmeAnaStat
 func (c *mayastorClient) SetNvmeAnaState(ctx context.Context, in *SetNvmeAnaStateRequest, opts ...grpc.CallOption) (*Null, error) {
 	out := new(Null)
 	err := c.cc.Invoke(ctx, "/mayastor.Mayastor/SetNvmeAnaState", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *mayastorClient) GetMayastorInfo(ctx context.Context, in *Null, opts ...grpc.CallOption) (*MayastorInfoRequest, error) {
+	out := new(MayastorInfoRequest)
+	err := c.cc.Invoke(ctx, "/mayastor.Mayastor/GetMayastorInfo", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -337,6 +369,15 @@ func (c *mayastorClient) ListNvmeControllers(ctx context.Context, in *Null, opts
 	return out, nil
 }
 
+func (c *mayastorClient) StatNvmeControllers(ctx context.Context, in *Null, opts ...grpc.CallOption) (*StatNvmeControllersReply, error) {
+	out := new(StatNvmeControllersReply)
+	err := c.cc.Invoke(ctx, "/mayastor.Mayastor/StatNvmeControllers", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MayastorServer is the server API for Mayastor service.
 // All implementations must embed UnimplementedMayastorServer
 // for forward compatibility
@@ -350,8 +391,10 @@ type MayastorServer interface {
 	StatReplicas(context.Context, *Null) (*StatReplicasReply, error)
 	ShareReplica(context.Context, *ShareReplicaRequest) (*ShareReplicaReply, error)
 	CreateNexus(context.Context, *CreateNexusRequest) (*Nexus, error)
+	CreateNexusV2(context.Context, *CreateNexusV2Request) (*Nexus, error)
 	DestroyNexus(context.Context, *DestroyNexusRequest) (*Null, error)
 	ListNexus(context.Context, *Null) (*ListNexusReply, error)
+	ListNexusV2(context.Context, *Null) (*ListNexusV2Reply, error)
 	AddChildNexus(context.Context, *AddChildNexusRequest) (*Child, error)
 	RemoveChildNexus(context.Context, *RemoveChildNexusRequest) (*Null, error)
 	FaultNexusChild(context.Context, *FaultNexusChildRequest) (*Null, error)
@@ -362,6 +405,8 @@ type MayastorServer interface {
 	// NVMe ANA state
 	GetNvmeAnaState(context.Context, *GetNvmeAnaStateRequest) (*GetNvmeAnaStateReply, error)
 	SetNvmeAnaState(context.Context, *SetNvmeAnaStateRequest) (*Null, error)
+	// Mayastor instance methods.
+	GetMayastorInfo(context.Context, *Null) (*MayastorInfoRequest, error)
 	// Nexus child operations
 	ChildOperation(context.Context, *ChildNexusRequest) (*Null, error)
 	// Rebuild operations
@@ -380,6 +425,7 @@ type MayastorServer interface {
 	GetResourceUsage(context.Context, *Null) (*GetResourceUsageReply, error)
 	// NVMe controllers
 	ListNvmeControllers(context.Context, *Null) (*ListNvmeControllersReply, error)
+	StatNvmeControllers(context.Context, *Null) (*StatNvmeControllersReply, error)
 	mustEmbedUnimplementedMayastorServer()
 }
 
@@ -414,11 +460,17 @@ func (UnimplementedMayastorServer) ShareReplica(context.Context, *ShareReplicaRe
 func (UnimplementedMayastorServer) CreateNexus(context.Context, *CreateNexusRequest) (*Nexus, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateNexus not implemented")
 }
+func (UnimplementedMayastorServer) CreateNexusV2(context.Context, *CreateNexusV2Request) (*Nexus, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateNexusV2 not implemented")
+}
 func (UnimplementedMayastorServer) DestroyNexus(context.Context, *DestroyNexusRequest) (*Null, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DestroyNexus not implemented")
 }
 func (UnimplementedMayastorServer) ListNexus(context.Context, *Null) (*ListNexusReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListNexus not implemented")
+}
+func (UnimplementedMayastorServer) ListNexusV2(context.Context, *Null) (*ListNexusV2Reply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListNexusV2 not implemented")
 }
 func (UnimplementedMayastorServer) AddChildNexus(context.Context, *AddChildNexusRequest) (*Child, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddChildNexus not implemented")
@@ -440,6 +492,9 @@ func (UnimplementedMayastorServer) GetNvmeAnaState(context.Context, *GetNvmeAnaS
 }
 func (UnimplementedMayastorServer) SetNvmeAnaState(context.Context, *SetNvmeAnaStateRequest) (*Null, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetNvmeAnaState not implemented")
+}
+func (UnimplementedMayastorServer) GetMayastorInfo(context.Context, *Null) (*MayastorInfoRequest, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetMayastorInfo not implemented")
 }
 func (UnimplementedMayastorServer) ChildOperation(context.Context, *ChildNexusRequest) (*Null, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ChildOperation not implemented")
@@ -476,6 +531,9 @@ func (UnimplementedMayastorServer) GetResourceUsage(context.Context, *Null) (*Ge
 }
 func (UnimplementedMayastorServer) ListNvmeControllers(context.Context, *Null) (*ListNvmeControllersReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListNvmeControllers not implemented")
+}
+func (UnimplementedMayastorServer) StatNvmeControllers(context.Context, *Null) (*StatNvmeControllersReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method StatNvmeControllers not implemented")
 }
 func (UnimplementedMayastorServer) mustEmbedUnimplementedMayastorServer() {}
 
@@ -652,6 +710,24 @@ func _Mayastor_CreateNexus_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Mayastor_CreateNexusV2_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateNexusV2Request)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MayastorServer).CreateNexusV2(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/mayastor.Mayastor/CreateNexusV2",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MayastorServer).CreateNexusV2(ctx, req.(*CreateNexusV2Request))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Mayastor_DestroyNexus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(DestroyNexusRequest)
 	if err := dec(in); err != nil {
@@ -684,6 +760,24 @@ func _Mayastor_ListNexus_Handler(srv interface{}, ctx context.Context, dec func(
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MayastorServer).ListNexus(ctx, req.(*Null))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Mayastor_ListNexusV2_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Null)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MayastorServer).ListNexusV2(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/mayastor.Mayastor/ListNexusV2",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MayastorServer).ListNexusV2(ctx, req.(*Null))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -810,6 +904,24 @@ func _Mayastor_SetNvmeAnaState_Handler(srv interface{}, ctx context.Context, dec
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MayastorServer).SetNvmeAnaState(ctx, req.(*SetNvmeAnaStateRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Mayastor_GetMayastorInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Null)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MayastorServer).GetMayastorInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/mayastor.Mayastor/GetMayastorInfo",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MayastorServer).GetMayastorInfo(ctx, req.(*Null))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1030,6 +1142,24 @@ func _Mayastor_ListNvmeControllers_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Mayastor_StatNvmeControllers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Null)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MayastorServer).StatNvmeControllers(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/mayastor.Mayastor/StatNvmeControllers",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MayastorServer).StatNvmeControllers(ctx, req.(*Null))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Mayastor_ServiceDesc is the grpc.ServiceDesc for Mayastor service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1074,12 +1204,20 @@ var Mayastor_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Mayastor_CreateNexus_Handler,
 		},
 		{
+			MethodName: "CreateNexusV2",
+			Handler:    _Mayastor_CreateNexusV2_Handler,
+		},
+		{
 			MethodName: "DestroyNexus",
 			Handler:    _Mayastor_DestroyNexus_Handler,
 		},
 		{
 			MethodName: "ListNexus",
 			Handler:    _Mayastor_ListNexus_Handler,
+		},
+		{
+			MethodName: "ListNexusV2",
+			Handler:    _Mayastor_ListNexusV2_Handler,
 		},
 		{
 			MethodName: "AddChildNexus",
@@ -1108,6 +1246,10 @@ var Mayastor_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetNvmeAnaState",
 			Handler:    _Mayastor_SetNvmeAnaState_Handler,
+		},
+		{
+			MethodName: "GetMayastorInfo",
+			Handler:    _Mayastor_GetMayastorInfo_Handler,
 		},
 		{
 			MethodName: "ChildOperation",
@@ -1156,6 +1298,10 @@ var Mayastor_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListNvmeControllers",
 			Handler:    _Mayastor_ListNvmeControllers_Handler,
+		},
+		{
+			MethodName: "StatNvmeControllers",
+			Handler:    _Mayastor_StatNvmeControllers_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

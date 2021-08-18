@@ -1,7 +1,8 @@
 # This configuration is for testing changes made to mayastor-e2e
 # and is used for mayastor-e2e CI runs
 # Defining feature is that long running tests have attenuated durations
-configName: e2e_ci
+configName: selfci
+selfTest: true
 pvcStress:
   replicas: 1
   cdCycles: 1

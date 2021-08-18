@@ -1,6 +1,7 @@
 package cleanup
 
 import (
+	"mayastor-e2e/common/e2e_config"
 	"testing"
 
 	. "github.com/onsi/ginkgo"
@@ -22,8 +23,10 @@ var _ = Describe("Mayastor setup", func() {
 	It("should clean up test artefacts in the cluster", func() {
 		cleaned := k8stest.CleanUp()
 		Expect(cleaned).To(BeTrue())
-		err := k8stest.RestoreConfiguredPools()
-		Expect(err).To(BeNil(), "Not all pools are online after restoration")
+		if len(e2e_config.GetConfig().PoolDevice) != 0 {
+			err := k8stest.RestoreConfiguredPools()
+			Expect(err).To(BeNil(), "Not all pools are online after restoration")
+		}
 		logf.Log.Info("", "cleaned", cleaned)
 	})
 })

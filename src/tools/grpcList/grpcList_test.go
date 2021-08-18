@@ -12,15 +12,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
-// This is run as a test but is really a utility to restore
-// the cluster to usable state and restart mayastor.
-func TestRestartMayastor(t *testing.T) {
+// This is run as a test but is really a utility to list
+// resources using gRPC calls to mayastor instances
+func TestMayastorClientList(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "GRPC lists")
 }
 
 var _ = Describe("Mayastor utility: gRPC lists", func() {
 	It("should use gRPC to list mayastor nexuses, replicas and pools", func() {
+		Expect(mayastorclient.CanConnect()).To(BeTrue(), "unable to connect to all mayastor instances")
 		nodes, err := k8stest.GetNodeLocs()
 		if err != nil {
 			logf.Log.Info("list nodes failed", "error", err)

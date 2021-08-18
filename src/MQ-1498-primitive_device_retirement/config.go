@@ -1,4 +1,4 @@
-package node_shutdown
+package primitive_device_retirement
 
 import (
 	"mayastor-e2e/common"
@@ -10,19 +10,13 @@ import (
 	storageV1 "k8s.io/api/storage/v1"
 )
 
-const (
-	defTimeoutSecs   = 800  // in seconds
-	durationSecs     = 600  // in seconds
-	volumeFileSizeMb = 250  // in Mb
-	thinkTime        = 1000 // in milliseconds
-)
-
-type shutdownConfig struct {
+type primitiveDeviceRetirementConfig struct {
 	protocol             common.ShareProto
 	fsType               common.FileSystemType
 	volType              common.VolumeType
 	volBindingMode       storageV1.VolumeBindingMode
 	replicas             int
+	replicaIPs           []string
 	scName               string
 	pvcName              string
 	podName              string
@@ -34,18 +28,18 @@ type shutdownConfig struct {
 
 type TestType int
 
-func generateShutdownConfig(testName string) *shutdownConfig {
-	c := &shutdownConfig{
+func generatePrimitiveDeviceRetirementConfig(testName string) *primitiveDeviceRetirementConfig {
+	c := &primitiveDeviceRetirementConfig{
 		protocol:             common.ShareProtoNvmf,
-		volType:              common.VolFileSystem,
 		fsType:               common.Ext4FsType,
+		volType:              common.VolRawBlock,
 		volBindingMode:       storageV1.VolumeBindingImmediate,
 		replicas:             3,
-		pvcSize:              5120, // In Mb
 		scName:               testName + "-sc",
 		pvcName:              testName + "-pvc",
-		deployName:           testName + "-deploy",
 		podName:              testName + "-pod",
+		pvcSize:              1024, // In Mb
+		deployName:           testName + "-deploy",
 		numMayastorInstances: 3,
 	}
 

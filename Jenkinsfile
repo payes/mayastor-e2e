@@ -23,7 +23,7 @@ xray_self_ci_testplan='MQ-482'
 pipeline {
   agent none
   options {
-    timeout(time: 90, unit: 'MINUTES')
+    timeout(time: 180, unit: 'MINUTES')
     buildDiscarder(logRotator(numToKeepStr: '200', artifactNumToKeepStr: '200'))
   }
 

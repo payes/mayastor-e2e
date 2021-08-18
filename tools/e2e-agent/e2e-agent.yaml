@@ -27,6 +27,7 @@ spec:
     spec:
       priorityClassName: system-node-critical
       hostNetwork: true
+      hostPID: true
       containers:
         - name: e2e-rest-agent
           env:

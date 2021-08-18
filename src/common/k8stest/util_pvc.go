@@ -185,8 +185,7 @@ func MkPVC(volSizeMb int, volName string, scName string, volType common.VolumeTy
 	).Should(Equal(coreV1.VolumeBound))
 
 	Eventually(func() *v1alpha1.MayastorVolume {
-		msv, err := GetMSV(string(pvc.ObjectMeta.UID))
-		Expect(err).ToNot(HaveOccurred(), "%v", err)
+		msv, _ := GetMSV(string(pvc.ObjectMeta.UID))
 		return msv
 	},
 		defTimeoutSecs,
@@ -216,48 +215,54 @@ func MsvConsistencyCheck(uuid string) error {
 		return fmt.Errorf("MsvConsistencyCheck: msv spec replica count %d != msv status replicas %d", msv.Spec.ReplicaCount, len(msv.Status.Replicas))
 	}
 
-	gReplicas, err := mayastorclient.FindReplicas(uuid, GetMayastorNodeIPAddresses())
-	if err != nil {
-		return fmt.Errorf("failed to find replicas using gRPC %v", err)
-	}
-	for _, gReplica := range gReplicas {
-		if gReplica.Size != uint64(msv.Status.Size) {
-			return fmt.Errorf("MsvConsistencyCheck: replica size  %d != msv status size %d", gReplica.Size, msv.Status.Size)
-		}
-	}
+	if mayastorclient.CanConnect() {
 
-	if msv.Spec.ReplicaCount != len(gReplicas) {
-		return fmt.Errorf("MsvConsistencyCheck: msv spec replica count %d != list matching replicas found using gRPC %d", msv.Spec.ReplicaCount, len(gReplicas))
-	}
-	nexus := msv.Status.Nexus
-	// The nexus is only present when a volume is mounted by a pod.
-	if nexus.Node != "" {
-		if msv.Spec.ReplicaCount != len(msv.Status.Nexus.Children) {
-			return fmt.Errorf("MsvConsistencyCheck: msv spec replica count %d != msv status nexus children %d", msv.Spec.ReplicaCount, len(msv.Status.Nexus.Children))
-		}
-		nexusNodeIp, err := GetNodeIPAddress(nexus.Node)
+		gReplicas, err := mayastorclient.FindReplicas(uuid, GetMayastorNodeIPAddresses())
 		if err != nil {
-			return fmt.Errorf("MsvConsistencyCheck: failed to resolve nexus node IP address, %v", err)
+			return fmt.Errorf("failed to find replicas using gRPC %v", err)
 		}
-		grpcNexus, err := mayastorclient.FindNexus(uuid, []string{*nexusNodeIp})
-		if err != nil {
-			return fmt.Errorf("MsvConsistencyCheck: failed to list nexuses gRPC, %v", err)
+		for _, gReplica := range gReplicas {
+			if gReplica.Size != uint64(msv.Status.Size) {
+				return fmt.Errorf("MsvConsistencyCheck: replica size  %d != msv status size %d", gReplica.Size, msv.Status.Size)
+			}
 		}
-		if grpcNexus == nil {
-			return fmt.Errorf("MsvConsistencyCheck: failed to find nexus gRPC")
+
+		if msv.Spec.ReplicaCount != len(gReplicas) {
+			return fmt.Errorf("MsvConsistencyCheck: msv spec replica count %d != list matching replicas found using gRPC %d", msv.Spec.ReplicaCount, len(gReplicas))
 		}
-		if grpcNexus.Size != uint64(msv.Status.Size) {
-			return fmt.Errorf("MsvConsistencyCheck: nexus size mismatch msv and grpc")
-		}
-		if len(grpcNexus.Children) != msv.Spec.ReplicaCount {
-			return fmt.Errorf("MsvConsistencyCheck: msv replica count != grpc nexus children")
-		}
-		if grpcNexus.State.String() != msv.Status.Nexus.State {
-			return fmt.Errorf("MsvConsistencyCheck: msv nexus state != grpc nexus state")
+		nexus := msv.Status.Nexus
+		// The nexus is only present when a volume is mounted by a pod.
+		if nexus.Node != "" {
+			if msv.Spec.ReplicaCount != len(msv.Status.Nexus.Children) {
+				return fmt.Errorf("MsvConsistencyCheck: msv spec replica count %d != msv status nexus children %d", msv.Spec.ReplicaCount, len(msv.Status.Nexus.Children))
+			}
+			nexusNodeIp, err := GetNodeIPAddress(nexus.Node)
+			if err != nil {
+				return fmt.Errorf("MsvConsistencyCheck: failed to resolve nexus node IP address, %v", err)
+			}
+			grpcNexus, err := mayastorclient.FindNexus(uuid, []string{*nexusNodeIp})
+			if err != nil {
+				return fmt.Errorf("MsvConsistencyCheck: failed to list nexuses gRPC, %v", err)
+			}
+			if grpcNexus == nil {
+				return fmt.Errorf("MsvConsistencyCheck: failed to find nexus gRPC")
+			}
+			if grpcNexus.Size != uint64(msv.Status.Size) {
+				return fmt.Errorf("MsvConsistencyCheck: nexus size mismatch msv and grpc")
+			}
+			if len(grpcNexus.Children) != msv.Spec.ReplicaCount {
+				return fmt.Errorf("MsvConsistencyCheck: msv replica count != grpc nexus children")
+			}
+			if grpcNexus.State.String() != msv.Status.Nexus.State {
+				return fmt.Errorf("MsvConsistencyCheck: msv nexus state != grpc nexus state")
+			}
+		} else {
+			logf.Log.Info("MsvConsistencyCheck nexus unavailable")
 		}
 	} else {
-		logf.Log.Info("MsvConsistencyCheck nexus unavailable")
+		logf.Log.Info("MsvConsistencyCheck,  gRPC calls to mayastor are not enabled, not checking MSVs using gRPC calls")
 	}
+
 	logf.Log.Info("MsvConsistencyCheck OK")
 	return nil
 }
@@ -271,7 +276,7 @@ func RmPVC(volName string, scName string, nameSpace string) {
 
 	PVCApi := gTestEnv.KubeInt.CoreV1().PersistentVolumeClaims
 
-	// Confirm the PVC has been created.
+	// Confirm the PVC has been deleted.
 	pvc, getPvcErr := PVCApi(nameSpace).Get(context.TODO(), volName, metaV1.GetOptions{})
 	if k8serrors.IsNotFound(getPvcErr) {
 		return
@@ -279,7 +284,6 @@ func RmPVC(volName string, scName string, nameSpace string) {
 		Expect(getPvcErr).To(BeNil())
 		Expect(pvc).ToNot(BeNil())
 	}
-
 	// Delete the PVC
 	deleteErr := PVCApi(nameSpace).Delete(context.TODO(), volName, metaV1.DeleteOptions{})
 	Expect(deleteErr).To(BeNil())
@@ -291,21 +295,26 @@ func RmPVC(volName string, scName string, nameSpace string) {
 		defTimeoutSecs, // timeout
 		"1s",           // polling interval
 	).Should(Equal(true))
-
 	// Wait for the PV to be deleted.
 	Eventually(func() bool {
-		return IsPVDeleted(pvc.Spec.VolumeName)
+		// This check is required here because it will check for pv name
+		// when pvc is in pending state at that time we will not
+		// get pv name inside pvc spec i.e pvc.Spec.VolumeName
+		if pvc.Spec.VolumeName != "" {
+			return IsPVDeleted(pvc.Spec.VolumeName)
+		}
+		return true
 	},
-		defTimeoutSecs, // timeout
-		"1s",           // polling interval
+		"360s", // timeout
+		"1s",   // polling interval
 	).Should(Equal(true))
 
 	// Wait for the MSV to be deleted.
 	Eventually(func() bool {
 		return custom_resources.IsMsVolDeleted(string(pvc.ObjectMeta.UID))
 	},
-		defTimeoutSecs, // timeout
-		"1s",           // polling interval
+		"360s", // timeout
+		"1s",   // polling interval
 	).Should(Equal(true))
 }
 

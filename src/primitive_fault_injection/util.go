@@ -351,7 +351,7 @@ func (c *primitiveFaultInjectionConfig) verifyFaultedReplica() {
 				otherCount++
 			}
 		}
-		logf.Log.Info("Replica count", "faulted", faultedCount, "online", onlineCount, "other", otherCount)
+		logf.Log.Info("Replica state", "faulted", faultedCount, "online", onlineCount, "other", otherCount)
 		if faultedCount == 1 && otherCount == 0 && onlineCount != 0 {
 			break
 		}

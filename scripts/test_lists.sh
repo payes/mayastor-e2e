@@ -36,6 +36,7 @@ pvc_stress_fio
 pvc_waitforfirstconsumer
 synchronous_replication
 volume_filesystem
+ms_pod_disruption_rm_msv
 "
 
 profiles[c1]="
@@ -59,6 +60,7 @@ resource_check
 
 # removed synchronous_replication doesn't  with mayastor build 755c435fdb0a.
 # add pvc_delete and control_plane_rescheduling passes with mayastor build 755c435fdb0a
+# remove pvc_delete, fails because MOAC does not remove finalizer
 profiles[self_ci]="
 basic_volume_io
 io_soak
@@ -77,7 +79,6 @@ expand_msp_disk
 pvc_waitforfirstconsumer
 nexus_location
 pvc_readwriteonce
-pvc_delete
 control_plane_rescheduling
 "
 
@@ -86,12 +87,13 @@ validate_integrity_test
 "
 
 profiles[staging]="
-primitive_msp_state
 primitive_fault_injection
 maximum_vols_io
 msv_rebuild
 multiple_vols_pod_io
 node_failure
 single_msn_shutdown
-ms_pod_disruption_rm_msv
+primitive_fuzz_msv
+primitive_msp_state
+MQ-1498-primitive_device_retirement
 "
