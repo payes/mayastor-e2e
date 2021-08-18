@@ -215,7 +215,7 @@ type E2EConfig struct {
 		VolMb     int    `yaml:"volMb" env-default:"512"`
 		Replicas  int    `yaml:"replicas" env-default:"3"`
 		Duration  string `yaml:"duration" env-default:"240s"`
-		Timeout   string `yaml:"timeout" env-default:"360s"`
+		Timeout   string `yaml:"timeout" env-default:"420s"`
 		ThinkTime string `yaml:"thinkTime" env-default:"10ms"`
 	} `yaml:"primitiveFaultInjection"`
 	PrimitiveDataIntegrity struct {
