@@ -20,7 +20,7 @@ String cron_schedule = "H 6 * * *"
 pipeline {
   agent none
   options {
-    timeout(time: 2, unit: 'HOURS')
+    timeout(time: 180, unit: 'MINUTES')
     buildDiscarder(logRotator(numToKeepStr: '365', artifactNumToKeepStr: '365'))
   }
   triggers {
@@ -81,8 +81,8 @@ pipeline {
               // handle junit results on success or failure
               junit "${e2e_reports_dir}/**/*.xml"
               script {
-                common = load "./pipelines/common/common.groovy"
                 if (k8s_job != "") {
+                  common = load "./pipelines/common/common.groovy"
                   common.DestroyCluster(e2e_destroy_cluster_job, k8s_job)
                 }
               }
