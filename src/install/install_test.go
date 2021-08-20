@@ -86,7 +86,7 @@ var _ = Describe("Mayastor setup", func() {
 })
 
 var _ = BeforeSuite(func(done Done) {
-	k8stest.SetupTestEnv()
+	k8stest.SetupTestEnvBasic()
 
 	close(done)
 }, 60)

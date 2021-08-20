@@ -53,7 +53,7 @@ func InitTesting(t *testing.T, classname string, reportname string) {
 	}
 }
 
-func SetupTestEnv() {
+func SetupTestEnvBasic() {
 	logf.SetLogger(zap.New(zap.UseDevMode(true), zap.WriteTo(GinkgoWriter)))
 	fmt.Printf("Mayastor namespace is \"%s\"\n", common.NSMayastor())
 
@@ -113,6 +113,17 @@ func SetupTestEnv() {
 	// subsequent calls to mayastorClient.CanConnect retrieves
 	// the result.
 	mayastorclient.CheckAndSetConnect(GetMayastorNodeIPAddresses())
+}
+
+func SetupTestEnv() {
+	SetupTestEnvBasic()
+
+	// Fail the test setup if gRPC calls are mandated and
+	// gRPC calls are not supported.
+	if e2e_config.GetConfig().GrpcMandated {
+		Expect(mayastorclient.CanConnect()).To(BeTrue(),
+			"gRPC calls to mayastor are disabled, but mandated by configuration")
+	}
 }
 
 func TeardownTestEnvNoCleanup() {
@@ -314,6 +325,7 @@ func ResourceCheck() error {
 //BeforeEachCheck asserts that the state of mayastor resources is fit for the test to run
 func BeforeEachCheck() error {
 	logf.Log.Info("BeforeEachCheck")
+
 	err := ResourceCheck()
 	if err != nil {
 		logf.Log.Info("ResourceCheck failed", "CleanupOnBeforeEach", e2e_config.GetConfig().CleanupOnBeforeEach)
