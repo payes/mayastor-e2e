@@ -67,11 +67,11 @@ var _ = Describe("Mayastor primitive device retirement tests", func() {
 		err := k8stest.AfterEachCheck()
 		Expect(err).ToNot(HaveOccurred())
 	})
-	It("should verify primitive device retirement test", func() {
+	It("should verify primitive device retirement test (detached nexus)", func() {
 		c := generatePrimitiveDeviceRetirementConfig("primitive-device-retirement-detach-nexus-volume")
 		c.DetachCloudVolumeTest()
 	})
-	It("should verify primitive device retirement test", func() {
+	It("should verify primitive device retirement test (crashed nexus)", func() {
 		c := generatePrimitiveDeviceRetirementConfig("primitive-device-retirement-crash-nexus-mayastor")
 		c.CrashMayastorTest()
 	})
