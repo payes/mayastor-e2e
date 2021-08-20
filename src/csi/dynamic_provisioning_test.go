@@ -193,7 +193,8 @@ var _ = ginkgo.Describe("Dynamic Provisioning", func() {
 		test.Run(cs, ns)
 	})
 
-	ginkgo.It(fmt.Sprintf("should delete PV with reclaimPolicy %q [mayastor-csi.openebs.io]", v1.PersistentVolumeReclaimDelete), func() {
+	//	ginkgo.It(fmt.Sprintf("should delete PV with reclaimPolicy %q [mayastor-csi.openebs.io]", v1.PersistentVolumeReclaimDelete), func() {
+	ginkgo.It("should delete PV with reclaimPolicy \"Delete\" [mayastor-csi.openebs.io]", func() {
 		reclaimPolicy := v1.PersistentVolumeReclaimDelete
 		volumes := []testsuites.VolumeDetails{
 			{
@@ -210,7 +211,8 @@ var _ = ginkgo.Describe("Dynamic Provisioning", func() {
 	})
 
 	// Disable for Mayastor until CAS-566 has been resolved.
-	//	ginkgo.It(fmt.Sprintf("should retain PV with reclaimPolicy %q [mayastor-csi.openebs.io]", v1.PersistentVolumeReclaimRetain), func() {
+	//	//	ginkgo.It(fmt.Sprintf("should retain PV with reclaimPolicy %q [mayastor-csi.openebs.io]", v1.PersistentVolumeReclaimRetain), func() {
+	//	ginkgo.It("should retain PV with reclaimPolicy \"Retain\" [mayastor-csi.openebs.io]", func() {
 	//		reclaimPolicy := v1.PersistentVolumeReclaimRetain
 	//		volumes := []testsuites.VolumeDetails{
 	//			{

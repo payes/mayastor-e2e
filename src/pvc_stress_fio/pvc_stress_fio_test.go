@@ -112,7 +112,7 @@ var _ = Describe("Mayastor PVC Stress test", func() {
 		stressTestPVC(cdIterations, false)
 	})
 
-	It("should stress test creation and deletion of PVCs provisioned over iSCSI and NVMe-of", func() {
+	It("should stress test creation and deletion of PVCs provisioned over iSCSI and NVMe-of (CRUD)", func() {
 		logf.Log.Info("Number of cycles are", "Create/Read/Update/Delete", crudIterations)
 		stressTestPVC(crudIterations, true)
 	})
