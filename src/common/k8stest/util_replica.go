@@ -118,6 +118,9 @@ func ExcludeNexusReplica(nexusIP string, uuid string) (bool, error) {
 	// get the nexus local device
 	var nxlist []string
 	nxlist = append(nxlist, nexusIP)
+	if !mayastorclient.CanConnect() {
+		return false, fmt.Errorf("gRPC calls not enabled")
+	}
 	nexusList, err := mayastorclient.ListNexuses(nxlist)
 	if err != nil {
 		return false, fmt.Errorf("Failed to list nexuses, err=%v", err)
