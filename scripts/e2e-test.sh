@@ -260,16 +260,16 @@ export e2e_mayastor_root_dir=$mayastor_root_dir
 export e2e_session_dir=$sessiondir
 
 # grpc proto compatibility check
-if ! cmp src/common/mayastorclient/grpc/mayastor.proto "$mayastor_root_dir/rpc/proto/mayastor.proto"
+if ! cmp src/common/mayastorclient/grpc/mayastor.proto "$mayastor_root_dir/rpc/mayastor-api/protobuf/mayastor.proto"
 then
-    echo "src/common/mayastorclient/grpc/mayastor.proto != $mayastor_root_dir/rpc/proto/mayastor.proto"
+    echo "src/common/mayastorclient/grpc/mayastor.proto != $mayastor_root_dir/rpc/mayastor-api/protobuf/mayastor.proto"
     echo "see src/common/mayastorclient/grpc/README.md"
 # 17/06/2021 temporarily mutate the check into warning
 # to properly fix we need to generate the client code from the proto,
 # and for that to work we need and install bundle which packages the proto
 # file from mayastor.
 #    exit $EXITV_FILE_MISMATCH
-    echo "WARNING proto files mismatch: src/common/mayastorclient/grpc/mayastor.proto != $mayastor_root_dir/rpc/proto/mayastor.proto"
+    echo "WARNING proto files mismatch: src/common/mayastorclient/grpc/mayastor.proto != $mayastor_root_dir/rpc/mayastor-api/protobuf/mayastor.proto"
 fi
 
 # CRD compatibility checks

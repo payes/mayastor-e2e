@@ -66,6 +66,8 @@ def BuildImages(mayastorBranch, moacBranch, test_tag) {
   // stages.
   sh "cd Mayastor && ./scripts/reclaim-space.sh 10"
 
+  sh "cd Mayastor && git submodule update --init"
+
   // Build images (REGISTRY is set in jenkin's global configuration).
   // Note: We might want to build and test dev images that have more
   // assertions instead but that complicates e2e tests a bit.
