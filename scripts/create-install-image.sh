@@ -84,7 +84,7 @@ CMD [\"ls\"]"
 
 tmpdir=$(mktemp -d)
 pushd "${MAYASTOR_DIR}" \
-    && tar cf "$tmpdir/install.tar" scripts/generate-deploy-yamls.sh chart/ deploy rpc/proto/mayastor.proto \
+    && tar cf "$tmpdir/install.tar" scripts/generate-deploy-yamls.sh chart/ rpc/mayastor-api/protobuf/mayastor.proto deploy \
     && git rev-parse HEAD > "$tmpdir/git-revision.mayastor" \
     && git rev-parse --short=12 HEAD >> "$tmpdir/git-revision.mayastor" \
     && popd
