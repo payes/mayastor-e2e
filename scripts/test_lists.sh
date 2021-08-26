@@ -23,6 +23,7 @@ resource_check
 dynamic_provisioning
 expand_msp_disk
 mayastorpool_schema
+ms_pod_disruption_rm_msv
 ms_pod_restart
 ms_pool_delete
 pool_modify
@@ -34,9 +35,9 @@ primitive_volumes
 pvc_readwriteonce
 pvc_stress_fio
 pvc_waitforfirstconsumer
+single_msn_shutdown
 synchronous_replication
 volume_filesystem
-ms_pod_disruption_rm_msv
 "
 
 profiles[c1]="
@@ -95,5 +96,4 @@ maximum_vols_io
 msv_rebuild
 multiple_vols_pod_io
 node_failure
-single_msn_shutdown
 "
