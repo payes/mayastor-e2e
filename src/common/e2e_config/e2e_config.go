@@ -53,6 +53,7 @@ type E2EConfig struct {
 	// FIXME: handle empty poolDevice
 	PoolDevice  string `yaml:"poolDevice" env:"e2e_pool_device"`
 	E2eFioImage string `yaml:"e2eFioImage" env-default:"mayadata/e2e-fio" env:"e2e_fio_image"`
+	E2eFsxImage string `yaml:"e2eFsxImage" env-default:"mayadata/e2e-fsx" env:"e2e_fsx_image"`
 	// This is an advisory setting for individual tests
 	// If set to true - typically during test development - tests with multiple It clauses should defer asserts till after
 	// resources have been cleaned up . This behaviour makes it possible to have useful runs for all It clauses.
@@ -251,6 +252,12 @@ type E2EConfig struct {
 		LargePvcSize        int    `yaml:"largePvcSize" env-default:"11000000000000"`
 		VolCount            int    `yaml:"volCount" env-default:"115"`
 	} `yaml:"primitiveMsvFuzz"`
+	FsxExt4Stress struct {
+		VolMb             int    `yaml:"volMb" env-default:"1024"`
+		Replicas          int    `yaml:"replicas" env-default:"3"`
+		FileSystemType    string `yaml:"fileSystemType" env-default:"ext4"`
+		NumberOfOperation int    `yaml:"numberOfOperation" env-default:"9977777"`
+	} `yaml:"fsxExt4Stress"`
 }
 
 var once sync.Once
