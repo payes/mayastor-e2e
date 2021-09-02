@@ -96,4 +96,5 @@ maximum_vols_io
 msv_rebuild
 multiple_vols_pod_io
 node_failure
+stale_msp_after_node_power_failure
 "
