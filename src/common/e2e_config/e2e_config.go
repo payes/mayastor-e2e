@@ -51,9 +51,10 @@ type E2EConfig struct {
 	//	CIRegistry string `yaml:"ciRegistry" env:"e2e_ci_docker_registry" env-default:"ci-registry.mayastor-ci.mayadata.io"`
 	ImageTag string `yaml:"imageTag" env:"e2e_image_tag"`
 	// FIXME: handle empty poolDevice
-	PoolDevice  string `yaml:"poolDevice" env:"e2e_pool_device"`
-	E2eFioImage string `yaml:"e2eFioImage" env-default:"mayadata/e2e-fio" env:"e2e_fio_image"`
-	E2eFsxImage string `yaml:"e2eFsxImage" env-default:"mayadata/e2e-fsx" env:"e2e_fsx_image"`
+	PoolDevice       string `yaml:"poolDevice" env:"e2e_pool_device"`
+	E2eFioImage      string `yaml:"e2eFioImage" env-default:"mayadata/e2e-fio" env:"e2e_fio_image"`
+	E2eFsxImage      string `yaml:"e2eFsxImage" env-default:"mayadata/e2e-fsx" env:"e2e_fsx_image"`
+	E2eXFSTestsImage string `yaml:"e2eXFSTestsImage" env-default:"mayadata/e2e-xfstests" env:"e2e_xfstests_image"`
 	// This is an advisory setting for individual tests
 	// If set to true - typically during test development - tests with multiple It clauses should defer asserts till after
 	// resources have been cleaned up . This behaviour makes it possible to have useful runs for all It clauses.
@@ -258,6 +259,12 @@ type E2EConfig struct {
 		FileSystemType    string `yaml:"fileSystemType" env-default:"ext4"`
 		NumberOfOperation int    `yaml:"numberOfOperation" env-default:"9977777"`
 	} `yaml:"fsxExt4Stress"`
+	XFSTests struct {
+		VolMb             int    `yaml:"volMb" env-default:"1024"`
+		Replicas          int    `yaml:"replicas" env-default:"3"`
+		FileSystemType    string `yaml:"fileSystemType" env-default:"xfs"`
+		NumberOfOperation int    `yaml:"numberOfOperation" env-default:"9977777"`
+	} `yaml:"xfsTests"`
 }
 
 var once sync.Once

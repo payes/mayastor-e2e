@@ -1,0 +1,31 @@
+kind: Pod
+apiVersion: v1
+metadata:
+  name: xfs
+spec:
+  priorityClassName: system-node-critical
+  hostNetwork: true
+  securityContext:
+    runAsUser: 0
+  containers:
+  - name: xfs
+    securityContext:
+      privileged: true
+      allowPrivilegeEscalation: true
+      runAsUser: 0
+    image:  mayadata/xfstests:latest
+    imagePullPolicy: Always
+    args: ["/dev/test","/dev/scratch"]
+    volumeDevices:
+      - devicePath: /dev/test
+        name: vol-1
+      - devicePath: /dev/scratch
+        name: vol-2
+  volumes:
+  - name: vol-1
+    persistentVolumeClaim:
+      claimName: ms-volume-claim-1
+  - name: vol-2
+    persistentVolumeClaim:
+      claimName: ms-volume-claim-2
+---

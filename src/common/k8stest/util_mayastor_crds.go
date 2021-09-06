@@ -7,7 +7,6 @@ import (
 	v1alpha1Api "mayastor-e2e/common/custom_resources/api/types/v1alpha1"
 
 	. "github.com/onsi/gomega"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // GetMSV Get pointer to a mayastor volume custom resource
@@ -23,7 +22,7 @@ func GetMSV(uuid string) (*v1alpha1Api.MayastorVolume, error) {
 		return nil, nil
 	}
 
-	logf.Log.Info("GetMSV", "msv", msv)
+	//logf.Log.Info("GetMSV", "msv", msv)
 	// Note: msVol.Node can be unassigned here if the volume is not mounted
 	if msv.Status.State == "" {
 		return nil, fmt.Errorf("GetMSV: state not defined, got msv.Status=\"%v\"", msv.Status)

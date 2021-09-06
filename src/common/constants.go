@@ -15,6 +15,9 @@ const LargeClaimSizeMb = 500
 
 const FioFsMountPoint = "/volume"
 const FioBlockFilename = "/dev/sdm"
+
+var XFSTestsBlockFilenames = []string{"/dev/test", "/dev/scratch"}
+
 const FioFsFilename = FioFsMountPoint + "/fiotestfile"
 
 // ConfigDir  Relative path to the configuration directory WRT e2e root.

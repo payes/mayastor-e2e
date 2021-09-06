@@ -5,6 +5,7 @@ import "mayastor-e2e/common/e2e_config"
 var nsMayastor = e2e_config.GetConfig().Platform.MayastorNamespace
 var fioImage = e2e_config.GetConfig().E2eFioImage
 var fsxImage = e2e_config.GetConfig().E2eFsxImage
+var xfsTestsImage = e2e_config.GetConfig().E2eXFSTestsImage
 
 // NSMayastor return the name of the namespace in which Mayastor is installed
 func NSMayastor() string {
@@ -45,6 +46,10 @@ func GetFioImage() string {
 
 func GetFsxImage() string {
 	return fsxImage
+}
+
+func GetXFSTestsImage() string {
+	return xfsTestsImage
 }
 
 var DefaultReplicaCount = e2e_config.GetConfig().DefaultReplicaCount
