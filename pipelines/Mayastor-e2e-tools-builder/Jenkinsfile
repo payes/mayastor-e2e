@@ -1,23 +1,25 @@
 pipeline {
     agent { label 'nixos-mayastor' }
-    stage('build tools') {
-        steps {
-            sh """
-                cd tools/e2e-fio
-                ./build.sh
-                cd ../e2e-agent
-                ./build.sh
-                cd ../e2e-fsx
-                ./build.sh
-               """   
-        }
-        steps {
-            withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
-                sh 'echo "$PASSWORD" | docker login -u "$USERNAME" --password-stdin'
+    stages {
+        stage('build tools') {
+            steps {
+                sh """
+                    cd tools/e2e-fio
+                    ./build.sh
+                    cd ../e2e-agent
+                    ./build.sh
+                    cd ../e2e-fsx
+                    ./build.sh
+                """   
             }
-            sh 'docker push mayadata/e2e-fio:latest'
-            sh 'docker push mayadata/e2e-agent:latest'
-            sh 'docker push mayadata/e2e-fsx:latest'
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
+                    sh 'echo "$PASSWORD" | docker login -u "$USERNAME" --password-stdin'
+                }
+                sh 'docker push mayadata/e2e-fio:latest'
+                sh 'docker push mayadata/e2e-agent:latest'
+                sh 'docker push mayadata/e2e-fsx:latest'
+            }
         }
     }
 }
