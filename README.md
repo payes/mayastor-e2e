@@ -58,10 +58,11 @@ terraform (in terraform/ in this repo).
 If you'd like to run the tests as a whole (as they are run in our CI/CD
 pipeline) then use the script `./scripts/e2e-test.sh`.
 
-To run particular test cd to the directory with tests and type `go test .  -ginkgo.v -ginkgo.progress -timeout 0`
+To run particular test, `cd` to the directory with tests and type `go test .  -ginkgo.v -ginkgo.progress -timeout 0`
 Most of the tests assume that mayastor is already installed. `install` test
 can be run to do that.
 Note some tests require deletion of pools and reconfiguration of pools, these tests will only work if
+
 * The mayastor nodes are homogenous in terms of pool devices
   * single pool device
   * the pool device name is the same on all nodes
@@ -80,6 +81,7 @@ List of these tests (not exhaustive):
 The e2e test suite support runtime configuration to set parameters and variables,
 to suit the cluster under test.
 When the test suites are run using `./scripts/e2e-test.sh`
+
 * The configuration file can be specified using the `--config`
 option
 * The platform configuration file can be specified using the `--platform_config` option
@@ -116,15 +118,15 @@ Once the configuration has been loaded and all fields resolved, the contents are
 The full path to the file will be printed on the console.
 
 # Reports
-Reports in the `junit/xml` format will be generate only if a reports directory is specified
+Reports in the `junit/xml` format will be generated only if a reports directory is specified
  * by environment variable `e2e_reports_dir`
  * in the loaded configuration file
 
 # Artefacts
-Artefacts generated a part of the test will be generated in a subdirecrtory under `<artifacts>/sessions` directory
+Artefacts generated as a part of the test will be saved in a subdirectory under `<artifacts>/sessions` directory
 
 The `<artifacts>` directory is either
- * the `artifacts` subdirecrity under the repo root directory - if the go script successfully detected the repo root path
+ * the `artifacts` subdirectory under the repo root directory - if the go script successfully detected the repo root path
  * `/tmp/mayastor-e2e`
 
 The name of the subdirectory under `<artifacts>/sessions` is one of
@@ -133,17 +135,17 @@ The name of the subdirectory under `<artifacts>/sessions` is one of
  * `default`
 
  # Environment variables
- * `e2e_root_dir` Root directory of the `mayastor-e2e` repo. If not specified a sub path `mayastor-e2e/src` is searched for in the path of the `go` file running the code and set if found.
- * `e2e_config_file` name of configuration file in `configurations` or full path to configuration file
- * `e2e_platform_config_file` name of platform configuration file in `configurations/platforms` or full path to platform configuration file
- * `e2e_mayastor_root_dir` absolute path to `mayastor` repo, only required for `install` and `uninstall` tests
- * `e2e_session_dir` absolute path for session artifacts
- * `e2e_reports_dir` absolute path for generated reports
- * `e2e_docker_registry` Registry from where mayastor images are retrieved
- * `e2e_image_tag ` docker image tags for mayastor images
- * `e2e_pool_device` pool device used by mayastor, required for `install` and some disruptive tests which modify/delete/recreate pools on the test cluster. These tests are best run on a cluster where mayastor is installed using the `install` test
- * `e2eFioImage` docker image name of the mayastor e2e test pod
- * `e2e_default_replica_count` default replica count for volumes created by the tests
- * `e2e_defer_asserts` defer asserts until after cleanup, so that all `It` clauses can be excercised. Only one test uses this at the moment.
- * `e2e_uninstall_cleanup` flag for `uninstall` test
- * `e2e_policy_cleanup_before` experimental flag
+ * `e2e_root_dir`  : Root directory of the `mayastor-e2e` repo. If not specified, a sub path `mayastor-e2e/src` is searched for in the path of the `go` file running the code and set if found.
+ * `e2e_config_file` :  Name of configuration file in `configurations` or full path to configuration file.
+ * `e2e_platform_config_file`  : Name of platform configuration file in `configurations/platforms` or full path to platform configuration file.
+ * `e2e_mayastor_root_dir`  : Absolute path to `mayastor` repo, only required for `install` and `uninstall` tests.
+ * `e2e_session_dir` :  Absolute path for session artifacts.
+ * `e2e_reports_dir`  : Absolute path for generated reports.
+ * `e2e_docker_registry`  : Registry from where mayastor images are retrieved.
+ * `e2e_image_tag `  : Docker image tags for mayastor images.
+ * `e2e_pool_device`  : Pool device used by mayastor, required for `install` and some disruptive tests which modify/delete/recreate pools on the test cluster. These tests are best run on a cluster where mayastor is installed using the `install` test.
+ * `e2eFioImage` : Docker image name of the mayastor e2e test pod.
+ * `e2e_default_replica_count` :  Default replica count for volumes created by the tests
+ * `e2e_defer_asserts`  : Defer asserts until after cleanup, so that all `It` clauses can be excercised. Only one test uses this at the moment.
+ * `e2e_uninstall_cleanup`  : Flag for `uninstall` test.
+ * `e2e_policy_cleanup_before`  : Experimental flag.
