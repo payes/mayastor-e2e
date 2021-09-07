@@ -1,3 +1,9 @@
+#!/usr/bin/env groovy
+
+// Global variable for tools images
+def IMAGES="mayadata/e2e-fio mayadata/e2e-agent mayadata/e2e-fsx"
+def TAG="latest"
+
 pipeline {
     agent { label 'nixos-mayastor' }
     stages {
@@ -15,12 +21,15 @@ pipeline {
         }//stage
         stage('push tools image'){
             steps {
-                withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
-                    sh 'echo "$PASSWORD" | docker login -u "$USERNAME" --password-stdin'
+                script {
+                    def images = IMAGES.split()
+                    //loop over list
+                    for (int i = 0; i < images.size(); i++) {
+                        output_image="${env.REGISTRY}/${images[i]}:${TAG}"
+                        docker tag "${images[i]}" "${output_image}"
+                        docker push "${output_image}"
+                    }
                 }
-                sh 'docker push mayadata/e2e-fio:latest'
-                sh 'docker push mayadata/e2e-agent:latest'
-                sh 'docker push mayadata/e2e-fsx:latest'
             }//steps
         }//stage
     }//stages
