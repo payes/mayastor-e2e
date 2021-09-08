@@ -2,7 +2,6 @@ package stale_msp_after_node_power_failure
 
 import (
 	"fmt"
-	"mayastor-e2e/common"
 	"mayastor-e2e/common/custom_resources"
 	"mayastor-e2e/common/k8stest"
 	"mayastor-e2e/common/platform"
@@ -47,8 +46,17 @@ var _ = Describe("Stale MSP after node power failure test", func() {
 			_ = platform.PowerOnNode(poweredOffNode)
 		}
 
+		err := k8stest.RestartMayastor(240, 240, 240)
+		Expect(err).ToNot(HaveOccurred(), "Restart Mayastor pods")
+
+		// RestoreConfiguredPools (re)create pools as defined by the configuration.
+		// As part of the tests we may modify the pools, in such test cases
+		// the test should delete all pools and recreate the configured set of pools.
+		err = k8stest.RestoreConfiguredPools()
+		Expect(err).To(BeNil(), "Not all pools are online after restoration")
+
 		//Check resource leakage.
-		err := k8stest.AfterEachCheck()
+		err = k8stest.AfterEachCheck()
 		Expect(err).ToNot(HaveOccurred())
 	})
 
@@ -89,7 +97,7 @@ func (c *nodepowerfailureConfig) staleMspAfterNodePowerFailureTest() {
 	time.Sleep(1 * time.Minute)
 
 	//Verify that node is in not ready state
-	c.verifyNodeNotReady(nodeName)
+	verifyNodeNotReady(nodeName)
 
 	Eventually(func() error {
 		err = custom_resources.DeleteMsPool(poolName)
@@ -110,37 +118,14 @@ func (c *nodepowerfailureConfig) staleMspAfterNodePowerFailureTest() {
 	_, err = custom_resources.CreateMsPool(newPoolName, nodeName, diskName)
 	Expect(err).ToNot(HaveOccurred())
 
-	// Check for the pool status. It should not be in online state
+	// Check for the pool status
 	const timeSecs = 30
 	const timeSleepSecs = 10
 	for ix := 0; ix < timeSecs/timeSleepSecs; ix++ {
 		time.Sleep(timeSleepSecs * time.Second)
 		err = IsMsPoolOnline(newPoolName)
 	}
-	Expect(err).ToNot(BeNil(), "Unexpected: All pools are online, expected "+newPoolName+" to be offline")
-
-	//Restart moac pod in mayastor namespace
-	moacPod, _ := k8stest.GetMoacPodName()
-	moacPodName := moacPod[0]
-
-	err = k8stest.DeletePod(moacPodName, common.NSMayastor())
-	Expect(err).ToNot(HaveOccurred())
-
-	// check mayastor status
-	ready, err := k8stest.MayastorReady(2, 540)
-	Expect(err).ToNot(HaveOccurred())
-	Expect(ready).To(BeTrue())
-
-	// Check test MSP status, should have come in online state
-	for ix := 0; ix < timeSecs/timeSleepSecs; ix++ {
-		time.Sleep(timeSleepSecs * time.Second)
-		err = IsMsPoolOnline(newPoolName)
-	}
-	Expect(err).To(BeNil(), newPoolName+" still not in online state, expected to be online after moac pod restart")
-
-	err = k8stest.RestartMayastor(240, 240, 240)
-	Expect(err).ToNot(HaveOccurred(), "Restart Mayastor pods")
-	c.verifyMayastorComponentStates()
+	Expect(err).To(BeNil(), "Unexpected: All pools should be online, but "+newPoolName+" is not in online state")
 
 }
 
@@ -159,4 +144,16 @@ func IsMsPoolOnline(poolName string) error {
 		return fmt.Errorf(poolName + " is not online")
 	}
 	return err
+}
+
+// Verify that node is in not ready state
+func verifyNodeNotReady(nodeName string) {
+	Eventually(func() bool {
+		readyStatus, err := k8stest.IsNodeReady(nodeName, nil)
+		Expect(err).ToNot(HaveOccurred())
+		return readyStatus
+	},
+		defTimeoutSecs, // timeout
+		5,              // polling interval
+	).Should(Equal(false))
 }
