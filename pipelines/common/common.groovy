@@ -401,7 +401,6 @@ def RunParallelStage(Map params) {
     def tests_queue = params['tests_queue']
     def failed_tests_queue = params['failed_tests_queue']
     def e2e_image_tag = params['e2e_image_tag']
-    def loki_run_id = params['loki_run_id']
     def e2e_build_cluster_job = params['e2e_build_cluster_job']
     def e2e_destroy_cluster_job = params['e2e_destroy_cluster_job']
     def e2e_environment = params['e2e_environment']
