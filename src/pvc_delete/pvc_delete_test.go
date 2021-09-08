@@ -269,7 +269,7 @@ func createFioPod(volName string) (string, error) {
 	// fio pod container
 	podContainer := coreV1.Container{
 		Name:  fioPodName,
-		Image: "mayadata/e2e-fio",
+		Image: common.GetFioImage(),
 		Args:  []string{"sleep", "1000000"},
 	}
 
