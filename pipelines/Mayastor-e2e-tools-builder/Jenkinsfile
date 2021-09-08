@@ -26,8 +26,8 @@ pipeline {
                     //loop over list
                     for (int i = 0; i < images.size(); i++) {
                         output_image="${env.REGISTRY}/${images[i]}:${TAG}"
-                        sh 'docker tag "${images[i]}" "${output_image}"'
-                        sh 'docker push "${output_image}"'
+                        sh "docker tag ${images[i]} ${output_image}"
+                        sh "docker push ${output_image}"
                     }
                 }
             }//steps
