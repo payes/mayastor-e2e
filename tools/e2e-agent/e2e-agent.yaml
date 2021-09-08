@@ -41,7 +41,7 @@ spec:
           securityContext:
             privileged: true
             allowPrivilegeEscalation: true
-          image: mayadata/e2e-agent:latest
+          image: ci-registry.mayastor-ci.mayadata.io/mayadata/e2e-agent:latest
           volumeMounts:
             - name: host-root
               mountPath: /host
