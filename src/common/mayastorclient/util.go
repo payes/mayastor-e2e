@@ -77,3 +77,20 @@ func CheckAndSetConnect(nodes []string) {
 func CanConnect() bool {
 	return canConnect
 }
+
+const ctxTimeout = 30 * time.Second
+
+// retry a function upto 6 times with exponential backoff,
+// starting at 5 seconds if the error(s) returned are
+// is deadline_exceeded.
+func retryBackoff(f func() (err error)) {
+	timeout := 5 * time.Second
+	for i := 0; i < 6; i++ {
+		if !isDeadlineExceeded(f()) {
+			return
+		}
+		logf.Log.Info("retrying gRPC call", "after", timeout)
+		time.Sleep(timeout)
+		timeout *= 2
+	}
+}
