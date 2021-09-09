@@ -17,8 +17,6 @@ limitations under the License.
 package testsuites
 
 import (
-	"mayastor-e2e/common/e2e_config"
-
 	"context"
 	"encoding/json"
 	"fmt"
@@ -428,7 +426,7 @@ type TestDeployment struct {
 func NewTestDeployment(c clientset.Interface, ns *v1.Namespace, command string, pvc *v1.PersistentVolumeClaim, volumeName, mountPath string, readOnly bool) *TestDeployment {
 	generateName := "mayastor-volume-tester-"
 	selectorValue := fmt.Sprintf("%s%d", generateName, rand.Int())
-	replicas := int32(e2e_config.GetConfig().CSI.Replicas)
+	replicas := int32(1)
 	testDeployment := &TestDeployment{
 		client:    c,
 		namespace: ns,

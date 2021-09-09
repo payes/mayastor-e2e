@@ -38,9 +38,11 @@ uninstall_cleanup="n"
 generate_logs=0
 logsdir="$ARTIFACTSDIR/logs"
 reportsdir="$ARTIFACTSDIR/reports"
+coveragedir="$ARTIFACTSDIR/coverage"
 mayastor_root_dir=""
 policy_cleanup_before="${e2e_policy_cleanup_before:-false}"
 profile_test_list=""
+ssh_identity=""
 
 declare -A profiles
 # List and Sequence of tests.
@@ -220,6 +222,10 @@ while [ "$#" -gt 0 ]; do
         shift
         session="$1"
         ;;
+    --ssh_identity)
+        shift
+        ssh_identity="$1"
+        ;;
     *)
       echo "Unknown option: $1"
       help
@@ -238,6 +244,7 @@ else
     sessiondir="$ARTIFACTSDIR/sessions/$session"
     logsdir="$logsdir/$session"
     reportsdir="$reportsdir/$session"
+    coveragedir="$coveragedir/$session"
 fi
 
 if [ -z "$mayastor_root_dir" ]; then
@@ -468,11 +475,16 @@ if contains "$tests" "uninstall" ; then
         echo "Test \"uninstall\" FAILED!"
         test_failed=1
         emitLogs "uninstall"
-    elif  [ "$test_failed" -ne 0 ] ; then
-        # tests failed, but uninstall was successful
-        # so cluster is reusable
-        echo "At least one test FAILED! Cluster is usable."
-        exit $EXITV_FAILED_CLUSTER_OK
+    else
+        if ! "$SCRIPTDIR/getCoverageFiles.py" --path "$coveragedir" --identity_file "$ssh_identity" ; then
+            echo "Failed to retrieve coverage files"
+        fi
+        if  [ "$test_failed" -ne 0 ] ; then
+            # tests failed, but uninstall was successful
+            # so cluster is reusable
+            echo "At least one test FAILED! Cluster is usable."
+            exit $EXITV_FAILED_CLUSTER_OK
+        fi
     fi
 fi
 
