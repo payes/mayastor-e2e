@@ -253,7 +253,7 @@ if [ -z "$mayastor_root_dir" ]; then
         echo "Unable to extract install files for $tag"
         exit $EXITV_INVALID_OPTION
     fi
-    export mayastor_root_dir="$sessiondir/install/$tag"
+    export mayastor_root_dir="$sessiondir/install-bundle/$tag"
     # "$mayastor_root_dir/csi/moac/crds/mayastor*.yaml" doesn't work
     # in that the script does not receive a list of yaml files but instead
     # gets mayastor*.yaml. Hence the odd double quoting style

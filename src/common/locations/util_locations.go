@@ -24,7 +24,7 @@ func GetMayastorScriptsDir() string {
 
 // GetGeneratedYamlsDir return the path to where Mayastor yaml files are generated this is a generated directory, so may not exist yet.
 func GetGeneratedYamlsDir() string {
-	return path.Clean(e2e_config.GetConfig().SessionDir + "/yamls")
+	return path.Clean(e2e_config.GetConfig().SessionDir + "/install-yamls")
 }
 
 // GetE2EAgentPath return the path e2e-agent yaml file
