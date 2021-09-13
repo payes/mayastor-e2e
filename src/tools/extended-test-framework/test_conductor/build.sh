@@ -2,6 +2,9 @@
 
 set -e pipefail
 
+SCRIPT_DIR=$(dirname "$0")
+cd ${SCRIPT_DIR}
+
 go get github.com/go-openapi/errors
 go get github.com/go-openapi/runtime
 go get github.com/go-openapi/runtime/client
