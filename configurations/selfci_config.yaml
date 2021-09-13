@@ -62,8 +62,7 @@ maximumVolsIO:
   volumeCountPerPod: 2
   podCount: 2
   duration: 30s
-  timeout:  240s
-  thinkTime: 10ms
+  timeout:  600s
 pvcReadWriteOnce:
   # timeout units are seconds
   fioTimeout: 20

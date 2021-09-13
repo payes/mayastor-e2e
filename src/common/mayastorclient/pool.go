@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	mayastorGrpc "mayastor-e2e/common/mayastorclient/grpc"
+	"time"
 
 	"google.golang.org/grpc"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -108,4 +109,48 @@ func ListPools(addrs []string) ([]MayastorPool, error) {
 		}
 	}
 	return poolInfos, accErr
+}
+
+func DestroyAllPools(addrs []string) error {
+
+	for _, addr := range addrs {
+		poolInfo, err := listPool(addr)
+		if err != nil {
+			return err
+		}
+		if len(poolInfo) == 0 {
+			continue
+		}
+		for _, pool := range poolInfo {
+			err = DestroyPool(pool.Name, addr)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func DestroyPool(name, addr string) error {
+	var err error
+	addrPort := fmt.Sprintf("%s:%d", addr, mayastorPort)
+	conn, err := grpc.Dial(addrPort, grpc.WithInsecure())
+	if err != nil {
+		logf.Log.Info("destroyPool", "error", err)
+		return err
+	}
+	defer func(conn *grpc.ClientConn) {
+		err := conn.Close()
+		if err != nil {
+			logf.Log.Info("destroyPool", "error on close", err)
+		}
+	}(conn)
+
+	c := mayastorGrpc.NewMayastorClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	_, err = c.DestroyPool(ctx, &mayastorGrpc.DestroyPoolRequest{Name: name})
+	return err
 }

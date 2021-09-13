@@ -129,7 +129,6 @@ func (c *maxVolConfig) createFioPods() {
 		podArgs = append(podArgs, common.GetDefaultFioArguments()...)
 		podArgs = append(podArgs, []string{
 			fmt.Sprintf("--size=%dm", common.DefaultFioSizeMb),
-			fmt.Sprintf("--thinktime=%d", int(c.thinkTime.Microseconds())),
 		}...,
 		)
 
