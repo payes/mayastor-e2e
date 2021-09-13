@@ -4,16 +4,23 @@ go 1.15
 
 require (
 	github.com/container-storage-interface/spec v1.2.0 // indirect
+	github.com/go-openapi/errors v0.20.1
+	github.com/go-openapi/loads v0.20.2
+	github.com/go-openapi/runtime v0.19.31
+	github.com/go-openapi/spec v0.20.3
+	github.com/go-openapi/strfmt v0.20.2
+	github.com/go-openapi/swag v0.19.14
+	github.com/go-openapi/validate v0.20.2
 	github.com/gorilla/mux v1.7.3
 	github.com/ilyakaznacheev/cleanenv v1.2.5
+	github.com/jessevdk/go-flags v1.5.0
 	github.com/onsi/ginkgo v1.14.1
 	github.com/onsi/gomega v1.10.2
 	github.com/pkg/errors v0.9.1
-	github.com/stretchr/testify v1.5.1 // indirect
-	golang.org/x/sys v0.0.0-20200625212154-ddb9806d33ae // indirect
+	golang.org/x/net v0.0.0-20210119194325-5f4716e94777
 	google.golang.org/grpc v1.37.0
 	google.golang.org/protobuf v1.26.0
-	gopkg.in/yaml.v2 v2.3.0
+	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.19.2
 	k8s.io/apimachinery v0.19.2
 	k8s.io/client-go v0.19.2
