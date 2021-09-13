@@ -61,9 +61,8 @@ func (c *maxVolConfig) createFioPods() {
 
 		// fio pod container
 		podContainer := coreV1.Container{
-			Name:  podName,
-			Image: common.GetFioImage(),
-			// Image:           "mayadata/e2e-fio",
+			Name:            podName,
+			Image:           common.GetFioImage(),
 			ImagePullPolicy: coreV1.PullAlways,
 			Args:            []string{"sleep", "1000000"},
 		}
