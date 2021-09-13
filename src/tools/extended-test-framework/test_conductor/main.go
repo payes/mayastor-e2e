@@ -41,5 +41,4 @@ func main() {
 			logf.Log.Info("steady state failed", "error", err)
 		}
 	}
-
 }

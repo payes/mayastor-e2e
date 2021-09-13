@@ -1,210 +1,129 @@
 package main
 
 import (
+	"context"
 	"fmt"
-	"log"
 
-	"os"
-	"time"
+	errors "github.com/pkg/errors"
 
-	"github.com/go-openapi/loads"
-	flags "github.com/jessevdk/go-flags"
+	"mayastor-e2e/tools/extended-test-framework/client"
+	"mayastor-e2e/tools/extended-test-framework/client/test_director"
 
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"mayastor-e2e/tools/extended-test-framework/models"
 
-	"mayastor-e2e/tools/extended-test-framework/workload_monitor/models"
-	"mayastor-e2e/tools/extended-test-framework/workload_monitor/restapi"
-	"mayastor-e2e/tools/extended-test-framework/workload_monitor/restapi/operations"
-	"mayastor-e2e/tools/extended-test-framework/workload_monitor/util"
-
-	"mayastor-e2e/tools/extended-test-framework/workload_monitor/client"
-
-	v1 "k8s.io/api/core/v1"
+	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	"mayastor-e2e/tools/extended-test-framework/common"
+
+	"time"
+
+	v1 "k8s.io/api/core/v1"
 )
 
-type TestMonitor struct {
-	pTestDirectorClient *client.Etfw
-	clientset           kubernetes.Clientset
+var gKubeInt kubernetes.Interface
+var nameSpace = "default"
+
+func readConfig() {
 }
 
 func banner() {
-	logf.Log.Info("workload_monitor v1 started")
+	fmt.Println("workload_monitor started")
 }
 
-/*
-	// PodPending means the pod has been accepted by the system, but one or more of the containers
-	// has not been started. This includes time before being bound to a node, as well as time spent
-	// pulling images onto the host.
-	PodPending PodPhase = "Pending"
-	// PodRunning means the pod has been bound to a node and all of the containers have been started.
-	// At least one container is still running or is in the process of being restarted.
-	PodRunning PodPhase = "Running"
-	// PodSucceeded means that all containers in the pod have voluntarily terminated
-	// with a container exit code of 0, and the system is not going to restart any of these containers.
-	PodSucceeded PodPhase = "Succeeded"
-	// PodFailed means that all containers in the pod have terminated, and at least one container has
-	// terminated in a failure (exited with a non-zero exit code or was stopped by the system).
-	PodFailed PodPhase = "Failed"
-	// PodUnknown means that for some reason the state of the pod could not be obtained, typically due
-	// to an error in communicating with the host of the pod.
-	// Deprecated: It isn't being set since 2015 (74da3b14b0c0f658b3bb8d2def5094686d0e9095)
-	PodUnknown PodPhase = "Unknown"
-*/
-
-func NewTestMonitor() (*TestMonitor, error) {
-	var testMonitor TestMonitor
-	restConfig, err := rest.InClusterConfig()
+func getPod(podName string, namespace string) (*v1.Pod, error) {
+	pods, err := gKubeInt.CoreV1().Pods(namespace).List(context.TODO(), metaV1.ListOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("failed to get cluster config")
+		fmt.Println("list failed")
+		return nil, err
 	}
-	if restConfig == nil {
-		return nil, fmt.Errorf("rest config is nil")
+	for _, pod := range pods.Items {
+		if pod.Name == podName {
+			fmt.Println("found pod ", podName)
+			return &pod, nil
+		}
 	}
-	testMonitor.clientset = *kubernetes.NewForConfigOrDie(restConfig)
-
-	// find the test_director
-	testDirectorPod, err := util.WaitForPodReady("test-director", common.EtfwNamespace)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get test-director, error: %v", err)
-	}
-
-	logf.Log.Info("test-director", "pod IP", testDirectorPod.Status.PodIP)
-	testDirectorLoc := testDirectorPod.Status.PodIP + ":8080"
-
-	transportConfig := client.DefaultTransportConfig().WithHost(testDirectorLoc)
-	testMonitor.pTestDirectorClient = client.NewHTTPClientWithConfig(nil, transportConfig)
-
-	return &testMonitor, nil
+	fmt.Println("not found pod ", podName)
+	return nil, errors.New("pod not found")
 }
 
-func startMonitor(testMonitor *TestMonitor) {
-	for {
-		time.Sleep(10 * time.Second)
-		list := util.GetWorkloadList()
+func getTestPlans(client *client.Extended) {
+	testPlanParams := test_director.NewGetTestPlansParams()
+	pTestPlansOk, err := client.TestDirector.GetTestPlans(testPlanParams)
 
-		for _, wl := range list {
-			for _, spec := range wl.WorkloadSpec.Violations {
-				switch spec {
-				case models.WorkloadViolationEnumRESTARTED:
-					pod, present, err := util.GetPodByUuid(string(wl.ID))
-					if err != nil {
-						fmt.Printf("failed to get pod %s\n", wl.Name)
-					}
-					if present {
-						fmt.Printf(" checking pod %s for restarted\n", wl.Name)
-						containerStatuses := pod.Status.ContainerStatuses
-						restartcount := int32(0)
-						for _, containerStatus := range containerStatuses {
-							if containerStatus.RestartCount != 0 {
-								if containerStatus.RestartCount > restartcount {
-									restartcount = containerStatus.RestartCount
-								}
-								logf.Log.Info(pod.Name, "restarts", containerStatus.RestartCount)
-								break
-							}
-						}
-						if restartcount != 0 {
-							fmt.Printf("pod %s restarted\n", wl.Name)
-							if err := sendEvent(testMonitor.pTestDirectorClient, "pod restarted", string(wl.Name)); err != nil {
-								logf.Log.Info("failed to send", "error", err)
-							}
-						}
-					}
-				case models.WorkloadViolationEnumTERMINATED:
-					podstatus, present, err := util.GetPodStatus(string(wl.ID))
-					if err != nil {
-						fmt.Printf("failed to get pod status %s\n", wl.Name)
-					}
-					if present {
-						fmt.Printf("pod status %v\n", podstatus)
-						fmt.Printf(" checking pod %s for terminated\n", wl.Name)
-						if podstatus == v1.PodFailed {
-							fmt.Printf("pod %s failed\n", wl.Name)
-						}
-					}
-				case models.WorkloadViolationEnumNOTPRESENT:
-					present, err := util.GetPodExists(string(wl.ID))
-					if err != nil {
-						fmt.Printf("failed to get pod status %s\n", wl.Name)
-					}
-					fmt.Printf(" checking pod %s for not present\n", wl.Name)
-					if !present {
-						fmt.Printf("pod %s does not exist\n", wl.Name)
-					}
-				}
-			}
+	if err != nil {
+		fmt.Printf("failed to get plans %v %v\n", err, pTestPlansOk)
+	} else {
+		fmt.Printf("got plans payload %v items %d\n", pTestPlansOk.Payload, len(pTestPlansOk.Payload))
+		for _, tp := range pTestPlansOk.Payload {
+			fmt.Printf("plan name %s\n", *tp.Name)
+			fmt.Printf("plan key %v\n", tp.Key)
 		}
 	}
 }
 
-func startServer() {
-	logf.Log.Info("tm server started")
+func sendTestPlan(client *client.Extended, name string, id *models.JiraKey, isActive bool) {
 
-	swaggerSpec, err := loads.Embedded(restapi.SwaggerJSON, restapi.FlatSwaggerJSON)
+	testPlanRunSpec := models.TestRunSpec{}
+	testPlanRunSpec.TestKey = id
+	testPlanRunSpec.Data = "test"
+	//testPlanRunSpec.IsActive = true
+
+	testPlanParams := test_director.NewPutTestPlanByIDParams()
+	testPlanParams.ID = string(*id)
+	testPlanParams.Body = &testPlanRunSpec
+
+	pPutTestPlansOk, err := client.TestDirector.PutTestPlanByID(testPlanParams)
+
 	if err != nil {
-		log.Fatalln(err)
+		fmt.Printf("failed to put plans %v %v\n", err, pPutTestPlansOk)
+	} else {
+		fmt.Printf("put plans payload %v\n", pPutTestPlansOk.Payload)
+		fmt.Printf("plan name: %s ", *pPutTestPlansOk.Payload.Name)
+		fmt.Printf("plan ID: %s\n", pPutTestPlansOk.Payload.Key)
 	}
-
-	api := operations.NewEtfwAPI(swaggerSpec)
-	server := restapi.NewServer(api)
-	//defer server.Shutdown()
-
-	parser := flags.NewParser(server, flags.Default)
-	parser.ShortDescription = "Test Framework API"
-	parser.LongDescription = "MayaData System Test Framework API"
-
-	log.Printf("workload_monitor about to configure flags")
-
-	server.ConfigureFlags()
-	for _, optsGroup := range api.CommandLineOptionsGroups {
-		_, err := parser.AddGroup(optsGroup.ShortDescription, optsGroup.LongDescription, optsGroup.Options)
-		if err != nil {
-			log.Fatalln(err)
-		}
-	}
-
-	if _, err := parser.Parse(); err != nil {
-		code := 1
-		if fe, ok := err.(*flags.Error); ok {
-			if fe.Type == flags.ErrHelp {
-				code = 0
-			}
-		}
-		os.Exit(code)
-	}
-	logf.Log.Info("workload_monitor about to configure")
-	server.ConfigureAPI()
-
-	logf.Log.Info("workload_monitor about to serve")
-	if err := server.Serve(); err != nil {
-		log.Fatalln(err)
-	}
-
 }
 
 func main() {
 	banner()
-
-	//util.InitGoClient()
-	//util.InitWorkloadList()
-
-	testMonitor, err := NewTestMonitor()
+	restConfig, err := rest.InClusterConfig()
 	if err != nil {
-		logf.Log.Info("failed to create test monitor", "error", err)
+		fmt.Println("failed to get config")
 		return
 	}
-	_ = testMonitor
-	logger := zap.New(zap.UseDevMode(true))
-	logf.SetLogger(logger)
 
-	go startServer()
-	go startMonitor(testMonitor)
+	// read config file
+	readConfig()
 
-	logf.Log.Info("waiting")
-	time.Sleep(6000 * time.Second)
-	logf.Log.Info("finishing")
+	gKubeInt = kubernetes.NewForConfigOrDie(restConfig)
+	if restConfig == nil {
+		fmt.Println("failed to get kubeint")
+		return
+	}
+
+	time.Sleep(20 * time.Second)
+
+	// find the test_director
+	testDirectorPod, err := getPod("test-director", nameSpace)
+	if err != nil {
+		fmt.Println("failed to get test-director pod")
+		return
+	}
+
+	fmt.Println("test-director pod IP is", testDirectorPod.Status.PodIP)
+	testDirectorLoc := testDirectorPod.Status.PodIP + ":8080"
+
+	transportConfig := client.DefaultTransportConfig().WithHost(testDirectorLoc)
+	client := client.NewHTTPClientWithConfig(nil, transportConfig)
+
+	var jk models.JiraKey = "MQ-004"
+	sendTestPlan(client, "test name 4", &jk, false)
+
+	getTestPlans(client)
+
+	jk = "MQ-005"
+	sendTestPlan(client, "test name 5", &jk, true)
+
+	getTestPlans(client)
+
+	time.Sleep(600 * time.Second)
 }

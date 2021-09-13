@@ -2,19 +2,29 @@ apiVersion: v1
 kind: Service
 metadata:
   name: test-director
+<<<<<<< HEAD
   namespace: mayastor-e2e
+=======
+>>>>>>> 41dd1f8 (test(e2e): generate one set of files)
 spec:
   type: NodePort
   selector:
     app: test-director
   ports:
     - port: 8080
+<<<<<<< HEAD
+=======
+      #targetPort: 8080
+>>>>>>> 41dd1f8 (test(e2e): generate one set of files)
 ---
 kind: Pod
 apiVersion: v1
 metadata:
   name: test-director
+<<<<<<< HEAD
   namespace: mayastor-e2e
+=======
+>>>>>>> 41dd1f8 (test(e2e): generate one set of files)
   labels:
     app: test-director
 spec:
