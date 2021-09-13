@@ -461,8 +461,35 @@ func RestoreConfiguredPools() error {
 	Expect(err).ToNot(HaveOccurred())
 	deletedAllPools := DeleteAllPools()
 	Expect(deletedAllPools).To(BeTrue())
-	CreateConfiguredPools()
 	const sleepTime = 5
+	pools := []mayastorclient.MayastorPool{}
+	for ix := 1; ix < 120/sleepTime; ix++ {
+		pools, err = mayastorclient.ListPools(GetMayastorNodeIPAddresses())
+		if err != nil {
+			logf.Log.Info("ListPools", "error", err)
+		}
+		if len(pools) == 0 && err == nil {
+			break
+		}
+		time.Sleep(sleepTime * time.Second)
+	}
+	Expect(err).ToNot(HaveOccurred())
+
+	for ix := 1; ix < 120/sleepTime && len(pools) != 0; ix++ {
+		err = mayastorclient.DestroyAllPools(GetMayastorNodeIPAddresses())
+		if err != nil {
+			logf.Log.Info("DestroyAllPools", "error", err)
+		}
+		pools, err = mayastorclient.ListPools(GetMayastorNodeIPAddresses())
+		if err != nil {
+			logf.Log.Info("ListPools", "error", err)
+		}
+		time.Sleep(sleepTime * time.Second)
+	}
+	Expect(err).ToNot(HaveOccurred())
+	Expect(len(pools)).To(Equal(0))
+
+	CreateConfiguredPools()
 	for ix := 1; ix < 120/sleepTime; ix++ {
 		time.Sleep(sleepTime * time.Second)
 		err := custom_resources.CheckAllMsPoolsAreOnline()

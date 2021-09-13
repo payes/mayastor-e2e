@@ -30,7 +30,6 @@ type maxVolConfig struct {
 	uuid           []string
 	duration       time.Duration
 	timeout        time.Duration
-	thinkTime      time.Duration
 }
 
 func generateMaxVolConfig(testName string, replicasCount int) *maxVolConfig {
@@ -39,8 +38,6 @@ func generateMaxVolConfig(testName string, replicasCount int) *maxVolConfig {
 	Expect(err).ToNot(HaveOccurred(), "Duration configuration string format is invalid.")
 	fioCheckTimeout, err := time.ParseDuration(params.Timeout)
 	Expect(err).ToNot(HaveOccurred(), "Timeout configuration string format is invalid.")
-	fioThinkTime, err := time.ParseDuration(params.ThinkTime)
-	Expect(err).ToNot(HaveOccurred(), "Think time configuration string format is invalid.")
 	c := &maxVolConfig{
 		protocol:       common.ShareProtoNvmf,
 		volType:        common.VolFileSystem,
@@ -53,7 +50,6 @@ func generateMaxVolConfig(testName string, replicasCount int) *maxVolConfig {
 		scName:         testName + "-sc",
 		duration:       fioDuration,
 		timeout:        fioCheckTimeout,
-		thinkTime:      fioThinkTime,
 	}
 
 	for ix := 0; ix < c.podCount; ix++ {
