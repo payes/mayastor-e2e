@@ -96,5 +96,6 @@ primitive_fault_injection
 maximum_vols_io
 multiple_vols_pod_io
 node_failure
+stale_msp_after_node_power_failure
 MQ-1783-fsx_ext4_stress
 "
