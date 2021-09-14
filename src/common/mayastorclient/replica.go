@@ -3,9 +3,8 @@ package mayastorclient
 import (
 	"context"
 	"fmt"
-	"time"
-
 	mayastorGrpc "mayastor-e2e/common/mayastorclient/grpc"
+	"time"
 
 	"google.golang.org/grpc"
 
@@ -50,10 +49,15 @@ func listReplica(address string) ([]MayastorReplica, error) {
 	}(conn)
 
 	c := mayastorGrpc.NewMayastorClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), ctxTimeout)
 	defer cancel()
 
-	response, err := c.ListReplicas(ctx, &null)
+	var response *mayastorGrpc.ListReplicasReply
+	retryBackoff(func() error {
+		response, err = c.ListReplicas(ctx, &null)
+		return err
+	})
+
 	if err == nil {
 		if response != nil {
 			for _, replica := range response.Replicas {
@@ -94,12 +98,16 @@ func RmReplica(address string, uuid string) error {
 		}
 	}(conn)
 	c := mayastorGrpc.NewMayastorClient(conn)
-	// TODO: Remove unusually large timeout on destroy replica
-	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
 	req := mayastorGrpc.DestroyReplicaRequest{Uuid: uuid}
-	_, err = c.DestroyReplica(ctx, &req)
+	retryBackoff(func() error {
+		_, err = c.DestroyReplica(ctx, &req)
+		return err
+	})
+
 	return niceError(err)
 }
 
@@ -107,6 +115,8 @@ func RmReplica(address string, uuid string) error {
 func CreateReplicaExt(address string, uuid string, size uint64, pool string, thin bool, shareProto mayastorGrpc.ShareProtocolReplica) error {
 	logf.Log.Info("CreateReplica", "address", address, "UUID", uuid, "size", size, "pool", pool, "Thin", thin, "Share", shareProto)
 	addrPort := fmt.Sprintf("%s:%d", address, mayastorPort)
+	var err error
+
 	conn, err := grpc.Dial(addrPort, grpc.WithInsecure())
 	if err != nil {
 		logf.Log.Info("createReplica", "error", err)
@@ -119,7 +129,7 @@ func CreateReplicaExt(address string, uuid string, size uint64, pool string, thi
 		}
 	}(conn)
 	c := mayastorGrpc.NewMayastorClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
 	req := mayastorGrpc.CreateReplicaRequest{
@@ -129,7 +139,12 @@ func CreateReplicaExt(address string, uuid string, size uint64, pool string, thi
 		Pool:  pool,
 		Share: shareProto,
 	}
-	_, err = c.CreateReplica(ctx, &req)
+
+	retryBackoff(func() error {
+		_, err = c.CreateReplica(ctx, &req)
+		return err
+	})
+
 	return niceError(err)
 }
 

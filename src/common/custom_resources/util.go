@@ -137,14 +137,8 @@ func CheckAllMsPoolFinalizers() error {
 
 	for _, pool := range pools {
 		finalizer := pool.Finalizers
-		if pool.Status.Used == 0 {
-			if finalizer != nil {
-				accErr = MakeAccumulatedError(accErr, fmt.Errorf("finalizer set on pool %s with 0 used bytes", pool.Name))
-			}
-		} else {
-			if finalizer == nil {
-				accErr = MakeAccumulatedError(accErr, fmt.Errorf(" missing finalizer on pool %s with %d used bytes", pool.Name, pool.Status.Used))
-			}
+		if finalizer != nil {
+			accErr = MakeAccumulatedError(accErr, fmt.Errorf("finalizer set on pool: %s", pool.Name))
 		}
 	}
 

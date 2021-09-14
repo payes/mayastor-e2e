@@ -1,6 +1,7 @@
 #!/usr/bin/env groovy
 
 import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.TimeUnit
 
 // In the case of multi-branch pipelines, the pipeline
 // name a.k.a. job base name, will be the
@@ -137,6 +138,17 @@ def GetClusterAdminConf(e2e_environment, k8s_job) {
   sh 'kubectl get nodes -o wide'
 }
 
+def GetIdentityFile(e2e_environment, k8s_job) {
+  copyArtifacts(
+    projectName: "${k8s_job.getProjectName()}",
+    selector: specific("${k8s_job.getNumber()}"),
+    filter: "${e2e_environment}/id_rsa",
+    target: "",
+    fingerprintArtifacts: true
+  )
+}
+
+
 def WarnOrphanCluster(k8s_job) {
   withCredentials([string(credentialsId: 'HCLOUD_TOKEN', variable: 'HCLOUD_TOKEN')]) {
     e2e_nodes=sh(
@@ -256,7 +268,9 @@ def RunOneTestPerCluster(e2e_test,
     GetClusterAdminConf(e2e_environment, k8s_job)
     def session_id = e2e_test.replaceAll(",", "-")
 
-    def cmd = "./scripts/e2e-test.sh --device /dev/sdb --tag \"${test_tag}\" --logs --onfail stop --tests \"${testset}\" --loki_run_id \"${loki_run_id}\" --loki_test_label \"${e2e_test}\" --reportsdir \"${env.WORKSPACE}/${e2e_reports_dir}\" --registry \"${env.REGISTRY}\" --session \"${session_id}\" "
+    GetIdentityFile(e2e_environment, k8s_job)
+
+    def cmd = "./scripts/e2e-test.sh --device /dev/sdb --tag \"${test_tag}\" --logs --onfail stop --tests \"${testset}\" --loki_run_id \"${loki_run_id}\" --loki_test_label \"${e2e_test}\" --reportsdir \"${env.WORKSPACE}/${e2e_reports_dir}\" --registry \"${env.REGISTRY}\" --session \"${session_id}\" --ssh_identity \"${env.WORKSPACE}/${e2e_environment}/id_rsa\" "
     withCredentials([
       usernamePassword(credentialsId: 'GRAFANA_API', usernameVariable: 'grafana_api_user', passwordVariable: 'grafana_api_pw'),
       string(credentialsId: 'HCLOUD_TOKEN', variable: 'HCLOUD_TOKEN')
@@ -379,5 +393,123 @@ def DeDupeInstallReports(e2e_reports_dir) {
     sh "mv ${install_sample_junit} ${install_sample_junit}.sample.xml"
     sh "rm ${install_junit_full_find_path}"
 }
+
+// Note Groovy passes parameters by value so any changes to params will not be reflected
+// in the callers version of "params", the exceptions are the objects like the queue objects
+def RunParallelStage(Map params) {
+    // for simplicity "unwrap" required members of the map
+    def tests_queue = params['tests_queue']
+    def failed_tests_queue = params['failed_tests_queue']
+    def e2e_image_tag = params['e2e_image_tag']
+    def e2e_build_cluster_job = params['e2e_build_cluster_job']
+    def e2e_destroy_cluster_job = params['e2e_destroy_cluster_job']
+    def e2e_environment = params['e2e_environment']
+    def e2e_reports_dir = params['e2e_reports_dir']
+
+    def loki_run_id = GetLokiRunId()
+
+    while (tests_queue.size() > 0) {
+        def e2e_test = tests_queue.poll(60L, TimeUnit.SECONDS)
+        if (e2e_test != "" && e2e_test != null){
+            def failed_test = RunOneTestPerCluster(e2e_test,
+                                                    e2e_image_tag,
+                                                    loki_run_id,
+                                                    e2e_build_cluster_job,
+                                                    e2e_destroy_cluster_job,
+                                                    e2e_environment,
+                                                    e2e_reports_dir)
+
+            if (failed_test != "") {
+                failed_tests_queue.add(failed_test)
+            }
+        }
+    }
+}
+
+// Note Groovy passes parameters by value so any changes to params will not be reflected
+// in the callers version of "params", the exceptions are the objects like the queue objects
+def PostParallelStage(Map params, run_uuid) {
+    // for simplicity "unwrap" required members of the map
+    def junit_stash_queue = params['junit_stash_queue']
+    def artefacts_stash_queue = params['artefacts_stash_queue']
+
+    try {
+        files = sh(script: "find ${e2e_reports_dir} -name *.xml", returnStdout: true).split()
+        if (files.size() != 0) {
+            stash_name = "junit-${run_uuid}"
+            stash includes: "${e2e_reports_dir}/**/*.xml", name: stash_name
+            junit_stash_queue.add(stash_name)
+        } else {
+            println "no junit files"
+        }
+    } catch (err) {
+    }
+
+    try {
+        files = sh(script: "find artifacts/ -type f", returnStdout: true).split()
+        if (files.size() != 0) {
+            stash_name = "arts-${run_uuid}"
+            stash includes: 'artifacts/**/*.*', name: stash_name
+            artefacts_stash_queue.add(stash_name)
+        } else {
+            println "no files to archive"
+        }
+    } catch(err) {
+    }
+}
+
+// Note Groovy passes parameters by value so any changes to params will not be reflected
+// in the callers version of "params", the exceptions are the objects like the queue objects
+def ParallelArchiveArtefacts(Map params) {
+    // for simplicity "unwrap" all members of the map
+    def artefacts_stash_queue = params['artefacts_stash_queue']
+
+    while (artefacts_stash_queue.size() > 0) {
+        def stash_name = artefacts_stash_queue.poll()
+        unstash name: stash_name
+    }
+    archiveArtifacts 'artifacts/**/*.*'
+}
+
+// Note Groovy passes parameters by value so any changes to params will not be reflected
+// in the callers version of "params", the exceptions are the objects like the queue objects
+def ParallelJunit(Map params) {
+    // for simplicity "unwrap" all members of the map
+    def e2e_image_tag = params['e2e_image_tag']
+    def junit_stash_queue = params['junit_stash_queue']
+    def xray_send_report = params['xray_send_report']
+    def xray_test_plan = params['xray_test_plan']
+
+    while (junit_stash_queue.size() > 0) {
+        def stash_name = junit_stash_queue.poll()
+        unstash name: stash_name
+    }
+
+    junit testResults: "${e2e_reports_dir}/**/*.xml", skipPublishingChecks: true
+
+    if (xray_send_report == true) {
+        // xray_send_report alters the report artifacts
+        // so should run after archiveArtifacts and junit
+        SendXrayReport(xray_test_plan, e2e_image_tag, e2e_reports_dir)
+    }
+}
+
+// Note Groovy passes parameters by value so any changes to params will not be reflected
+// in the callers version of "params", the exceptions are the objects like the queue objects
+def PopulateTestQueue(Map params) {
+  def tests_queue = params['tests_queue']
+  def e2e_test_profile = params['e2e_test_profile']
+
+  def list = sh(
+    script: "scripts/e2e-get-test-list.sh '${e2e_test_profile}'",
+    returnStdout: true
+  )
+  def tests = list.split()
+  //loop over list
+  for (int i = 0; i < tests.size(); i++) {
+    tests_queue.add(tests[i])
+  }
+}
+
 
 return this

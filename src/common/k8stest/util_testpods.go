@@ -648,3 +648,23 @@ func MakeFioContainer(name string, args []string) coreV1.Container {
 		SecurityContext: &sc,
 	}
 }
+
+// MakeFsxContainer returns a container object setup to use e2e-fsx and run fsx with appropriate permissions.
+// Privileged: True, AllowPrivilegeEscalation: True, RunAsUser root
+func MakeFsxContainer(name string, args []string) coreV1.Container {
+	var z64 int64 = 0
+	var vTrue bool = true
+
+	sc := coreV1.SecurityContext{
+		Privileged:               &vTrue,
+		RunAsUser:                &z64,
+		AllowPrivilegeEscalation: &vTrue,
+	}
+	return coreV1.Container{
+		Name:            name,
+		Image:           common.GetFsxImage(),
+		ImagePullPolicy: coreV1.PullIfNotPresent,
+		Args:            args,
+		SecurityContext: &sc,
+	}
+}

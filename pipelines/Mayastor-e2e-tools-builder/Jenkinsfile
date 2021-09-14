@@ -1,0 +1,34 @@
+#!/usr/bin/env groovy
+
+// Global variable for tools images
+def IMAGES=["mayadata/e2e-fio", "mayadata/e2e-agent", "mayadata/e2e-fsx"]
+def TAG="latest"
+
+pipeline {
+    agent { label 'nixos-mayastor' }
+    stages {
+        stage('build tools image') {
+            steps {
+                sh """
+                    cd tools/e2e-fio
+                    ./build.sh
+                    cd ../e2e-agent
+                    ./build.sh
+                    cd ../e2e-fsx
+                    ./build.sh
+                """   
+            }//steps
+        }//stage
+        stage('push tools image'){
+            steps {
+                script {
+                    for(image in IMAGES) {
+                        output_image="${env.REGISTRY}/${image}:${TAG}"
+                        sh "docker tag \"${image}\" \"${output_image}\""
+                        sh "docker push \"${output_image}\""
+                    }
+                }//script
+            }//steps
+        }//stage
+    }//stages
+}

@@ -26,6 +26,8 @@ mayastorpool_schema
 ms_pod_disruption_rm_msv
 ms_pod_restart
 ms_pool_delete
+msv_rebuild
+nexus_location
 pool_modify
 primitive_data_integrity
 primitive_msp_deletion
@@ -41,7 +43,6 @@ volume_filesystem
 "
 
 profiles[c1]="
-nexus_location
 io_soak
 pvc_delete
 ms_pod_disruption
@@ -93,8 +94,8 @@ primitive_fuzz_msv
 MQ-1498-primitive_device_retirement
 primitive_fault_injection
 maximum_vols_io
-msv_rebuild
 multiple_vols_pod_io
 node_failure
 stale_msp_after_node_power_failure
+MQ-1783-fsx_ext4_stress
 "

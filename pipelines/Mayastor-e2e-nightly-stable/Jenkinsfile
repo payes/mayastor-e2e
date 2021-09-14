@@ -1,5 +1,8 @@
 #!/usr/bin/env groovy
 
+import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.TimeUnit
+
 // On-demand E2E infra configuration
 // https://mayadata.atlassian.net/wiki/spaces/MS/pages/247332965/Test+infrastructure#On-Demand-E2E-K8S-Clusters
 
@@ -9,15 +12,18 @@ def e2e_destroy_cluster_job='k8s-destroy-cluster' // Jenkins job to destroy clus
 def e2e_environment="hcloud-kubeadm"
 // Global variable to pass current k8s job between stages
 def test_tag=""
+// Tests Queue
+LinkedBlockingQueue tests_queue = [] as LinkedBlockingQueue
+// Failed tests
+LinkedBlockingQueue failed_tests = [] as LinkedBlockingQueue
 
 e2e_image_tag='nightly-stable'
 e2e_reports_dir='artifacts/reports/'
 e2e_test_profile = 'nightly-stable'
 
 String cron_schedule = "H 0 * * *"
-
 xray_send_report=true
-xray_nightly_stable_testplan='MQ-1482'
+xray_test_plan='MQ-1482'
 
 pipeline {
   agent none
@@ -29,27 +35,36 @@ pipeline {
     cron(cron_schedule)
   }
   stages {
-    stage('test') {
-      stages {
-        stage('build docker images') {
-          agent { label 'nixos-mayastor' }
-          steps {
-            script {
-              common = load "./pipelines/common/common.groovy"
-              test_tag = common.GetTestTag()
-              common.BuildImages('develop', 'develop', test_tag)
-            }
-          }
-          post {
-            // Always remove all docker images because they are usually used just once
-            // and underlaying pkgs are already cached by nix so they can be easily
-            // recreated.
-            always {
-              sh 'docker image prune --all --force'
-            }
-          }
+    stage('build docker images') {
+      agent { label 'nixos-mayastor' }
+      steps {
+        script {
+          common = load "./pipelines/common/common.groovy"
+          test_tag = common.GetTestTag()
+          common.BuildImages('develop', 'develop', test_tag)
         }
-        stage('run e2e') {
+      }
+      post {
+        // Always remove all docker images because they are usually used just once
+        // and underlaying pkgs are already cached by nix so they can be easily
+        // recreated.
+        always {
+          sh 'docker image prune --all --force'
+        }
+      }
+    }//stage build docker images
+    stage('build tests queue')  {
+      agent { label 'nixos' }
+      steps {
+        script {
+          common = load "./pipelines/common/common.groovy"
+          tests_queue = common.BuildTestsQueue(e2e_test_profile)
+        }
+      }
+    }//stage build tests queue
+    stage('test') {
+      parallel {
+        stage('run e2e part1') {
           agent { label 'nixos' }
           environment {
             KUBECONFIG = "${env.WORKSPACE}/${e2e_environment}/modules/k8s/secrets/admin.conf"
@@ -57,40 +72,150 @@ pipeline {
           steps {
             script {
               common = load "./pipelines/common/common.groovy"
-              loki_run_id = common.GetLokiRunId()
+              def loki_run_id = common.GetLokiRunId()
               sh "mkdir -p ./${e2e_reports_dir}"
-
-              failed_tests = common.RunTestsOnePerCluster(e2e_test_profile,
-                                                          test_tag,
+              while (tests_queue.size() > 0) {
+                def e2e_test = tests_queue.poll(60L, TimeUnit.SECONDS)
+                if (e2e_test != "" && e2e_test != null){
+                  def failed_test = common.RunOneTestPerCluster(e2e_test,
+                                                          e2e_image_tag,
                                                           loki_run_id,
                                                           e2e_build_cluster_job,
                                                           e2e_destroy_cluster_job,
                                                           e2e_environment,
                                                           e2e_reports_dir)
 
-              if (failed_tests != "") {
-                  error("The following tests failed: " + failed_tests)
+                  if (failed_test != "") {
+                      failed_tests.add(failed_test)
+                  }
+                }
               }
             }
           }
           post {
             always {
-              archiveArtifacts 'artifacts/**/*.*'
-              // handle junit results on success or failure
-              junit "${e2e_reports_dir}/**/*.xml"
               script {
-                if (xray_send_report == true) {
-                  // xray_send_report alters the report artifacts
-                  // so should run after archiveArtifacts and junit
-                  common = load "./pipelines/common/common.groovy"
-                  common.SendXrayReport(xray_nightly_stable_testplan, test_tag, e2e_reports_dir)
-                }
+                stash includes: "${e2e_reports_dir}/**/*.xml", name: 'run_e2e_part1_junit'
+                stash includes: 'artifacts/**/*.*', name: 'run_e2e_part1_arts'
               }
             }
           }//post
-        }//stage 'run e2e'
-      }//stages
+        }//stage 'run e2e part1'
+        stage('run e2e part2') {
+          agent { label 'nixos' }
+          environment {
+            KUBECONFIG = "${env.WORKSPACE}/${e2e_environment}/modules/k8s/secrets/admin.conf"
+          }
+          steps {
+            script {
+              common = load "./pipelines/common/common.groovy"
+              def loki_run_id = common.GetLokiRunId()
+              sh "mkdir -p ./${e2e_reports_dir}"
+              while (tests_queue.size() > 0) {
+                def e2e_test = tests_queue.poll(60L, TimeUnit.SECONDS)
+                if (e2e_test != "" && e2e_test != null){
+                  def failed_test = common.RunOneTestPerCluster(e2e_test,
+                                                          e2e_image_tag,
+                                                          loki_run_id,
+                                                          e2e_build_cluster_job,
+                                                          e2e_destroy_cluster_job,
+                                                          e2e_environment,
+                                                          e2e_reports_dir)
+
+                  if (failed_test != "") {
+                      failed_tests.add(failed_test)
+                  }
+                }
+              }
+            }
+          }
+          post {
+            always {
+              script {
+                  stash includes: "${e2e_reports_dir}/**/*.xml", name: 'run_e2e_part2_junit'
+                  stash includes: 'artifacts/**/*.*', name: 'run_e2e_part2_arts'
+              }
+            }
+          }//post
+        }//stage 'run e2e part2'
+        stage('run e2e part3') {
+          agent { label 'nixos' }
+          environment {
+            KUBECONFIG = "${env.WORKSPACE}/${e2e_environment}/modules/k8s/secrets/admin.conf"
+          }
+          steps {
+            script {
+              common = load "./pipelines/common/common.groovy"
+              def loki_run_id = common.GetLokiRunId()
+              sh "mkdir -p ./${e2e_reports_dir}"
+              while (tests_queue.size() > 0) {
+                def e2e_test = tests_queue.poll(60L, TimeUnit.SECONDS)
+                if (e2e_test != "" && e2e_test != null){
+                  def failed_test = common.RunOneTestPerCluster(e2e_test,
+                                                          e2e_image_tag,
+                                                          loki_run_id,
+                                                          e2e_build_cluster_job,
+                                                          e2e_destroy_cluster_job,
+                                                          e2e_environment,
+                                                          e2e_reports_dir)
+
+                  if (failed_test != "") {
+                      failed_tests.add(failed_test)
+                  }
+                }
+              }
+            }
+          }
+          post {
+            always {
+              script {
+                stash includes: "${e2e_reports_dir}/**/*.xml", name: 'run_e2e_part3_junit'
+                stash includes: 'artifacts/**/*.*', name: 'run_e2e_part3_arts'
+              }
+            }
+          }//post
+        }//stage 'run e2e part3'
+      }//parallel
     }//stage 'test'
+    stage('archive artifacts'){
+      agent { label 'nixos' }
+      steps {
+        script{
+          unstash 'run_e2e_part1_arts'
+          unstash 'run_e2e_part2_arts'
+          unstash 'run_e2e_part3_arts'
+          archiveArtifacts 'artifacts/**/*.*'
+        }
+      }
+    }//stage archive artifacts
+    stage('handle junit results'){
+      agent { label 'nixos' }
+      steps {
+        script{
+          unstash 'run_e2e_part1_junit'
+          unstash 'run_e2e_part2_junit'
+          unstash 'run_e2e_part3_junit'
+
+          junit testResults: "${e2e_reports_dir}/**/*.xml", skipPublishingChecks: true
+
+          if (xray_send_report == true) {
+              // xray_send_report alters the report artifacts
+              // so should run after archiveArtifacts and junit
+              common = load "./pipelines/common/common.groovy"
+              common.SendXrayReport(xray_test_plan, e2e_image_tag, e2e_reports_dir)
+          }
+        }
+      }
+    }//stage handle junit results
+    stage('check failed tests'){
+      steps {
+        script{
+          if (failed_tests.size() > 0) {
+              error("The following tests failed: " + failed_tests)
+          }
+        }
+      }
+    }//stage check failed tests
     stage('push images') {
       agent { label 'nixos-mayastor' }
       steps {
@@ -107,6 +232,6 @@ pipeline {
           sh 'docker image prune --all --force'
         }
       }
-    }
+    }//stage push images
   }//stages
 }

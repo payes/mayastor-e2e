@@ -43,3 +43,7 @@ const IOTimeout = "ioTimeout"
 
 const MayastorEngineLabel = "openebs.io/engine"
 const MayastorEngineLabelValue = "mayastor"
+
+//  These variables match the settings used in fsx pod definition
+
+const FsxBlockFileName = "/dev/sdm"
