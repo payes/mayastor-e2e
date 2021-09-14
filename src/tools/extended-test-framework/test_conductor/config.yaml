@@ -1,7 +1,7 @@
 configName: extended-soak
 registry: ci-registry.mayastor-ci.mayadata.io
 imageTag: "nightly-stable"
-poolDevice: ""
+poolDevice: "/dev/sdb"
 e2eFioImage: mayadata/e2e-fio
 e2eFsxImage: mayadata/e2e-fsx
 defaultReplicaCount: 2
