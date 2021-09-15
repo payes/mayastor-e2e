@@ -89,7 +89,7 @@ fi
 
 tmpdir=$(mktemp -d)
 pushd "${MAYASTOR_DIR}" \
-    && tar -c --ignore-failed-read -f "$tmpdir/install.tar" $tar_srcs \
+    && tar cf "$tmpdir/install.tar" $tar_srcs \
     && git rev-parse HEAD > "$tmpdir/git-revision.mayastor" \
     && git rev-parse --short=12 HEAD >> "$tmpdir/git-revision.mayastor" \
     && popd
