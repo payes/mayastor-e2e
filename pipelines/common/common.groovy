@@ -432,6 +432,7 @@ def PostParallelStage(Map params, run_uuid) {
     // for simplicity "unwrap" required members of the map
     def junit_stash_queue = params['junit_stash_queue']
     def artefacts_stash_queue = params['artefacts_stash_queue']
+    def e2e_reports_dir =  params['e2e_reports_dir']
 
     try {
         files = sh(script: "find ${e2e_reports_dir} -name *.xml", returnStdout: true).split()
@@ -449,7 +450,7 @@ def PostParallelStage(Map params, run_uuid) {
         files = sh(script: "find artifacts/ -type f", returnStdout: true).split()
         if (files.size() != 0) {
             stash_name = "arts-${run_uuid}"
-            stash includes: 'artifacts/**/*.*', name: stash_name
+            stash includes: 'artifacts/**/**', name: stash_name
             artefacts_stash_queue.add(stash_name)
         } else {
             println "no files to archive"
@@ -468,7 +469,7 @@ def ParallelArchiveArtefacts(Map params) {
         def stash_name = artefacts_stash_queue.poll()
         unstash name: stash_name
     }
-    archiveArtifacts 'artifacts/**/*.*'
+    archiveArtifacts 'artifacts/**/**'
 }
 
 // Note Groovy passes parameters by value so any changes to params will not be reflected
@@ -476,6 +477,7 @@ def ParallelArchiveArtefacts(Map params) {
 def ParallelJunit(Map params) {
     // for simplicity "unwrap" all members of the map
     def e2e_image_tag = params['e2e_image_tag']
+    def e2e_reports_dir = params['e2e_reports_dir']
     def junit_stash_queue = params['junit_stash_queue']
     def xray_send_report = params['xray_send_report']
     def xray_test_plan = params['xray_test_plan']

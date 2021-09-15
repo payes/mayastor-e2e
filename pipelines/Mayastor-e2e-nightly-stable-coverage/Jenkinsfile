@@ -35,7 +35,12 @@ def params = [
     // Xray: send report
     xray_send_report : false,
     // Xray: test plan
-    xray_test_plan : 'ET-388'
+    xray_test_plan : 'ET-388',
+
+    // Coverage
+    coverage_binaries_dir : 'artifacts/binaries',
+    // FIXME: temporary until PR is merged into mayastor develop
+    coverage_branch : 'mayastor-coverage',
 ]
 
 // Environment to run e2e test in (job param of $e2e_build_cluster_job)
@@ -122,6 +127,25 @@ pipeline {
            }//stage 'run e2e part3'
         }//parallel
     }//stage 'test'
+    stage('archive mayastor binaries') {
+      agent { label 'nixos-mayastor' }
+      steps {
+        script {
+          def coverage_binaries_dir = params['coverage_binaries_dir']
+          def e2e_image_tag = params['e2e_image_tag']
+          def artefacts_stash_queue = params['artefacts_stash_queue']
+
+          mayastor_bindir = "${env.WORKSPACE}/${coverage_binaries_dir}"
+          sh "mkdir -p ${mayastor_bindir}"
+          sh "./scripts/get_mayastor_binaries.sh -o ${mayastor_bindir} -t ${e2e_image_tag} -r ${env.REGISTRY}"
+          sh "ls ${mayastor_bindir}"
+
+          stash_name = 'arts-bin'
+          stash includes: 'artifacts/**/**', name: stash_name
+          artefacts_stash_queue.add(stash_name)
+        }
+      }
+    }//stage build mayastor binaries
     stage('archive artifacts'){
         agent { label 'nixos' }
         steps {
