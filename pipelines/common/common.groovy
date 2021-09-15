@@ -87,6 +87,54 @@ def BuildImages(mayastorBranch, moacBranch, test_tag) {
   sh "rm -Rf moac/"
 }
 
+def BuildRevisionImages(Map params) {
+  def mayastorBranch = params['mayastorBranch']
+  def mayastorRev = params['mayastorRev']
+  def moacBranch = params['moacBranch']
+  def moacRev = params['moacRev']
+  def imageTag = params['imageTag']
+
+  println params
+
+  if (!mayastorBranch?.trim() || !moacBranch?.trim()) {
+    throw new Exception("Empty branch parameters: mayastor branch is ${mayastorBranch}, moac branch is ${moacBranch}")
+  }
+
+  GetMayastor(mayastorBranch)
+
+  // e2e tests are the most demanding step for space on the disk so we
+  // test the free space here rather than repeating the same code in all
+  // stages.
+  sh "cd Mayastor && ./scripts/reclaim-space.sh 10"
+  if (mayastorRev?.trim()) {
+      sh "cd Mayastor && git checkout ${mayastorRev}"
+  }
+  sh "cd Mayastor && git submodule update --init"
+  sh "cd Mayastor && git status"
+
+  // Build images (REGISTRY is set in jenkin's global configuration).
+  // Note: We might want to build and test dev images that have more
+  // assertions instead but that complicates e2e tests a bit.
+  // Build mayastor and mayastor-csi
+  sh "cd Mayastor && ./scripts/release.sh --registry \"${env.REGISTRY}\" --alias-tag \"$imageTag\" "
+
+  // Build moac
+  GetMoac(moacBranch)
+  if (moacRev?.trim()) {
+      sh "cd moac && git checkout ${moacRev}"
+  }
+  sh "cd moac && git status"
+  sh "cd moac && ./scripts/release.sh --registry \"${env.REGISTRY}\" --alias-tag \"$imageTag\" "
+
+  // Build the install image
+  sh "./scripts/create-install-image.sh --alias-tag \"$imageTag\" --mayastor Mayastor --moac moac --registry \"${env.REGISTRY}\""
+
+  // Limit any side-effects
+  sh "rm -Rf Mayastor/"
+  sh "rm -Rf moac/"
+}
+
+
 def BuildCluster(e2e_build_cluster_job, e2e_environment) {
   def uuid = UUID.randomUUID()
   return build(

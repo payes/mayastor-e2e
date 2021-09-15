@@ -82,12 +82,18 @@ DockerfileTxt="FROM scratch
 copy install.tar /
 CMD [\"ls\"]"
 
+tar_srcs="scripts/generate-deploy-yamls.sh chart/ deploy"
+if [ -f "$MAYASTOR_DIR/rpc/mayastor-api/protobuf/mayastor.proto" ]; then
+    tar_srcs="$tar_srcs rpc/mayastor-api/protobuf/mayastor.proto"
+fi
+
 tmpdir=$(mktemp -d)
 pushd "${MAYASTOR_DIR}" \
-    && tar cf "$tmpdir/install.tar" scripts/generate-deploy-yamls.sh chart/ rpc/mayastor-api/protobuf/mayastor.proto deploy \
+    && tar -c --ignore-failed-read -f "$tmpdir/install.tar" $tar_srcs \
     && git rev-parse HEAD > "$tmpdir/git-revision.mayastor" \
     && git rev-parse --short=12 HEAD >> "$tmpdir/git-revision.mayastor" \
     && popd
+
 
 pushd "${MOAC_DIR}" \
     && mkdir -p "$tmpdir/csi/moac/crds" \

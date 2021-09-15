@@ -1,0 +1,65 @@
+#!/usr/bin/env groovy
+
+import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.TimeUnit
+
+// On-demand E2E infra configuration
+// https://mayadata.atlassian.net/wiki/spaces/MS/pages/247332965/Test+infrastructure#On-Demand-E2E-K8S-Clusters
+
+def e2e_build_cluster_job='k8s-build-cluster' // Jenkins job to build cluster
+def e2e_destroy_cluster_job='k8s-destroy-cluster' // Jenkins job to destroy cluster
+// Environment to run e2e test in (job param of $e2e_build_cluster_job)
+def e2e_environment="hcloud-kubeadm"
+
+
+pipeline {
+  agent none
+  options {
+    timeout(time: 23, unit: 'HOURS')
+    buildDiscarder(logRotator(numToKeepStr: '365', artifactNumToKeepStr: '365'))
+  }
+  parameters {
+    string(defaultValue: 'develop', name: 'mayastorBranch', trim: true, description: 'mayastor branch')
+    string(defaultValue: '', name: 'mayastorRev', trim: true, description: 'mayastor revision')
+    string(defaultValue: 'develop', name: 'moacBranch', trim: true, description: 'moac branch')
+    string(defaultValue: '', name: 'moacRev', trim: true, description: 'moac revision')
+    string(defaultValue: '', name: 'imageTag', trim: true, description: 'docker image tag')
+  }
+  stages {
+    stage('build docker images') {
+      agent { label 'nixos-mayastor' }
+      steps {
+        script {
+          common = load "./pipelines/common/common.groovy"
+          build_params = [
+            mayastorBranch : params.mayastorBranch,
+            mayastorRev : params.mayastorRev,
+            moacBranch : params.moacBranch,
+            moacRev : params.moacRev,
+            imageTag : params.imageTag,
+          ]
+          if (!build_params['imageTag']?.trim()) {
+                def mayastorRevTag = params.mayastorRev
+                def moacRevTag = params.moacRev
+                if (!mayastorRevTag?.trim()) {
+                    mayastorRevTag = "tip"
+                }
+                if (!moacRevTag?.trim()) {
+                    moacRevTag = "tip"
+                }
+                build_params['imageTag'] = mayastorRevTag + "-" + moacRevTag
+          }
+          common.BuildRevisionImages(build_params)
+        }
+      }
+      post {
+        // Always remove all docker images because they are usually used just once
+        // and underlaying pkgs are already cached by nix so they can be easily
+        // recreated.
+        always {
+          sh 'docker image prune --all --force'
+        }
+      }
+    }//stage build docker images
+  }//stages
+}
