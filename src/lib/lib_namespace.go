@@ -15,8 +15,7 @@ func CreateNamespace(clientset kubernetes.Clientset, namespace string) error {
 	nsSpec := &coreV1.Namespace{ObjectMeta: metaV1.ObjectMeta{Name: namespace}}
 	_, err := clientset.CoreV1().Namespaces().Create(context.TODO(), nsSpec, metaV1.CreateOptions{})
 	if err != nil {
-		fmt.Println(err)
-		return err
+		return fmt.Errorf("failed to create namespace, err: %v", err)
 	}
 	return nil
 }

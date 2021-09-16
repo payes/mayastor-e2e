@@ -37,7 +37,7 @@ rules:
     resources: ["nodes"]
     verbs: ["get", "watch", "list"]
   - apiGroups: [""]
-    resources: ["namespaces", "serviceaccounts", "configmaps", "services"]
+    resources: ["namespaces", "pods", "serviceaccounts", "configmaps", "services"]
     verbs: ["create", "delete"]
   - apiGroups: ["rbac.authorization.k8s.io"]
     resources: ["clusterroles", "clusterrolebindings", "roles", "rolebindings"]
@@ -45,7 +45,14 @@ rules:
   - apiGroups: ["apps"]
     resources: ["daemonsets", "deployments", "statefulsets"]
     verbs: ["create", "delete", "get", "watch", "list"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["storageclasses"]
+    verbs: ["create", "delete", "get", "list", "watch", "update", "patch"]
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    verbs: ["create", "delete", "get", "list", "update"]
 
+    # the following needed to deploy mayastor components
   - apiGroups: ["apiextensions.k8s.io"]
     resources: ["customresourcedefinitions"]
     verbs: ["create"]
