@@ -23,143 +23,110 @@ import (
 func DeployYaml(clientset kubernetes.Clientset, fileName string) error {
 	b, err := ioutil.ReadFile(fileName)
 	if err != nil {
-		fmt.Println(err)
-		return err
+		return fmt.Errorf("failed to read file %s, error: %v", fileName, err)
 	}
 	s := string(b)
-	fmt.Printf("%q \n\n\nvim ../", s)
 
 	stringSlice := strings.Split(s, "\n---\n")
 
 	scheme := runtime.NewScheme()
 	err = apps.AddToScheme(scheme)
 	if err != nil {
-		fmt.Printf("failed to add apps scheme %v\n\n\n", err)
-		return err
+		return fmt.Errorf("failed to add apps scheme, error: %v", err)
 	}
 
 	err = core.AddToScheme(scheme)
 	if err != nil {
-		fmt.Printf("failed to add core scheme %v\n\n\n", err)
-		return err
+		return fmt.Errorf("failed to add core scheme error: %v", err)
 	}
 
 	err = rbac.AddToScheme(scheme)
 	if err != nil {
-		fmt.Printf("failed to add rbac scheme %v\n\n\n", err)
-		return err
+		return fmt.Errorf("failed to add rbac scheme error: %v", err)
 	}
 
 	for _, obj_str := range stringSlice {
-		fmt.Printf("about to deserialize\n\n\n")
 		factory := serializer.NewCodecFactory(scheme)
 		decoder := factory.UniversalDeserializer()
-		obj, _ /*groupVersionKind*/, err := decoder.Decode([]byte(obj_str), nil, nil)
+		obj, _, err := decoder.Decode([]byte(obj_str), nil, nil)
 
 		if err != nil {
-			fmt.Printf("Error while decoding YAML object. Err was: %s\n\n\n", err)
-			return err
+			return fmt.Errorf("Error while decoding YAML object, error: %v", err)
 		}
 
-		fmt.Printf("about to switch\n\n\n")
 		switch o := obj.(type) {
-		case *core.Pod:
-			fmt.Printf("Attempting to create pod\n\n\n")
-			// o is a pod
-
 		case *apps.DaemonSet:
-			fmt.Printf("Attempting to create daemonset\n\n\n")
 			daemonsetClient := clientset.AppsV1().DaemonSets("mayastor")
 			_, err := daemonsetClient.Create(context.TODO(), o, metaV1.CreateOptions{})
 			if err != nil {
-				fmt.Printf("Failed to create daemonset. Err was: %s\n\n\n", err)
-				return err
+				return fmt.Errorf("Failed to create daemonset, error: %v", err)
 			}
 
 		case *apps.Deployment:
-			fmt.Printf("Attempting to create deployment\n\n\n")
 			deploymentClient := clientset.AppsV1().Deployments("mayastor")
 			_, err := deploymentClient.Create(context.TODO(), o, metaV1.CreateOptions{})
 			if err != nil {
-				fmt.Printf("Failed to create deployment. Err was: %s\n\n\n", err)
-				return err
+				return fmt.Errorf("Failed to create deployment, error %v", err)
 			}
 
 		case *apps.StatefulSet:
-			fmt.Printf("Attempting to create stateful set\n\n\n")
 			statefulSetClient := clientset.AppsV1().StatefulSets("mayastor")
 			_, err := statefulSetClient.Create(context.TODO(), o, metaV1.CreateOptions{})
 			if err != nil {
-				fmt.Printf("Failed to create stateful set. Err was: %s\n\n\n", err)
-				return err
+				return fmt.Errorf("Failed to create stateful set, error: %v", err)
 			}
 
 		case *rbac.Role:
-			fmt.Printf("Attempting to create role\n\n\n")
 			roleClient := clientset.RbacV1().Roles("mayastor")
 			_, err := roleClient.Create(context.TODO(), o, metaV1.CreateOptions{})
 			if err != nil {
-				fmt.Printf("Failed to create role. Err was: %s\n\n\n", err)
-				return err
+				return fmt.Errorf("Failed to create role, error: %v", err)
 			}
 
 		case *rbac.RoleBinding:
-			fmt.Printf("Attempting to create role binding\n\n\n")
 			roleBindingClient := clientset.RbacV1().RoleBindings("mayastor")
 			_, err := roleBindingClient.Create(context.TODO(), o, metaV1.CreateOptions{})
 			if err != nil {
-				fmt.Printf("Failed to create role binding. Err was: %s\n\n\n", err)
-				return err
+				return fmt.Errorf("Failed to create role binding, error %v", err)
 			}
 
 		case *rbac.ClusterRole: /**/
-			fmt.Printf("Attempting to create cluster role\n\n\n")
 			clusterRoleClient := clientset.RbacV1().ClusterRoles()
 			_, err := clusterRoleClient.Create(context.TODO(), o, metaV1.CreateOptions{})
 			if err != nil {
-				fmt.Printf("Failed to create cluster role. Err was: %s\n\n\n", err)
-				return err
+				return fmt.Errorf("Failed to create cluster role, error %v", err)
 			}
 
-		case *rbac.ClusterRoleBinding: /**/
-			fmt.Printf("Attempting to create cluster role binding\n\n\n")
+		case *rbac.ClusterRoleBinding:
 			clusterRoleBindingClient := clientset.RbacV1().ClusterRoleBindings()
 			_, err := clusterRoleBindingClient.Create(context.TODO(), o, metaV1.CreateOptions{})
 			if err != nil {
-				fmt.Printf("Failed to create cluster role binding. Err was: %s\n\n\n", err)
-				return err
+				return fmt.Errorf("Failed to create cluster role binding, error: %v", err)
 			}
 
-		case *core.ServiceAccount: /**/
-			fmt.Printf("Attempting to create service account\n\n\n")
+		case *core.ServiceAccount:
 			serviceAccountClient := clientset.CoreV1().ServiceAccounts("mayastor")
 			_, err := serviceAccountClient.Create(context.TODO(), o, metaV1.CreateOptions{})
 			if err != nil {
-				fmt.Printf("Failed to create service account. Err was: %s\n\n\n", err)
-				return err
+				return fmt.Errorf("Failed to create service account, error: %v", err)
 			}
 
-		case *core.ConfigMap: /**/
-			fmt.Printf("Attempting to create config map\n\n\n")
+		case *core.ConfigMap:
 			configMapClient := clientset.CoreV1().ConfigMaps("mayastor")
 			_, err := configMapClient.Create(context.TODO(), o, metaV1.CreateOptions{})
 			if err != nil {
-				fmt.Printf("Failed to create config map. Err was: %s\n\n\n", err)
-				return err
+				return fmt.Errorf("Failed to create config map, error: %v", err)
 			}
 
-		case *core.Service: /**/
-			fmt.Printf("Attempting to create service\n\n\n")
+		case *core.Service:
 			serviceClient := clientset.CoreV1().Services("mayastor")
 			_, err := serviceClient.Create(context.TODO(), o, metaV1.CreateOptions{})
 			if err != nil {
-				fmt.Printf("Failed to create service. Err was: %s\n\n\n", err)
-				return err
+				return fmt.Errorf("Failed to create service, error: %v", err)
 			}
 
 		default:
-			fmt.Printf("object %+v \n\n\n", o)
-			//o is unknown for us
+			return fmt.Errorf("Unsupported object %+v", o)
 		}
 	}
 	return nil
