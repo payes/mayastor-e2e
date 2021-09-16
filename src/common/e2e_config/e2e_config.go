@@ -125,7 +125,7 @@ type E2EConfig struct {
 		VolumeCount          int    `yaml:"volumeCount" env-default:"6"`
 		MultipleReplicaCount int    `yaml:"replicas" env-default:"2"`
 		FioLoops             int    `yaml:"fioLoops" env-default:"0"`
-		Timeout              string `yaml:"timeout" env-default:"180s"`
+		Timeout              string `yaml:"timeout" env-default:"1800s"`
 	} `yaml:"multiVolumesPodIO"`
 	MsPodDisruption struct {
 		VolMb                    int `yaml:"volMb" env-default:"4096"`
