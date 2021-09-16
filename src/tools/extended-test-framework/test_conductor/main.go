@@ -11,8 +11,6 @@ import (
 
 	"mayastor-e2e/tools/extended-test-framework/models"
 
-	"mayastor-e2e/lib"
-
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -22,21 +20,20 @@ import (
 	v1 "k8s.io/api/core/v1"
 )
 
-var gClientSet kubernetes.Clientset
-
 var nameSpace = "default"
 
 // TestConductor object for test conductor context
 type TestConductor struct {
 	pTestDirectorClient *client.Extended
+	clientset           kubernetes.Clientset
 }
 
 func banner() {
 	fmt.Println("test_conductor started")
 }
 
-func getPod(podName string, namespace string) (*v1.Pod, error) {
-	pods, err := gClientSet.CoreV1().Pods(namespace).List(context.TODO(), metaV1.ListOptions{})
+func getPod(clientset kubernetes.Clientset, podName string, namespace string) (*v1.Pod, error) {
+	pods, err := clientset.CoreV1().Pods(namespace).List(context.TODO(), metaV1.ListOptions{})
 	if err != nil {
 		fmt.Println("list failed")
 		return nil, err
@@ -87,54 +84,11 @@ func sendTestPlan(client *client.Extended, name string, id *models.JiraKey, isAc
 	}
 }
 
-func installMayastor(clientset kubernetes.Clientset) error {
-	var err error
-	if err = lib.CreateNamespace(clientset, "mayastor"); err != nil {
-		return fmt.Errorf("cannot create namespace %v", err)
-	}
-	if err = lib.DeployYaml(clientset, "moac-rbac.yaml"); err != nil {
-		return fmt.Errorf("cannot create moac-rbac %v", err)
-	}
-	if err = lib.DeployYaml(clientset, "etcd/statefulset.yaml"); err != nil {
-		return fmt.Errorf("cannot create etcd stateful set %v", err)
-	}
-	if err = lib.DeployYaml(clientset, "etcd/svc-headless.yaml"); err != nil {
-		return fmt.Errorf("cannot create etcd svc-headless %v", err)
-	}
-	if err = lib.DeployYaml(clientset, "etcd/svc.yaml"); err != nil {
-		return fmt.Errorf("cannot create etcd svc %v", err)
-	}
-	if err = lib.DeployYaml(clientset, "nats-deployment.yaml"); err != nil {
-		return fmt.Errorf("cannot create nats-deployment %v", err)
-	}
-	if err = lib.DeployYaml(clientset, "csi-daemonset.yaml"); err != nil {
-		return fmt.Errorf("cannot create csi daemonset %v", err)
-	}
-	if err = lib.DeployYaml(clientset, "moac-deployment.yaml"); err != nil {
-		return fmt.Errorf("cannot create moac deployment %v", err)
-	}
-	if err = lib.DeployYaml(clientset, "mayastor-daemonset.yaml"); err != nil {
-		return fmt.Errorf("cannot create mayastor daemonset %v", err)
-	}
-	if err = lib.CreatePools(clientset, GetConfig().PoolDevice); err != nil {
-		return fmt.Errorf("cannot create mayastor pools %v", err)
-	}
-	return nil
-}
-
-func (testConductor TestConductor) runTest(clientset kubernetes.Clientset) error {
-	if err := installMayastor(clientset); err != nil {
-		return err
-	}
-	time.Sleep(600 * time.Second)
-	return nil
-}
-
 func main() {
+	banner()
 
 	testConductor := TestConductor{}
 
-	banner()
 	restConfig, err := rest.InClusterConfig()
 	if err != nil {
 		fmt.Println("failed to get cluster config")
@@ -149,11 +103,11 @@ func main() {
 		fmt.Println("failed to get kubeint")
 		return
 	}
-	gClientSet = *kubernetes.NewForConfigOrDie(restConfig)
+	testConductor.clientset = *kubernetes.NewForConfigOrDie(restConfig)
 
 	time.Sleep(10 * time.Second)
 
-	workloadMonitorPod, err := getPod("workload-monitor", "default")
+	workloadMonitorPod, err := getPod(testConductor.clientset, "workload-monitor", "default")
 	if err != nil {
 		fmt.Println("failed to get workload-monitor")
 		return
@@ -161,7 +115,7 @@ func main() {
 	fmt.Println("worload-monitor pod IP is", workloadMonitorPod.Status.PodIP)
 
 	// find the test_director
-	testDirectorPod, err := getPod("test-director", nameSpace)
+	testDirectorPod, err := getPod(testConductor.clientset, "test-director", nameSpace)
 	if err != nil {
 		fmt.Println("failed to get test-director pod")
 		return
@@ -183,8 +137,8 @@ func main() {
 
 	getTestPlans(testConductor.pTestDirectorClient)
 
-	if err = testConductor.runTest(gClientSet); err != nil {
-		fmt.Println("run test failed")
+	if err = testConductor.BasicSoakTest(); err != nil {
+		fmt.Printf("run test failed, error: %v\n", err)
 	}
 
 }
