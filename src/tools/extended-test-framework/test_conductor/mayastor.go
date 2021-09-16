@@ -9,7 +9,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-func InstallMayastor(clientset kubernetes.Clientset) error {
+func InstallMayastor(clientset kubernetes.Clientset, pool_device string) error {
 	var err error
 	if err = lib.CreateNamespace(clientset, "mayastor"); err != nil {
 		return fmt.Errorf("cannot create namespace %v", err)
@@ -38,7 +38,7 @@ func InstallMayastor(clientset kubernetes.Clientset) error {
 	if err = lib.DeployYaml(clientset, "mayastor-daemonset.yaml"); err != nil {
 		return fmt.Errorf("cannot create mayastor daemonset %v", err)
 	}
-	if err = lib.CreatePools(clientset, GetConfig().PoolDevice); err != nil {
+	if err = lib.CreatePools(clientset, pool_device); err != nil {
 		return fmt.Errorf("cannot create mayastor pools %v", err)
 	}
 	time.Sleep(300)

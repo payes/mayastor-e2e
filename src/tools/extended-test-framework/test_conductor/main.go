@@ -11,6 +11,8 @@ import (
 
 	"mayastor-e2e/tools/extended-test-framework/models"
 
+	"mayastor-e2e/lib"
+
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -24,12 +26,30 @@ var nameSpace = "default"
 
 // TestConductor object for test conductor context
 type TestConductor struct {
-	pTestDirectorClient *client.Extended
-	clientset           kubernetes.Clientset
+	pTestDirectorClient    *client.Extended
+	pWorkloadMonitorClient *client.Extended
+	clientset              kubernetes.Clientset
+	config                 ExtendedTestConfig
 }
 
 func banner() {
 	fmt.Println("test_conductor started")
+}
+
+func waitForPod(clientset kubernetes.Clientset, podName string, namespace string) (*v1.Pod, error) {
+	// Wait for the fio Pod to transition to running
+	const timoSecs = 120
+	const timoSleepSecs = 10
+	for ix := 0; ; ix++ {
+		if lib.IsPodRunning(clientset, podName, namespace) {
+			break
+		}
+		if ix >= timoSecs/timoSleepSecs {
+			return nil, fmt.Errorf("timed out waiting for pod %s to be running", podName)
+		}
+		time.Sleep(timoSleepSecs * time.Second)
+	}
+	return getPod(clientset, podName, namespace)
 }
 
 func getPod(clientset kubernetes.Clientset, podName string, namespace string) (*v1.Pod, error) {
@@ -48,7 +68,7 @@ func getPod(clientset kubernetes.Clientset, podName string, namespace string) (*
 	return nil, errors.New("pod not found")
 }
 
-func getTestPlans(client *client.Extended) {
+func getTestPlans(client *client.Extended) error {
 	testPlanParams := test_director.NewGetTestPlansParams()
 	pTestPlansOk, err := client.TestDirector.GetTestPlans(testPlanParams)
 
@@ -61,6 +81,7 @@ func getTestPlans(client *client.Extended) {
 			fmt.Printf("plan key %v\n", tp.Key)
 		}
 	}
+	return nil
 }
 
 func sendTestPlan(client *client.Extended, name string, id *models.JiraKey, isActive bool) {
@@ -96,7 +117,12 @@ func main() {
 	}
 
 	// read config file
-	config := GetConfig()
+	config, err := GetConfig()
+	if err != nil {
+		fmt.Println("failed to get config")
+		return
+	}
+	testConductor.config = config
 
 	fmt.Printf("config name %s\n", config.ConfigName)
 	if restConfig == nil {
@@ -107,15 +133,16 @@ func main() {
 
 	time.Sleep(10 * time.Second)
 
-	workloadMonitorPod, err := getPod(testConductor.clientset, "workload-monitor", "default")
+	workloadMonitorPod, err := waitForPod(testConductor.clientset, "workload-monitor", "default")
 	if err != nil {
 		fmt.Println("failed to get workload-monitor")
 		return
 	}
 	fmt.Println("worload-monitor pod IP is", workloadMonitorPod.Status.PodIP)
+	workloadMonitorLoc := workloadMonitorPod.Status.PodIP + ":8080"
 
 	// find the test_director
-	testDirectorPod, err := getPod(testConductor.clientset, "test-director", nameSpace)
+	testDirectorPod, err := waitForPod(testConductor.clientset, "test-director", nameSpace)
 	if err != nil {
 		fmt.Println("failed to get test-director pod")
 		return
@@ -127,15 +154,26 @@ func main() {
 	transportConfig := client.DefaultTransportConfig().WithHost(testDirectorLoc)
 	testConductor.pTestDirectorClient = client.NewHTTPClientWithConfig(nil, transportConfig)
 
+	transportConfig = client.DefaultTransportConfig().WithHost(workloadMonitorLoc)
+	testConductor.pWorkloadMonitorClient = client.NewHTTPClientWithConfig(nil, transportConfig)
+
 	var jk models.JiraKey = "MQ-002"
 	sendTestPlan(testConductor.pTestDirectorClient, "test name 2", &jk, false)
 
-	getTestPlans(testConductor.pTestDirectorClient)
+	err = getTestPlans(testConductor.pTestDirectorClient)
+	if err != nil {
+		fmt.Println("failed to get test plans")
+		return
+	}
 
 	jk = "MQ-003"
 	sendTestPlan(testConductor.pTestDirectorClient, "test name 3", &jk, true)
 
-	getTestPlans(testConductor.pTestDirectorClient)
+	err = getTestPlans(testConductor.pTestDirectorClient)
+	if err != nil {
+		fmt.Println("failed to get test plans")
+		return
+	}
 
 	if err = testConductor.BasicSoakTest(); err != nil {
 		fmt.Printf("run test failed, error: %v\n", err)

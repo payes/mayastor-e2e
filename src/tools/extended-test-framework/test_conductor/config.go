@@ -3,9 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	//"path"
-	//"runtime"
-	//"strings"
 	"sync"
 
 	"gopkg.in/yaml.v2"
@@ -75,10 +72,10 @@ var gConfig ExtendedTestConfig
 
 // This function is called early from junit and various bits have not been initialised yet
 // so we cannot use logf or Expect instead we use fmt.Print... and panic.
-func GetConfig() ExtendedTestConfig {
+func GetConfig() (ExtendedTestConfig, error) {
+	var err error
 
 	once.Do(func() {
-		var err error
 		var info os.FileInfo
 
 		// Initialise the configuration
@@ -102,20 +99,23 @@ func GetConfig() ExtendedTestConfig {
 		//		- else try to use a file of the same name in the configuration directory
 		info, err = os.Stat(gConfigFile)
 		if os.IsNotExist(err) {
-			fmt.Printf("Unable to access configuration file %v\n", gConfigFile)
+			err = fmt.Errorf("Unable to access configuration file %v", gConfigFile)
+			return
 		} else {
 			if info.IsDir() {
-				fmt.Printf("%v is not a file\n", gConfigFile)
+				err = fmt.Errorf("%v is not a file", gConfigFile)
+				return
 			}
 		}
 		fmt.Printf("Using configuration file %s\n", gConfigFile)
 		err = cleanenv.ReadConfig(gConfigFile, &gConfig)
 		if err != nil {
-			fmt.Printf("%v\n", err)
+			err = fmt.Errorf("could not read config file, error %v", err)
+			return
 		}
 		cfgBytes, _ := yaml.Marshal(gConfig)
 		fmt.Printf("%s\n", string(cfgBytes))
 	})
 
-	return gConfig
+	return gConfig, err
 }
