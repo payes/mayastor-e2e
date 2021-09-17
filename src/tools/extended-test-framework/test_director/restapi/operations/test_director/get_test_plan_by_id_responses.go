@@ -10,7 +10,7 @@ import (
 
 	"github.com/go-openapi/runtime"
 
-	"mayastor-e2e/tools/extended-test-framework/test_director/models"
+	"test-director/models"
 )
 
 // GetTestPlanByIDOKCode is the HTTP code returned for type GetTestPlanByIDOK

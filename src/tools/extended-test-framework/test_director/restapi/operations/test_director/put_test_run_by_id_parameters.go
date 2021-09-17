@@ -16,7 +16,7 @@ import (
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/validate"
 
-	"mayastor-e2e/tools/extended-test-framework/test_director/models"
+	"test-director/models"
 )
 
 // NewPutTestRunByIDParams creates a new PutTestRunByIDParams object

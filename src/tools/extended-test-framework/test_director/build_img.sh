@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 REGISTRY="ci-registry.mayastor-ci.mayadata.io"
-TAG="latest"
+TAG="mhajek"
 APP="test_director"
 
 SCRIPT_DIR=$(dirname "$0")
