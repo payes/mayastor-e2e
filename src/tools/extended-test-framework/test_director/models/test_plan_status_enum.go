@@ -74,7 +74,16 @@ func (m TestPlanStatusEnum) Validate(formats strfmt.Registry) error {
 	return nil
 }
 
-// ContextValidate validates this test plan status enum based on context it is used
+// ContextValidate validate this test plan status enum based on the context it is used
 func (m TestPlanStatusEnum) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	if err := validate.ReadOnly(ctx, "", "body", TestPlanStatusEnum(m)); err != nil {
+		return err
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
 	return nil
 }
