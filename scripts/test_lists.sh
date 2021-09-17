@@ -23,6 +23,7 @@ resource_check
 dynamic_provisioning
 expand_msp_disk
 mayastorpool_schema
+MQ-1783-fsx_ext4_stress
 ms_pod_disruption_rm_msv
 ms_pod_restart
 ms_pool_delete
@@ -97,5 +98,4 @@ MQ-1498-primitive_device_retirement
 maximum_vols_io
 node_failure
 stale_msp_after_node_power_failure
-MQ-1783-fsx_ext4_stress
 "
