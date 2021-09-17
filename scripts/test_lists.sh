@@ -32,7 +32,6 @@ nexus_location
 pool_modify
 primitive_data_integrity
 primitive_fault_injection
-primitive_msp_deletion
 primitive_msp_stress
 primitive_replicas
 primitive_volumes
@@ -50,6 +49,7 @@ pvc_delete
 ms_pod_disruption
 ms_pod_disruption_no_io
 node_shutdown
+primitive_msp_deletion
 "
 
 profiles[notrun]="
