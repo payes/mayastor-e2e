@@ -202,6 +202,7 @@ func DeleteAllMsvs() (int, error) {
 	if err != nil {
 		// This function may be called by AfterSuite by uninstall test so listing MSVs may fail correctly
 		logf.Log.Info("DeleteAllMsvs: list MSVs failed.", "Error", err)
+		return 0, err
 	}
 	if err == nil && msvs != nil && len(msvs) != 0 {
 		for _, msv := range msvs {

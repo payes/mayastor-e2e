@@ -118,6 +118,9 @@ func SetupTestEnvBasic() {
 func SetupTestEnv() {
 	SetupTestEnvBasic()
 
+	err := CheckAndSetControlPlane()
+	Expect(err).To(BeNil())
+
 	// Fail the test setup if gRPC calls are mandated and
 	// gRPC calls are not supported.
 	if e2e_config.GetConfig().GrpcMandated {

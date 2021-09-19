@@ -105,7 +105,7 @@ func CheckAllMsPoolsAreOnline() error {
 		for _, pool := range pools {
 			poolName := pool.GetName()
 			state := pool.Status.State
-			if state != "online" {
+			if state != "online" && state != "Online" {
 				log.Log.Info("CheckAllMsPoolsAreOnline", "pool", poolName, "state", state)
 				allHealthy = false
 			}
