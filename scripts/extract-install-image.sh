@@ -51,7 +51,7 @@ while [ "$#" -gt 0 ]; do
     --installroot)
       shift
       if [ -n "$1" ]; then
-            INSTALLROOT="$1/install"
+            INSTALLROOT="$1/install-bundle"
       fi
       shift
       ;;
