@@ -38,7 +38,7 @@ rules:
     verbs: ["get", "watch", "list"]
   - apiGroups: [""]
     resources: ["namespaces", "pods", "serviceaccounts", "configmaps", "services"]
-    verbs: ["create", "delete"]
+    verbs: ["create", "list", "delete"]
   - apiGroups: ["rbac.authorization.k8s.io"]
     resources: ["clusterroles", "clusterrolebindings", "roles", "rolebindings"]
     verbs: ["create", "delete"]
@@ -145,7 +145,7 @@ metadata:
 spec:
   containers:
     - name: test-conductor
-      image: ci-registry.mayastor-ci.mayadata.io/mayadata/test_conductor:cwd
+      image: ci-registry.mayastor-ci.mayadata.io/mayadata/test_conductor_cwd:latest
       imagePullPolicy: Always
       args:
         - "/test_conductor"

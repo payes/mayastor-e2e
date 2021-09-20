@@ -15,27 +15,27 @@ metadata:
   name: workload-monitor-sa
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
+kind: ClusterRole
 metadata:
   namespace: default
-  name: workload-monitor-r
+  name: workload-monitor-cr
 rules:
   - apiGroups: [""]
     resources: ["pods"]
     verbs: ["get", "watch", "list"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
+kind: ClusterRoleBinding
 metadata:
   namespace: default
-  name: workload-monitor-rb
+  name: workload-monitor-crb
 subjects:
   - kind: ServiceAccount
     name: workload-monitor-sa
     namespace: default
 roleRef:
-  kind: Role
-  name: workload-monitor-r
+  kind: ClusterRole
+  name: workload-monitor-cr
   apiGroup: rbac.authorization.k8s.io
 ---
 
@@ -48,9 +48,20 @@ metadata:
 spec:
   containers:
     - name: workload-monitor
-      image: ci-registry.mayastor-ci.mayadata.io/mayadata/workload_monitor:cwd
+      image: ci-registry.mayastor-ci.mayadata.io/mayadata/workload_monitor_cwd:latest
       args:
         - "/workload_monitor"
+      env:
+      - name: PORT
+        value: "8080"
+      - name: HOST
+        valueFrom:
+          fieldRef:
+            fieldPath: status.podIP
+      ports:
+        - containerPort: 8080
+          protocol: "TCP"
+          name: test-monitor
   restartPolicy: OnFailure
   serviceAccountName: workload-monitor-sa
 

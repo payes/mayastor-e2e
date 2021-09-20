@@ -1,0 +1,385 @@
+---
+
+swagger: '2.0'
+info:
+  description: MayaData System Test Framework API
+  version: 1.0.1
+  title: Test Framework
+schemes:
+  - http
+produces:
+  - application/json
+basePath: /api/v1
+
+tags:
+  - name: test-director
+    description: Test Director
+
+paths:
+  /td/testplans:
+    get:
+      tags:
+        - test-director
+      summary: returns a list of Test Plans registered with the director
+      operationId: GetTestPlans
+      parameters:
+        - in: query
+          name: defaultPlanOnly
+          description: if set true return only the default Test Plan
+          required: false
+          type: boolean
+          default: false
+      responses:
+        '200':
+          description: search results available and returned
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/TestPlan'
+        '404':
+          description: no matching Test Plan(s) found
+    delete:
+      tags:
+        - test-director
+      summary: deletes all plans except the default plan
+      operationId: DeleteTestPlans
+      responses:
+        '200':
+          description: Returns deleted Test Plan count, which may be zero
+          schema:
+            $ref: '#/definitions/RequestOutcome'
+
+
+  /td/testplans/{id}:
+    get:
+      tags:
+        - test-director
+      summary: searches for a specific Test Plan by its id
+      operationId: GetTestPlanById
+      parameters:
+        - $ref: '#/parameters/JiraKeyPathParam'
+      responses:
+        '200':
+          description: Test Plan item returned
+          schema:
+            $ref: '#/definitions/TestPlan'
+        '404':
+          description: no matching Test Plan found
+    put:
+      tags:
+        - test-director
+      summary: registers or updates a Test Plan with the director
+      operationId: PutTestPlanById
+      parameters:
+        - $ref: '#/parameters/JiraKeyPathParam'
+        - in: body
+          required: true
+          name: body
+          schema:
+            $ref: '#/definitions/TestPlanSpec'
+      responses:
+        '200':
+          description: Test Plan was registered or updated
+          schema:
+            $ref: '#/definitions/TestPlan'
+        '400':
+          description: Bad request (malformed/invalid body content)
+          schema:
+            $ref: '#/definitions/RequestOutcome'
+    delete:
+      tags:
+        - test-director
+      summary: searches for a specific Test Plan by its id
+      operationId: DeleteTestPlanById
+      parameters:
+        - $ref: '#/parameters/JiraKeyPathParam'
+      responses:
+        '200':
+          description: Returns deleted Test Plan
+          schema:
+            $ref: '#/definitions/TestPlan'
+        '404':
+          description: no matching Test Plan found
+
+  /td/testRuns:
+    get:
+      tags:
+        - test-director
+      summary: returns a list of Test Runs registered with the Director
+      operationId: GetTestRuns
+      responses:
+        '200':
+          description: Test object(s) returned
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/TestRun'
+        '404':
+          description: no matching Test(s) found
+
+  /td/testruns/{id}:
+    get:
+      tags:
+        - test-director
+      summary: returns a Test Run with the corresponding id
+      operationId: GetTestRunById
+      parameters:
+        - $ref: '#/parameters/JiraKeyPathParam'
+      responses:
+        '200':
+          description: A Test Run was returned to the caller
+          schema:
+            $ref: '#/definitions/TestRun'
+        '404':
+          description: Test Run not found
+    put:
+      tags:
+        - test-director
+      summary: register or update a Test Run with the Director
+      operationId: PutTestRunById
+      parameters:
+        - in: path
+          name: id
+          description: Test Run id
+          required: true
+          type: string
+          format: uuid
+        - in: body
+          required: true
+          name: body
+          schema:
+            $ref: '#/definitions/TestRunSpec'
+      responses:
+        '200':
+          description: Test Run Registered/Updated
+          schema:
+            $ref: '#/definitions/TestRun'
+        '400':
+          description: Bad request
+          schema:
+            $ref: '#/definitions/RequestOutcome'
+        '403':
+          description: The request was refused
+          schema:
+            $ref: '#/definitions/RequestOutcome'
+    delete:
+      tags:
+        - test-director
+      summary: returns a Test Run with the corresponding id
+      operationId: DeleteTestRunById
+      parameters:
+        - $ref: '#/parameters/JiraKeyPathParam'
+      responses:
+        '200':
+          description: Returns the deleted Test Run
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/TestRun'
+        '404':
+          description: Test Run not found
+
+  /td/events:
+    get:
+      tags:
+        - test-director
+      summary: returns events raised with the Director
+      operationId: GetEvents
+      parameters:
+        - $ref: '#/parameters/EventClassEnumQueryParam'
+        - $ref: '#/parameters/EventSourceClassEnumQueryParam'
+      responses:
+        '200':
+          description: Event(s) returned to caller
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Event'
+        '404':
+          description: no corresponding event(s) exist
+    post:
+      tags:
+        - test-director
+      summary: logs a new event with the Director
+      operationId: AddEvent
+      parameters:
+        - in: body
+          required: true
+          name: body
+          schema:
+            $ref: '#/definitions/EventSpec'
+      responses:
+        '200':
+          description: Event was logged and returned to caller
+          schema:
+            $ref: '#/definitions/Event'
+        '400':
+          description: Bad request (malformed/invalid body content)
+          schema:
+            $ref: '#/definitions/RequestOutcome'
+
+parameters:
+  JiraKeyPathParam:
+    in: path
+    name: id
+    required: true
+    type: string
+    pattern: ^[A-Z]{2,3}-\d{1,4}$
+    format: Jira issue key
+    description: Test Plan Id
+  EventSourceClassEnumQueryParam:
+    in: query
+    type: string
+    name: sourceClass
+    description: source class
+    enum:
+      - workload-monitor
+      - log-monitor
+      - resouce-monitor
+  EventClassEnumQueryParam:
+    in: query
+    type: string
+    name: class
+    description: event class
+    enum:
+      - FAIL
+      - INFO
+      - WARN
+
+definitions:
+  JiraKey:
+    type: string
+    pattern: ^[A-Z]{2,3}-\d{1,4}$
+    format: Jira issue key
+    example: MQ-123
+  RequestOutcome:
+    type: object
+    properties:
+      result:
+        type: string
+        enum:
+          - REFUSED
+          - OK
+      items_affected:
+        type: integer
+        format: int64
+        minimum: 0
+        description: number of items affected (e.g.) by the request
+      details:
+        type: string
+        example: reason(s) why the request cannot be handled
+  TestPlanSpec:
+    type: object
+    required:
+      - status
+    properties:
+      name:
+        type: string
+        description: display name
+        example: Nightly Stable Test Plan
+      status:
+        $ref: '#/definitions/TestPlanStatusEnum'
+      assignee:
+        type: string
+        description: assigned user to the test plan/owner
+        example: John Doe
+  TestPlan:
+    allOf:
+      - $ref: '#/definitions/TestPlanSpec'
+      - type: object
+        properties:
+          key:
+            $ref: '#/definitions/JiraKey'
+          isActive:
+            type: boolean
+            readOnly: true
+    additionalProperties: false
+  TestPlanStatusEnum:
+    type: string
+    enum:
+      - NOT_STARTED
+      - RUNNING
+      - COMPLETE_PASS
+      - COMPLETE_FAIL
+  TestRunSpec:
+    type: object
+    required:
+      - testKey
+    properties:
+      testKey:
+        $ref: '#/definitions/JiraKey'
+      status:
+        $ref: '#/definitions/TestRunStatusEnum'
+      data:
+        type: string
+        description: data field
+        example: e.g. description of test outcome
+  TestRun:
+    allOf:
+      - type: object
+        properties:
+          id:
+            type: string
+            format: uuid
+            description: Test Run unqiue identifer (pod metadata.uid)
+          startDateTime:
+            type: string
+            format: date-time
+            description: Test Run Start Time
+          endDateTime:
+            type: string
+            format: date-time
+            description: Test Run End Time
+      - $ref: '#/definitions/TestRunSpec'
+  TestRunStatusEnum:
+    type: string
+    enum:
+      - NOT_STARTED
+      - RUNNING
+      - COMPLETE_PASS
+      - COMPLETE_FAIL
+  EventSpec:
+    type: object
+    required:
+      - sourceClass
+      - sourceInstance
+      - class
+      - message
+    properties:
+      sourceClass:
+        $ref: '#/definitions/EventSourceClassEnum'
+      sourceInstance:
+        type: string
+      resource:
+        type: string
+      class:
+        $ref: '#/definitions/EventClassEnum'
+      message:
+        type: string
+      data:
+        type: array
+        items:
+          type: string
+  Event:
+    allOf:
+      - type: object
+        properties:
+          id:
+            type: string
+            format: uuid
+          loggedDateTime:
+            type: string
+            format: date-time
+      - $ref: '#/definitions/EventSpec'
+  EventSourceClassEnum:
+    type: string
+    enum:
+      - workload-monitor
+      - log-monitor
+      - resouce-monitor
+  EventClassEnum:
+    type: string
+    enum:
+      - FAIL
+      - INFO
+      - WARN
