@@ -5,6 +5,8 @@ set -e pipefail
 SCRIPT_DIR=$(dirname "$0")
 cd ${SCRIPT_DIR}
 
+./gen_client_code.sh
+
 go get github.com/go-openapi/errors
 go get github.com/go-openapi/runtime
 go get github.com/go-openapi/runtime/client

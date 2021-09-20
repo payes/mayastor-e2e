@@ -18,7 +18,7 @@ metadata:
 spec:
   containers:
     - name: test-director
-      image: ci-registry.mayastor-ci.mayadata.io/mayadata/test_director:cwd
+      image: ci-registry.mayastor-ci.mayadata.io/mayadata/test_director:mhajek
       imagePullPolicy: Always
       args:
         - "/test_director"
@@ -32,6 +32,6 @@ spec:
       ports:
         - containerPort: 8080
           protocol: "TCP"
-          name: test-director
+          name: test-dir
   restartPolicy: OnFailure
 

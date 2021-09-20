@@ -1,0 +1,309 @@
+---
+
+swagger: '2.0'
+info:
+  description: MayaData System Test Framework API
+  version: 1.0.1
+  title: Test Framework API
+schemes:
+  - http
+produces:
+  - application/json
+basePath: /api/v1
+
+tags:
+  - name: workload-monitor
+    description: Workload Monitor
+paths:
+  /wm/workloads:
+    get:
+      tags:
+        - workload-monitor
+      summary: returns all workloads registered with the monitor
+      operationId: GetWorkloads
+      parameters:
+        - in: query
+          name: registrantId
+          type: string
+          format: uuid
+          description: metadata.uid of Pod which registered the workload
+        - in: query
+          name: name
+          type: string
+          description: workload (pod) name
+        - in: query
+          name: namespace
+          type: string
+          description: workload (pod) namespace
+      responses:
+        '200':
+          description: Workload items were returned
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Workload'
+        '404':
+          description: no corresponding workload(s) were returned
+  /wm/registrants/{rid}:
+    get:
+      tags:
+        - workload-monitor
+      summary: returns all workloads registered by the specified registrant
+      operationId: GetWorkloadsByRegistrant
+      parameters:
+        - in: path
+          name: rid
+          required: true
+          type: string
+          format: uuid
+          description: registrant uid
+      responses:
+        '200':
+          description: corresponding Workload item(s) returned to caller
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Workload'
+        '400':
+          description: Bad request (malformed/invalid resource id)
+          schema:
+            $ref: '#/definitions/RequestOutcome'
+        '404':
+          description: no corresponding workload(s) found
+    delete:
+      tags:
+        - workload-monitor
+      summary: deletes all workloads registered by the specified registrant
+      operationId: DeleteWorkloadsByRegistrant
+      parameters:
+        - in: path
+          name: rid
+          required: true
+          type: string
+          format: uuid
+          description: registrant uid
+      responses:
+        '200':
+          description: Workload(s) deleted
+          schema:
+            $ref: '#/definitions/RequestOutcome'
+        '400':
+          description: Bad request (malformed/invalid resource id)
+          schema:
+            $ref: '#/definitions/RequestOutcome'
+        '404':
+          description: resource not found
+
+  /wm/registrants/{rid}/workloads/{wid}:
+    get:
+      tags:
+        - workload-monitor
+      summary: returns a specific workload registration (identified  workload and registrant)
+      operationId: GetWorkloadByRegistrant
+      parameters:
+        - in: path
+          name: rid
+          required: true
+          type: string
+          format: uuid
+          description: registrant uid
+        - in: path
+          name: wid
+          required: true
+          type: string
+          format: uuid
+          description: workload uid
+      responses:
+        '200':
+          description: corresponding Workload item returned to caller
+          schema:
+            $ref: '#/definitions/Workload'
+        '400':
+          description: Bad request (malformed/invalid resource id)
+          schema:
+            $ref: '#/definitions/RequestOutcome'
+        '404':
+          description: no corresponding workload found
+    put:
+      tags:
+        - workload-monitor
+      summary: Creates/Updates a workload registration for a specific registratant
+      operationId: PutWorkloadByRegistrant
+      parameters:
+        - in: path
+          name: rid
+          required: true
+          type: string
+          format: uuid
+          description: registrant uid
+        - in: path
+          name: wid
+          required: true
+          type: string
+          format: uuid
+          description: workload uid
+        - in: body
+          name: body
+          schema:
+            $ref: '#/definitions/WorkloadSpec'
+      responses:
+        '200':
+          description: Workload registered/updated
+          schema:
+            $ref: '#/definitions/Workload'
+        '400':
+          description: Bad request (malformed/invalid resource id)
+          schema:
+            $ref: '#/definitions/RequestOutcome'
+    delete:
+      tags:
+        - workload-monitor
+      summary: deletes a specific workload registration (identified  workload and registrant)
+      operationId: DeleteWorkloadByRegistrant
+      parameters:
+        - in: path
+          name: rid
+          required: true
+          type: string
+          format: uuid
+          description: registrant uid
+        - in: path
+          name: wid
+          required: true
+          type: string
+          format: uuid
+          description: workload uid
+      responses:
+        '200':
+          description: Workload deleted
+          schema:
+            $ref: '#/definitions/Workload'
+        '400':
+          description: Bad request (malformed/invalid resource id)
+          schema:
+            $ref: '#/definitions/RequestOutcome'
+        '404':
+          description: resource not found
+
+parameters:
+  JiraKeyPathParam:
+    in: path
+    name: id
+    required: true
+    type: string
+    pattern: ^[A-Z]{2,3}-\d{1,4}$
+    format: Jira issue key
+    description: Test Plan Id
+  EventSourceClassEnumQueryParam:
+    in: query
+    type: string
+    name: sourceClass
+    description: source class
+    enum:
+      - workload-monitor
+      - log-monitor
+      - resouce-monitor
+  EventClassEnumQueryParam:
+    in: query
+    type: string
+    name: class
+    description: event class
+    enum:
+      - FAIL
+      - INFO
+      - WARN
+
+definitions:
+  RequestOutcome:
+    type: object
+    properties:
+      result:
+        type: string
+        enum:
+          - REFUSED
+          - OK
+      items_affected:
+        type: integer
+        format: int64
+        minimum: 0
+        description: number of items affected (e.g.) by the request
+      details:
+        type: string
+        example: reason(s) why the request cannot be handled
+  EventSpec:
+    type: object
+    required:
+      - sourceClass
+      - sourceInstance
+      - class
+      - message
+    properties:
+      sourceClass:
+        $ref: '#/definitions/EventSourceClassEnum'
+      sourceInstance:
+        type: string
+      resource:
+        type: string
+      class:
+        $ref: '#/definitions/EventClassEnum'
+      message:
+        type: string
+      data:
+        type: array
+        items:
+          type: string
+  Event:
+    allOf:
+      - type: object
+        properties:
+          id:
+            type: string
+            format: uuid
+          loggedDateTime:
+            type: string
+            format: date-time
+      - $ref: '#/definitions/EventSpec'
+  EventSourceClassEnum:
+    type: string
+    enum:
+      - workload-monitor
+      - log-monitor
+      - resouce-monitor
+  EventClassEnum:
+    type: string
+    enum:
+      - FAIL
+      - INFO
+      - WARN
+  WorkloadSpec:
+    type: object
+    required:
+      - violations
+    properties:
+      violations:
+        type: array
+        items:
+          $ref: '#/definitions/WorkloadViolationEnum'
+  Workload:
+    allOf:
+      - type: object
+        properties:
+          id:
+            type: string
+            format: uuid
+            description: metadata.uid of workload pod
+          name:
+            $ref: '#/definitions/RFC1123Label'
+          namespace:
+            $ref: '#/definitions/RFC1123Label'
+      - $ref: '#/definitions/WorkloadSpec'
+  WorkloadViolationEnum:
+    type: string
+    enum:
+      - RESTARTED
+      - TERMINATED
+      - NOT_PRESENT
+  RFC1123Label:
+    type: string
+    pattern: ^[a-z0-9][a-z0-9\-]{0,61}[a-z0-9]{1}
+    description: kubernetes label name conforming to RFC1123

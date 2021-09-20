@@ -10,8 +10,8 @@ import (
 	"github.com/go-openapi/loads"
 	flags "github.com/jessevdk/go-flags"
 
-	"mayastor-e2e/tools/extended-test-framework/restapi"
-	"mayastor-e2e/tools/extended-test-framework/restapi/operations"
+	"mayastor-e2e/tools/extended-test-framework/test_director/restapi"
+	"mayastor-e2e/tools/extended-test-framework/test_director/restapi/operations"
 
 	"k8s.io/client-go/rest"
 )
@@ -28,7 +28,7 @@ func startServer() {
 		log.Fatalln(err)
 	}
 
-	api := operations.NewExtendedAPI(swaggerSpec)
+	api := operations.NewEtfwAPI(swaggerSpec)
 	server := restapi.NewServer(api)
 	//defer server.Shutdown()
 
@@ -82,6 +82,6 @@ func main() {
 	go startServer()
 
 	fmt.Println("waiting")
-	time.Sleep(600 * time.Second)
+	time.Sleep(6000 * time.Second)
 	fmt.Println("finishing")
 }
