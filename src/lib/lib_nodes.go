@@ -4,18 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	errors "github.com/pkg/errors"
-
-	//"mayastor-e2e/tools/extended-test-framework/client"
-	//"mayastor-e2e/tools/extended-test-framework/client/test_director"
-
-	//"mayastor-e2e/tools/extended-test-framework/models"
-
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
-	//"k8s.io/client-go/rest"
-
-	//"time"
 
 	coreV1 "k8s.io/api/core/v1"
 )
@@ -28,12 +18,10 @@ type NodeLocation struct {
 }
 
 func GetNodeLocs(k8sclient kubernetes.Clientset) ([]NodeLocation, error) {
-	//nodeList := coreV1.NodeList{}
 
 	nodeList, err := k8sclient.CoreV1().Nodes().List(context.TODO(), metaV1.ListOptions{})
 	if err != nil {
-		text := fmt.Sprintf("failed to list nodes: %v", err)
-		return nil, errors.New(text)
+		return nil, fmt.Errorf("failed to list nodes, error: %v", err)
 	}
 	NodeLocs := make([]NodeLocation, 0, len(nodeList.Items))
 	for _, k8snode := range nodeList.Items {
@@ -65,7 +53,7 @@ func GetNodeLocs(k8sclient kubernetes.Clientset) ([]NodeLocation, error) {
 				MasterNode:   masterNode,
 			})
 		} else {
-			return nil, errors.New("node lacks expected fields")
+			return nil, fmt.Errorf("node lacks expected fields")
 		}
 	}
 	return NodeLocs, nil
@@ -75,7 +63,7 @@ func GetMayastorNodeNames(k8sclient kubernetes.Clientset) ([]string, error) {
 	var nodeNames []string
 	nodes, err := GetNodeLocs(k8sclient)
 	if err != nil {
-		return nodeNames, err
+		return nodeNames, fmt.Errorf("failed to get node locations, error: %v", err)
 	}
 
 	for _, node := range nodes {
