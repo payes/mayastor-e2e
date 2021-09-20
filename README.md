@@ -4,6 +4,9 @@ This repository contains the scripts and source files for end-to-end testing of 
 On first checkout run `pre-commit install` this will enable running of pre-commit checks when committing changes.
 You may need to install `pre-commit` on the host system.
 
+## Version
+This version of the system/acceptance test suites expresses executable specifications applicable to the design behaviour of Mayastor release v0.8.1
+
 ## Directories
 * src - source for go tests
 * configurations - configuration for e2e platforms
