@@ -17,6 +17,9 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+const InstallSuiteName = "Basic Install Suite"
+const MCPInstallSuiteName = "Basic Install Suite (mayastor control plane)"
+
 func GenerateMayastorYamlFiles() {
 	e2eCfg := e2e_config.GetConfig()
 

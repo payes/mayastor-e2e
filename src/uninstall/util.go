@@ -13,6 +13,9 @@ import (
 	"time"
 )
 
+const UninstallSuiteName = "Basic Teardown Suite"
+const MCPUninstallSuiteName = "Basic Teardown Suite (mayastor control plane)"
+
 // Helper for deleting mayastor CRDs
 func deleteCRD(crdName string) {
 	cmd := exec.Command("kubectl", "delete", "crd", crdName)
@@ -117,14 +120,18 @@ func TeardownMayastor() {
 		}
 	}
 
+	// Delete all CRDs in the mayastor namespace.
+	// FIXME: should we? For now yes if nothing else this ensures consistency
+	// when deploying and redeploying Mayastor with MOAC and Mayastor with control plane
+	// on the same cluster.
 	if k8stest.IsControlPlaneMcp() {
 		k8stest.KubeCtlDeleteYaml("operator-rbac.yaml", yamlsDir)
 	} else {
 		k8stest.KubeCtlDeleteYaml("moac-rbac.yaml", yamlsDir)
-		// MOAC implicitly creates these CRDs, should we delete?
 		deleteCRD("mayastornodes.openebs.io")
 		deleteCRD("mayastorvolumes.openebs.io")
 	}
+	deleteCRD("mayastorpools.openebs.io")
 
 	if cleanup {
 		// Attempt to forcefully delete mayastor pods
