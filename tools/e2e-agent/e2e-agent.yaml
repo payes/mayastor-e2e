@@ -6,6 +6,7 @@ metadata:
 data:
   REST_PORT: "10012"
   MAYASTOR_PORT: "10124"
+  MCP_REST_PORT: "30011"
   E2E_HOST_ADDR: ""
 
 ---

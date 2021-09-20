@@ -102,7 +102,9 @@ def BuildImages(mayastorBranch, moacBranch, test_tag) {
   sh "rm -Rf moac/"
 }
 
-def BuildMCPImages(mayastorBranch, mcpBranch, test_tag) {
+def BuildMCPImages(Map parms) {
+  println parms
+
   def mayastorBranch = parms['mayastorBranch']
   def mcpBranch = parms['mcpBranch']
   def moacBranch = parms['moacBranch']
@@ -125,6 +127,7 @@ def BuildMCPImages(mayastorBranch, mcpBranch, test_tag) {
 
   // Build mayastor control plane
   GetMCP(mcpBranch)
+  sh "cd mayastor-control-plane && git submodule update --init"
   sh "cd mayastor-control-plane && ./scripts/release.sh --registry \"${env.REGISTRY}\" --alias-tag \"$test_tag\" "
 
   // Build the install image
