@@ -28,7 +28,7 @@ func main() {
 	handlers.InitTestPlanCache()
 	handlers.InitTestRunCache()
 
-	api := operations.NewTestFrameworkAPIAPI(swaggerSpec)
+	api := operations.NewTestFrameworkAPI(swaggerSpec)
 	server := restapi.NewServer(api)
 	defer server.Shutdown()
 

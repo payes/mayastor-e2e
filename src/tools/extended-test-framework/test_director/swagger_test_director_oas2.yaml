@@ -322,8 +322,6 @@ definitions:
             type: string
             format: uuid
             description: Test Run unqiue identifer (pod metadata.uid)
-          testPlanKey:
-            $ref: '#/definitions/JiraKey'
           startDateTime:
             type: string
             format: date-time
