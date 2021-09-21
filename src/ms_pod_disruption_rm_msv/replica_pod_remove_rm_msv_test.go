@@ -2,6 +2,7 @@ package ms_pod_disruption_rm_msv
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -275,7 +276,7 @@ func ReplicaLossVolumeDelete(pvcName string, storageClassName string, fioPodName
 		for _, msp := range msps {
 			logf.Log.Info("pool", "name", msp.Name, "state", msp.Status.State)
 			if msp.Spec.Node == nexus {
-				if msp.Status.State != "online" {
+				if strings.ToLower(msp.Status.State) != "online" {
 					return false
 				}
 			} else if msp.Status.State != "offline" {

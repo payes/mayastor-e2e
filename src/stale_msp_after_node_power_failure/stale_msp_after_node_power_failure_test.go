@@ -5,6 +5,8 @@ import (
 	"mayastor-e2e/common/custom_resources"
 	"mayastor-e2e/common/k8stest"
 	"mayastor-e2e/common/platform"
+
+	"strings"
 	"testing"
 	"time"
 
@@ -135,7 +137,7 @@ func IsMsPoolOnline(poolName string) error {
 	pool, err := custom_resources.GetMsPool(poolName)
 	Expect(err).ToNot(HaveOccurred(), fmt.Sprintf("failed to get mayastor pool %s %v", poolName, err))
 
-	if pool.Status.State != "online" {
+	if strings.ToLower(pool.Status.State) != "online" {
 		log.Log.Info("IsMsPoolOnline", "pool", poolName, "state", pool.Status.State)
 		poolHealthy = false
 	}

@@ -7,6 +7,7 @@ import (
 	"mayastor-e2e/common/mayastorclient"
 	"mayastor-e2e/common/mayastorclient/grpc"
 	"strconv"
+	"strings"
 
 	. "github.com/onsi/gomega"
 
@@ -95,7 +96,7 @@ func verifyPoolCreated(nodeAddr, poolName string, capacity int64) bool {
 		return false
 	}
 
-	if ok := (grpcPool.State == grpc.PoolState_POOL_ONLINE && crdPool.Status.State == "online"); !ok {
+	if ok := (grpcPool.State == grpc.PoolState_POOL_ONLINE && strings.ToLower(crdPool.Status.State) == "online"); !ok {
 		logf.Log.Info("Failed to verify state", "Expected State", "PoolState_POOL_ONLINE", "grpcPool.State", grpcPool.State, "crdPool.Status.State", crdPool.Status.State)
 		return false
 	}

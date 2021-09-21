@@ -3,6 +3,7 @@ package custom_resources
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -105,7 +106,7 @@ func CheckAllMsPoolsAreOnline() error {
 		for _, pool := range pools {
 			poolName := pool.GetName()
 			state := pool.Status.State
-			if state != "online" && state != "Online" {
+			if strings.ToLower(state) != "online" {
 				log.Log.Info("CheckAllMsPoolsAreOnline", "pool", poolName, "state", state)
 				allHealthy = false
 			}
@@ -128,6 +129,7 @@ func MakeAccumulatedError(accErr error, err error) error {
 // CheckAllMsPoolFinalizers check
 //	1) that finalizers exist for pools with replicas (used size != 0)
 //  2) that finalizers DO NOT EXIST for pools with no replicas (used size == 0)
+// Note this function should not be call if mayastor is deployed with MCP
 func CheckAllMsPoolFinalizers() error {
 	var accErr error
 	pools, err := ListMsPools()
