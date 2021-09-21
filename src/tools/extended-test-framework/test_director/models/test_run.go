@@ -31,9 +31,6 @@ type TestRun struct {
 	// Format: date-time
 	StartDateTime strfmt.DateTime `json:"startDateTime,omitempty"`
 
-	// test plan key
-	TestPlanKey JiraKey `json:"testPlanKey,omitempty"`
-
 	TestRunSpec
 }
 
@@ -46,8 +43,6 @@ func (m *TestRun) UnmarshalJSON(raw []byte) error {
 		ID strfmt.UUID `json:"id,omitempty"`
 
 		StartDateTime strfmt.DateTime `json:"startDateTime,omitempty"`
-
-		TestPlanKey JiraKey `json:"testPlanKey,omitempty"`
 	}
 	if err := swag.ReadJSON(raw, &dataAO0); err != nil {
 		return err
@@ -58,8 +53,6 @@ func (m *TestRun) UnmarshalJSON(raw []byte) error {
 	m.ID = dataAO0.ID
 
 	m.StartDateTime = dataAO0.StartDateTime
-
-	m.TestPlanKey = dataAO0.TestPlanKey
 
 	// AO1
 	var aO1 TestRunSpec
@@ -81,8 +74,6 @@ func (m TestRun) MarshalJSON() ([]byte, error) {
 		ID strfmt.UUID `json:"id,omitempty"`
 
 		StartDateTime strfmt.DateTime `json:"startDateTime,omitempty"`
-
-		TestPlanKey JiraKey `json:"testPlanKey,omitempty"`
 	}
 
 	dataAO0.EndDateTime = m.EndDateTime
@@ -90,8 +81,6 @@ func (m TestRun) MarshalJSON() ([]byte, error) {
 	dataAO0.ID = m.ID
 
 	dataAO0.StartDateTime = m.StartDateTime
-
-	dataAO0.TestPlanKey = m.TestPlanKey
 
 	jsonDataAO0, errAO0 := swag.WriteJSON(dataAO0)
 	if errAO0 != nil {
@@ -120,10 +109,6 @@ func (m *TestRun) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateStartDateTime(formats); err != nil {
-		res = append(res, err)
-	}
-
-	if err := m.validateTestPlanKey(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -177,29 +162,9 @@ func (m *TestRun) validateStartDateTime(formats strfmt.Registry) error {
 	return nil
 }
 
-func (m *TestRun) validateTestPlanKey(formats strfmt.Registry) error {
-
-	if swag.IsZero(m.TestPlanKey) { // not required
-		return nil
-	}
-
-	if err := m.TestPlanKey.Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("testPlanKey")
-		}
-		return err
-	}
-
-	return nil
-}
-
 // ContextValidate validate this test run based on the context it is used
 func (m *TestRun) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	var res []error
-
-	if err := m.contextValidateTestPlanKey(ctx, formats); err != nil {
-		res = append(res, err)
-	}
 
 	// validation for a type composition with TestRunSpec
 	if err := m.TestRunSpec.ContextValidate(ctx, formats); err != nil {
@@ -209,18 +174,6 @@ func (m *TestRun) ContextValidate(ctx context.Context, formats strfmt.Registry) 
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
-	return nil
-}
-
-func (m *TestRun) contextValidateTestPlanKey(ctx context.Context, formats strfmt.Registry) error {
-
-	if err := m.TestPlanKey.ContextValidate(ctx, formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("testPlanKey")
-		}
-		return err
-	}
-
 	return nil
 }
 

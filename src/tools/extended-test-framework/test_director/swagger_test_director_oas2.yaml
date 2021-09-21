@@ -4,7 +4,7 @@ swagger: '2.0'
 info:
   description: MayaData System Test Framework API
   version: 1.0.1
-  title: Test Framework API
+  title: Test Framework
 schemes:
   - http
 produces:
@@ -271,12 +271,18 @@ definitions:
   TestPlanSpec:
     type: object
     required:
-      - name
+      - status
     properties:
       name:
         type: string
         description: display name
         example: Nightly Stable Test Plan
+      status:
+        $ref: '#/definitions/TestPlanStatusEnum'
+      assignee:
+        type: string
+        description: assigned user to the test plan/owner
+        example: John Doe
   TestPlan:
     allOf:
       - $ref: '#/definitions/TestPlanSpec'
@@ -287,12 +293,9 @@ definitions:
           isActive:
             type: boolean
             readOnly: true
-          status:
-            $ref: '#/definitions/TestPlanStatusEnum'
     additionalProperties: false
   TestPlanStatusEnum:
     type: string
-    readOnly: true
     enum:
       - NOT_STARTED
       - RUNNING
@@ -319,8 +322,6 @@ definitions:
             type: string
             format: uuid
             description: Test Run unqiue identifer (pod metadata.uid)
-          testPlanKey:
-            $ref: '#/definitions/JiraKey'
           startDateTime:
             type: string
             format: date-time

@@ -15,13 +15,13 @@ import (
 	"test-director/restapi/operations/test_director"
 )
 
-//go:generate swagger generate server --target ../../test_director --name TestFrameworkAPI --spec ../swagger_test_director_oas2.yaml --principal interface{}
+//go:generate swagger generate server --target ../../test_director --name TestFramework --spec ../swagger_test_director_oas2.yaml --principal interface{}
 
-func configureFlags(api *operations.TestFrameworkAPIAPI) {
+func configureFlags(api *operations.TestFrameworkAPI) {
 	// api.CommandLineOptionsGroups = []swag.CommandLineOptionsGroup{ ... }
 }
 
-func configureAPI(api *operations.TestFrameworkAPIAPI) http.Handler {
+func configureAPI(api *operations.TestFrameworkAPI) http.Handler {
 	// configure the api here
 	api.ServeError = errors.ServeError
 

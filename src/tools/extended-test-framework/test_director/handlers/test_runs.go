@@ -6,6 +6,7 @@ import (
 	"github.com/go-openapi/strfmt"
 	"test-director/models"
 	"test-director/restapi/operations/test_director"
+	"time"
 )
 
 type getTestRunsImpl struct{}
@@ -61,20 +62,47 @@ func NewPutTestRunHandler() test_director.PutTestRunByIDHandler {
 func (impl *putTestRunImpl) Handle(params test_director.PutTestRunByIDParams) middleware.Responder {
 	id := params.ID
 	testRunSpec := params.Body
-	testRun := models.TestRun{
-		EndDateTime:   strfmt.DateTime{}, //missing
-		ID:            id,
-		StartDateTime: strfmt.DateTime{}, //missing
-		TestPlanKey:   "", //missing
-		TestRunSpec:   *testRunSpec,
+	testRun, _ := runInterface.Get(id.String())
+	if testRun != nil {
+		if testRun.Status == models.TestRunStatusEnumNOTSTARTED && testRunSpec.Status == models.TestRunStatusEnumRUNNING {
+			testRun.StartDateTime = strfmt.DateTime(time.Now())
+			testRun.TestRunSpec.Data = testRunSpec.Data
+			tp, _ := planInterface.Get(*testRun.TestKey)
+			if tp != nil {
+				*tp.Status = models.TestPlanStatusEnumRUNNING
+				planInterface.Set(tp.Key, *tp)
+			}
+		}
+		if testRun.Status == models.TestRunStatusEnumRUNNING && (testRunSpec.Status == models.TestRunStatusEnumCOMPLETEFAIL || testRunSpec.Status == models.TestRunStatusEnumCOMPLETEPASS) {
+			testRun.EndDateTime = strfmt.DateTime(time.Now())
+			testRun.TestRunSpec.Data = testRunSpec.Data
+			planInterface.Get(*testRun.TestKey)
+			tp, _ := planInterface.Get(*testRun.TestKey)
+			if tp != nil {
+				if testRun.Status == models.TestRunStatusEnumCOMPLETEPASS && *tp.Status != models.TestPlanStatusEnumCOMPLETEFAIL {
+					*tp.Status = models.TestPlanStatusEnumCOMPLETEPASS
+				} else {
+					*tp.Status = models.TestPlanStatusEnumCOMPLETEFAIL
+				}
+				planInterface.Set(tp.Key, *tp)
+			}
+		}
+	} else {
+		testRun = &models.TestRun{
+			EndDateTime:   strfmt.DateTime{},
+			ID:            id,
+			StartDateTime: strfmt.DateTime{},
+			TestRunSpec:   *testRunSpec,
+		}
 	}
-	err := runInterface.Set(id.String(), testRun)
+	err := runInterface.Set(id.String(), *testRun)
 	if err != nil {
+		i := int64(1)
 		return test_director.NewPutTestRunByIDBadRequest().WithPayload(&models.RequestOutcome{
 			Details:       err.Error(),
-			ItemsAffected: nil, //missing
+			ItemsAffected: &i,
 			Result:        models.RequestOutcomeResultREFUSED,
 		})
 	}
-	return test_director.NewPutTestRunByIDOK().WithPayload(&testRun)
+	return test_director.NewPutTestRunByIDOK().WithPayload(testRun)
 }
