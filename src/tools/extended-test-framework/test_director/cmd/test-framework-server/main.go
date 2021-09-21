@@ -5,7 +5,6 @@ package main
 import (
 	"log"
 	"os"
-	"test-director/handlers"
 
 	"github.com/go-openapi/loads"
 	flags "github.com/jessevdk/go-flags"
@@ -24,16 +23,12 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	handlers.InitEventCache()
-	handlers.InitTestPlanCache()
-	handlers.InitTestRunCache()
-
 	api := operations.NewTestFrameworkAPI(swaggerSpec)
 	server := restapi.NewServer(api)
 	defer server.Shutdown()
 
 	parser := flags.NewParser(server, flags.Default)
-	parser.ShortDescription = "Test Framework API"
+	parser.ShortDescription = "Test Framework"
 	parser.LongDescription = "MayaData System Test Framework API"
 	server.ConfigureFlags()
 	for _, optsGroup := range api.CommandLineOptionsGroups {
