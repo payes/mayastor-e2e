@@ -27,7 +27,7 @@ func init() {
   "swagger": "2.0",
   "info": {
     "description": "MayaData System Test Framework API",
-    "title": "Test Framework API",
+    "title": "Test Framework",
     "version": "1.0.1"
   },
   "basePath": "/api/v1",
@@ -453,9 +453,6 @@ func init() {
             },
             "key": {
               "$ref": "#/definitions/JiraKey"
-            },
-            "status": {
-              "$ref": "#/definitions/TestPlanStatusEnum"
             }
           }
         }
@@ -465,13 +462,21 @@ func init() {
     "TestPlanSpec": {
       "type": "object",
       "required": [
-        "name"
+        "status"
       ],
       "properties": {
+        "assignee": {
+          "description": "assigned user to the test plan/owner",
+          "type": "string",
+          "example": "John Doe"
+        },
         "name": {
           "description": "display name",
           "type": "string",
           "example": "Nightly Stable Test Plan"
+        },
+        "status": {
+          "$ref": "#/definitions/TestPlanStatusEnum"
         }
       }
     },
@@ -482,8 +487,7 @@ func init() {
         "RUNNING",
         "COMPLETE_PASS",
         "COMPLETE_FAIL"
-      ],
-      "readOnly": true
+      ]
     },
     "TestRun": {
       "allOf": [
@@ -504,9 +508,6 @@ func init() {
               "description": "Test Run Start Time",
               "type": "string",
               "format": "date-time"
-            },
-            "testPlanKey": {
-              "$ref": "#/definitions/JiraKey"
             }
           }
         },
@@ -594,7 +595,7 @@ func init() {
   "swagger": "2.0",
   "info": {
     "description": "MayaData System Test Framework API",
-    "title": "Test Framework API",
+    "title": "Test Framework",
     "version": "1.0.1"
   },
   "basePath": "/api/v1",
@@ -1067,9 +1068,6 @@ func init() {
             },
             "key": {
               "$ref": "#/definitions/JiraKey"
-            },
-            "status": {
-              "$ref": "#/definitions/TestPlanStatusEnum"
             }
           }
         }
@@ -1079,13 +1077,21 @@ func init() {
     "TestPlanSpec": {
       "type": "object",
       "required": [
-        "name"
+        "status"
       ],
       "properties": {
+        "assignee": {
+          "description": "assigned user to the test plan/owner",
+          "type": "string",
+          "example": "John Doe"
+        },
         "name": {
           "description": "display name",
           "type": "string",
           "example": "Nightly Stable Test Plan"
+        },
+        "status": {
+          "$ref": "#/definitions/TestPlanStatusEnum"
         }
       }
     },
@@ -1096,8 +1102,7 @@ func init() {
         "RUNNING",
         "COMPLETE_PASS",
         "COMPLETE_FAIL"
-      ],
-      "readOnly": true
+      ]
     },
     "TestRun": {
       "allOf": [
@@ -1118,9 +1123,6 @@ func init() {
               "description": "Test Run Start Time",
               "type": "string",
               "format": "date-time"
-            },
-            "testPlanKey": {
-              "$ref": "#/definitions/JiraKey"
             }
           }
         },
