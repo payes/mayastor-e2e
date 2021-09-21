@@ -22,9 +22,9 @@ import (
 	"test-director/restapi/operations/test_director"
 )
 
-// NewTestFrameworkAPIAPI creates a new TestFrameworkAPI instance
-func NewTestFrameworkAPIAPI(spec *loads.Document) *TestFrameworkAPIAPI {
-	return &TestFrameworkAPIAPI{
+// NewTestFrameworkAPI creates a new TestFramework instance
+func NewTestFrameworkAPI(spec *loads.Document) *TestFrameworkAPI {
+	return &TestFrameworkAPI{
 		handlers:            make(map[string]map[string]http.Handler),
 		formats:             strfmt.Default,
 		defaultConsumes:     "application/json",
@@ -80,8 +80,8 @@ func NewTestFrameworkAPIAPI(spec *loads.Document) *TestFrameworkAPIAPI {
 	}
 }
 
-/*TestFrameworkAPIAPI MayaData System Test Framework API */
-type TestFrameworkAPIAPI struct {
+/*TestFrameworkAPI MayaData System Test Framework API */
+type TestFrameworkAPI struct {
 	spec            *loads.Document
 	context         *middleware.Context
 	handlers        map[string]map[string]http.Handler
@@ -156,52 +156,52 @@ type TestFrameworkAPIAPI struct {
 }
 
 // UseRedoc for documentation at /docs
-func (o *TestFrameworkAPIAPI) UseRedoc() {
+func (o *TestFrameworkAPI) UseRedoc() {
 	o.useSwaggerUI = false
 }
 
 // UseSwaggerUI for documentation at /docs
-func (o *TestFrameworkAPIAPI) UseSwaggerUI() {
+func (o *TestFrameworkAPI) UseSwaggerUI() {
 	o.useSwaggerUI = true
 }
 
 // SetDefaultProduces sets the default produces media type
-func (o *TestFrameworkAPIAPI) SetDefaultProduces(mediaType string) {
+func (o *TestFrameworkAPI) SetDefaultProduces(mediaType string) {
 	o.defaultProduces = mediaType
 }
 
 // SetDefaultConsumes returns the default consumes media type
-func (o *TestFrameworkAPIAPI) SetDefaultConsumes(mediaType string) {
+func (o *TestFrameworkAPI) SetDefaultConsumes(mediaType string) {
 	o.defaultConsumes = mediaType
 }
 
 // SetSpec sets a spec that will be served for the clients.
-func (o *TestFrameworkAPIAPI) SetSpec(spec *loads.Document) {
+func (o *TestFrameworkAPI) SetSpec(spec *loads.Document) {
 	o.spec = spec
 }
 
 // DefaultProduces returns the default produces media type
-func (o *TestFrameworkAPIAPI) DefaultProduces() string {
+func (o *TestFrameworkAPI) DefaultProduces() string {
 	return o.defaultProduces
 }
 
 // DefaultConsumes returns the default consumes media type
-func (o *TestFrameworkAPIAPI) DefaultConsumes() string {
+func (o *TestFrameworkAPI) DefaultConsumes() string {
 	return o.defaultConsumes
 }
 
 // Formats returns the registered string formats
-func (o *TestFrameworkAPIAPI) Formats() strfmt.Registry {
+func (o *TestFrameworkAPI) Formats() strfmt.Registry {
 	return o.formats
 }
 
 // RegisterFormat registers a custom format validator
-func (o *TestFrameworkAPIAPI) RegisterFormat(name string, format strfmt.Format, validator strfmt.Validator) {
+func (o *TestFrameworkAPI) RegisterFormat(name string, format strfmt.Format, validator strfmt.Validator) {
 	o.formats.Add(name, format, validator)
 }
 
-// Validate validates the registrations in the TestFrameworkAPIAPI
-func (o *TestFrameworkAPIAPI) Validate() error {
+// Validate validates the registrations in the TestFrameworkAPI
+func (o *TestFrameworkAPI) Validate() error {
 	var unregistered []string
 
 	if o.JSONConsumer == nil {
@@ -254,23 +254,23 @@ func (o *TestFrameworkAPIAPI) Validate() error {
 }
 
 // ServeErrorFor gets a error handler for a given operation id
-func (o *TestFrameworkAPIAPI) ServeErrorFor(operationID string) func(http.ResponseWriter, *http.Request, error) {
+func (o *TestFrameworkAPI) ServeErrorFor(operationID string) func(http.ResponseWriter, *http.Request, error) {
 	return o.ServeError
 }
 
 // AuthenticatorsFor gets the authenticators for the specified security schemes
-func (o *TestFrameworkAPIAPI) AuthenticatorsFor(schemes map[string]spec.SecurityScheme) map[string]runtime.Authenticator {
+func (o *TestFrameworkAPI) AuthenticatorsFor(schemes map[string]spec.SecurityScheme) map[string]runtime.Authenticator {
 	return nil
 }
 
 // Authorizer returns the registered authorizer
-func (o *TestFrameworkAPIAPI) Authorizer() runtime.Authorizer {
+func (o *TestFrameworkAPI) Authorizer() runtime.Authorizer {
 	return nil
 }
 
 // ConsumersFor gets the consumers for the specified media types.
 // MIME type parameters are ignored here.
-func (o *TestFrameworkAPIAPI) ConsumersFor(mediaTypes []string) map[string]runtime.Consumer {
+func (o *TestFrameworkAPI) ConsumersFor(mediaTypes []string) map[string]runtime.Consumer {
 	result := make(map[string]runtime.Consumer, len(mediaTypes))
 	for _, mt := range mediaTypes {
 		switch mt {
@@ -287,7 +287,7 @@ func (o *TestFrameworkAPIAPI) ConsumersFor(mediaTypes []string) map[string]runti
 
 // ProducersFor gets the producers for the specified media types.
 // MIME type parameters are ignored here.
-func (o *TestFrameworkAPIAPI) ProducersFor(mediaTypes []string) map[string]runtime.Producer {
+func (o *TestFrameworkAPI) ProducersFor(mediaTypes []string) map[string]runtime.Producer {
 	result := make(map[string]runtime.Producer, len(mediaTypes))
 	for _, mt := range mediaTypes {
 		switch mt {
@@ -303,7 +303,7 @@ func (o *TestFrameworkAPIAPI) ProducersFor(mediaTypes []string) map[string]runti
 }
 
 // HandlerFor gets a http.Handler for the provided operation method and path
-func (o *TestFrameworkAPIAPI) HandlerFor(method, path string) (http.Handler, bool) {
+func (o *TestFrameworkAPI) HandlerFor(method, path string) (http.Handler, bool) {
 	if o.handlers == nil {
 		return nil, false
 	}
@@ -318,8 +318,8 @@ func (o *TestFrameworkAPIAPI) HandlerFor(method, path string) (http.Handler, boo
 	return h, ok
 }
 
-// Context returns the middleware context for the test framework API API
-func (o *TestFrameworkAPIAPI) Context() *middleware.Context {
+// Context returns the middleware context for the test framework API
+func (o *TestFrameworkAPI) Context() *middleware.Context {
 	if o.context == nil {
 		o.context = middleware.NewRoutableContext(o.spec, o, nil)
 	}
@@ -327,7 +327,7 @@ func (o *TestFrameworkAPIAPI) Context() *middleware.Context {
 	return o.context
 }
 
-func (o *TestFrameworkAPIAPI) initHandlerCache() {
+func (o *TestFrameworkAPI) initHandlerCache() {
 	o.Context() // don't care about the result, just that the initialization happened
 	if o.handlers == nil {
 		o.handlers = make(map[string]map[string]http.Handler)
@@ -381,7 +381,7 @@ func (o *TestFrameworkAPIAPI) initHandlerCache() {
 
 // Serve creates a http handler to serve the API over HTTP
 // can be used directly in http.ListenAndServe(":8000", api.Serve(nil))
-func (o *TestFrameworkAPIAPI) Serve(builder middleware.Builder) http.Handler {
+func (o *TestFrameworkAPI) Serve(builder middleware.Builder) http.Handler {
 	o.Init()
 
 	if o.Middleware != nil {
@@ -394,24 +394,24 @@ func (o *TestFrameworkAPIAPI) Serve(builder middleware.Builder) http.Handler {
 }
 
 // Init allows you to just initialize the handler cache, you can then recompose the middleware as you see fit
-func (o *TestFrameworkAPIAPI) Init() {
+func (o *TestFrameworkAPI) Init() {
 	if len(o.handlers) == 0 {
 		o.initHandlerCache()
 	}
 }
 
 // RegisterConsumer allows you to add (or override) a consumer for a media type.
-func (o *TestFrameworkAPIAPI) RegisterConsumer(mediaType string, consumer runtime.Consumer) {
+func (o *TestFrameworkAPI) RegisterConsumer(mediaType string, consumer runtime.Consumer) {
 	o.customConsumers[mediaType] = consumer
 }
 
 // RegisterProducer allows you to add (or override) a producer for a media type.
-func (o *TestFrameworkAPIAPI) RegisterProducer(mediaType string, producer runtime.Producer) {
+func (o *TestFrameworkAPI) RegisterProducer(mediaType string, producer runtime.Producer) {
 	o.customProducers[mediaType] = producer
 }
 
 // AddMiddlewareFor adds a http middleware to existing handler
-func (o *TestFrameworkAPIAPI) AddMiddlewareFor(method, path string, builder middleware.Builder) {
+func (o *TestFrameworkAPI) AddMiddlewareFor(method, path string, builder middleware.Builder) {
 	um := strings.ToUpper(method)
 	if path == "/" {
 		path = ""

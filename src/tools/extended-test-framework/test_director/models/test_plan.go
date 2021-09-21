@@ -26,9 +26,6 @@ type TestPlan struct {
 
 	// key
 	Key JiraKey `json:"key,omitempty"`
-
-	// status
-	Status TestPlanStatusEnum `json:"status,omitempty"`
 }
 
 // UnmarshalJSON unmarshals this object from a JSON structure
@@ -45,8 +42,6 @@ func (m *TestPlan) UnmarshalJSON(raw []byte) error {
 		IsActive *bool `json:"isActive,omitempty"`
 
 		Key JiraKey `json:"key,omitempty"`
-
-		Status TestPlanStatusEnum `json:"status,omitempty"`
 	}
 	if err := swag.ReadJSON(raw, &dataAO1); err != nil {
 		return err
@@ -55,8 +50,6 @@ func (m *TestPlan) UnmarshalJSON(raw []byte) error {
 	m.IsActive = dataAO1.IsActive
 
 	m.Key = dataAO1.Key
-
-	m.Status = dataAO1.Status
 
 	return nil
 }
@@ -74,15 +67,11 @@ func (m TestPlan) MarshalJSON() ([]byte, error) {
 		IsActive *bool `json:"isActive,omitempty"`
 
 		Key JiraKey `json:"key,omitempty"`
-
-		Status TestPlanStatusEnum `json:"status,omitempty"`
 	}
 
 	dataAO1.IsActive = m.IsActive
 
 	dataAO1.Key = m.Key
-
-	dataAO1.Status = m.Status
 
 	jsonDataAO1, errAO1 := swag.WriteJSON(dataAO1)
 	if errAO1 != nil {
@@ -102,10 +91,6 @@ func (m *TestPlan) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateKey(formats); err != nil {
-		res = append(res, err)
-	}
-
-	if err := m.validateStatus(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -131,22 +116,6 @@ func (m *TestPlan) validateKey(formats strfmt.Registry) error {
 	return nil
 }
 
-func (m *TestPlan) validateStatus(formats strfmt.Registry) error {
-
-	if swag.IsZero(m.Status) { // not required
-		return nil
-	}
-
-	if err := m.Status.Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("status")
-		}
-		return err
-	}
-
-	return nil
-}
-
 // ContextValidate validate this test plan based on the context it is used
 func (m *TestPlan) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	var res []error
@@ -161,10 +130,6 @@ func (m *TestPlan) ContextValidate(ctx context.Context, formats strfmt.Registry)
 	}
 
 	if err := m.contextValidateKey(ctx, formats); err != nil {
-		res = append(res, err)
-	}
-
-	if err := m.contextValidateStatus(ctx, formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -188,18 +153,6 @@ func (m *TestPlan) contextValidateKey(ctx context.Context, formats strfmt.Regist
 	if err := m.Key.ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("key")
-		}
-		return err
-	}
-
-	return nil
-}
-
-func (m *TestPlan) contextValidateStatus(ctx context.Context, formats strfmt.Registry) error {
-
-	if err := m.Status.ContextValidate(ctx, formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("status")
 		}
 		return err
 	}

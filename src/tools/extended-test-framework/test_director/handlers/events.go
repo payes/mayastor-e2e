@@ -1,7 +1,6 @@
 package handlers
 
 import (
-
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/go-openapi/strfmt"
 	"github.com/google/uuid"
@@ -10,7 +9,7 @@ import (
 	"time"
 )
 
-type getEventsImpl struct {}
+type getEventsImpl struct{}
 
 func NewGetEventsHandler() test_director.GetEventsHandler {
 	return &getEventsImpl{}
@@ -24,7 +23,7 @@ func (impl *getEventsImpl) Handle(test_director.GetEventsParams) middleware.Resp
 	return test_director.NewGetEventsOK().WithPayload(events)
 }
 
-type postEventImpl struct {}
+type postEventImpl struct{}
 
 func NewAddEventHandler() test_director.AddEventHandler {
 	return &postEventImpl{}
@@ -33,15 +32,16 @@ func NewAddEventHandler() test_director.AddEventHandler {
 func (impl *postEventImpl) Handle(params test_director.AddEventParams) middleware.Responder {
 	eventSpec := params.Body
 	event := models.Event{
-		ID: strfmt.UUID(uuid.New().String()), //random uuid or root_request_id inside body
-		LoggedDateTime: strfmt.DateTime(time.Now()),             //missing
+		ID:             strfmt.UUID(uuid.New().String()),
+		LoggedDateTime: strfmt.DateTime(time.Now()),
 		EventSpec:      *eventSpec,
 	}
 	err := eventInterface.Set(event.ID.String(), event)
 	if err != nil {
+		i := int64(1)
 		return test_director.NewPutTestPlanByIDBadRequest().WithPayload(&models.RequestOutcome{
 			Details:       err.Error(),
-			ItemsAffected: nil,
+			ItemsAffected: &i,
 			Result:        models.RequestOutcomeResultREFUSED,
 		})
 	}

@@ -19,17 +19,24 @@ import (
 // swagger:model TestPlanSpec
 type TestPlanSpec struct {
 
+	// assigned user to the test plan/owner
+	// Example: John Doe
+	Assignee string `json:"assignee,omitempty"`
+
 	// display name
 	// Example: Nightly Stable Test Plan
+	Name string `json:"name,omitempty"`
+
+	// status
 	// Required: true
-	Name *string `json:"name"`
+	Status *TestPlanStatusEnum `json:"status"`
 }
 
 // Validate validates this test plan spec
 func (m *TestPlanSpec) Validate(formats strfmt.Registry) error {
 	var res []error
 
-	if err := m.validateName(formats); err != nil {
+	if err := m.validateStatus(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -39,17 +46,53 @@ func (m *TestPlanSpec) Validate(formats strfmt.Registry) error {
 	return nil
 }
 
-func (m *TestPlanSpec) validateName(formats strfmt.Registry) error {
+func (m *TestPlanSpec) validateStatus(formats strfmt.Registry) error {
 
-	if err := validate.Required("name", "body", m.Name); err != nil {
+	if err := validate.Required("status", "body", m.Status); err != nil {
 		return err
+	}
+
+	if err := validate.Required("status", "body", m.Status); err != nil {
+		return err
+	}
+
+	if m.Status != nil {
+		if err := m.Status.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("status")
+			}
+			return err
+		}
 	}
 
 	return nil
 }
 
-// ContextValidate validates this test plan spec based on context it is used
+// ContextValidate validate this test plan spec based on the context it is used
 func (m *TestPlanSpec) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.contextValidateStatus(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *TestPlanSpec) contextValidateStatus(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.Status != nil {
+		if err := m.Status.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("status")
+			}
+			return err
+		}
+	}
+
 	return nil
 }
 
