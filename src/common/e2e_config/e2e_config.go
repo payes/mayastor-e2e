@@ -42,6 +42,7 @@ type E2EConfig struct {
 	MayastorRootDir string `yaml:"mayastorRootDir" env:"e2e_mayastor_root_dir"`
 	E2eRootDir      string `yaml:"e2eRootDir"`
 	SessionDir      string `yaml:"sessionDir" env:"e2e_session_dir"`
+	ControlPlane    string `yaml:"controlPlane" env:"e2e_control_plane"`
 
 	// Operational parameters
 	Cores int `yaml:"cores,omitempty"`
@@ -397,16 +398,35 @@ func GetConfig() E2EConfig {
 		} else {
 			fmt.Printf("reports directory is %s\n", e2eConfig.ReportsDir)
 		}
-
-		cfgBytes, _ := yaml.Marshal(e2eConfig)
-		cfgUsedFile := path.Clean(e2eConfig.SessionDir + "/resolved-configuration-" + e2eConfig.ConfigName + "-" + e2eConfig.Platform.Name + ".yaml")
-		err = ioutil.WriteFile(cfgUsedFile, cfgBytes, 0644)
-		if err == nil {
-			fmt.Printf("Resolved config written to %s\n", cfgUsedFile)
-		} else {
-			fmt.Printf("Resolved config not written to %s\n%v\n", cfgUsedFile, err)
-		}
+		saveConfig()
 	})
 
 	return e2eConfig
+}
+
+func saveConfig() {
+	cfgBytes, _ := yaml.Marshal(e2eConfig)
+	cfgUsedFile := path.Clean(e2eConfig.SessionDir + "/resolved-configuration-" + e2eConfig.ConfigName + "-" + e2eConfig.Platform.Name + ".yaml")
+	err := ioutil.WriteFile(cfgUsedFile, cfgBytes, 0644)
+	if err == nil {
+		fmt.Printf("Resolved config written to %s\n", cfgUsedFile)
+	} else {
+		fmt.Printf("Resolved config not written to %s\n%v\n", cfgUsedFile, err)
+	}
+}
+
+// SetControlPlane sets the control plane configuration if it is unset (i.e. empty) and writes it out if changed.
+// If config setting matches  the existing value no action.
+// Returns true it the config control plane value matches the input value
+func SetControlPlane(controlPlane string) bool {
+	_ = GetConfig()
+	if e2eConfig.ControlPlane == "" || e2eConfig.ControlPlane == controlPlane {
+		e2eConfig.ControlPlane = controlPlane
+		saveConfig()
+		return true
+	} else {
+		fmt.Printf("Unable to override config control plane=%s to %s",
+			e2eConfig.ControlPlane, controlPlane)
+	}
+	return false
 }

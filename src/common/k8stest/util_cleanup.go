@@ -195,6 +195,11 @@ func DeleteAllPvs() (int, error) {
 
 // DeleteAllMsvs Make best attempt to delete MayastorVolumes
 func DeleteAllMsvs() (int, error) {
+	//FIXME: MCP temporary do not check MSVs
+	if IsControlPlaneMcp() {
+		return 0, nil
+	}
+
 	// If after deleting PVCs and PVs Mayastor volumes are leftover
 	// try cleaning them up explicitly
 
@@ -202,6 +207,7 @@ func DeleteAllMsvs() (int, error) {
 	if err != nil {
 		// This function may be called by AfterSuite by uninstall test so listing MSVs may fail correctly
 		logf.Log.Info("DeleteAllMsvs: list MSVs failed.", "Error", err)
+		return 0, err
 	}
 	if err == nil && msvs != nil && len(msvs) != 0 {
 		for _, msv := range msvs {
@@ -305,9 +311,11 @@ func DeleteAllPools() bool {
 		logf.Log.Info("DeleteAllPools: deleting MayastorPools")
 		for _, pool := range pools {
 			logf.Log.Info("DeleteAllPools: deleting", "pool", pool.GetName())
-			finalizers := pool.GetFinalizers()
-			if finalizers != nil {
-				logf.Log.Info("DeleteAllPools: found finalizers on pool ", "pool", pool.GetName(), "finalizers", finalizers)
+			if !IsControlPlaneMcp() {
+				finalizers := pool.GetFinalizers()
+				if finalizers != nil {
+					logf.Log.Info("DeleteAllPools: found finalizers on pool ", "pool", pool.GetName(), "finalizers", finalizers)
+				}
 			}
 			err = custom_resources.DeleteMsPool(pool.GetName())
 			if err != nil {

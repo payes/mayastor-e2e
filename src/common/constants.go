@@ -47,3 +47,7 @@ const MayastorEngineLabelValue = "mayastor"
 //  These variables match the settings used in fsx pod definition
 
 const FsxBlockFileName = "/dev/sdm"
+
+// Control plane identifiers for config
+const CpMoac = "moac"
+const CpMcp2 = "mcp2"

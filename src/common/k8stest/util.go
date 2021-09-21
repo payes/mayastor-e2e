@@ -251,7 +251,9 @@ func mayastorReadyPodCount() int {
 	return int(mayastorDaemonSet.Status.NumberAvailable)
 }
 
-// Checks if MOAC is available and if the requisite number of mayastor instances are
+// FIXME MCP check callers in tests - what should be the state with MCP
+// FIXME Doh! overloaded semantics :-(
+// Checks if ControlPlane is available and if the requisite number of mayastor instances are
 // up and running.
 func MayastorInstancesReady(numMayastorInstances int, sleepTime int, duration int) (bool, error) {
 
@@ -259,7 +261,11 @@ func MayastorInstancesReady(numMayastorInstances int, sleepTime int, duration in
 	ready := false
 	for ix := 0; ix < count && !ready; ix++ {
 		time.Sleep(time.Duration(sleepTime) * time.Second)
-		ready = mayastorReadyPodCount() == numMayastorInstances && moacReady() && mayastorCSIReadyPodCount() == numMayastorInstances && msnOnlineCount() == numMayastorInstances
+		if IsControlPlaneMcp() {
+			ready = mayastorReadyPodCount() == numMayastorInstances && mayastorCSIReadyPodCount() == numMayastorInstances
+		} else {
+			ready = mayastorReadyPodCount() == numMayastorInstances && mayastorCSIReadyPodCount() == numMayastorInstances && msnOnlineCount() == numMayastorInstances
+		}
 	}
 
 	return ready, nil
@@ -345,8 +351,32 @@ func DeploymentReady(deploymentName, namespace string) bool {
 	return false
 }
 
-// Checks if MOAC is available and if the requisite number of mayastor instances are
-// up and running.
+func ControlPlaneReady(sleepTime int, duration int) bool {
+	ready := false
+	count := (duration + sleepTime - 1) / sleepTime
+
+	if IsControlPlaneMcp() {
+		deploymentNames := []string{"core-agents", "msp-operator", "rest"}
+
+		for ix := 0; ix < count && !ready; ix++ {
+			time.Sleep(time.Duration(sleepTime) * time.Second)
+			ready = true
+			for _, deploymentName := range deploymentNames {
+				tmp := DeploymentReady(deploymentName, common.NSMayastor())
+				logf.Log.Info("mayastor control plane", "deployment", deploymentName, "ready", tmp)
+				ready = ready && tmp
+			}
+		}
+	} else {
+		for ix := 0; ix < count && !ready; ix++ {
+			time.Sleep(time.Duration(sleepTime) * time.Second)
+			ready = moacReady()
+		}
+	}
+	return ready
+}
+
+// Checks if the requisite number of mayastor instances are up and running.
 func MayastorReady(sleepTime int, duration int) (bool, error) {
 	nodes, err := GetNodeLocs()
 	if err != nil {
@@ -581,4 +611,48 @@ func DeleteVolumeAttachments(nodeName string) error {
 		}
 	}
 	return nil
+}
+
+// CheckAndSetControlPlane checks which deployments exists and sets config control plane setting
+func CheckAndSetControlPlane() error {
+	var deployment appsV1.Deployment
+	var err error
+	var cpIsMoac = false
+	var cpIsMcp2 = false
+	var cpValue string
+
+	if err = gTestEnv.K8sClient.Get(context.TODO(), types.NamespacedName{Name: "moac", Namespace: common.NSMayastor()}, &deployment); err == nil {
+		cpIsMoac = true
+	}
+	if err = gTestEnv.K8sClient.Get(context.TODO(), types.NamespacedName{Name: "core-agents", Namespace: common.NSMayastor()}, &deployment); err == nil {
+		cpIsMcp2 = true
+	}
+	if cpIsMoac {
+		if cpIsMcp2 {
+			return fmt.Errorf("MOAC and MCP2 both present")
+		} else {
+			cpValue = common.CpMoac
+		}
+	} else {
+		if !cpIsMcp2 {
+			return fmt.Errorf("MOAC and MCP2 both absent")
+		} else {
+			cpValue = common.CpMcp2
+		}
+	}
+	logf.Log.Info("CheckAndSetControlPlane", "cpValue", cpValue)
+	if !e2e_config.SetControlPlane(cpValue) {
+		return fmt.Errorf("failed to setup config control plane to %s", cpValue)
+	}
+	return nil
+}
+
+func IsControlPlaneMcp() bool {
+	//FIXME should we assert if not moac or mcp2 ?
+	return e2e_config.GetConfig().ControlPlane == common.CpMcp2
+}
+
+func IsControlPlaneMoac() bool {
+	//FIXME should we assert if not moac or mcp2 ?
+	return e2e_config.GetConfig().ControlPlane == common.CpMoac
 }

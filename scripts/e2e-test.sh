@@ -17,10 +17,13 @@ EXITV_MISSING_OPTION=2
 EXITV_FAILED=4
 EXITV_FILE_MISMATCH=5
 EXITV_CRD_GO_GEN=6
+EXITV_MCP_MISMATCH=7
+EXITV_MISSING_KUBECTL_PLUGIN=8
 EXITV_FAILED_CLUSTER_OK=255
 
 platform_config_file="hetzner.yaml"
 config_file="hcloudci_config.yaml"
+control_plane=""
 
 # Global state variables
 #  test configuration state variables
@@ -83,7 +86,7 @@ Options:
                             instead of the tagged image.
   --session                 session name, adds a subdirectory with session name to artifacts, logs and reports
                             directories to facilitate concurrent execution of test runs (default timestamp-uuid)
-
+  --control_plane <moac|mcp2> Mayastor control plane to use MOAC or mayastor control plane
 Examples:
   $0 --device /dev/nvme0n1 --registry 127.0.0.1:5000 --tag a80ce0c
 EOF
@@ -226,6 +229,19 @@ while [ "$#" -gt 0 ]; do
         shift
         ssh_identity="$1"
         ;;
+    --control_plane)
+        shift
+            case "$1" in
+                moac|mcp2)
+                    control_plane=$1
+                    ;;
+                *)
+                    echo "Unknown control plane: $1"
+                    help
+                    exit $EXITV_INVALID_OPTION
+                    ;;
+            esac
+        ;;
     *)
       echo "Unknown option: $1"
       help
@@ -247,6 +263,8 @@ else
     coveragedir="$coveragedir/$session"
 fi
 
+mcp=''
+
 if [ -z "$mayastor_root_dir" ]; then
     if ! "$SCRIPTDIR/extract-install-image.sh" --alias-tag "$tag" --installroot "$sessiondir"
     then
@@ -254,56 +272,69 @@ if [ -z "$mayastor_root_dir" ]; then
         exit $EXITV_INVALID_OPTION
     fi
     export mayastor_root_dir="$sessiondir/install-bundle/$tag"
-    # "$mayastor_root_dir/csi/moac/crds/mayastor*.yaml" doesn't work
-    # in that the script does not receive a list of yaml files but instead
-    # gets mayastor*.yaml. Hence the odd double quoting style
-    # "$mayastor_root_dir"/csi/moac/crds/mayastor*.yaml
-    if ! "$SCRIPTDIR/genGoCrdTypes.py"  "$mayastor_root_dir"/csi/moac/crds/mayastor*.yaml ; then
-        echo "Failed to generate Go CRD types"
-        exit $EXITV_CRD_GO_GEN
-    fi
+    mcp=$(find "$sessiondir" -name mcp -type d)
+    if [ -z "$mcp" ] ; then
+        # "$mayastor_root_dir/csi/moac/crds/mayastor*.yaml" doesn't work
+        # in that the script does not receive a list of yaml files but instead
+        # gets mayastor*.yaml. Hence the odd double quoting style
+        # "$mayastor_root_dir"/csi/moac/crds/mayastor*.yaml
+        if ! "$SCRIPTDIR/genGoCrdTypes.py"  "$mayastor_root_dir"/csi/moac/crds/mayastor*.yaml ; then
+            echo "Failed to generate Go CRD types"
+            exit $EXITV_CRD_GO_GEN
+        fi
+    else
+        kbctl_plugin=$(find "$sessiondir" -name kubectl-mayastor)
+        if [ -n "$kbctl_plugin" ]; then
+            kbctl_plugin_dir=$(dirname "$kbctl_plugin")
+            echo "Found kubectl plugin $kbctl_plugin"
+            export PATH="$PATH":"$kbctl_plugin_dir"
+        else
+            exit $EXITV_MISSING_KUBECTL_PLUGIN
+        fi
+    fi # mcp
 fi
 export e2e_mayastor_root_dir=$mayastor_root_dir
 export e2e_session_dir=$sessiondir
 
-# grpc proto compatibility check
-if ! cmp src/common/mayastorclient/grpc/mayastor.proto "$mayastor_root_dir/rpc/mayastor-api/protobuf/mayastor.proto"
-then
-    echo "src/common/mayastorclient/grpc/mayastor.proto != $mayastor_root_dir/rpc/mayastor-api/protobuf/mayastor.proto"
-    echo "see src/common/mayastorclient/grpc/README.md"
-# 17/06/2021 temporarily mutate the check into warning
-# to properly fix we need to generate the client code from the proto,
-# and for that to work we need and install bundle which packages the proto
-# file from mayastor.
-#    exit $EXITV_FILE_MISMATCH
-    echo "WARNING proto files mismatch: src/common/mayastorclient/grpc/mayastor.proto != $mayastor_root_dir/rpc/mayastor-api/protobuf/mayastor.proto"
-fi
+if [ -z "$mcp" ] ; then
+    # grpc proto compatibility check
+    if ! cmp src/common/mayastorclient/grpc/mayastor.proto "$mayastor_root_dir/rpc/mayastor-api/protobuf/mayastor.proto"
+    then
+        echo "src/common/mayastorclient/grpc/mayastor.proto != $mayastor_root_dir/rpc/mayastor-api/protobuf/mayastor.proto"
+        echo "see src/common/mayastorclient/grpc/README.md"
+    # 17/06/2021 temporarily mutate the check into warning
+    # to properly fix we need to generate the client code from the proto,
+    # and for that to work we need and install bundle which packages the proto
+    # file from mayastor.
+    #    exit $EXITV_FILE_MISMATCH
+        echo "WARNING proto files mismatch: src/common/mayastorclient/grpc/mayastor.proto != $mayastor_root_dir/rpc/mayastor-api/protobuf/mayastor.proto"
+    fi
 
-# CRD compatibility checks
-if ! cmp src/common/custom_resources/mayastorvolume.yaml "$mayastor_root_dir/csi/moac/crds/mayastorvolume.yaml"
-then
-    echo "src/common/custom_resources/mayastorvolume.yaml != $mayastor_root_dir/csi/moac/crds/mayastorvolume.yaml"
-    echo "see src/common/custom_resources/README.md"
-    exit $EXITV_FILE_MISMATCH
-fi
+    # CRD compatibility checks
+    if ! cmp src/common/custom_resources/mayastorvolume.yaml "$mayastor_root_dir/csi/moac/crds/mayastorvolume.yaml"
+    then
+        echo "src/common/custom_resources/mayastorvolume.yaml != $mayastor_root_dir/csi/moac/crds/mayastorvolume.yaml"
+        echo "see src/common/custom_resources/README.md"
+        exit $EXITV_FILE_MISMATCH
+    fi
 
-if ! cmp src/common/custom_resources/mayastorpool.yaml "$mayastor_root_dir/csi/moac/crds/mayastorpool.yaml"
-then
-    echo "src/common/custom_resources/mayastorpool.yaml != $mayastor_root_dir/csi/moac/crds/mayastorpool.yaml"
-    echo "see src/common/custom_resources/README.md"
-# 24/06/2021 temporarily mutate the check into warning
-# to properly fix we need to generate the client code from the yaml.
-#    exit $EXITV_FILE_MISMATCH
-    echo "WARNING CRD yaml mismatch: src/common/custom_resources/mayastorpool.yaml != $mayastor_root_dir/csi/moac/crds/mayastorpool.yaml"
-fi
+    if ! cmp src/common/custom_resources/mayastorpool.yaml "$mayastor_root_dir/csi/moac/crds/mayastorpool.yaml"
+    then
+        echo "src/common/custom_resources/mayastorpool.yaml != $mayastor_root_dir/csi/moac/crds/mayastorpool.yaml"
+        echo "see src/common/custom_resources/README.md"
+    # 24/06/2021 temporarily mutate the check into warning
+    # to properly fix we need to generate the client code from the yaml.
+    #    exit $EXITV_FILE_MISMATCH
+        echo "WARNING CRD yaml mismatch: src/common/custom_resources/mayastorpool.yaml != $mayastor_root_dir/csi/moac/crds/mayastorpool.yaml"
+    fi
 
-if ! cmp src/common/custom_resources/mayastornode.yaml "$mayastor_root_dir/csi/moac/crds/mayastornode.yaml"
-then
-    echo "src/common/custom_resources/mayastornode.yaml != $mayastor_root_dir/csi/moac/crds/mayastornode.yaml"
-    echo "see src/common/custom_resources/README.md"
-    exit $EXITV_FILE_MISMATCH
+    if ! cmp src/common/custom_resources/mayastornode.yaml "$mayastor_root_dir/csi/moac/crds/mayastornode.yaml"
+    then
+        echo "src/common/custom_resources/mayastornode.yaml != $mayastor_root_dir/csi/moac/crds/mayastornode.yaml"
+        echo "see src/common/custom_resources/README.md"
+        exit $EXITV_FILE_MISMATCH
+    fi
 fi
-
 
 if [ -z "$device" ]; then
   echo "Device for storage pools must be specified"
@@ -396,6 +427,24 @@ contains() {
     [[ $1 =~ (^|[[:space:]])$2($|[[:space:]]) ]] && return 0  || return 1
 }
 
+# The values of e2e_control_plane must match control plane values
+# in src/common/constants.go
+if [ -z "$mcp" ]; then
+    cp_from_bundle="moac"
+else
+    cp_from_bundle="mcp2"
+fi
+
+if [ -n "$control_plane" ]; then
+    if [ "$cp_from_bundle" != "$control_plane" ]; then
+        echo "Install bundle control plane ($cp_from_bundle) does not match $control_plane"
+        exit $EXITV_MCP_MISMATCH
+    fi
+else
+    control_plane="$cp_from_bundle"
+fi
+
+export e2e_control_plane=$control_plane
 export e2e_config_file="$config_file"
 export e2e_platform_config_file="$platform_config_file"
 export e2e_policy_cleanup_before="$policy_cleanup_before"
@@ -417,6 +466,7 @@ echo "    e2e_uninstall_cleanup=$e2e_uninstall_cleanup"
 echo "    e2e_config_file=$e2e_config_file"
 echo "    e2e_platform_config_file=$e2e_platform_config_file"
 echo "    e2e_policy_cleanup_before=$e2e_policy_cleanup_before"
+echo "    e2e_control_plane=$e2e_control_plane"
 echo ""
 echo "Script control settings:"
 echo "    profile=$profile"

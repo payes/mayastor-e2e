@@ -118,6 +118,9 @@ func SetupTestEnvBasic() {
 func SetupTestEnv() {
 	SetupTestEnvBasic()
 
+	err := CheckAndSetControlPlane()
+	Expect(err).To(BeNil())
+
 	// Fail the test setup if gRPC calls are mandated and
 	// gRPC calls are not supported.
 	if e2e_config.GetConfig().GrpcMandated {
@@ -149,6 +152,11 @@ func AfterSuiteCleanup() {
 //  2) that finalizers DO NOT EXIST for pools with no replicas (used size == 0)
 //  with timeout to allow MOAC state sync.
 func CheckMsPoolFinalizers() error {
+	if IsControlPlaneMcp() {
+		// Finalizers do not need to be checked with MCP deployments as finalizers
+		// are not added and removed when volumes/replicas are created or removed
+		return nil
+	}
 	err := custom_resources.CheckAllMsPoolFinalizers()
 	logf.Log.Info("Checking pool finalizers", "timeout seconds", e2e_config.GetConfig().MoacSyncTimeoutSeconds)
 	const sleepTime = 5
@@ -203,17 +211,20 @@ func ResourceCheck() error {
 		errorMsg += " found PersistentVolumes"
 	}
 
-	// Mayastor volumes
-	msvs, err := custom_resources.ListMsVols()
-	if err != nil {
-		errorMsg += fmt.Sprintf("%s %v", errorMsg, err)
-	} else {
-		if msvs != nil {
-			if len(msvs) != 0 {
-				errorMsg += " found MayastorVolumes"
-			}
+	//FIXME: MCP temporary do not check MSVs
+	if !IsControlPlaneMcp() {
+		// Mayastor volumes
+		msvs, err := custom_resources.ListMsVols()
+		if err != nil {
+			errorMsg += fmt.Sprintf("%s %v", errorMsg, err)
 		} else {
-			logf.Log.Info("Listing MSVs returned nil array")
+			if msvs != nil {
+				if len(msvs) != 0 {
+					errorMsg += " found MayastorVolumes"
+				}
+			} else {
+				logf.Log.Info("Listing MSVs returned nil array")
+			}
 		}
 	}
 

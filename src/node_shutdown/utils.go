@@ -117,6 +117,9 @@ func (c *shutdownConfig) verifyMayastorComponentStates(numMayastorInstances int)
 	ready, err := k8stest.MayastorInstancesReady(numMayastorInstances, 3, 540)
 	Expect(err).ToNot(HaveOccurred())
 	Expect(ready).To(Equal(true))
+	// FIXME: MCP is this correct?
+	ready = k8stest.ControlPlaneReady(3, 60)
+	Expect(ready).To(Equal(true), "control is not ready")
 }
 
 func (c *shutdownConfig) verifyApplicationPodRunning(state bool) {
