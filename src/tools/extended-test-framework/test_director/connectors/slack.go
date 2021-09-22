@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -113,6 +114,7 @@ func (sc SlackClient) funcName(color string, message string, options []string) e
 }
 func (sc SlackClient) sendHttpRequest(slackRequest SlackMessage) error {
 	slackBody, _ := json.Marshal(slackRequest)
+	fmt.Print(string(slackBody))
 	req, err := http.NewRequest(http.MethodPost, sc.WebHookUrl, bytes.NewBuffer(slackBody))
 	if err != nil {
 		return err
