@@ -156,7 +156,15 @@ spec:
         - containerPort: 8080
           protocol: "TCP"
           name: test-conductor
-
+      volumeMounts:
+      - name: etfw-config
+        mountPath: "/config.yaml"
+        subPath: "config.yaml"
+        readOnly: true
+  volumes:
+  - name: etfw-config
+    configMap:
+      name: etfw-config
   restartPolicy: OnFailure
   serviceAccountName: test-conductor-sa
 

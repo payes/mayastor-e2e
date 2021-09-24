@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 FROM ubuntu:18.04
 COPY test_conductor /
-COPY config.yaml /
+#COPY config.yaml /
 
 COPY csi-daemonset.yaml /
 COPY mayastor-daemonset.yaml /
