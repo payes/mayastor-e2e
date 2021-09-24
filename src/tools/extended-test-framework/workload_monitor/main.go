@@ -23,6 +23,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"mayastor-e2e/tools/extended-test-framework/common"
 )
 
 type TestMonitor struct {
@@ -66,7 +67,7 @@ func NewTestMonitor() (*TestMonitor, error) {
 	testMonitor.clientset = *kubernetes.NewForConfigOrDie(restConfig)
 
 	// find the test_director
-	testDirectorPod, err := util.WaitForPodReady("test-director", "default")
+	testDirectorPod, err := util.WaitForPodReady("test-director", common.EtfwNamespace)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get test-director, error: %v", err)
 	}

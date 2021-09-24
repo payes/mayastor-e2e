@@ -1,13 +1,15 @@
+---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: test-conductor-sa
+  namespace: mayastor-e2e
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  namespace: default
   name: test-conductor-r
+  namespace: mayastor-e2e
 rules:
   - apiGroups: [""]
     resources: ["pods"]
@@ -16,12 +18,12 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  namespace: default
   name: test-conductor-rb
+  namespace: mayastor-e2e
 subjects:
   - kind: ServiceAccount
     name: test-conductor-sa
-    namespace: default
+    namespace: mayastor-e2e
 roleRef:
   kind: Role
   name: test-conductor-r
@@ -31,14 +33,14 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: test-conductor-cr
-  namespace: default
+  namespace: mayastor-e2e
 rules:
   - apiGroups: [""]
     resources: ["nodes"]
     verbs: ["get", "watch", "list"]
   - apiGroups: [""]
     resources: ["namespaces", "pods", "serviceaccounts", "configmaps", "services"]
-    verbs: ["create", "list", "delete"]
+    verbs: ["create", "get", "list", "delete"]
   - apiGroups: ["rbac.authorization.k8s.io"]
     resources: ["clusterroles", "clusterrolebindings", "roles", "rolebindings"]
     verbs: ["create", "delete"]
@@ -125,11 +127,11 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: test-conductor-crb
-  namespace: default
+  namespace: mayastor-e2e
 subjects:
   - kind: ServiceAccount
     name: test-conductor-sa
-    namespace: default
+    namespace: mayastor-e2e
 roleRef:
   kind: ClusterRole
   name: test-conductor-cr
@@ -140,6 +142,7 @@ kind: Pod
 apiVersion: v1
 metadata:
   name: test-conductor
+  namespace: mayastor-e2e
   labels:
     app: test-conductor
 spec:
