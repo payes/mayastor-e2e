@@ -25,7 +25,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = tc.SendTestPlan(testConductor.TestDirectorClient, "test name 2", testConductor.Config.TestPlan); err != nil {
+	if err = tc.SendTestPlanRunning(testConductor.TestDirectorClient, "test name 2", testConductor.Config.TestPlan); err != nil {
 		logf.Log.Info("failed to send test plan", "error", err)
 		os.Exit(1)
 	}
