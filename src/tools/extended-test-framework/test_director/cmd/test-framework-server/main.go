@@ -3,11 +3,12 @@
 package main
 
 import (
-	"log"
-	"os"
-
 	"github.com/go-openapi/loads"
 	flags "github.com/jessevdk/go-flags"
+	log "github.com/sirupsen/logrus"
+	"os"
+	"test-director/handlers"
+	"test-director/logger"
 
 	"test-director/restapi"
 	"test-director/restapi/operations"
@@ -18,10 +19,15 @@ import (
 
 func main() {
 
+	logger.InitLogger()
 	swaggerSpec, err := loads.Embedded(restapi.SwaggerJSON, restapi.FlatSwaggerJSON)
 	if err != nil {
 		log.Fatalln(err)
 	}
+
+	handlers.InitEventCache()
+	handlers.InitTestPlanCache()
+	handlers.InitTestRunCache()
 
 	api := operations.NewTestFrameworkAPI(swaggerSpec)
 	server := restapi.NewServer(api)
