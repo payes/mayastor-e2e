@@ -1,10 +1,10 @@
 package handlers
 
 import (
-
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/go-openapi/strfmt"
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 	"test-director/models"
 	"test-director/restapi/operations/test_director"
 	"time"
@@ -17,6 +17,7 @@ func NewGetEventsHandler() test_director.GetEventsHandler {
 }
 
 func (impl *getEventsImpl) Handle(test_director.GetEventsParams) middleware.Responder {
+	zap.L().Info("wtf")
 	events := eventInterface.GetAll()
 	if events == nil {
 		return test_director.NewGetEventsNotFound()

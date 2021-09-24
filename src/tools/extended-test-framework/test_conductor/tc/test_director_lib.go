@@ -27,11 +27,12 @@ func GetTestPlans(client *client.Etfw) error {
 	return nil
 }
 
-func SendTestPlan(client *client.Etfw, name string, jira_key string) error {
+func SendTestPlan(client *client.Etfw, name string, jira_key string, status models.TestPlanStatusEnum) error {
 	var tpname = "test"
 
 	testPlanSpec := models.TestPlanSpec{}
 	testPlanSpec.Name = tpname
+	testPlanSpec.Status = &status
 
 	testPlanParams := test_director.NewPutTestPlanByIDParams()
 	testPlanParams.ID = jira_key
@@ -48,6 +49,10 @@ func SendTestPlan(client *client.Etfw, name string, jira_key string) error {
 			"plan ID", pPutTestPlansOk.Payload.Key)
 	}
 	return nil
+}
+
+func SendTestPlanRunning(client *client.Etfw, name string, jira_key string) error {
+	return SendTestPlan(client, name, jira_key, models.TestPlanStatusEnumRUNNING)
 }
 
 func SendRunStatus(client *client.Etfw, uuid string, message string, jira_key_str string, status models.TestRunStatusEnum) error {
