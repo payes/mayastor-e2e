@@ -1,34 +1,11 @@
-configName: extended-soak
+configName: "steady_state"
 registry: ci-registry.mayastor-ci.mayadata.io
 imageTag: "nightly-stable"
 poolDevice: "/dev/sdb"
+test: "steady_state"
 e2eFioImage: mayadata/e2e-fio
-e2eFsxImage: mayadata/e2e-fsx
-defaultReplicaCount: 2
-moacSyncTimeoutSeconds: 600
-ioSoakTest:
+replicaCount: 2
+steadyStateTest:
   replicas: 2
   duration: 60m
-  loadFactor: 10
-  protocols:
-  - nvmf
-  fioStartDelay: 90
-  readyTimeout: 600s
-  disrupt:
-    podCount: 3
-    faultAfter: 51
-    readyTimeout: 180s
-  fioDutyCycles:
-  - thinkTime: 500000
-    thinkTimeBlocks: 1000
-  - thinkTime: 750000
-    thinkTimeBlocks: 1000
-  - thinkTime: 1250000
-    thinkTimeBlocks: 2000
-  - thinkTime: 1500000
-    thinkTimeBlocks: 3000
-  - thinkTime: 1750000
-    thinkTimeBlocks: 3000
-  - thinkTime: 2000000
-    thinkTimeBlocks: 4000
 

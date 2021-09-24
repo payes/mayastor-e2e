@@ -11,7 +11,7 @@ cd ${SCRIPT_DIR}
 
 pushd docker
 cp ../${APP} .
-cp ../config.yaml .
+#cp ../config.yaml .
 ../../../../../scripts/extract-install-image.sh --alias-tag nightly-stable --installroot .
 install/nightly-stable/scripts/generate-deploy-yamls.sh -t nightly-stable -o . test
 

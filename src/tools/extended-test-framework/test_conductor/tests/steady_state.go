@@ -31,7 +31,7 @@ func SteadyStateTest(testConductor *tc.TestConductor) error {
 	// create storage class
 	err := lib.NewScBuilder().
 		WithName(sc_name).
-		WithReplicas(testConductor.Config.DefaultReplicaCount).
+		WithReplicas(testConductor.Config.ReplicaCount).
 		WithProtocol(protocol).
 		WithNamespace(lib.NSDefault).
 		WithVolumeBindingMode(mode).
