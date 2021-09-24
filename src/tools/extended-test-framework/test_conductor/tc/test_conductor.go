@@ -6,6 +6,7 @@ import (
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
+	"mayastor-e2e/tools/extended-test-framework/common"
 	td "mayastor-e2e/tools/extended-test-framework/test_conductor/td/client"
 	wm "mayastor-e2e/tools/extended-test-framework/test_conductor/wm/client"
 
@@ -19,8 +20,6 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 )
-
-var nameSpace = "default"
 
 // TestConductor object for test conductor context
 type TestConductor struct {
@@ -50,7 +49,7 @@ func NewTestConductor() (*TestConductor, error) {
 	}
 	testConductor.Clientset = *kubernetes.NewForConfigOrDie(restConfig)
 
-	workloadMonitorPod, err := waitForPod(testConductor.Clientset, "workload-monitor", "default")
+	workloadMonitorPod, err := waitForPod(testConductor.Clientset, "workload-monitor", common.EtfwNamespace)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get workload-monitor, error: %v", err)
 	}
@@ -58,7 +57,7 @@ func NewTestConductor() (*TestConductor, error) {
 	workloadMonitorLoc := workloadMonitorPod.Status.PodIP + ":8080"
 
 	// find the test_director
-	testDirectorPod, err := waitForPod(testConductor.Clientset, "test-director", nameSpace)
+	testDirectorPod, err := waitForPod(testConductor.Clientset, "test-director", common.EtfwNamespace)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get test-director, error: %v", err)
 	}

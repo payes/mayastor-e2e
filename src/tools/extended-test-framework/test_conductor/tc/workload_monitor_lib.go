@@ -12,11 +12,12 @@ import (
 	"mayastor-e2e/tools/extended-test-framework/test_conductor/wm/models"
 
 	"github.com/go-openapi/strfmt"
+	"mayastor-e2e/tools/extended-test-framework/common"
 )
 
 func AddWorkload(clientset kubernetes.Clientset, client *client.Etfw, name string, namespace string) error {
 
-	tcpod, err := getPod(clientset, "test-conductor", namespace)
+	tcpod, err := getPod(clientset, "test-conductor", common.EtfwNamespace)
 	if err != nil {
 		return fmt.Errorf("failed to get tc pod %s, error: %v\n", name, err)
 	}
@@ -47,7 +48,7 @@ func AddWorkload(clientset kubernetes.Clientset, client *client.Etfw, name strin
 }
 
 func AddWorkloadsInNamespace(clientset kubernetes.Clientset, client *client.Etfw, namespace string) error {
-	tcpod, err := getPod(clientset, "test-conductor", "default")
+	tcpod, err := getPod(clientset, "test-conductor", common.EtfwNamespace)
 	if err != nil {
 		return fmt.Errorf("failed to get tc pod, error: %v\n", err)
 	}
@@ -81,7 +82,7 @@ func AddWorkloadsInNamespace(clientset kubernetes.Clientset, client *client.Etfw
 
 func DeleteWorkload(clientset kubernetes.Clientset, client *client.Etfw, name string, namespace string) error {
 
-	tcpod, err := getPod(clientset, "test-conductor", "default")
+	tcpod, err := getPod(clientset, "test-conductor", common.EtfwNamespace)
 	if err != nil {
 		return fmt.Errorf("failed to get tc pod %s, error: %v\n", name, err)
 	}
@@ -110,7 +111,7 @@ func DeleteWorkload(clientset kubernetes.Clientset, client *client.Etfw, name st
 
 func DeleteWorkloads(clientset kubernetes.Clientset, client *client.Etfw) error {
 
-	tcpod, err := getPod(clientset, "test-conductor", "default")
+	tcpod, err := getPod(clientset, "test-conductor", common.EtfwNamespace)
 	if err != nil {
 		return fmt.Errorf("failed to get tc pod, error: %v", err)
 	}
