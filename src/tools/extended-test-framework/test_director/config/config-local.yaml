@@ -1,0 +1,36 @@
+server:
+  AppVersion: 1.0.0
+  Mode: Development
+
+logger:
+  ReportCaller: false
+  # text | json
+  Formatter: json
+  # debug | info | warn | error
+  Level: info
+  # file | stdout
+  Output: stdout
+
+redis:
+  RedisAddr: localhost:6379
+  RedisPassword:
+  RedisDb: 0
+  RedisDefaultdb: 0
+  MinIdleConns: 200
+  PoolSize: 12000
+  PoolTimeout: 240
+  Password: ""
+  DB: 0
+
+metrics:
+  Url: 0.0.0.0:7070
+  ServiceName: api
+
+
+mongodb:
+  MongoURI: uristring
+
+jaeger:
+  Host: localhost:6831
+  ServiceName: REST_API
+  LogSpans: false
