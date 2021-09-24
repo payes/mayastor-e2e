@@ -3,6 +3,7 @@ registry: ci-registry.mayastor-ci.mayadata.io
 imageTag: "nightly-stable"
 poolDevice: "/dev/sdb"
 test: "steady_state"
+testPlan: "ET-388"
 e2eFioImage: mayadata/e2e-fio
 replicaCount: 2
 steadyStateTest:

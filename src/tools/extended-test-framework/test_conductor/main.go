@@ -25,7 +25,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = tc.SendTestPlan(testConductor.TestDirectorClient, "test name 2", "ET-388"); err != nil {
+	if err = tc.SendTestPlan(testConductor.TestDirectorClient, "test name 2", testConductor.Config.TestPlan); err != nil {
 		logf.Log.Info("failed to send test plan", "error", err)
 		os.Exit(1)
 	}
@@ -35,7 +35,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = tests.SteadyStateTest(testConductor); err != nil {
-		logf.Log.Info("Basic soak test failed", "error", err)
+	switch {
+	case testConductor.Config.Test == "steady_state":
+		if err = tests.SteadyStateTest(testConductor); err != nil {
+			logf.Log.Info("steady state failed", "error", err)
+		}
 	}
+
 }

@@ -29,6 +29,7 @@ type ExtendedTestConfig struct {
 	E2eFioImage  string `yaml:"e2eFioImage" env-default:"mayadata/e2e-fio" env:"e2e_fio_image"`
 	ReplicaCount int    `yaml:"replicaCount" env-default:"2" env:"e2e_default_replica_count"`
 	Test         string `yaml:"test" env:"e2e_test"`
+	TestPlan     string `yaml:"testPlan" env:"e2e_test_plan"`
 
 	// Individual Test parameters
 	SteadyStateTest struct {
