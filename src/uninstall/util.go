@@ -61,7 +61,7 @@ func TeardownMayastor() {
 		gomega.Expect(found).To(gomega.BeFalse(), "PersistentVolumes were found, none expected.")
 
 		if !k8stest.IsControlPlaneMcp() {
-			found, err = custom_resources.CheckForMsVols()
+			found, err = k8stest.CheckForMsvs()
 			if err != nil {
 				log.Log.Info("Failed to check MSVs", "error", err)
 			}

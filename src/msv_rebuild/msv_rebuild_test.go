@@ -3,7 +3,6 @@ package msv_rebuild
 import (
 	"fmt"
 	"mayastor-e2e/common"
-	"mayastor-e2e/common/custom_resources"
 	"mayastor-e2e/common/e2e_config"
 	"mayastor-e2e/common/k8stest"
 	"strings"
@@ -45,22 +44,22 @@ func mayastorRebuildTest() {
 	).Should(Equal(true))
 
 	// Check replicas
-	replicas, err := custom_resources.GetMsVolReplicas(uuid)
+	replicas, err := k8stest.GetMsvReplicas(uuid)
 	Expect(err).To(BeNil())
 	Expect(len(replicas)).Should(Equal(params.Replicas))
 
 	// Wait for volume to be published before adding a child.
 	// This ensures that a nexus exists when the child is added.
-	Eventually(func() bool { return custom_resources.IsMsVolPublished(uuid) }, params.Timeout, params.PollPeriod).Should(Equal(true))
+	Eventually(func() bool { return k8stest.IsMsvPublished(uuid) }, params.Timeout, params.PollPeriod).Should(Equal(true))
 
 	for i := 0; i < 2; i++ {
 		// Add another child which should kick off a rebuild.
-		err = custom_resources.UpdateMsVolReplicaCount(uuid, params.UpdatedReplica)
+		err = k8stest.SetMsvReplicaCount(uuid, params.UpdatedReplica)
 		Expect(err).ToNot(HaveOccurred(), "Update the number of replicas")
 
 		// Check replica after changing replica count
 		Eventually(func() bool {
-			replicas, err = custom_resources.GetMsVolReplicas(uuid)
+			replicas, err = k8stest.GetMsvReplicas(uuid)
 			if err != nil {
 				panic("Failed to get children")
 			}
@@ -72,9 +71,9 @@ func mayastorRebuildTest() {
 
 		// Wait for the added child to show up.
 		Eventually(func() int {
-			msv, err := custom_resources.GetMsVol(uuid)
+			children, err := k8stest.GetMsvNexusChildren(uuid)
 			if err == nil {
-				return len(msv.Status.Nexus.Children)
+				return len(children)
 			}
 			return 0
 		}, params.Timeout, params.PollPeriod).Should(BeEquivalentTo(params.UpdatedReplica))
@@ -90,15 +89,15 @@ func mayastorRebuildTest() {
 		// Check everything eventually goes healthy following a rebuild.
 		Eventually(func() string { return getChildren(uuid)[0].State }, params.Timeout, params.PollPeriod).Should(BeEquivalentTo("CHILD_ONLINE"))
 		Eventually(func() string { return getChildren(uuid)[1].State }, params.Timeout, params.PollPeriod).Should(BeEquivalentTo("CHILD_ONLINE"))
-		Eventually(func() (string, error) { return custom_resources.GetMsVolNexusState(uuid) }, params.Timeout, params.PollPeriod).Should(BeEquivalentTo("NEXUS_ONLINE"))
+		Eventually(func() (string, error) { return k8stest.GetMsvNexusState(uuid) }, params.Timeout, params.PollPeriod).Should(BeEquivalentTo("NEXUS_ONLINE"))
 
 		// remove one child of nexus
-		err = custom_resources.UpdateMsVolReplicaCount(uuid, params.Replicas)
+		err = k8stest.SetMsvReplicaCount(uuid, params.Replicas)
 		Expect(err).ToNot(HaveOccurred(), "Update the number of replicas")
 
 		// Check replicas after changing replica count
 		Eventually(func() bool {
-			replicas, err = custom_resources.GetMsVolReplicas(uuid)
+			replicas, err = k8stest.GetMsvReplicas(uuid)
 			if err != nil {
 				panic("Failed to get replicas")
 			}
@@ -110,7 +109,7 @@ func mayastorRebuildTest() {
 
 		// Check everything remains in healthy state.
 		Eventually(func() string { return getChildren(uuid)[0].State }, params.Timeout, params.PollPeriod).Should(BeEquivalentTo("CHILD_ONLINE"))
-		Eventually(func() (string, error) { return custom_resources.GetMsVolNexusState(uuid) }, params.Timeout, params.PollPeriod).Should(BeEquivalentTo("NEXUS_ONLINE"))
+		Eventually(func() (string, error) { return k8stest.GetMsvNexusState(uuid) }, params.Timeout, params.PollPeriod).Should(BeEquivalentTo("NEXUS_ONLINE"))
 	}
 	// Wait untill fio pod is in completed state
 	err = k8stest.WaitPodComplete(fioPodName, params.SleepSecs, params.DurationSecs)

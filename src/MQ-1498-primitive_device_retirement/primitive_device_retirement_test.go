@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"mayastor-e2e/common"
-	"mayastor-e2e/common/custom_resources"
 	"mayastor-e2e/common/k8stest"
 	"mayastor-e2e/common/platform"
 
@@ -115,11 +114,7 @@ func (c *primitiveDeviceRetirementConfig) DetachCloudVolumeTest() {
 	err = k8stest.DeletePod(c.podName, common.NSDefault)
 	Expect(err).ToNot(HaveOccurred())
 
-	msv, err := k8stest.GetMSV(uuid)
-	Expect(err).ToNot(HaveOccurred())
-
-	msv.Spec.ReplicaCount = c.replicas - 1
-	_, err = custom_resources.UpdateMsVol(msv)
+	err = k8stest.SetMsvReplicaCount(uuid, c.replicas-1)
 	Expect(err).ToNot(HaveOccurred(), "Failed to patch Mayastor volume %s", uuid)
 
 	c.replicaIPs = c.GetReplicaAddressesForNonNexusNodes(uuid, nexusNode)
