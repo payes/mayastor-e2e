@@ -89,6 +89,7 @@ func TeardownMayastor() {
 		go k8stest.KubeCtlDeleteYaml("rest-service.yaml", yamlsDir)
 		go k8stest.KubeCtlDeleteYaml("rest-deployment.yaml", yamlsDir)
 		go k8stest.KubeCtlDeleteYaml("msp-deployment.yaml", yamlsDir)
+		go k8stest.KubeCtlDeleteYaml("csi-deployment.yaml", yamlsDir)
 		go k8stest.KubeCtlDeleteYaml("core-agents-deployment.yaml", yamlsDir)
 	} else {
 		go k8stest.KubeCtlDeleteYaml("moac-deployment.yaml", yamlsDir)
