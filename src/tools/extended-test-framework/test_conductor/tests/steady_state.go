@@ -15,8 +15,10 @@ import (
 )
 
 func SteadyStateTest(testConductor *tc.TestConductor) error {
-	if err := tc.InstallMayastor(testConductor.Clientset, testConductor.Config.PoolDevice); err != nil {
-		return fmt.Errorf("failed to install mayastor %v", err)
+	if testConductor.Config.Install {
+		if err := tc.InstallMayastor(testConductor.Clientset, testConductor.Config.PoolDevice); err != nil {
+			return fmt.Errorf("failed to install mayastor %v", err)
+		}
 	}
 	var protocol lib.ShareProto = lib.ShareProtoNvmf
 	var mode storageV1.VolumeBindingMode = storageV1.VolumeBindingImmediate
@@ -86,6 +88,15 @@ func SteadyStateTest(testConductor *tc.TestConductor) error {
 	err = tc.SendRunCompletedOk(testConductor.TestDirectorClient, testRunId, "finished", "ET-389")
 	if err != nil {
 		return fmt.Errorf("failed to inform test director of completion, error: %v", err)
+	}
+
+	err = tc.SendRunCompletedOk(testConductor.TestDirectorClient, testRunId, "finished", "ET-389")
+	if err != nil {
+		return fmt.Errorf("failed to inform test director of completion, error: %v", err)
+	}
+	err = tc.SendEventInfo(testConductor.TestDirectorClient, "finished", tc.SourceInstance)
+	if err != nil {
+		return fmt.Errorf("failed to inform test director of event, error: %v", err)
 	}
 
 	return err

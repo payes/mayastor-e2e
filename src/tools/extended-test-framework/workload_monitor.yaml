@@ -51,7 +51,7 @@ metadata:
 spec:
   containers:
     - name: workload-monitor
-      image: ci-registry.mayastor-ci.mayadata.io/mayadata/workload_monitor_cwd:latest
+      image: ci-registry.mayastor-ci.mayadata.io/mayadata/workload_monitor:latest
       args:
         - "/workload_monitor"
       env:

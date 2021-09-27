@@ -72,7 +72,7 @@ func SendRunStatus(client *client.Etfw, uuid string, message string, jira_key_st
 	if err != nil {
 		return fmt.Errorf("failed to put event, error: %v %v\n", err, pRunStatusOk)
 	} else {
-		logf.Log.Info("put event",
+		logf.Log.Info("put test run",
 			"message", pRunStatusOk.Payload.Data,
 			"status", pRunStatusOk.Payload.Status,
 			"key", pRunStatusOk.Payload.TestKey)
@@ -92,11 +92,12 @@ func SendRunStarted(client *client.Etfw, uuid string, message string, jira_key s
 	return SendRunStatus(client, uuid, message, jira_key, models.TestRunStatusEnumRUNNING)
 }
 
-func SendEvent(client *client.Etfw, message string, pod string) error {
+func SendEvent(client *client.Etfw, message string, source string, eventClass models.EventClassEnum) error {
 
 	var class = models.EventClassEnumFAIL
 	var sourceClass = models.EventSourceClassEnumWorkloadDashMonitor
-	var sourceInstance = pod
+	var sourceInstance = source
+
 	eventSpec := models.EventSpec{}
 	eventSpec.Class = &class
 	eventSpec.Data = []string{""}
@@ -119,4 +120,16 @@ func SendEvent(client *client.Etfw, message string, pod string) error {
 			"resource", pAddEventOk.Payload.Resource)
 	}
 	return nil
+}
+
+func SendEventFail(client *client.Etfw, message string, source string) error {
+	return SendEvent(client, message, source, models.EventClassEnumFAIL)
+}
+
+func SendEventInfo(client *client.Etfw, message string, source string) error {
+	return SendEvent(client, message, source, models.EventClassEnumINFO)
+}
+
+func SendEventWarn(client *client.Etfw, message string, source string) error {
+	return SendEvent(client, message, source, models.EventClassEnumWARN)
 }

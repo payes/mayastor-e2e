@@ -29,6 +29,8 @@ type TestConductor struct {
 	Config                ExtendedTestConfig
 }
 
+const SourceInstance = "test-conductor"
+
 func NewTestConductor() (*TestConductor, error) {
 
 	var testConductor TestConductor
