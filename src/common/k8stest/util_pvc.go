@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"mayastor-e2e/common/custom_resources"
-	"mayastor-e2e/common/custom_resources/api/types/v1alpha1"
 	"mayastor-e2e/common/mayastorclient"
 	"strings"
 	"sync"
@@ -184,7 +183,7 @@ func MkPVC(volSizeMb int, volName string, scName string, volType common.VolumeTy
 		"1s",           // polling interval
 	).Should(Equal(coreV1.VolumeBound))
 
-	Eventually(func() *v1alpha1.MayastorVolume {
+	Eventually(func() *MayastorVolumeDetails {
 		msv, _ := GetMSV(string(pvc.ObjectMeta.UID))
 		return msv
 	},

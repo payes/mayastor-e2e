@@ -11,31 +11,31 @@ import (
 )
 
 type MayastorVolume struct {
-	Spec  Spec  `json:"spec"`
-	State State `json:"state"`
+	Spec  msvSpec  `json:"spec"`
+	State msvState `json:"state"`
 }
 
-type Spec struct {
-	Labels       string `json:"labels"`
-	Num_replicas int    `json:"num_replicas"`
-	Operation    string `json:"operation"`
-	Protocol     string `json:"protocol"`
-	Size         int64  `json:"size"`
-	State        string `json:"state"`
-	Target_node  string `json:"target_node"`
-	Uuid         string `json:"uuid"`
+type msvSpec struct {
+	Labels       []string `json:"labels"`
+	Num_replicas int      `json:"num_replicas"`
+	Operation    string   `json:"operation"`
+	Protocol     string   `json:"protocol"`
+	Size         int64    `json:"size"`
+	State        string   `json:"state"`
+	Target_node  string   `json:"target_node"`
+	Uuid         string   `json:"uuid"`
 }
 
-type State struct {
-	Child    Child  `json:"child"`
+type msvState struct {
+	Child    child  `json:"child"`
 	Protocol string `json:"protocol"`
 	Size     int64  `json:"size"`
 	Status   string `json:"status"`
 	Uuid     string `json:"uuid"`
 }
 
-type Child struct {
-	Children  []Children `json:"children"`
+type child struct {
+	Children  []children `json:"children"`
 	DeviceUri string     `json:"deviceUri"`
 	Node      string     `json:"node"`
 	Rebuilds  int        `json:"rebuilds"`
@@ -45,7 +45,7 @@ type Child struct {
 	Uuid      string     `json:"uuid"`
 }
 
-type Children struct {
+type children struct {
 	RebuildProgress string `json:"rebuildProgress"`
 	State           string `json:"state"`
 	Uri             string `json:"uri"`
@@ -55,31 +55,31 @@ func GetMayastorVolume(uuid string) (*MayastorVolume, error) {
 	pluginpath := fmt.Sprintf("%s/%s",
 		e2e_config.GetConfig().KubectlPluginDir,
 		common.KubectlMayastorPlugin)
-	url := ""
-	mayastorNodes, err := GetNodeLocs()
-	if err != nil {
-		return nil, err
-	}
-	if len(mayastorNodes) == 0 {
+
+	address := GetMayastorNodeIPAddresses()
+	if len(address) == 0 {
 		return nil, fmt.Errorf("mayastor nodes not found")
 	}
-	for _, node := range mayastorNodes {
-		if node.MayastorNode {
-			url = fmt.Sprintf("http://%s:%s", node.IPAddress, common.PluginPort)
+	var jsonInput []byte
+	var err error
+	for _, addr := range address {
+		url := fmt.Sprintf("http://%s:%s", addr, common.PluginPort)
+		cmd := exec.Command(pluginpath, "-r", url, "-ojson", "get", "volume", uuid)
+		jsonInput, err = cmd.CombinedOutput()
+		if err == nil {
 			break
+		} else {
+			logf.Log.Info("Error while executing kubectl mayastor command", "node IP", addr, "error", err)
 		}
 	}
-	cmd := exec.Command(pluginpath, "-r", url, "-ojson", "get", "volume", uuid)
-	jsonInput, err := cmd.CombinedOutput()
 	if err != nil {
 		return nil, err
 	}
-	logf.Log.Info("cmd", "output", string(jsonInput))
-
-	var response MayastorVolume
+	// FIXME use MayastorVolume when bug in kubectl mayastor plugin is fixed
+	var response []MayastorVolume
 	err = json.Unmarshal(jsonInput, &response)
 	if err != nil {
 		return nil, err
 	}
-	return &response, nil
+	return &response[0], nil
 }
