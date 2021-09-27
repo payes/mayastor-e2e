@@ -1,4 +1,4 @@
-package main
+package wm
 
 import (
 	"fmt"
@@ -10,7 +10,7 @@ import (
 	"mayastor-e2e/tools/extended-test-framework/workload_monitor/models"
 )
 
-func sendEvent(client *client.Etfw, message string, pod string) error {
+func SendEvent(client *client.Etfw, message string, pod string) error {
 
 	var class = models.EventClassEnumFAIL
 	var sourceClass = models.EventSourceClassEnumWorkloadDashMonitor

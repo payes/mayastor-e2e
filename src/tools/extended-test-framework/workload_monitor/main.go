@@ -16,7 +16,7 @@ import (
 	"mayastor-e2e/tools/extended-test-framework/workload_monitor/models"
 	"mayastor-e2e/tools/extended-test-framework/workload_monitor/restapi"
 	"mayastor-e2e/tools/extended-test-framework/workload_monitor/restapi/operations"
-	"mayastor-e2e/tools/extended-test-framework/workload_monitor/util"
+	"mayastor-e2e/tools/extended-test-framework/workload_monitor/wm"
 
 	"mayastor-e2e/tools/extended-test-framework/workload_monitor/client"
 
@@ -27,7 +27,7 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-type TestMonitor struct {
+type WorkloadMonitor struct {
 	pTestDirectorClient *client.Etfw
 	clientset           kubernetes.Clientset
 }
@@ -56,8 +56,8 @@ func banner() {
 	PodUnknown PodPhase = "Unknown"
 */
 
-func NewTestMonitor() (*TestMonitor, error) {
-	var testMonitor TestMonitor
+func NewWorkloadMonitor() (*WorkloadMonitor, error) {
+	var workloadMonitor WorkloadMonitor
 	restConfig, err := rest.InClusterConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get cluster config")
@@ -65,10 +65,10 @@ func NewTestMonitor() (*TestMonitor, error) {
 	if restConfig == nil {
 		return nil, fmt.Errorf("rest config is nil")
 	}
-	testMonitor.clientset = *kubernetes.NewForConfigOrDie(restConfig)
+	workloadMonitor.clientset = *kubernetes.NewForConfigOrDie(restConfig)
 
 	// find the test_director
-	testDirectorPod, err := util.WaitForPodReady("test-director", common.EtfwNamespace)
+	testDirectorPod, err := wm.WaitForPodReady("test-director", common.EtfwNamespace)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get test-director, error: %v", err)
 	}
@@ -77,23 +77,24 @@ func NewTestMonitor() (*TestMonitor, error) {
 	testDirectorLoc := testDirectorPod.Status.PodIP + ":8080"
 
 	transportConfig := client.DefaultTransportConfig().WithHost(testDirectorLoc)
-	testMonitor.pTestDirectorClient = client.NewHTTPClientWithConfig(nil, transportConfig)
+	workloadMonitor.pTestDirectorClient = client.NewHTTPClientWithConfig(nil, transportConfig)
 
-	return &testMonitor, nil
+	return &workloadMonitor, nil
 }
 
-func startMonitor(testMonitor *TestMonitor) {
+func startMonitor(workloadMonitor *WorkloadMonitor) {
 	for {
 		time.Sleep(10 * time.Second)
-		list := util.GetWorkloadList()
+		logf.Log.Info("workload monitor polling...")
+		list := wm.GetWorkloadList()
 
 		for _, wl := range list {
 			for _, spec := range wl.WorkloadSpec.Violations {
 				switch spec {
 				case models.WorkloadViolationEnumRESTARTED:
-					pod, present, err := util.GetPodByUuid(string(wl.ID))
+					pod, present, err := wm.GetPodByUuid(string(wl.ID))
 					if err != nil {
-						fmt.Printf("failed to get pod %s\n", wl.Name)
+						logf.Log.Info("failed to get pod by UUID", "pod", wl.ID)
 					}
 					if present {
 						containerStatuses := pod.Status.ContainerStatuses
@@ -108,43 +109,40 @@ func startMonitor(testMonitor *TestMonitor) {
 							}
 						}
 						if restartcount != 0 {
-							fmt.Printf("pod %s restarted\n", wl.Name)
-							if err := sendEvent(testMonitor.pTestDirectorClient, "pod restarted", string(wl.Name)); err != nil {
+							logf.Log.Info("pod restarted", "pod", wl.Name)
+							if err := wm.SendEvent(workloadMonitor.pTestDirectorClient, "pod restarted", string(wl.Name)); err != nil {
 								logf.Log.Info("failed to send", "error", err)
 							} else {
-								util.DeleteWorkloadById(wl.ID)
+								wm.DeleteWorkloadById(wl.ID)
 							}
 						}
 					}
 				case models.WorkloadViolationEnumTERMINATED:
-					podstatus, present, err := util.GetPodStatus(string(wl.ID))
+					podstatus, present, err := wm.GetPodStatus(string(wl.ID))
 					if err != nil {
-						fmt.Printf("failed to get pod status %s\n", wl.Name)
+						logf.Log.Info("failed to get pod status", "error", err)
 					}
 					if present {
-						fmt.Printf("pod status %v\n", podstatus)
-						fmt.Printf(" checking pod %s for terminated\n", wl.Name)
 						if podstatus == v1.PodFailed {
-							fmt.Printf("pod %s failed\n", wl.Name)
-							if err := sendEvent(testMonitor.pTestDirectorClient, "pod terminated", string(wl.Name)); err != nil {
+							logf.Log.Info("pod failed", "pod", wl.Name)
+							if err := wm.SendEvent(workloadMonitor.pTestDirectorClient, "pod terminated", string(wl.Name)); err != nil {
 								logf.Log.Info("failed to send", "error", err)
 							} else {
-								util.DeleteWorkloadById(wl.ID)
+								wm.DeleteWorkloadById(wl.ID)
 							}
 						}
 					}
 				case models.WorkloadViolationEnumNOTPRESENT:
-					present, err := util.GetPodExists(string(wl.ID))
+					present, err := wm.GetPodExists(string(wl.ID))
 					if err != nil {
 						fmt.Printf("failed to get pod status %s\n", wl.Name)
 					}
-					fmt.Printf(" checking pod %s for not present\n", wl.Name)
 					if !present {
-						fmt.Printf("pod %s does not exist\n", wl.Name)
-						if err := sendEvent(testMonitor.pTestDirectorClient, "pod absent", string(wl.Name)); err != nil {
+						logf.Log.Info("pod absent", "pod", wl.Name)
+						if err := wm.SendEvent(workloadMonitor.pTestDirectorClient, "pod absent", string(wl.Name)); err != nil {
 							logf.Log.Info("failed to send", "error", err)
 						} else {
-							util.DeleteWorkloadById(wl.ID)
+							wm.DeleteWorkloadById(wl.ID)
 						}
 					}
 				}
@@ -199,20 +197,16 @@ func startServer() {
 func main() {
 	banner()
 
-	//util.InitGoClient()
-	//util.InitWorkloadList()
-
-	testMonitor, err := NewTestMonitor()
+	workloadMonitor, err := NewWorkloadMonitor()
 	if err != nil {
 		logf.Log.Info("failed to create test monitor", "error", err)
 		return
 	}
-	_ = testMonitor
 	logger := zap.New(zap.UseDevMode(true))
 	logf.SetLogger(logger)
 
 	go startServer()
-	go startMonitor(testMonitor)
+	go startMonitor(workloadMonitor)
 
 	logf.Log.Info("waiting")
 	time.Sleep(6000 * time.Second)
