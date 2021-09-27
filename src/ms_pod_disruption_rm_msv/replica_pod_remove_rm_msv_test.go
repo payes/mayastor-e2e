@@ -200,7 +200,7 @@ func ReplicaLossVolumeDelete(pvcName string, storageClassName string, fioPodName
 	Expect(nexus).NotTo(Equal(""), "Nexus not found")
 	Expect(len(replicaNodes)).To(Equal(3), "Expected 3 replica nodes")
 
-	volList, err := custom_resources.ListMsVols()
+	volList, err := k8stest.ListMsvs()
 	Expect(err).ToNot(HaveOccurred(), "%v", err)
 	Expect(len(volList)).To(Equal(1), "Expected 1 volume")
 
@@ -254,12 +254,12 @@ func ReplicaLossVolumeDelete(pvcName string, storageClassName string, fioPodName
 	}
 
 	logf.Log.Info("deleting volume", "name", pvcName)
-	err = custom_resources.DeleteMsVol(volList[0].Name)
+	err = k8stest.DeleteMsv(pvcName)
 	Expect(err).ToNot(HaveOccurred(), "%v", err)
 
 	// wait for the volume to go
 	Eventually(func() int {
-		volList, err := custom_resources.ListMsVols()
+		volList, err := k8stest.ListMsvs()
 		Expect(err).ToNot(HaveOccurred(), "%v", err)
 		logf.Log.Info("volume count is", "vols", len(volList))
 		return len(volList)

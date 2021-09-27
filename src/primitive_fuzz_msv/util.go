@@ -103,7 +103,7 @@ func (c *PrimitiveMsvFuzzConfig) verifyVolumesDeletion() {
 		).Should(Equal(true))
 		// Wait for the MSV to be deleted.
 		Eventually(func() bool {
-			return custom_resources.IsMsVolDeleted(c.Uuid[ix])
+			return k8stest.IsMsvDeleted(c.Uuid[ix])
 		},
 			"360s", // timeout
 			"1s",   // polling interval

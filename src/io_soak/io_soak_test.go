@@ -55,7 +55,7 @@ func monitor() error {
 			break
 		}
 
-		err = custom_resources.CheckAllMsVolsAreHealthy()
+		err = k8stest.CheckAllMsvsAreHealthy()
 		if err != nil {
 			logf.Log.Info("IOSoakTest monitor Mayastor volumes check", "error", err)
 			break
