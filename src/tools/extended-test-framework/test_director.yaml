@@ -21,7 +21,7 @@ metadata:
 spec:
   containers:
     - name: test-director
-      image: ci-registry.mayastor-ci.mayadata.io/mayadata/test_director_cwd:latest
+      image: ci-registry.mayastor-ci.mayadata.io/mayadata/test_director:latest
       imagePullPolicy: Always
       args:
         - "/test_director"

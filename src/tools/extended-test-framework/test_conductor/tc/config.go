@@ -30,6 +30,7 @@ type ExtendedTestConfig struct {
 	ReplicaCount int    `yaml:"replicaCount" env-default:"2" env:"e2e_default_replica_count"`
 	Test         string `yaml:"test" env:"e2e_test"`
 	TestPlan     string `yaml:"testPlan" env:"e2e_test_plan"`
+	Install      bool   `yaml:"install" env-default:"false" env:"e2e_install"`
 
 	// Individual Test parameters
 	SteadyStateTest struct {
