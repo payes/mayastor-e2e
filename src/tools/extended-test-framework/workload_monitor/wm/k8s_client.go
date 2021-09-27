@@ -1,4 +1,4 @@
-package util
+package wm
 
 import (
 	"context"
@@ -40,11 +40,9 @@ func GetPodByUuid(uuid string) (*v1.Pod, bool, error) {
 	}
 	for _, pod := range pods.Items {
 		if uuid == string(pod.ObjectMeta.UID) {
-			fmt.Println("found pod ", pod.Name)
 			return &pod, true, nil
 		}
 	}
-	fmt.Println("not found pod ", uuid)
 	return nil, false, nil
 }
 
@@ -93,7 +91,6 @@ func WaitForPodReady(podName string, namespace string) (*v1.Pod, error) {
 		}
 		for _, pod := range pods.Items {
 			if podName == string(pod.Name) && pod.Status.Phase == v1.PodRunning {
-				fmt.Println("found pod ", pod.Name)
 				return &pod, nil
 			}
 		}

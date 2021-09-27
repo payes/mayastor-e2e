@@ -1,6 +1,6 @@
 // This file is safe to edit. Once it exists it will not be overwritten
 
-package util
+package wm
 
 import (
 	"sync"
