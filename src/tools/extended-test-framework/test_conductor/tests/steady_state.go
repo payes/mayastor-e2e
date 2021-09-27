@@ -8,11 +8,18 @@ import (
 	"github.com/google/uuid"
 
 	tc "mayastor-e2e/tools/extended-test-framework/test_conductor/tc"
+	"mayastor-e2e/tools/extended-test-framework/test_conductor/wm/models"
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	storageV1 "k8s.io/api/storage/v1"
 )
+
+var violations = []models.WorkloadViolationEnum{
+	models.WorkloadViolationEnumRESTARTED,
+	models.WorkloadViolationEnumTERMINATED,
+	models.WorkloadViolationEnumNOTPRESENT,
+}
 
 func SteadyStateTest(testConductor *tc.TestConductor) error {
 	if testConductor.Config.Install {
@@ -27,11 +34,16 @@ func SteadyStateTest(testConductor *tc.TestConductor) error {
 	var fio_name = "steady-state-fio"
 	var vol_type = lib.VolRawBlock
 
+	duration, err := time.ParseDuration(testConductor.Config.SteadyStateTest.Duration)
+	if err != nil {
+		return fmt.Errorf("failed to parse duration %v", err)
+	}
+
 	testRun := uuid.New()
 	testRunId := testRun.String()
 
 	// create storage class
-	err := lib.NewScBuilder().
+	err = lib.NewScBuilder().
 		WithName(sc_name).
 		WithReplicas(testConductor.Config.ReplicaCount).
 		WithProtocol(protocol).
@@ -57,23 +69,28 @@ func SteadyStateTest(testConductor *tc.TestConductor) error {
 	}
 	logf.Log.Info("Created pod", "pod", fio_name)
 
-	err = tc.AddWorkload(testConductor.Clientset, testConductor.WorkloadMonitorClient, fio_name, lib.NSDefault)
+	err = tc.AddWorkload(testConductor.Clientset, testConductor.WorkloadMonitorClient, fio_name, lib.NSDefault, violations)
 	if err != nil {
 		return fmt.Errorf("failed to inform workload monitor of %s, error: %v", fio_name, err)
 	}
 
-	err = tc.AddWorkloadsInNamespace(testConductor.Clientset, testConductor.WorkloadMonitorClient, "mayastor")
+	err = tc.AddWorkloadsInNamespace(testConductor.Clientset, testConductor.WorkloadMonitorClient, "mayastor", violations)
 	if err != nil {
 		return fmt.Errorf("failed to inform workload monitor of mayastor pods, error: %v", err)
 	}
 
+	err = tc.SendEventInfo(testConductor.TestDirectorClient, "started", tc.SourceInstance)
+	if err != nil {
+		return fmt.Errorf("failed to inform test director of event, error: %v", err)
+	}
 	err = tc.SendRunStarted(testConductor.TestDirectorClient, testRunId, "started", "ET-389")
 	if err != nil {
 		return fmt.Errorf("failed to inform test director of test start, error: %v", err)
 	}
 
-	// alert workload monitor
-	time.Sleep(60 * time.Second)
+	// allow the test to run
+	logf.Log.Info("Running test", "duration (s)", duration.Seconds())
+	time.Sleep(duration)
 
 	err = tc.DeleteWorkload(testConductor.Clientset, testConductor.WorkloadMonitorClient, fio_name, lib.NSDefault)
 	if err != nil {

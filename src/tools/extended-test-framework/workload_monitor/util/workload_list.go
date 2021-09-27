@@ -86,3 +86,16 @@ func GetWorkloadList() []models.Workload {
 	gWorkloadList.mu.Unlock()
 	return list
 }
+
+func DeleteWorkloadById(ID strfmt.UUID) {
+	gWorkloadList.mu.Lock()
+
+	for _, wlmap := range gWorkloadList.WorkloadMap {
+		for wid, wl := range wlmap {
+			if wl.ID == ID {
+				delete(wlmap, wid)
+			}
+		}
+	}
+	gWorkloadList.mu.Unlock()
+}

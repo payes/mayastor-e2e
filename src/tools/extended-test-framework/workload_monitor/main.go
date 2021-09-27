@@ -20,10 +20,11 @@ import (
 
 	"mayastor-e2e/tools/extended-test-framework/workload_monitor/client"
 
+	"mayastor-e2e/tools/extended-test-framework/common"
+
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	"mayastor-e2e/tools/extended-test-framework/common"
 )
 
 type TestMonitor struct {
@@ -95,7 +96,6 @@ func startMonitor(testMonitor *TestMonitor) {
 						fmt.Printf("failed to get pod %s\n", wl.Name)
 					}
 					if present {
-						fmt.Printf(" checking pod %s for restarted\n", wl.Name)
 						containerStatuses := pod.Status.ContainerStatuses
 						restartcount := int32(0)
 						for _, containerStatus := range containerStatuses {
@@ -111,6 +111,8 @@ func startMonitor(testMonitor *TestMonitor) {
 							fmt.Printf("pod %s restarted\n", wl.Name)
 							if err := sendEvent(testMonitor.pTestDirectorClient, "pod restarted", string(wl.Name)); err != nil {
 								logf.Log.Info("failed to send", "error", err)
+							} else {
+								util.DeleteWorkloadById(wl.ID)
 							}
 						}
 					}
@@ -124,6 +126,11 @@ func startMonitor(testMonitor *TestMonitor) {
 						fmt.Printf(" checking pod %s for terminated\n", wl.Name)
 						if podstatus == v1.PodFailed {
 							fmt.Printf("pod %s failed\n", wl.Name)
+							if err := sendEvent(testMonitor.pTestDirectorClient, "pod terminated", string(wl.Name)); err != nil {
+								logf.Log.Info("failed to send", "error", err)
+							} else {
+								util.DeleteWorkloadById(wl.ID)
+							}
 						}
 					}
 				case models.WorkloadViolationEnumNOTPRESENT:
@@ -134,6 +141,11 @@ func startMonitor(testMonitor *TestMonitor) {
 					fmt.Printf(" checking pod %s for not present\n", wl.Name)
 					if !present {
 						fmt.Printf("pod %s does not exist\n", wl.Name)
+						if err := sendEvent(testMonitor.pTestDirectorClient, "pod absent", string(wl.Name)); err != nil {
+							logf.Log.Info("failed to send", "error", err)
+						} else {
+							util.DeleteWorkloadById(wl.ID)
+						}
 					}
 				}
 			}
@@ -156,8 +168,6 @@ func startServer() {
 	parser := flags.NewParser(server, flags.Default)
 	parser.ShortDescription = "Test Framework API"
 	parser.LongDescription = "MayaData System Test Framework API"
-
-	log.Printf("workload_monitor about to configure flags")
 
 	server.ConfigureFlags()
 	for _, optsGroup := range api.CommandLineOptionsGroups {
