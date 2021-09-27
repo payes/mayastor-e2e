@@ -11,11 +11,17 @@ import (
 
 	"mayastor-e2e/tools/extended-test-framework/test_conductor/wm/models"
 
-	"github.com/go-openapi/strfmt"
 	"mayastor-e2e/tools/extended-test-framework/common"
+
+	"github.com/go-openapi/strfmt"
 )
 
-func AddWorkload(clientset kubernetes.Clientset, client *client.Etfw, name string, namespace string) error {
+func AddWorkload(
+	clientset kubernetes.Clientset,
+	client *client.Etfw,
+	name string,
+	namespace string,
+	violations []models.WorkloadViolationEnum) error {
 
 	tcpod, err := getPod(clientset, "test-conductor", common.EtfwNamespace)
 	if err != nil {
@@ -28,7 +34,7 @@ func AddWorkload(clientset kubernetes.Clientset, client *client.Etfw, name strin
 	}
 
 	workload_spec := models.WorkloadSpec{}
-	workload_spec.Violations = []models.WorkloadViolationEnum{models.WorkloadViolationEnumRESTARTED}
+	workload_spec.Violations = violations
 	workload_params := workload_monitor.NewPutWorkloadByRegistrantParams()
 
 	workload_params.Rid = strfmt.UUID(tcpod.ObjectMeta.UID)
@@ -47,7 +53,11 @@ func AddWorkload(clientset kubernetes.Clientset, client *client.Etfw, name strin
 	return nil
 }
 
-func AddWorkloadsInNamespace(clientset kubernetes.Clientset, client *client.Etfw, namespace string) error {
+func AddWorkloadsInNamespace(
+	clientset kubernetes.Clientset,
+	client *client.Etfw,
+	namespace string,
+	violations []models.WorkloadViolationEnum) error {
 	tcpod, err := getPod(clientset, "test-conductor", common.EtfwNamespace)
 	if err != nil {
 		return fmt.Errorf("failed to get tc pod, error: %v\n", err)
@@ -60,7 +70,7 @@ func AddWorkloadsInNamespace(clientset kubernetes.Clientset, client *client.Etfw
 
 	for _, pod := range podlist.Items {
 		workload_spec := models.WorkloadSpec{}
-		workload_spec.Violations = []models.WorkloadViolationEnum{models.WorkloadViolationEnumRESTARTED}
+		workload_spec.Violations = violations
 		workload_params := workload_monitor.NewPutWorkloadByRegistrantParams()
 
 		workload_params.Rid = strfmt.UUID(tcpod.ObjectMeta.UID)
