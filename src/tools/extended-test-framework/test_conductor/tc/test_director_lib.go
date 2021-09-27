@@ -92,14 +92,12 @@ func SendRunStarted(client *client.Etfw, uuid string, message string, jira_key s
 	return SendRunStatus(client, uuid, message, jira_key, models.TestRunStatusEnumRUNNING)
 }
 
-func SendEvent(client *client.Etfw, message string, source string, eventClass models.EventClassEnum) error {
+func SendEvent(client *client.Etfw, message string, sourceInstance string, eventClass models.EventClassEnum) error {
 
-	var class = models.EventClassEnumFAIL
 	var sourceClass = models.EventSourceClassEnumWorkloadDashMonitor
-	var sourceInstance = source
 
 	eventSpec := models.EventSpec{}
-	eventSpec.Class = &class
+	eventSpec.Class = &eventClass
 	eventSpec.Data = []string{""}
 	eventSpec.Message = &message
 	eventSpec.Resource = ""
