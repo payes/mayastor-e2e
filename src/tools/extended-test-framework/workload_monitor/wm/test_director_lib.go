@@ -10,16 +10,16 @@ import (
 	"mayastor-e2e/tools/extended-test-framework/workload_monitor/swagger/models"
 )
 
-func SendEvent(client *client.Etfw, message string, pod string) error {
+func SendEvent(client *client.Etfw, message string, pod string, sourceInstance string) error {
 
 	var class = models.EventClassEnumFAIL
 	var sourceClass = models.EventSourceClassEnumWorkloadDashMonitor
-	var sourceInstance = pod
+
 	eventSpec := models.EventSpec{}
 	eventSpec.Class = &class
 	eventSpec.Data = []string{""}
 	eventSpec.Message = &message
-	eventSpec.Resource = ""
+	eventSpec.Resource = pod
 	eventSpec.SourceClass = &sourceClass
 	eventSpec.SourceInstance = &sourceInstance
 

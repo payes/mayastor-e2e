@@ -37,6 +37,9 @@ func main() {
 
 	if err = tests.ReplicaPerturbationTest(testConductor); err != nil {
 		logf.Log.Info("replica perturbation test failed", "error", err)
+		if err = tests.SendTestCompletedFail(testConductor, err.Error()); err != nil {
+			logf.Log.Info("replica perturbation test failed to report error", "error", err)
+		}
 		os.Exit(1)
 	}
 }

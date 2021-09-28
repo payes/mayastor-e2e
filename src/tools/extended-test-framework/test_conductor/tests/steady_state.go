@@ -27,7 +27,7 @@ func SteadyStateTest(testConductor *tc.TestConductor) error {
 	var fio_name = "steady-state-fio"
 	var vol_type = lib.VolRawBlock
 
-	err := sendTestPreparing(testConductor)
+	err := SendTestPreparing(testConductor)
 	if err != nil {
 		return fmt.Errorf("failed to inform test director of preparation event, error: %v", err)
 	}
@@ -77,7 +77,7 @@ func SteadyStateTest(testConductor *tc.TestConductor) error {
 		return fmt.Errorf("failed to inform workload monitor of mayastor pods, error: %v", err)
 	}
 
-	err = sendTestStarted(testConductor)
+	err = SendTestStarted(testConductor)
 	if err != nil {
 		return fmt.Errorf("failed to inform test director of start event, error: %v", err)
 	}
@@ -106,7 +106,7 @@ func SteadyStateTest(testConductor *tc.TestConductor) error {
 		return fmt.Errorf("failed to inform test director of completion, error: %v", err)
 	}
 
-	err = sendTestCompletedOk(testConductor)
+	err = SendTestCompletedOk(testConductor)
 	if err != nil {
 		return fmt.Errorf("failed to inform test director of completion event, error: %v", err)
 	}
