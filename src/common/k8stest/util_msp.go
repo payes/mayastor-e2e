@@ -59,10 +59,10 @@ func GetMayastorPool(name string) (*MayastorPool, error) {
 	}
 
 	// FIXME use MayastorPool when bug in kubectl mayastor plugin is fixed
-	var response []MayastorPool
+	var response MayastorPool
 	err = json.Unmarshal(jsonInput, &response)
 	if err != nil {
 		return nil, err
 	}
-	return &response[0], nil
+	return &response, nil
 }
