@@ -3,10 +3,7 @@ package msv_rebuild
 import (
 	"fmt"
 	"mayastor-e2e/common"
-	"mayastor-e2e/common/custom_resources"
 	"mayastor-e2e/common/k8stest"
-
-	v1alpha1Api "mayastor-e2e/common/custom_resources/api/types/v1alpha1"
 
 	coreV1 "k8s.io/api/core/v1"
 
@@ -68,15 +65,15 @@ func createFioPod(fioPodName string, pvcName string, durationSecs int, volSize i
 }
 
 func verifyChildrenCount(uuid string, replicas int) bool {
-	children, err := custom_resources.GetMsVolNexusChildren(uuid)
+	children, err := k8stest.GetMsvNexusChildren(uuid)
 	if err != nil {
 		panic("Failed to get children")
 	}
 	return len(children) == replicas
 }
 
-func getChildren(uuid string) []v1alpha1Api.NexusChild {
-	children, err := custom_resources.GetMsVolNexusChildren(uuid)
+func getChildren(uuid string) []k8stest.NexusChild {
+	children, err := k8stest.GetMsvNexusChildren(uuid)
 	if err != nil {
 		panic("Failed to get children")
 	}

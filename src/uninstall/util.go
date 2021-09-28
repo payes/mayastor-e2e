@@ -61,7 +61,7 @@ func TeardownMayastor() {
 		gomega.Expect(found).To(gomega.BeFalse(), "PersistentVolumes were found, none expected.")
 
 		if !k8stest.IsControlPlaneMcp() {
-			found, err = custom_resources.CheckForMsVols()
+			found, err = k8stest.CheckForMsvs()
 			if err != nil {
 				log.Log.Info("Failed to check MSVs", "error", err)
 			}
@@ -89,6 +89,7 @@ func TeardownMayastor() {
 		go k8stest.KubeCtlDeleteYaml("rest-service.yaml", yamlsDir)
 		go k8stest.KubeCtlDeleteYaml("rest-deployment.yaml", yamlsDir)
 		go k8stest.KubeCtlDeleteYaml("msp-deployment.yaml", yamlsDir)
+		go k8stest.KubeCtlDeleteYaml("csi-deployment.yaml", yamlsDir)
 		go k8stest.KubeCtlDeleteYaml("core-agents-deployment.yaml", yamlsDir)
 	} else {
 		go k8stest.KubeCtlDeleteYaml("moac-deployment.yaml", yamlsDir)

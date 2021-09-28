@@ -2,8 +2,6 @@ package synchronous_replication
 
 import (
 	"fmt"
-	"mayastor-e2e/common/custom_resources"
-	"mayastor-e2e/common/custom_resources/api/types/v1alpha1"
 	"strings"
 	"testing"
 	"time"
@@ -141,12 +139,7 @@ func (job srJob) stop() {
 }
 
 func (job srJob) updateVolumeCount(replicaCount int) {
-	volCR, err := custom_resources.GetMsVol(job.status.volUid)
-	Expect(err).ToNot(HaveOccurred(), fmt.Sprintf("failed to retrieve volume %s", job.status.volUid))
-
-	volCR.Spec.ReplicaCount = replicaCount
-	logf.Log.Info("Set replicaCount count to", "repl", volCR.Spec.ReplicaCount)
-	_, err = custom_resources.UpdateMsVol(volCR)
+	err := k8stest.SetMsvReplicaCount(job.status.volUid, replicaCount)
 	Expect(err).ToNot(HaveOccurred(), fmt.Sprintf("failed to update the volume replicas %s", job.status.volName))
 }
 
@@ -165,9 +158,9 @@ func (job srJob) waitPodComplete() {
 			return
 		}
 		Expect(podPhase == coreV1.PodRunning).To(BeTrue(), fmt.Sprintf("Unexpected pod phase %v", podPhase))
-		volCR, err := custom_resources.GetMsVol(job.status.volUid)
+		volState, err := k8stest.GetMsvState(job.status.volUid)
 		if err == nil {
-			logf.Log.Info("MayastorVolume", "Name", job.status.volUid, "Status.State", volCR.Status.State)
+			logf.Log.Info("MayastorVolume", "Name", job.status.volUid, "State", volState)
 		}
 	}
 	Expect(podPhase == coreV1.PodSucceeded).To(BeTrue(), fmt.Sprintf("pod did not complete, phase %v", podPhase))
@@ -176,21 +169,21 @@ func (job srJob) waitPodComplete() {
 func (job srJob) waitVolumeHealthy() {
 	const sleepTimeSecs = 5
 	const timeoutSecs = 360
-	var volCR *v1alpha1.MayastorVolume
+	var volState string
 	var err error
 
 	logf.Log.Info("Waiting for volume to be healthy", "name", job.status.volUid)
 	for ix := 0; ix < (timeoutSecs+sleepTimeSecs-1)/sleepTimeSecs; ix++ {
 		time.Sleep(sleepTimeSecs * time.Second)
-		volCR, err = custom_resources.GetMsVol(job.status.volUid)
+		volState, err = k8stest.GetMsvState(job.status.volUid)
 		if err == nil {
-			if volCR.Status.State == "healthy" {
+			if volState == "healthy" {
 				return
 			}
-			logf.Log.Info("MayastorVolume", "Status", volCR.Status)
+			logf.Log.Info("MayastorVolume", "Status.State", volState)
 		}
 	}
-	Expect(volCR.Status.State == "healthy").To(BeTrue(), fmt.Sprintf("volume is not healthy %v", volCR.Status))
+	Expect(volState == "healthy").To(BeTrue(), fmt.Sprintf("volume is not healthy %v", volState))
 }
 
 func (job srJob) assertExpectedReplicas(replicaCount int, failMsg string) {

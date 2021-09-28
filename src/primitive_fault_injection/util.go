@@ -3,8 +3,6 @@ package primitive_fault_injection
 import (
 	"fmt"
 	"mayastor-e2e/common"
-	"mayastor-e2e/common/custom_resources"
-	"mayastor-e2e/common/custom_resources/api/types/v1alpha1"
 	"mayastor-e2e/common/k8stest"
 	"mayastor-e2e/common/mayastorclient"
 	"strings"
@@ -229,12 +227,7 @@ func (c *primitiveFaultInjectionConfig) verifyUninterruptedIO() {
 
 // patch msv with existing replication factor minus one
 func (c *primitiveFaultInjectionConfig) patchMsvReplica() {
-	msv, err := k8stest.GetMSV(c.uuid)
-	Expect(err).ToNot(HaveOccurred(), "%v", err)
-	Expect(msv).ToNot(BeNil(), "got nil msv for %v", c.uuid)
-	msv.Spec.ReplicaCount = c.replicaCount - 1 // reduce replication factor by 1
-	patchMSV, err := custom_resources.UpdateMsVol(msv)
-	logf.Log.Info("Patched", "msv", patchMSV)
+	err := k8stest.SetMsvReplicaCount(c.uuid, c.replicaCount-1)
 	Expect(err).ToNot(HaveOccurred(), "Failed to patch Mayastor volume %s", c.uuid)
 }
 
@@ -281,7 +274,7 @@ func (c *primitiveFaultInjectionConfig) verifyMsvStatus() {
 		"1s",           // polling interval
 	).Should(Equal(coreV1.VolumeBound))
 
-	Eventually(func() *v1alpha1.MayastorVolume {
+	Eventually(func() *k8stest.MayastorVolume {
 		msv, err := k8stest.GetMSV(string(pvc.ObjectMeta.UID))
 		Expect(err).ToNot(HaveOccurred(), "%v", err)
 		return msv

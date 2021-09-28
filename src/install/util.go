@@ -152,6 +152,7 @@ func InstallMayastor() {
 		k8stest.KubeCtlApplyYaml("rest-deployment.yaml", yamlsDir)
 		k8stest.KubeCtlApplyYaml("rest-service.yaml", yamlsDir)
 		k8stest.KubeCtlApplyYaml("msp-deployment.yaml", yamlsDir)
+		k8stest.KubeCtlApplyYaml("csi-deployment.yaml", yamlsDir)
 	} else {
 		k8stest.KubeCtlApplyYaml("moac-rbac.yaml", yamlsDir)
 		k8stest.KubeCtlApplyYaml("moac-deployment.yaml", yamlsDir)

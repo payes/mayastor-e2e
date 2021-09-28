@@ -214,7 +214,7 @@ func ResourceCheck() error {
 	//FIXME: MCP temporary do not check MSVs
 	if !IsControlPlaneMcp() {
 		// Mayastor volumes
-		msvs, err := custom_resources.ListMsVols()
+		msvs, err := ListMsvs()
 		if err != nil {
 			errorMsg += fmt.Sprintf("%s %v", errorMsg, err)
 		} else {

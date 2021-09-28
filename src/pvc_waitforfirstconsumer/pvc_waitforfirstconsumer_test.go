@@ -2,7 +2,6 @@ package pvc_waitforfirstconsumer
 
 import (
 	"fmt"
-	"mayastor-e2e/common/custom_resources"
 	"strings"
 	"testing"
 
@@ -78,7 +77,7 @@ func testPvcWaitForFirstConsumerTest(
 	Expect(pvc.Status.Phase).Should(Equal(coreV1.ClaimPending))
 
 	//verify if nexus is created or not
-	children, nexusErr := custom_resources.GetMsVolNexusChildren(uid)
+	children, nexusErr := k8stest.GetMsvNexusChildren(uid)
 	Expect(children).To(BeNil())
 	Expect(nexusErr).ToNot(BeNil(), "Nexus children not created yet")
 
@@ -132,7 +131,7 @@ func testPvcWaitForFirstConsumerTest(
 	Expect(k8stest.GetPvcStatusPhase(volName, common.NSDefault)).Should(Equal(coreV1.ClaimBound))
 
 	//verify if nexus children is created or not
-	children, nexusErr = custom_resources.GetMsVolNexusChildren(uid)
+	children, nexusErr = k8stest.GetMsvNexusChildren(uid)
 	if nexusErr != nil {
 		panic("Failed to get nexus children")
 	}
