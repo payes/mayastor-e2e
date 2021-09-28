@@ -5,8 +5,6 @@ import (
 	"fmt"
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
-	. "github.com/onsi/gomega"
 )
 
 type CpMsv struct{}
@@ -20,11 +18,14 @@ func cpVolumeToMsv(cpMsv *MayastorCpVolume) MayastorVolume {
 		})
 	}
 
-	// FIX-ME !!!!!!!!!!!!!!!!
-	// var replicas []Replica
-	// for _, cpReplica := range cpMsv.State.Replicas {
-	// 	replicas = append(replicas, Replica(cpReplica))
-	// }
+	// FIXME !!!!!!!!!!!!!!!!
+	// update replicas  with node and pool details
+	var replicas []Replica
+	for _, cpReplica := range cpMsv.State.Child.Children {
+		replicas = append(replicas, Replica{
+			Uri: cpReplica.Uri,
+		})
+	}
 
 	return MayastorVolume{
 		Name: cpMsv.Spec.Uuid,
@@ -40,10 +41,9 @@ func cpVolumeToMsv(cpMsv *MayastorCpVolume) MayastorVolume {
 				Node:      cpMsv.State.Child.Node,
 				State:     cpMsv.State.Child.State,
 			},
-			// FIX-ME !!!!!!!!!!!!!!
-			//Replicas: replicas,
-			Size:  cpMsv.State.Size,
-			State: cpMsv.State.Status,
+			Replicas: replicas,
+			Size:     cpMsv.State.Size,
+			State:    cpMsv.State.Status,
 		},
 	}
 }
@@ -51,7 +51,7 @@ func cpVolumeToMsv(cpMsv *MayastorCpVolume) MayastorVolume {
 // GetMSV Get pointer to a mayastor control plane volume
 // returns nil and no error if the msv is in pending state.
 func (mc CpMsv) getMSV(uuid string) (*MayastorVolume, error) {
-	cpMsv, err := GetMayastorVolume(uuid)
+	cpMsv, err := GetMayastorCpVolume(uuid)
 	if err != nil {
 		return nil, fmt.Errorf("GetMSV: %v", err)
 	}
@@ -78,20 +78,28 @@ func (mc CpMsv) getMSV(uuid string) (*MayastorVolume, error) {
 // GetMsvNodes Retrieve the nexus node hosting the Mayastor Volume,
 // and the names of the replica nodes
 func (mc CpMsv) getMsvNodes(uuid string) (string, []string) {
-	msv, err := GetMayastorVolume(uuid)
-	Expect(err).ToNot(HaveOccurred())
+	msv, err := GetMayastorCpVolume(uuid)
+	if err != nil {
+		logf.Log.Info("failed to get mayastor volume", "uuid", uuid)
+		return "", nil
+	}
 	node := msv.State.Child.Node
 	replicas := make([]string, msv.Spec.Num_replicas)
-	//FIX-ME !!!!!!!!!!!!!
-	// for ix, r := range msv.Status.Replicas {
-	// 	replicas[ix] = r.Node
-	// }
+
+	msvReplicas, err := GetMsvIfc().getMsvReplicas(uuid)
+	if err != nil {
+		logf.Log.Info("failed to get mayastor volume replica", "uuid", uuid)
+		return node, nil
+	}
+	for ix, r := range msvReplicas {
+		replicas[ix] = r.Node
+	}
 	return node, replicas
 }
 
 func (mc CpMsv) listMsvs() ([]MayastorVolume, error) {
 	var msvs []MayastorVolume
-	list, err := ListMayastorVolumes()
+	list, err := ListMayastorCpVolumes()
 	if err == nil {
 		for _, item := range list {
 			msvs = append(msvs, cpVolumeToMsv(&item))
@@ -101,7 +109,7 @@ func (mc CpMsv) listMsvs() ([]MayastorVolume, error) {
 }
 
 func (mc CpMsv) setMsvReplicaCount(uuid string, replicaCount int) error {
-	err := ScaleMayastorVolume(uuid, replicaCount)
+	err := scaleMayastorVolume(uuid, replicaCount)
 	logf.Log.Info("ScaleMayastorVolume", "Num_replicas", replicaCount)
 	return err
 }
@@ -112,7 +120,16 @@ func (mc CpMsv) getMsvState(uuid string) (string, error) {
 
 func (mc CpMsv) getMsvReplicas(volName string) ([]Replica, error) {
 	var replicas []Replica
-	// FIX_ME !!!!!!!!!!!!!!!!!
+	// FIXME !!!!!!!!!!!!!!!!!
+	// update replicas  with node and pool details
+	cpVolumeChildren, err := GetMayastorVolumeChildren(volName)
+	if err == nil {
+		for _, child := range cpVolumeChildren {
+			replicas = append(replicas, Replica{
+				Uri: child.Uri,
+			})
+		}
+	}
 	return replicas, nil
 }
 
@@ -151,7 +168,7 @@ func (mc CpMsv) checkAllMsvsAreHealthy() error {
 }
 
 func (mc CpMsv) deleteMsv(volName string) error {
-	return fmt.Errorf("Delete of mayastor volume not supported")
+	return fmt.Errorf("delete of mayastor volume not supported")
 }
 
 func MakeCpMsv() CpMsv {

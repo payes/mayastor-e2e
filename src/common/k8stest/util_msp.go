@@ -33,7 +33,7 @@ type mspState struct {
 	Used     int64    `json:"used"`
 }
 
-func GetMayastorPool(name string) (*MayastorPool, error) {
+func GetMayastorCpPool(name string) (*MayastorPool, error) {
 	pluginpath := fmt.Sprintf("%s/%s",
 		e2e_config.GetConfig().KubectlPluginDir,
 		common.KubectlMayastorPlugin)

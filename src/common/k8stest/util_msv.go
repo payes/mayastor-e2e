@@ -54,7 +54,7 @@ type children struct {
 	Uri             string `json:"uri"`
 }
 
-func GetMayastorVolume(uuid string) (*MayastorCpVolume, error) {
+func GetMayastorCpVolume(uuid string) (*MayastorCpVolume, error) {
 	pluginpath := fmt.Sprintf("%s/%s",
 		e2e_config.GetConfig().KubectlPluginDir,
 		common.KubectlMayastorPlugin)
@@ -86,7 +86,7 @@ func GetMayastorVolume(uuid string) (*MayastorCpVolume, error) {
 	return &response, nil
 }
 
-func ListMayastorVolumes() ([]MayastorCpVolume, error) {
+func ListMayastorCpVolumes() ([]MayastorCpVolume, error) {
 	pluginpath := fmt.Sprintf("%s/%s",
 		e2e_config.GetConfig().KubectlPluginDir,
 		common.KubectlMayastorPlugin)
@@ -118,7 +118,7 @@ func ListMayastorVolumes() ([]MayastorCpVolume, error) {
 	return response, nil
 }
 
-func ScaleMayastorVolume(uuid string, replicaCount int) error {
+func scaleMayastorVolume(uuid string, replicaCount int) error {
 	pluginpath := fmt.Sprintf("%s/%s",
 		e2e_config.GetConfig().KubectlPluginDir,
 		common.KubectlMayastorPlugin)
@@ -145,7 +145,7 @@ func ScaleMayastorVolume(uuid string, replicaCount int) error {
 }
 
 func GetMayastorVolumeState(volName string) (string, error) {
-	msv, err := GetMayastorVolume(volName)
+	msv, err := GetMayastorCpVolume(volName)
 	if err == nil {
 		return msv.State.Status, nil
 	}
@@ -153,7 +153,7 @@ func GetMayastorVolumeState(volName string) (string, error) {
 }
 
 func GetMayastorVolumeChildren(volName string) ([]children, error) {
-	msv, err := GetMayastorVolume(volName)
+	msv, err := GetMayastorCpVolume(volName)
 	if err != nil {
 		return nil, err
 	}
@@ -161,7 +161,7 @@ func GetMayastorVolumeChildren(volName string) ([]children, error) {
 }
 
 func GetMayastorVolumeChildState(uuid string) (string, error) {
-	msv, err := GetMayastorVolume(uuid)
+	msv, err := GetMayastorCpVolume(uuid)
 	if err != nil {
 		return "", err
 	}
@@ -169,7 +169,7 @@ func GetMayastorVolumeChildState(uuid string) (string, error) {
 }
 
 func IsMmayastorVolumePublished(uuid string) bool {
-	msv, err := GetMayastorVolume(uuid)
+	msv, err := GetMayastorCpVolume(uuid)
 	if err == nil {
 		return msv.Spec.Target_node != ""
 	}
@@ -177,7 +177,7 @@ func IsMmayastorVolumePublished(uuid string) bool {
 }
 
 func IsMayastorVolumeDeleted(uuid string) bool {
-	msv, err := GetMayastorVolume(uuid)
+	msv, err := GetMayastorCpVolume(uuid)
 	if strings.ToLower(msv.State.Status) == "destroyed" {
 		return false
 	}
@@ -191,7 +191,7 @@ func CheckForMayastorVolumes() (bool, error) {
 	log.Log.Info("CheckForMayastorVolumes")
 	foundResources := false
 
-	msvs, err := ListMayastorVolumes()
+	msvs, err := ListMayastorCpVolumes()
 	if err == nil && msvs != nil && len(msvs) != 0 {
 		log.Log.Info("CheckForVolumeResources: found MayastorVolumes",
 			"MayastorVolumes", msvs)
@@ -202,7 +202,7 @@ func CheckForMayastorVolumes() (bool, error) {
 
 func CheckAllMayastorVolumesAreHealthy() error {
 	allHealthy := true
-	msvs, err := ListMayastorVolumes()
+	msvs, err := ListMayastorCpVolumes()
 	if err == nil && msvs != nil && len(msvs) != 0 {
 		for _, msv := range msvs {
 			if strings.ToLower(msv.State.Status) != "healthy" {
