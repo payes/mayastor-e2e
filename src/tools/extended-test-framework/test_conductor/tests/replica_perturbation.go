@@ -14,7 +14,9 @@ import (
 	storageV1 "k8s.io/api/storage/v1"
 )
 
-func SteadyStateTest(testConductor *tc.TestConductor) error {
+const testName = "replica-perturbation"
+
+func ReplicaPerturbationTest(testConductor *tc.TestConductor) error {
 	if testConductor.Config.Install {
 		if err := tc.InstallMayastor(testConductor.Clientset, testConductor.Config.PoolDevice); err != nil {
 			return fmt.Errorf("failed to install mayastor %v", err)
@@ -22,14 +24,14 @@ func SteadyStateTest(testConductor *tc.TestConductor) error {
 	}
 	var protocol lib.ShareProto = lib.ShareProtoNvmf
 	var mode storageV1.VolumeBindingMode = storageV1.VolumeBindingImmediate
-	var sc_name = "steady-state-sc"
-	var pvc_name = "steady-state-pvc"
-	var fio_name = "steady-state-fio"
+	var sc_name = testName + "-sc"
+	var pvc_name = testName + "-pvc"
+	var fio_name = testName + "-fio"
 	var vol_type = lib.VolRawBlock
 
 	err := sendTestPreparing(testConductor)
 	if err != nil {
-		return fmt.Errorf("failed to inform test director of preparation event, error: %v", err)
+		return fmt.Errorf("failed to inform test director of completion event, error: %v", err)
 	}
 
 	duration, err := time.ParseDuration(testConductor.Config.SteadyStateTest.Duration)
@@ -79,7 +81,7 @@ func SteadyStateTest(testConductor *tc.TestConductor) error {
 
 	err = sendTestStarted(testConductor)
 	if err != nil {
-		return fmt.Errorf("failed to inform test director of start event, error: %v", err)
+		return fmt.Errorf("failed to inform test director of completion event, error: %v", err)
 	}
 
 	err = tc.SendRunStarted(testConductor.TestDirectorClient, testRunId, "", testConductor.Config.Test)
@@ -110,5 +112,6 @@ func SteadyStateTest(testConductor *tc.TestConductor) error {
 	if err != nil {
 		return fmt.Errorf("failed to inform test director of completion event, error: %v", err)
 	}
+
 	return err
 }
