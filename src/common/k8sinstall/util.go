@@ -380,12 +380,6 @@ func TeardownMayastor() error {
 		if podCount != 0 {
 			return fmt.Errorf("all Mayastor pods have not been deleted")
 		}
-		// Only delete the namespace if there are no pending resources
-		// otherwise this hangs.
-		err = deleteNamespace()
-		if err != nil {
-			return err
-		}
 		if deleted {
 			logf.Log.Info("Mayastor pods were force deleted on cleanup!")
 		}
@@ -396,14 +390,17 @@ func TeardownMayastor() error {
 		if k8stest.MayastorUndeletedPodCount() != 0 {
 			return fmt.Errorf("all Mayastor pods were not removed on uninstall")
 		}
-		// More verbose here as deleting the namespace is often where this
-		// test hangs.
-		logf.Log.Info("Deleting the mayastor namespace")
-		err := deleteNamespace()
-		if err != nil {
-			return err
-		}
-		logf.Log.Info("Deleted the mayastor namespace")
 	}
+
+	// More verbose here as deleting the namespace is often where this
+	// test hangs.
+	logf.Log.Info("Deleting the mayastor namespace")
+	// Only delete the namespace if there are no pending resources
+	// otherwise this hangs.
+	err = deleteNamespace()
+	if err != nil {
+		return err
+	}
+	logf.Log.Info("Deleted the mayastor namespace")
 	return nil
 }
