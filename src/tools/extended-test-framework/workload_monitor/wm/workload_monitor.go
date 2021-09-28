@@ -30,6 +30,8 @@ type WorkloadMonitor struct {
 	pTestDirectorClient *client.Etfw
 }
 
+const SourceInstance = "workload-monitor"
+
 /*
 	// PodPending means the pod has been accepted by the system, but one or more of the containers
 	// has not been started. This includes time before being bound to a node, as well as time spent
@@ -102,8 +104,9 @@ func (workloadMonitor *WorkloadMonitor) StartMonitor() {
 							}
 						}
 						if restartcount != 0 {
-							logf.Log.Info("pod restarted", "pod", wl.Name)
-							if err := SendEvent(workloadMonitor.pTestDirectorClient, "pod restarted", string(wl.Name)); err != nil {
+							message := fmt.Sprintf("pod %s restarted %d times", wl.Name, restartcount)
+							logf.Log.Info("restart", "message", message)
+							if err := SendEvent(workloadMonitor.pTestDirectorClient, message, string(wl.Name), SourceInstance); err != nil {
 								logf.Log.Info("failed to send", "error", err)
 							} else {
 								wlist.DeleteWorkloadById(wl.ID)
@@ -117,8 +120,9 @@ func (workloadMonitor *WorkloadMonitor) StartMonitor() {
 					}
 					if present {
 						if podstatus == v1.PodFailed {
-							logf.Log.Info("pod failed", "pod", wl.Name)
-							if err := SendEvent(workloadMonitor.pTestDirectorClient, "pod terminated", string(wl.Name)); err != nil {
+							message := fmt.Sprintf("pod %s terminated", wl.Name)
+							logf.Log.Info("termination", "message", message)
+							if err := SendEvent(workloadMonitor.pTestDirectorClient, message, string(wl.Name), SourceInstance); err != nil {
 								logf.Log.Info("failed to send", "error", err)
 							} else {
 								wlist.DeleteWorkloadById(wl.ID)
@@ -131,8 +135,10 @@ func (workloadMonitor *WorkloadMonitor) StartMonitor() {
 						fmt.Printf("failed to get pod status %s\n", wl.Name)
 					}
 					if !present {
-						logf.Log.Info("pod absent", "pod", wl.Name)
-						if err := SendEvent(workloadMonitor.pTestDirectorClient, "pod absent", string(wl.Name)); err != nil {
+						message := fmt.Sprintf("pod %s absent", wl.Name)
+						logf.Log.Info("absent", "message", message)
+
+						if err := SendEvent(workloadMonitor.pTestDirectorClient, message, string(wl.Name), SourceInstance); err != nil {
 							logf.Log.Info("failed to send", "error", err)
 						} else {
 							wlist.DeleteWorkloadById(wl.ID)
@@ -145,7 +151,7 @@ func (workloadMonitor *WorkloadMonitor) StartMonitor() {
 }
 
 func (workloadMonitor *WorkloadMonitor) StartServer() {
-	logf.Log.Info("tm server started")
+	logf.Log.Info("API server started")
 
 	swaggerSpec, err := loads.Embedded(restapi.SwaggerJSON, restapi.FlatSwaggerJSON)
 	if err != nil {
@@ -177,10 +183,8 @@ func (workloadMonitor *WorkloadMonitor) StartServer() {
 		}
 		os.Exit(code)
 	}
-	logf.Log.Info("workload_monitor about to configure")
 	server.ConfigureAPI()
 
-	logf.Log.Info("workload_monitor about to serve")
 	if err := server.Serve(); err != nil {
 		log.Fatalln(err)
 	}

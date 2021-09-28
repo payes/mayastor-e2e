@@ -10,14 +10,9 @@ import (
 	"mayastor-e2e/tools/extended-test-framework/test_conductor/tests"
 )
 
-func banner() {
-	logf.Log.Info("test_conductor started")
-}
-
 func main() {
 	logger := zap.New(zap.UseDevMode(true))
 	logf.SetLogger(logger)
-	banner()
 
 	testConductor, err := tc.NewTestConductor()
 	if err != nil {
@@ -37,6 +32,9 @@ func main() {
 
 	if err = tests.SteadyStateTest(testConductor); err != nil {
 		logf.Log.Info("steady state test failed", "error", err)
+		if err = tests.SendTestCompletedFail(testConductor, err.Error()); err != nil {
+			logf.Log.Info("steady state test failed to report error", "error", err)
+		}
 		os.Exit(1)
 	}
 }
