@@ -5,9 +5,9 @@ import (
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	"mayastor-e2e/tools/extended-test-framework/workload_monitor/client"
-	"mayastor-e2e/tools/extended-test-framework/workload_monitor/client/test_director"
-	"mayastor-e2e/tools/extended-test-framework/workload_monitor/models"
+	"mayastor-e2e/tools/extended-test-framework/workload_monitor/swagger/client"
+	"mayastor-e2e/tools/extended-test-framework/workload_monitor/swagger/client/test_director"
+	"mayastor-e2e/tools/extended-test-framework/workload_monitor/swagger/models"
 )
 
 func SendEvent(client *client.Etfw, message string, pod string) error {
