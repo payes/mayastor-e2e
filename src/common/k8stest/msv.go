@@ -1,8 +1,9 @@
 package k8stest
 
 import (
-	. "github.com/onsi/gomega"
 	"sync"
+
+	. "github.com/onsi/gomega"
 )
 
 var once sync.Once
@@ -70,7 +71,7 @@ func GetMsvIfc() MayastorVolumeInterface {
 		if IsControlPlaneMoac() {
 			ifc = MakeCrMsv()
 		} else if IsControlPlaneMcp() {
-			Expect(false).To(BeTrue())
+			ifc = MakeCpMsv()
 		} else {
 			Expect(false).To(BeTrue())
 		}

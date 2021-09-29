@@ -39,10 +39,11 @@ type E2EConfig struct {
 	// With few exceptions, all CI configurations MUST set this to true
 	GrpcMandated bool `yaml:"grpcMandated" env-default:"false"`
 	// Generic configuration files used for CI and automation should not define MayastorRootDir and E2eRootDir
-	MayastorRootDir string `yaml:"mayastorRootDir" env:"e2e_mayastor_root_dir"`
-	E2eRootDir      string `yaml:"e2eRootDir"`
-	SessionDir      string `yaml:"sessionDir" env:"e2e_session_dir"`
-	ControlPlane    string `yaml:"controlPlane" env:"e2e_control_plane"`
+	MayastorRootDir  string `yaml:"mayastorRootDir" env:"e2e_mayastor_root_dir"`
+	E2eRootDir       string `yaml:"e2eRootDir"`
+	SessionDir       string `yaml:"sessionDir" env:"e2e_session_dir"`
+	ControlPlane     string `yaml:"controlPlane" env:"e2e_control_plane"`
+	KubectlPluginDir string `yaml:"kubectlPluginDir" env:"e2e_kubectl_plugin_dir"`
 
 	// Operational parameters
 	Cores int `yaml:"cores,omitempty"`
