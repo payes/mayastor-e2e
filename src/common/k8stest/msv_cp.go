@@ -222,20 +222,34 @@ func CheckAllMayastorVolumesAreHealthy() error {
 
 func cpVolumeToMsv(cpMsv *MayastorCpVolume) MayastorVolume {
 	var nexusChildren []NexusChild
+	var childrenUri = make(map[string]bool)
+
 	for _, children := range cpMsv.State.Child.Children {
 		nexusChildren = append(nexusChildren, NexusChild{
 			State: children.State,
 			Uri:   children.Uri,
 		})
+		//storing uri as key in map[string]boll
+		//will be used to determine replica corresponding to children uri
+		childrenUri[children.Uri] = true
 	}
 
-	// FIXME: update replicas  with node and pool details
 	var replicas []Replica
-	for _, cpReplica := range cpMsv.State.Child.Children {
-		replicas = append(replicas, Replica{
-			Uri:     cpReplica.Uri,
-			Offline: strings.ToLower(cpReplica.State) != "online",
-		})
+	cpReplicas, err := ListMayastorCpReplicas()
+	if err != nil {
+		logf.Log.Info("Failed to list replicas", "error", err)
+		return MayastorVolume{}
+	}
+	for _, cpReplica := range cpReplicas {
+		if _, ok := childrenUri[cpReplica.Uri]; ok {
+			replicas = append(replicas, Replica{
+				Uri:     cpReplica.Uri,
+				Offline: strings.ToLower(cpReplica.State) != "online",
+				Node:    cpReplica.Node,
+				Pool:    cpReplica.Pool,
+			})
+		}
+
 	}
 
 	return MayastorVolume{
@@ -331,15 +345,31 @@ func (mc CpMsv) getMsvState(uuid string) (string, error) {
 
 func (mc CpMsv) getMsvReplicas(volName string) ([]Replica, error) {
 	var replicas []Replica
-	// FIXME: update replicas  with node and pool details
+	var childrenUri = make(map[string]bool)
 	cpVolumeChildren, err := GetMayastorVolumeChildren(volName)
 	if err == nil {
 		for _, child := range cpVolumeChildren {
-			replicas = append(replicas, Replica{
-				Uri:     child.Uri,
-				Offline: strings.ToLower(child.State) != "online",
-			})
+			//storing uri as key in map[string]boll
+			//will be used to determine replica corresponding to children uri
+			childrenUri[child.Uri] = true
 		}
+		cpReplicas, err := ListMayastorCpReplicas()
+		if err != nil {
+			logf.Log.Info("Failed to list replicas", "error", err)
+			return nil, err
+		}
+		for _, cpReplica := range cpReplicas {
+			if _, ok := childrenUri[cpReplica.Uri]; ok {
+				replicas = append(replicas, Replica{
+					Uri:     cpReplica.Uri,
+					Offline: strings.ToLower(cpReplica.State) != "online",
+					Node:    cpReplica.Node,
+					Pool:    cpReplica.Pool,
+				})
+			}
+
+		}
+
 	}
 	return replicas, nil
 }
