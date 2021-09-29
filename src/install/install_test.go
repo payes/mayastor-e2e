@@ -2,6 +2,8 @@ package install
 
 import (
 	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+	"mayastor-e2e/common/k8sinstall"
 	"mayastor-e2e/common/k8stest"
 	"testing"
 )
@@ -9,16 +11,16 @@ import (
 func TestInstallSuite(t *testing.T) {
 	// Initialise test and set class and file names for reports
 	if k8stest.IsControlPlaneMoac() {
-		k8stest.InitTesting(t, InstallSuiteName, "install")
+		k8stest.InitTesting(t, k8sinstall.InstallSuiteName, "install")
 	}
 	if k8stest.IsControlPlaneMcp() {
-		k8stest.InitTesting(t, MCPInstallSuiteName, "install")
+		k8stest.InitTesting(t, k8sinstall.MCPInstallSuiteName, "install")
 	}
 }
 
 var _ = Describe("Mayastor setup", func() {
 	It("should install using yaml files", func() {
-		InstallMayastor()
+		Expect(k8sinstall.InstallMayastor()).ToNot(HaveOccurred(), "install failed")
 	})
 })
 

@@ -356,7 +356,7 @@ func ControlPlaneReady(sleepTime int, duration int) bool {
 	count := (duration + sleepTime - 1) / sleepTime
 
 	if IsControlPlaneMcp() {
-		deploymentNames := []string{"core-agents", "msp-operator", "rest"}
+		deploymentNames := []string{"core-agents", "msp-operator", "rest", "csi-controller"}
 
 		for ix := 0; ix < count && !ready; ix++ {
 			time.Sleep(time.Duration(sleepTime) * time.Second)
