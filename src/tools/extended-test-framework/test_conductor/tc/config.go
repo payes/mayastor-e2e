@@ -29,6 +29,7 @@ type ExtendedTestConfig struct {
 	E2eFioImage string `yaml:"e2eFioImage" env-default:"mayadata/e2e-fio" env:"e2e_fio_image"`
 	Test        string `yaml:"test" env:"e2e_test"`
 	Install     bool   `yaml:"install" env-default:"false" env:"e2e_install"`
+	Msnodes     int    `yaml:"msnodes" env-default:"3" env:"e2e_msnodes"`
 
 	// Individual Test parameters
 	SteadyState struct {
