@@ -118,7 +118,7 @@ func SteadyStateTest(testConductor *tc.TestConductor) error {
 			failmessage = fmt.Sprintf("MSP check failed, err: %s", err.Error())
 			break
 		}
-		if err := CheckNodes(3); err != nil {
+		if err := CheckNodes(testConductor.Config.Msnodes); err != nil {
 			failmessage = fmt.Sprintf("MSN check failed, err: %s", err.Error())
 			break
 		}

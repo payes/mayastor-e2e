@@ -5,6 +5,7 @@ poolDevice: "/dev/sdb"
 test: "MQ-1807"
 install: true
 e2eFioImage: mayadata/e2e-fio
+msnodes: 3
 replicaPerturbation:
   replicas: 3
   duration: 60s
