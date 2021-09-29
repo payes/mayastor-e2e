@@ -10,18 +10,18 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-type MayastorPool struct {
+type MayastorCpPool struct {
 	Id    string   `json:"id"`
 	Spec  mspSpec  `json:"spec"`
 	State mspState `json:"state"`
 }
 
 type mspSpec struct {
-	Disks  []string `json:"disks"`
-	Id     string   `json:"id"`
-	Labels []string `json:"labels"`
-	Node   string   `json:"node"`
-	Status string   `json:"status"`
+	Disks  []string          `json:"disks"`
+	Id     string            `json:"id"`
+	Labels map[string]string `json:"labels"`
+	Node   string            `json:"node"`
+	Status string            `json:"status"`
 }
 
 type mspState struct {
@@ -33,7 +33,7 @@ type mspState struct {
 	Used     int64    `json:"used"`
 }
 
-func GetMayastorCpPool(name string) (*MayastorPool, error) {
+func GetMayastorCpPool(name string) (*MayastorCpPool, error) {
 	pluginpath := fmt.Sprintf("%s/%s",
 		e2e_config.GetConfig().KubectlPluginDir,
 		common.KubectlMayastorPlugin)
@@ -58,8 +58,7 @@ func GetMayastorCpPool(name string) (*MayastorPool, error) {
 		return nil, err
 	}
 
-	// FIXME use MayastorPool when bug in kubectl mayastor plugin is fixed
-	var response MayastorPool
+	var response MayastorCpPool
 	err = json.Unmarshal(jsonInput, &response)
 	if err != nil {
 		return nil, err
