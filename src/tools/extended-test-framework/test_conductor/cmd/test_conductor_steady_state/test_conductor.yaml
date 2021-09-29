@@ -165,6 +165,6 @@ spec:
   - name: etfw-config
     configMap:
       name: etfw-config
-  restartPolicy: OnFailure
+  restartPolicy: Never
   serviceAccountName: test-conductor-sa
 

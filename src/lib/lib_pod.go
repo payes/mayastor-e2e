@@ -275,6 +275,12 @@ func CreatePod(clientset kubernetes.Clientset, podDef *coreV1.Pod, nameSpace str
 	return clientset.CoreV1().Pods(nameSpace).Create(context.TODO(), podDef, metaV1.CreateOptions{})
 }
 
+// DeletePod Delete a Pod in the specified namespace, no options and no context
+func DeletePod(clientset kubernetes.Clientset, name string, nameSpace string) error {
+	logf.Log.Info("Deleting", "pod", name)
+	return clientset.CoreV1().Pods(nameSpace).Delete(context.TODO(), name, metaV1.DeleteOptions{})
+}
+
 // ListPod return lis of pods in the given namespace
 func ListPod(clientset kubernetes.Clientset, ns string) (*v1.PodList, error) {
 	pods, err := clientset.CoreV1().Pods(ns).List(context.TODO(), metaV1.ListOptions{})

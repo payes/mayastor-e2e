@@ -26,13 +26,13 @@ func SteadyStateTest(testConductor *tc.TestConductor) error {
 	var pvc_name = "steady-state-pvc"
 	var fio_name = "steady-state-fio"
 	var vol_type = lib.VolRawBlock
+	var failmessage = ""
 
-	err := SendTestPreparing(testConductor)
-	if err != nil {
+	if err := SendTestPreparing(testConductor); err != nil {
 		return fmt.Errorf("failed to inform test director of preparation event, error: %v", err)
 	}
 
-	duration, err := time.ParseDuration(testConductor.Config.SteadyStateTest.Duration)
+	duration, err := time.ParseDuration(testConductor.Config.SteadyState.Duration)
 	if err != nil {
 		return fmt.Errorf("failed to parse duration %v", err)
 	}
@@ -41,74 +41,141 @@ func SteadyStateTest(testConductor *tc.TestConductor) error {
 	testRunId := testRun.String()
 
 	// create storage class
-	err = lib.NewScBuilder().
+	if err := lib.NewScBuilder().
 		WithName(sc_name).
-		WithReplicas(testConductor.Config.ReplicaCount).
+		WithReplicas(testConductor.Config.SteadyState.Replicas).
 		WithProtocol(protocol).
 		WithNamespace(lib.NSDefault).
 		WithVolumeBindingMode(mode).
-		BuildAndCreate(testConductor.Clientset)
-	if err != nil {
+		BuildAndCreate(testConductor.Clientset); err != nil {
 		return fmt.Errorf("failed to create sc %v", err)
 	}
 	logf.Log.Info("Created storage class", "sc", sc_name)
 
 	// create PV
-	pvcname, err := lib.MkPVC(testConductor.Clientset, 64, pvc_name, sc_name, vol_type, lib.NSDefault)
+	msv_uid, err := lib.MkPVC(
+		testConductor.Clientset,
+		testConductor.Config.SteadyState.VolumeSizeMb,
+		pvc_name,
+		sc_name,
+		vol_type,
+		lib.NSDefault)
 	if err != nil {
 		return fmt.Errorf("failed to create pvc %v", err)
 	}
-	logf.Log.Info("Created pvc", "pvc", pvcname)
+	logf.Log.Info("Created pvc", "msv UID", msv_uid)
 
 	// deploy fio
-	err = lib.DeployFio(testConductor.Clientset, fio_name, pvc_name, vol_type, 64, 1000000)
-	if err != nil {
+	if err = lib.DeployFio(
+		testConductor.Clientset,
+		fio_name,
+		pvc_name,
+		vol_type,
+		testConductor.Config.SteadyState.VolumeSizeMb,
+		1000000); err != nil {
 		return fmt.Errorf("failed to deploy pod %s, error: %v", fio_name, err)
 	}
 	logf.Log.Info("Created pod", "pod", fio_name)
 
-	err = tc.AddWorkload(testConductor.Clientset, testConductor.WorkloadMonitorClient, fio_name, lib.NSDefault, violations)
-	if err != nil {
+	if err = tc.AddWorkload(
+		testConductor.Clientset,
+		testConductor.WorkloadMonitorClient,
+		fio_name,
+		lib.NSDefault,
+		violations); err != nil {
 		return fmt.Errorf("failed to inform workload monitor of %s, error: %v", fio_name, err)
 	}
 
-	err = tc.AddWorkloadsInNamespace(testConductor.Clientset, testConductor.WorkloadMonitorClient, "mayastor", violations)
-	if err != nil {
+	if err := tc.AddWorkloadsInNamespace(
+		testConductor.Clientset,
+		testConductor.WorkloadMonitorClient,
+		"mayastor",
+		violations); err != nil {
 		return fmt.Errorf("failed to inform workload monitor of mayastor pods, error: %v", err)
 	}
 
-	err = SendTestStarted(testConductor)
-	if err != nil {
+	if err := SendTestStarted(testConductor); err != nil {
 		return fmt.Errorf("failed to inform test director of start event, error: %v", err)
 	}
 
-	err = tc.SendRunStarted(testConductor.TestDirectorClient, testRunId, "", testConductor.Config.Test)
-	if err != nil {
+	if err := tc.SendRunStarted(
+		testConductor.TestDirectorClient,
+		testRunId,
+		"",
+		testConductor.Config.Test); err != nil {
 		return fmt.Errorf("failed to inform test director of test start, error: %v", err)
 	}
 
 	// allow the test to run
 	logf.Log.Info("Running test", "duration (s)", duration.Seconds())
-	time.Sleep(duration)
+	var waitSecs = 5
+	for ix := 0; ; ix = ix + waitSecs {
+		if err := CheckMSV(msv_uid); err != nil {
+			failmessage = fmt.Sprintf("MSV check failed, err: %s", err.Error())
+			break
+		}
+		if err := CheckPools(3); err != nil {
+			failmessage = fmt.Sprintf("MSP check failed, err: %s", err.Error())
+			break
+		}
+		if err := CheckNodes(3); err != nil {
+			failmessage = fmt.Sprintf("MSN check failed, err: %s", err.Error())
+			break
+		}
+		if ix > int(duration.Seconds()) {
+			break
+		}
+		time.Sleep(time.Duration(waitSecs) * time.Second)
+	}
+	if failmessage != "" {
+		if err := SendTestCompletedFail(testConductor, failmessage); err != nil {
+			return fmt.Errorf("failed to inform test director of completion, error: %v", err)
+		}
+	}
 
-	err = tc.DeleteWorkload(testConductor.Clientset, testConductor.WorkloadMonitorClient, fio_name, lib.NSDefault)
-	if err != nil {
+	if err := tc.DeleteWorkload(
+		testConductor.Clientset,
+		testConductor.WorkloadMonitorClient,
+		fio_name,
+		lib.NSDefault); err != nil {
 		return fmt.Errorf("failed to delete workload %s, error: %v", fio_name, err)
 	}
 
-	err = tc.DeleteWorkloads(testConductor.Clientset, testConductor.WorkloadMonitorClient)
-	if err != nil {
+	if err := tc.DeleteWorkloads(testConductor.Clientset, testConductor.WorkloadMonitorClient); err != nil {
 		return fmt.Errorf("failed to delete all registered workloads, error: %v", err)
 	}
 
-	err = tc.SendRunCompletedOk(testConductor.TestDirectorClient, testRunId, "", testConductor.Config.Test)
-	if err != nil {
-		return fmt.Errorf("failed to inform test director of completion, error: %v", err)
+	if err := lib.DeletePod(testConductor.Clientset, fio_name, lib.NSDefault); err != nil {
+		return fmt.Errorf("failed to delete pod %s, error: %v", fio_name, err)
 	}
 
-	err = SendTestCompletedOk(testConductor)
-	if err != nil {
-		return fmt.Errorf("failed to inform test director of completion event, error: %v", err)
+	if err := lib.DeletePVC(testConductor.Clientset, pvc_name, lib.NSDefault); err != nil {
+		return fmt.Errorf("failed to delete PVC %s, error: %v", pvc_name, err)
 	}
-	return err
+
+	if err := lib.DeleteSc(testConductor.Clientset, sc_name); err != nil {
+		return fmt.Errorf("failed to delete storage class %s, error: %v", sc_name, err)
+	}
+
+	if failmessage == "" {
+		if err := tc.SendRunCompletedOk(
+			testConductor.TestDirectorClient,
+			testRunId,
+			"",
+			testConductor.Config.Test); err != nil {
+			return fmt.Errorf("failed to inform test director of completion, error: %v", err)
+		}
+		if err := SendTestCompletedOk(testConductor); err != nil {
+			return fmt.Errorf("failed to inform test director of completion event, error: %v", err)
+		}
+	} else {
+		if err := tc.SendRunCompletedFail(
+			testConductor.TestDirectorClient,
+			testRunId,
+			failmessage,
+			testConductor.Config.Test); err != nil {
+			return fmt.Errorf("failed to inform test director of completion, error: %v", err)
+		}
+	}
+	return nil
 }

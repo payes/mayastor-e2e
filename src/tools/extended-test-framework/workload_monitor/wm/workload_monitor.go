@@ -81,6 +81,14 @@ func (workloadMonitor *WorkloadMonitor) StartMonitor() {
 	logf.Log.Info("workload monitor polling")
 	for {
 		time.Sleep(10 * time.Second)
+
+		// Lock the list while iterating.
+		// This ensures that the tests reflect exactly what was most
+		// recently specified by the test conductor. This avoids a
+		// potential race issue if the test conductor removes a pod from
+		// the list, removes the corresponding pod and the workload monitor
+		// sees it as missing because it has old data.
+		wlist.Lock()
 		list := wlist.GetWorkloadList()
 
 		for _, wl := range list {
@@ -147,6 +155,7 @@ func (workloadMonitor *WorkloadMonitor) StartMonitor() {
 				}
 			}
 		}
+		wlist.Unlock()
 	}
 }
 
