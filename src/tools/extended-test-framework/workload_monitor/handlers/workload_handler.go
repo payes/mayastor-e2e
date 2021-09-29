@@ -35,8 +35,9 @@ func (impl *putWorkloadByRegistrantImpl) Handle(params workload_monitor.PutWorkl
 	} else {
 		fmt.Printf("failed to get pod form uuid, error: %v\n", err)
 	}
-
+	list.Lock()
 	list.AddToWorkloadList(&wl, params.Rid, params.Wid)
+	list.Unlock()
 	return workload_monitor.NewPutWorkloadByRegistrantOK().WithPayload(&wl)
 }
 
@@ -47,9 +48,10 @@ func NewGetWorkloadByRegistrantHandler() workload_monitor.GetWorkloadByRegistran
 }
 
 func (impl *getWorkloadByRegistrantImpl) Handle(params workload_monitor.GetWorkloadByRegistrantParams) middleware.Responder {
-	pwl := list.GetWorkload(params.Rid, params.Wid)
-
-	return workload_monitor.NewGetWorkloadByRegistrantOK().WithPayload(pwl)
+	list.Lock()
+	wl := *list.GetWorkload(params.Rid, params.Wid)
+	list.Unlock()
+	return workload_monitor.NewGetWorkloadByRegistrantOK().WithPayload(&wl)
 }
 
 type deleteWorkloadByRegistrantImpl struct{}
@@ -59,9 +61,11 @@ func NewDeleteWorkloadByRegistrantHandler() workload_monitor.DeleteWorkloadByReg
 }
 
 func (impl *deleteWorkloadByRegistrantImpl) Handle(params workload_monitor.DeleteWorkloadByRegistrantParams) middleware.Responder {
-	pwl := list.GetWorkload(params.Rid, params.Wid)
+	wl := *list.GetWorkload(params.Rid, params.Wid)
+	list.Lock()
 	list.DeleteWorkload(params.Rid, params.Wid)
-	return workload_monitor.NewDeleteWorkloadByRegistrantOK().WithPayload(pwl)
+	list.Unlock()
+	return workload_monitor.NewDeleteWorkloadByRegistrantOK().WithPayload(&wl)
 }
 
 type deleteWorkloadsByRegistrantImpl struct{}
@@ -72,7 +76,9 @@ func NewDeleteWorkloadsByRegistrantHandler() workload_monitor.DeleteWorkloadsByR
 
 func (impl *deleteWorkloadsByRegistrantImpl) Handle(params workload_monitor.DeleteWorkloadsByRegistrantParams) middleware.Responder {
 	wl := models.RequestOutcome{}
+	list.Lock()
 	items := list.DeleteWorkloads(params.Rid)
+	list.Unlock()
 	wl.ItemsAffected = &items
 	wl.Details = ""
 	wl.Result = "OK"

@@ -20,16 +20,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = tc.SendTestPlanRunning(testConductor.TestDirectorClient, "test plan", testConductor.Config.TestPlan); err != nil {
-		logf.Log.Info("failed to send test plan", "error", err)
-		os.Exit(1)
-	}
-
-	if err = tc.GetTestPlans(testConductor.TestDirectorClient); err != nil {
-		logf.Log.Info("failed to get test plan", "error", err)
-		os.Exit(1)
-	}
-
 	if err = tests.SteadyStateTest(testConductor); err != nil {
 		logf.Log.Info("steady state test failed", "error", err)
 		if err = tests.SendTestCompletedFail(testConductor, err.Error()); err != nil {

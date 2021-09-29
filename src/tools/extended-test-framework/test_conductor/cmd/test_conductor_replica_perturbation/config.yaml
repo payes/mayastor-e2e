@@ -3,11 +3,11 @@ registry: ci-registry.mayastor-ci.mayadata.io
 imageTag: "nightly-stable"
 poolDevice: "/dev/sdb"
 test: "MQ-1807"
-testPlan: "ET-388"
 install: true
 e2eFioImage: mayadata/e2e-fio
-replicaCount: 2
-steadyStateTest:
-  replicas: 2
-  duration: 60m
+replicaPerturbation:
+  replicas: 3
+  duration: 60s
+  volumeSizeMb: 64
+
 

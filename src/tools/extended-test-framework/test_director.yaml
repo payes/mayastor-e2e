@@ -36,5 +36,5 @@ spec:
         - containerPort: 8080
           protocol: "TCP"
           name: test-dir
-  restartPolicy: OnFailure
+  restartPolicy: Never
 

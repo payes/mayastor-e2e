@@ -173,3 +173,10 @@ func CreateSc(clientset kubernetes.Clientset, obj *storagev1.StorageClass) error
 	_, createErr := ScApi().Create(context.TODO(), obj, metaV1.CreateOptions{})
 	return createErr
 }
+
+func DeleteSc(clientset kubernetes.Clientset, name string) error {
+	logf.Log.Info("Deleting", "StorageClass", name)
+	ScApi := clientset.StorageV1().StorageClasses
+	err := ScApi().Delete(context.TODO(), name, metaV1.DeleteOptions{})
+	return err
+}

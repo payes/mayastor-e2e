@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/kubernetes"
 
 	"time"
@@ -33,7 +34,6 @@ func GetMSV(uuid string) (*v1alpha1Api.MayastorVolume, error) {
 		return nil, nil
 	}
 
-	logf.Log.Info("GetMSV", "msv", msv)
 	// Note: msVol.Node can be unassigned here if the volume is not mounted
 	if msv.Status.State == "" {
 		return nil, fmt.Errorf("GetMSV: state not defined, got msv.Status=\"%v\"", msv.Status)
@@ -180,4 +180,25 @@ func MkPVC(clientset kubernetes.Clientset, volSizeMb int, volName string, scName
 
 	logf.Log.Info("Created", "volume", volName, "uuid", pvc.ObjectMeta.UID, "storageClass", scName, "volume type", volType)
 	return string(pvc.ObjectMeta.UID), nil
+}
+
+func DeletePVC(clientset kubernetes.Clientset, volName string, nameSpace string) error {
+	logf.Log.Info("Deleting", "PVC", volName)
+	err := clientset.CoreV1().PersistentVolumeClaims(nameSpace).Delete(context.TODO(), volName, metaV1.DeleteOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to delete PVC %s", volName)
+	}
+
+	// Wait for the PVC to be removed
+	for i := 0; ; i++ {
+		_, err := clientset.CoreV1().PersistentVolumeClaims(nameSpace).Get(context.TODO(), volName, metaV1.GetOptions{})
+		if err != nil && errors.IsNotFound(err) {
+			break
+		}
+		if i >= defTimeoutSecs {
+			return fmt.Errorf("timed out waiting for PVC %s to be deleted", volName)
+		}
+		time.Sleep(time.Second)
+	}
+	return nil
 }

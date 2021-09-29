@@ -65,7 +65,7 @@ spec:
         - containerPort: 8080
           protocol: "TCP"
           name: test-monitor
-  restartPolicy: OnFailure
+  restartPolicy: Never
   serviceAccountName: workload-monitor-sa
 
 
