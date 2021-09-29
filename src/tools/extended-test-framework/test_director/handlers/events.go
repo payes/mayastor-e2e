@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-type getEventsImpl struct {}
+type getEventsImpl struct{}
 
 func NewGetEventsHandler() test_director.GetEventsHandler {
 	return &getEventsImpl{}
@@ -25,7 +25,7 @@ func (impl *getEventsImpl) Handle(test_director.GetEventsParams) middleware.Resp
 	return test_director.NewGetEventsOK().WithPayload(events)
 }
 
-type postEventImpl struct {}
+type postEventImpl struct{}
 
 func NewAddEventHandler() test_director.AddEventHandler {
 	return &postEventImpl{}
@@ -34,7 +34,7 @@ func NewAddEventHandler() test_director.AddEventHandler {
 func (impl *postEventImpl) Handle(params test_director.AddEventParams) middleware.Responder {
 	eventSpec := params.Body
 	event := models.Event{
-		ID: strfmt.UUID(uuid.New().String()),
+		ID:             strfmt.UUID(uuid.New().String()),
 		LoggedDateTime: strfmt.DateTime(time.Now()),
 		EventSpec:      *eventSpec,
 	}

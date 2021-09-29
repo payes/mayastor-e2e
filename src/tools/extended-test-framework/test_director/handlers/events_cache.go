@@ -48,8 +48,6 @@ func (r *EventCache) Set(key string, data models.Event) error {
 	return nil
 }
 
-
-
 func InitEventCache() {
 	eventInterface = &EventCache{
 		client: cache.New(-1, 0),

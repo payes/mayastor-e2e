@@ -1,7 +1,6 @@
 package handlers
 
 import (
-
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/go-openapi/strfmt"
 	"test-director/models"
@@ -23,7 +22,7 @@ func (impl *getTestRunsImpl) Handle(test_director.GetTestRunsParams) middleware.
 	return test_director.NewGetTestRunsOK().WithPayload(runs)
 }
 
-type getTestRunImpl struct {}
+type getTestRunImpl struct{}
 
 func NewGetTestRunByIdHandler() test_director.GetTestRunByIDHandler {
 	return &getTestRunImpl{}
@@ -31,14 +30,14 @@ func NewGetTestRunByIdHandler() test_director.GetTestRunByIDHandler {
 
 func (impl *getTestRunImpl) Handle(params test_director.GetTestRunByIDParams) middleware.Responder {
 	id := params.ID
-	run, _  := runInterface.Get(id)
+	run, _ := runInterface.Get(id)
 	if run == nil {
 		return test_director.NewGetTestRunByIDNotFound()
 	}
 	return test_director.NewGetTestRunByIDOK().WithPayload(run)
 }
 
-type deleteTestRunImpl struct {}
+type deleteTestRunImpl struct{}
 
 func NewDeleteTestRunByIdHandler() test_director.DeleteTestRunByIDHandler {
 	return &deleteTestRunImpl{}
@@ -46,14 +45,14 @@ func NewDeleteTestRunByIdHandler() test_director.DeleteTestRunByIDHandler {
 
 func (impl *deleteTestRunImpl) Handle(params test_director.DeleteTestRunByIDParams) middleware.Responder {
 	id := params.ID
-	err  := runInterface.Delete(id)
+	err := runInterface.Delete(id)
 	if err != nil {
 		return test_director.NewDeleteTestRunByIDNotFound()
 	}
 	return test_director.NewDeleteTestRunByIDOK()
 }
 
-type putTestRunImpl struct {}
+type putTestRunImpl struct{}
 
 func NewPutTestRunHandler() test_director.PutTestRunByIDHandler {
 	return &putTestRunImpl{}
