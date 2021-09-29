@@ -99,3 +99,17 @@ maximum_vols_io
 node_failure
 stale_msp_after_node_power_failure
 "
+
+#hc1-nightly version of nightly-stable for CP2
+profiles[hc1-nightly]="
+csi
+mayastorpool_schema
+pool_modify
+primitive_msp_deletion
+primitive_msp_state
+primitive_msp_stress
+primitive_replicas
+resource_check
+"
+#stale_msp_after_node_power_failure is moac specific
+
