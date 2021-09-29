@@ -23,7 +23,7 @@ e2e_test_profile = 'nightly-stable'
 
 String cron_schedule = "H 0 * * *"
 xray_send_report=true
-xray_test_plan='MQ-1482'
+xray_test_plan='MQ-2209'
 
 pipeline {
   agent none
