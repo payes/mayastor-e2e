@@ -1,8 +1,6 @@
 package main
 
 import (
-	"time"
-
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
@@ -24,11 +22,9 @@ func main() {
 	logger := zap.New(zap.UseDevMode(true))
 	logf.SetLogger(logger)
 
+	workloadMonitor.InstallSignalHandler()
 	go workloadMonitor.StartServer()
 	go workloadMonitor.StartMonitor()
 
-	// wait for termination.
-	for {
-		time.Sleep(time.Second)
-	}
+	workloadMonitor.WaitSignal()
 }

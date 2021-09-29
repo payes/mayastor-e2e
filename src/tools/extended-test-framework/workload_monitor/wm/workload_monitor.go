@@ -5,6 +5,8 @@ import (
 	"log"
 
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/go-openapi/loads"
@@ -28,6 +30,7 @@ import (
 
 type WorkloadMonitor struct {
 	pTestDirectorClient *client.Etfw
+	channel             chan int
 }
 
 const SourceInstance = "workload-monitor"
@@ -51,6 +54,38 @@ const SourceInstance = "workload-monitor"
 	// Deprecated: It isn't being set since 2015 (74da3b14b0c0f658b3bb8d2def5094686d0e9095)
 	PodUnknown PodPhase = "Unknown"
 */
+
+func (workloadMonitor *WorkloadMonitor) InstallSignalHandler() {
+	signal_channel := make(chan os.Signal, 1)
+	signal.Notify(signal_channel,
+		syscall.SIGHUP,
+		syscall.SIGINT,
+		syscall.SIGTERM,
+		syscall.SIGQUIT)
+
+	workloadMonitor.channel = make(chan int)
+	go func() {
+		for {
+			s := <-signal_channel
+			switch s {
+			case syscall.SIGTERM:
+				workloadMonitor.channel <- 0
+
+			default:
+				workloadMonitor.channel <- 1
+			}
+		}
+	}()
+}
+
+func (workloadMonitor *WorkloadMonitor) WaitSignal() {
+	exitCode := <-workloadMonitor.channel
+	if exitCode != 0 { // abnormal termination
+		if err := SendEvent(workloadMonitor.pTestDirectorClient, "workload monitor terminated", SourceInstance, SourceInstance); err != nil {
+			logf.Log.Info("failed to send", "error", err)
+		}
+	}
+}
 
 func NewWorkloadMonitor() (*WorkloadMonitor, error) {
 	var workloadMonitor WorkloadMonitor

@@ -1,5 +1,5 @@
 REGISTRY="ci-registry.mayastor-ci.mayadata.io"
-TAG="mhajek"
+TAG="latest"
 APP="test_director"
 IMG_NAME=mayadata/${APP}
 SCRIPT_DIR=$(dirname "$0")

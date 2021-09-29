@@ -66,7 +66,7 @@ func SteadyStateTest(testConductor *tc.TestConductor) error {
 	logf.Log.Info("Created pvc", "msv UID", msv_uid)
 
 	// deploy fio
-	if err = lib.DeployFio(
+	if err := lib.DeployFio(
 		testConductor.Clientset,
 		fio_name,
 		pvc_name,
@@ -77,13 +77,29 @@ func SteadyStateTest(testConductor *tc.TestConductor) error {
 	}
 	logf.Log.Info("Created pod", "pod", fio_name)
 
-	if err = tc.AddWorkload(
+	if err := tc.AddWorkload(
 		testConductor.Clientset,
 		testConductor.WorkloadMonitorClient,
 		fio_name,
 		lib.NSDefault,
 		violations); err != nil {
 		return fmt.Errorf("failed to inform workload monitor of %s, error: %v", fio_name, err)
+	}
+	if err := tc.AddWorkload(
+		testConductor.Clientset,
+		testConductor.WorkloadMonitorClient,
+		"test-conductor",
+		"mayastor-e2e",
+		violations); err != nil {
+		return fmt.Errorf("failed to inform workload monitor of test-conductor, error: %v", err)
+	}
+	if err := tc.AddWorkload(
+		testConductor.Clientset,
+		testConductor.WorkloadMonitorClient,
+		"test-director",
+		"mayastor-e2e",
+		violations); err != nil {
+		return fmt.Errorf("failed to inform workload monitor of test-director, error: %v", err)
 	}
 
 	if err := tc.AddWorkloadsInNamespace(
@@ -131,14 +147,6 @@ func SteadyStateTest(testConductor *tc.TestConductor) error {
 		if err := SendTestCompletedFail(testConductor, failmessage); err != nil {
 			return fmt.Errorf("failed to inform test director of completion, error: %v", err)
 		}
-	}
-
-	if err := tc.DeleteWorkload(
-		testConductor.Clientset,
-		testConductor.WorkloadMonitorClient,
-		fio_name,
-		lib.NSDefault); err != nil {
-		return fmt.Errorf("failed to delete workload %s, error: %v", fio_name, err)
 	}
 
 	if err := tc.DeleteWorkloads(testConductor.Clientset, testConductor.WorkloadMonitorClient); err != nil {

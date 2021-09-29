@@ -30,6 +30,23 @@ func ReplicaPerturbationTest(testConductor *tc.TestConductor) error {
 	var vol_type = lib.VolRawBlock
 	var failmessage = ""
 
+	if err := tc.AddWorkload(
+		testConductor.Clientset,
+		testConductor.WorkloadMonitorClient,
+		"test-conductor",
+		"mayastor-e2e",
+		violations); err != nil {
+		return fmt.Errorf("failed to inform workload monitor of test-conductor, error: %v", err)
+	}
+	if err := tc.AddWorkload(
+		testConductor.Clientset,
+		testConductor.WorkloadMonitorClient,
+		"test-director",
+		"mayastor-e2e",
+		violations); err != nil {
+		return fmt.Errorf("failed to inform workload monitor of test-director, error: %v", err)
+	}
+
 	if err := SendTestPreparing(testConductor); err != nil {
 		return fmt.Errorf("failed to inform test director of completion event, error: %v", err)
 	}
@@ -133,14 +150,6 @@ func ReplicaPerturbationTest(testConductor *tc.TestConductor) error {
 		if err := SendTestCompletedFail(testConductor, failmessage); err != nil {
 			return fmt.Errorf("failed to inform test director of completion, error: %v", err)
 		}
-	}
-
-	if err := tc.DeleteWorkload(
-		testConductor.Clientset,
-		testConductor.WorkloadMonitorClient,
-		fio_name,
-		lib.NSDefault); err != nil {
-		return fmt.Errorf("failed to delete workload %s, error: %v", fio_name, err)
 	}
 
 	if err := tc.DeleteWorkloads(testConductor.Clientset, testConductor.WorkloadMonitorClient); err != nil {
