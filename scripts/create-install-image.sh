@@ -113,7 +113,7 @@ if [ -n "$MCP_DIR" ]; then
         && mkdir -p "$workdir/mcp/scripts" \
         && cp scripts/generate-deploy-yamls.sh "$workdir/mcp/scripts" \
         && cp -R chart "$workdir/mcp" \
-        && nix-shell --run "cargo build --release -p kubectl-mayastor" \
+        && nix-shell --run "cargo build --release -p kubectl-plugin" \
         && mkdir -p "$workdir/mcp/target/release" \
         && cp target/release/kubectl-mayastor "$workdir/mcp/target/release" \
         && mkdir -p "$workdir/mcp/control-plane/rest/openapi-specs" \

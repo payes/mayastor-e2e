@@ -289,6 +289,7 @@ if [ -z "$mayastor_root_dir" ]; then
             echo "Found kubectl plugin $kbctl_plugin"
             export e2e_kubectl_plugin_dir=$kbctl_plugin_dir
         else
+            echo "Did not find mayastor kubectl-plugin"
             exit $EXITV_MISSING_KUBECTL_PLUGIN
         fi
     fi # mcp
