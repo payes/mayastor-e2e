@@ -32,14 +32,14 @@ type msvSpec struct {
 }
 
 type msvState struct {
-	Child    child  `json:"child"`
+	Target   target `json:"target"`
 	Protocol string `json:"protocol"`
 	Size     int64  `json:"size"`
 	Status   string `json:"status"`
 	Uuid     string `json:"uuid"`
 }
 
-type child struct {
+type target struct {
 	Children  []children `json:"children"`
 	DeviceUri string     `json:"deviceUri"`
 	Node      string     `json:"node"`
@@ -83,7 +83,8 @@ func GetMayastorCpVolume(uuid string) (*MayastorCpVolume, error) {
 	var response MayastorCpVolume
 	err = json.Unmarshal(jsonInput, &response)
 	if err != nil {
-		return nil, err
+		logf.Log.Info("Failed to unmarshal", "string", string(jsonInput))
+		return &MayastorCpVolume{}, nil
 	}
 	return &response, nil
 }
@@ -159,7 +160,7 @@ func GetMayastorVolumeChildren(volName string) ([]children, error) {
 	if err != nil {
 		return nil, err
 	}
-	return msv.State.Child.Children, nil
+	return msv.State.Target.Children, nil
 }
 
 func GetMayastorVolumeChildState(uuid string) (string, error) {
@@ -167,7 +168,7 @@ func GetMayastorVolumeChildState(uuid string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return msv.State.Child.State, nil
+	return msv.State.Target.State, nil
 }
 
 func IsMmayastorVolumePublished(uuid string) bool {
@@ -180,6 +181,9 @@ func IsMmayastorVolumePublished(uuid string) bool {
 
 func IsMayastorVolumeDeleted(uuid string) bool {
 	msv, err := GetMayastorCpVolume(uuid)
+	if msv.Spec.Uuid == "" {
+		return true
+	}
 	if strings.ToLower(msv.State.Status) == "destroyed" {
 		return false
 	}
@@ -222,20 +226,34 @@ func CheckAllMayastorVolumesAreHealthy() error {
 
 func cpVolumeToMsv(cpMsv *MayastorCpVolume) MayastorVolume {
 	var nexusChildren []NexusChild
-	for _, children := range cpMsv.State.Child.Children {
+	var childrenUri = make(map[string]bool)
+
+	for _, children := range cpMsv.State.Target.Children {
 		nexusChildren = append(nexusChildren, NexusChild{
 			State: children.State,
 			Uri:   children.Uri,
 		})
+		//storing uri as key in map[string]boll
+		//will be used to determine replica corresponding to children uri
+		childrenUri[children.Uri] = true
 	}
 
-	// FIXME: update replicas  with node and pool details
 	var replicas []Replica
-	for _, cpReplica := range cpMsv.State.Child.Children {
-		replicas = append(replicas, Replica{
-			Uri:     cpReplica.Uri,
-			Offline: strings.ToLower(cpReplica.State) != "online",
-		})
+	cpReplicas, err := ListMayastorCpReplicas()
+	if err != nil {
+		logf.Log.Info("Failed to list replicas", "error", err)
+		return MayastorVolume{}
+	}
+	for _, cpReplica := range cpReplicas {
+		if _, ok := childrenUri[cpReplica.Uri]; ok {
+			replicas = append(replicas, Replica{
+				Uri:     cpReplica.Uri,
+				Offline: strings.ToLower(cpReplica.State) != "online",
+				Node:    cpReplica.Node,
+				Pool:    cpReplica.Pool,
+			})
+		}
+
 	}
 
 	return MayastorVolume{
@@ -248,9 +266,9 @@ func cpVolumeToMsv(cpMsv *MayastorCpVolume) MayastorVolume {
 		Status: MayastorVolumeStatus{
 			Nexus: Nexus{
 				Children:  nexusChildren,
-				DeviceUri: cpMsv.State.Child.DeviceUri,
-				Node:      cpMsv.State.Child.Node,
-				State:     cpMsv.State.Child.State,
+				DeviceUri: cpMsv.State.Target.DeviceUri,
+				Node:      cpMsv.State.Target.Node,
+				State:     cpMsv.State.Target.State,
 			},
 			Replicas: replicas,
 			Size:     cpMsv.State.Size,
@@ -265,6 +283,10 @@ func (mc CpMsv) getMSV(uuid string) (*MayastorVolume, error) {
 	cpMsv, err := GetMayastorCpVolume(uuid)
 	if err != nil {
 		return nil, fmt.Errorf("GetMSV: %v", err)
+	}
+	if cpMsv.Spec.Uuid == "" {
+		logf.Log.Info("Msv not found", "uuid", uuid)
+		return nil, nil
 	}
 
 	// pending means still being created
@@ -294,7 +316,7 @@ func (mc CpMsv) getMsvNodes(uuid string) (string, []string) {
 		logf.Log.Info("failed to get mayastor volume", "uuid", uuid)
 		return "", nil
 	}
-	node := msv.State.Child.Node
+	node := msv.State.Target.Node
 	replicas := make([]string, msv.Spec.Num_replicas)
 
 	msvReplicas, err := GetMsvIfc().getMsvReplicas(uuid)
@@ -331,15 +353,31 @@ func (mc CpMsv) getMsvState(uuid string) (string, error) {
 
 func (mc CpMsv) getMsvReplicas(volName string) ([]Replica, error) {
 	var replicas []Replica
-	// FIXME: update replicas  with node and pool details
+	var childrenUri = make(map[string]bool)
 	cpVolumeChildren, err := GetMayastorVolumeChildren(volName)
 	if err == nil {
 		for _, child := range cpVolumeChildren {
-			replicas = append(replicas, Replica{
-				Uri:     child.Uri,
-				Offline: strings.ToLower(child.State) != "online",
-			})
+			//storing uri as key in map[string]boll
+			//will be used to determine replica corresponding to children uri
+			childrenUri[child.Uri] = true
 		}
+		cpReplicas, err := ListMayastorCpReplicas()
+		if err != nil {
+			logf.Log.Info("Failed to list replicas", "error", err)
+			return nil, err
+		}
+		for _, cpReplica := range cpReplicas {
+			if _, ok := childrenUri[cpReplica.Uri]; ok {
+				replicas = append(replicas, Replica{
+					Uri:     cpReplica.Uri,
+					Offline: strings.ToLower(cpReplica.State) != "online",
+					Node:    cpReplica.Node,
+					Pool:    cpReplica.Pool,
+				})
+			}
+
+		}
+
 	}
 	return replicas, nil
 }

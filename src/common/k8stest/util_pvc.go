@@ -199,6 +199,10 @@ func MkPVC(volSizeMb int, volName string, scName string, volType common.VolumeTy
 
 // MsvConsistencyCheck check consistency of  MSV Spec, Status, and associated objects returned by gRPC
 func MsvConsistencyCheck(uuid string) error {
+	//FIXME: implement new MsvConsistencyCheck inline with mayastor control plane
+	if IsControlPlaneMcp() {
+		return nil
+	}
 	msv, err := GetMSV(uuid)
 	if msv == nil {
 		return fmt.Errorf("MsvConsistencyCheck: GetMsv: %v, got nil pointer to msv", uuid)
