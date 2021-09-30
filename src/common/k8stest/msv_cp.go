@@ -32,14 +32,14 @@ type msvSpec struct {
 }
 
 type msvState struct {
-	Child    child  `json:"child"`
+	Target   target `json:"target"`
 	Protocol string `json:"protocol"`
 	Size     int64  `json:"size"`
 	Status   string `json:"status"`
 	Uuid     string `json:"uuid"`
 }
 
-type child struct {
+type target struct {
 	Children  []children `json:"children"`
 	DeviceUri string     `json:"deviceUri"`
 	Node      string     `json:"node"`
@@ -160,7 +160,7 @@ func GetMayastorVolumeChildren(volName string) ([]children, error) {
 	if err != nil {
 		return nil, err
 	}
-	return msv.State.Child.Children, nil
+	return msv.State.Target.Children, nil
 }
 
 func GetMayastorVolumeChildState(uuid string) (string, error) {
@@ -168,7 +168,7 @@ func GetMayastorVolumeChildState(uuid string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return msv.State.Child.State, nil
+	return msv.State.Target.State, nil
 }
 
 func IsMmayastorVolumePublished(uuid string) bool {
@@ -228,7 +228,7 @@ func cpVolumeToMsv(cpMsv *MayastorCpVolume) MayastorVolume {
 	var nexusChildren []NexusChild
 	var childrenUri = make(map[string]bool)
 
-	for _, children := range cpMsv.State.Child.Children {
+	for _, children := range cpMsv.State.Target.Children {
 		nexusChildren = append(nexusChildren, NexusChild{
 			State: children.State,
 			Uri:   children.Uri,
@@ -266,9 +266,9 @@ func cpVolumeToMsv(cpMsv *MayastorCpVolume) MayastorVolume {
 		Status: MayastorVolumeStatus{
 			Nexus: Nexus{
 				Children:  nexusChildren,
-				DeviceUri: cpMsv.State.Child.DeviceUri,
-				Node:      cpMsv.State.Child.Node,
-				State:     cpMsv.State.Child.State,
+				DeviceUri: cpMsv.State.Target.DeviceUri,
+				Node:      cpMsv.State.Target.Node,
+				State:     cpMsv.State.Target.State,
 			},
 			Replicas: replicas,
 			Size:     cpMsv.State.Size,
@@ -316,7 +316,7 @@ func (mc CpMsv) getMsvNodes(uuid string) (string, []string) {
 		logf.Log.Info("failed to get mayastor volume", "uuid", uuid)
 		return "", nil
 	}
-	node := msv.State.Child.Node
+	node := msv.State.Target.Node
 	replicas := make([]string, msv.Spec.Num_replicas)
 
 	msvReplicas, err := GetMsvIfc().getMsvReplicas(uuid)
