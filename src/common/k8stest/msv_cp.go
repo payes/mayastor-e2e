@@ -83,7 +83,8 @@ func GetMayastorCpVolume(uuid string) (*MayastorCpVolume, error) {
 	var response MayastorCpVolume
 	err = json.Unmarshal(jsonInput, &response)
 	if err != nil {
-		return nil, err
+		logf.Log.Info("Failed to unmarshal", "string", string(jsonInput))
+		return &MayastorCpVolume{}, nil
 	}
 	return &response, nil
 }
@@ -180,6 +181,9 @@ func IsMmayastorVolumePublished(uuid string) bool {
 
 func IsMayastorVolumeDeleted(uuid string) bool {
 	msv, err := GetMayastorCpVolume(uuid)
+	if msv.Spec.Uuid == "" {
+		return true
+	}
 	if strings.ToLower(msv.State.Status) == "destroyed" {
 		return false
 	}
@@ -279,6 +283,10 @@ func (mc CpMsv) getMSV(uuid string) (*MayastorVolume, error) {
 	cpMsv, err := GetMayastorCpVolume(uuid)
 	if err != nil {
 		return nil, fmt.Errorf("GetMSV: %v", err)
+	}
+	if cpMsv.Spec.Uuid == "" {
+		logf.Log.Info("Msv not found", "uuid", uuid)
+		return nil, nil
 	}
 
 	// pending means still being created
