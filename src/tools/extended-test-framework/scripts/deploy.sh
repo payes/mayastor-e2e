@@ -52,17 +52,17 @@ SCRIPTDIR=$(dirname "$(realpath "$0")")
 
 if [ "${OPERATION}" == "delete" ]; then
   kubectl delete configmap etfw-config -n mayastor-e2e
-  kubectl delete -f ${SCRIPTDIR}/deploy/workload_monitor.yaml
-  kubectl delete -f ${SCRIPTDIR}/deploy/test_director.yaml
-  kubectl delete -f ${SCRIPTDIR}/deploy/test_conductor/${TEST}/test_conductor.yaml
-  kubectl delete -f ${SCRIPTDIR}/deploy/test_conductor.yaml
-  kubectl delete -f ${SCRIPTDIR}/deploy/test_namespace.yaml
+  kubectl delete -f ${SCRIPTDIR}/../deploy/workload_monitor.yaml
+  kubectl delete -f ${SCRIPTDIR}/../deploy/test_director.yaml
+  kubectl delete -f ${SCRIPTDIR}/../deploy/test_conductor/${TEST}/test_conductor.yaml
+  kubectl delete -f ${SCRIPTDIR}/../deploy/test_conductor.yaml
+  kubectl delete -f ${SCRIPTDIR}/../deploy/test_namespace.yaml
 else
-  kubectl create -f ${SCRIPTDIR}/deploy/test_namespace.yaml
-  kubectl create configmap etfw-config -n mayastor-e2e --from-file=${SCRIPTDIR}/deploy/test_conductor/${TEST}/config.yaml
-  kubectl create -f ${SCRIPTDIR}/deploy/test_conductor.yaml
-  kubectl create -f ${SCRIPTDIR}/deploy/test_conductor/${TEST}/test_conductor.yaml
-  kubectl create -f ${SCRIPTDIR}/deploy/test_director.yaml
-  kubectl create -f ${SCRIPTDIR}/deploy/workload_monitor.yaml
+  kubectl create -f ${SCRIPTDIR}/../deploy/test_namespace.yaml
+  kubectl create configmap etfw-config -n mayastor-e2e --from-file=${SCRIPTDIR}/../deploy/test_conductor/${TEST}/config.yaml
+  kubectl create -f ${SCRIPTDIR}/../deploy/test_conductor.yaml
+  kubectl create -f ${SCRIPTDIR}/../deploy/test_conductor/${TEST}/test_conductor.yaml
+  kubectl create -f ${SCRIPTDIR}/../deploy/test_director.yaml
+  kubectl create -f ${SCRIPTDIR}/../deploy/workload_monitor.yaml
 fi
 

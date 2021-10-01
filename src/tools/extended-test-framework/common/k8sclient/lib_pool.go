@@ -18,6 +18,7 @@ func WaitForPoolCrd() bool {
 		} else {
 			return true
 		}
+		time.Sleep(timoSleepSecs * time.Second)
 	}
 	return false
 }
