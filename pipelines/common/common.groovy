@@ -62,7 +62,7 @@ def GetMCP(branch) {
       ]],
       submoduleCfg: [],
         userRemoteConfigs:
-        [[url: "https://github.com/openebs/mayastor-control-plane", credentialsId: "github-checkout"]]
+        [[url: "https://github.com/mayadata-io/mayastor-control-plane", credentialsId: "github-checkout"]]
     ])
 }
 
