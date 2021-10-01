@@ -2,8 +2,11 @@ package k8sinstall
 
 import (
 	"fmt"
+	"io/ioutil"
 	"mayastor-e2e/common"
 	"os/exec"
+	"sort"
+	"strings"
 	"time"
 
 	"mayastor-e2e/common/custom_resources"
@@ -77,6 +80,7 @@ func WaitForPoolCrd() bool {
 	const timoSleepSecs = 5
 	const timoSecs = 60
 	for ix := 0; ix < timoSecs; ix += timoSleepSecs {
+		time.Sleep(time.Second * timoSleepSecs)
 		_, err := custom_resources.ListMsPools()
 		if err != nil {
 			logf.Log.Info("WaitForPoolCrd", "error", err)
@@ -87,6 +91,7 @@ func WaitForPoolCrd() bool {
 				return false
 			}
 		} else {
+			logf.Log.Info("WaitForPoolCrd, complete", "time", timoSleepSecs*ix)
 			return true
 		}
 	}
@@ -107,7 +112,7 @@ func GenerateMCPYamlFiles() error {
 		bashCmd := fmt.Sprintf(
 			"%s/generate-deploy-yamls.sh -o %s -t '%s' %s test",
 			locations.GetMCPScriptsDir(),
-			locations.GetGeneratedYamlsDir(),
+			locations.GetControlPlaneGeneratedYamlsDir(),
 			imageTag, registryDirective,
 		)
 		logf.Log.Info("About to execute", "command", bashCmd)
@@ -119,6 +124,80 @@ func GenerateMCPYamlFiles() error {
 		}
 	}
 	// nothing to do for MOAC
+	return nil
+}
+
+type cpYamlFiles []string
+
+func (s cpYamlFiles) Len() int {
+	return len(s)
+}
+
+func (s cpYamlFiles) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+
+func (s cpYamlFiles) weight(i int) int {
+	if strings.HasSuffix(s[i], "rbac.yaml") {
+		return 0
+	}
+	return 1
+}
+
+func (s cpYamlFiles) Less(i, j int) bool {
+	return s.weight(i) < s.weight(j)
+}
+
+func getCPYamlFiles() ([]string, error) {
+	yamlsDir := locations.GetControlPlaneGeneratedYamlsDir()
+	files, err := ioutil.ReadDir(yamlsDir)
+	if err != nil {
+		return []string{}, err
+	}
+	var yamlFiles []string
+	for _, file := range files {
+		if !file.IsDir() {
+			fName := file.Name()
+			if strings.HasSuffix(fName, ".yaml") {
+				yamlFiles = append(yamlFiles, fName)
+			}
+		}
+	}
+	sort.Strings(yamlFiles)
+	sort.Sort(cpYamlFiles(yamlFiles))
+	return yamlFiles, nil
+}
+
+func installControlPlane() error {
+	yamlFiles, err := getCPYamlFiles()
+	if err != nil {
+		return err
+	}
+	yamlsDir := locations.GetControlPlaneGeneratedYamlsDir()
+	for _, yf := range yamlFiles {
+		k8stest.KubeCtlApplyYaml(yf, yamlsDir)
+	}
+	return nil
+}
+
+func uninstallControlPlane() error {
+	yamlFiles, err := getCPYamlFiles()
+	if err != nil {
+		return err
+	}
+	// reverse the list of files for uninstall
+	for i, j := 0, len(yamlFiles)-1; i < j; i, j = i+1, j-1 {
+		yamlFiles[i], yamlFiles[j] = yamlFiles[j], yamlFiles[i]
+	}
+	yamlsDir := locations.GetControlPlaneGeneratedYamlsDir()
+	for _, yf := range yamlFiles {
+		// Deletes can stall indefinitely, try to mitigate this
+		// by running the deletes on different threads
+		// this may break the reversal of uninstalls
+		// for now this is good enough
+		go k8stest.KubeCtlDeleteYaml(yf, yamlsDir)
+		time.Sleep(time.Second * 1)
+	}
 	return nil
 }
 
@@ -172,12 +251,10 @@ func InstallMayastor() error {
 	k8stest.KubeCtlApplyYaml("mayastor-daemonset.yaml", yamlsDir)
 
 	if k8stest.IsControlPlaneMcp() {
-		k8stest.KubeCtlApplyYaml("operator-rbac.yaml", yamlsDir)
-		k8stest.KubeCtlApplyYaml("core-agents-deployment.yaml", yamlsDir)
-		k8stest.KubeCtlApplyYaml("rest-deployment.yaml", yamlsDir)
-		k8stest.KubeCtlApplyYaml("rest-service.yaml", yamlsDir)
-		k8stest.KubeCtlApplyYaml("msp-deployment.yaml", yamlsDir)
-		k8stest.KubeCtlApplyYaml("csi-deployment.yaml", yamlsDir)
+		err = installControlPlane()
+		if err != nil {
+			return err
+		}
 	} else {
 		k8stest.KubeCtlApplyYaml("moac-rbac.yaml", yamlsDir)
 		k8stest.KubeCtlApplyYaml("moac-deployment.yaml", yamlsDir)
@@ -216,17 +293,6 @@ func InstallMayastor() error {
 	}
 	if err != nil {
 		return fmt.Errorf("One or more pools are offline %v", err)
-	}
-
-	// hack attempt to clear the number of restarts by re-deploying
-	if k8stest.IsControlPlaneMcp() {
-		k8stest.KubeCtlDeleteYaml("csi-deployment.yaml", yamlsDir)
-		time.Sleep(10 * time.Second)
-		k8stest.KubeCtlApplyYaml("csi-deployment.yaml", yamlsDir)
-		ready = k8stest.ControlPlaneReady(10, 180)
-		if !ready {
-			return fmt.Errorf("re-deploy csi-deployment to zero restart count failed")
-		}
 	}
 
 	// Mayastor has been installed and is now ready for use.
@@ -323,15 +389,12 @@ func TeardownMayastor() error {
 	// Deletes can stall indefinitely, try to mitigate this
 	// by running the deletes on different threads
 	if k8stest.IsControlPlaneMcp() {
-		go k8stest.KubeCtlDeleteYaml("rest-service.yaml", yamlsDir)
-		go k8stest.KubeCtlDeleteYaml("rest-deployment.yaml", yamlsDir)
-		go k8stest.KubeCtlDeleteYaml("csi-deployment.yaml", yamlsDir)
-		go k8stest.KubeCtlDeleteYaml("msp-deployment.yaml", yamlsDir)
-		go k8stest.KubeCtlDeleteYaml("core-agents-deployment.yaml", yamlsDir)
+		err := uninstallControlPlane()
+		if err != nil {
+			return err
+		}
 	} else {
 		go k8stest.KubeCtlDeleteYaml("moac-deployment.yaml", yamlsDir)
-		// todo: these should ideally be deleted after MOAC and mayastor have gone
-		// because their removal may cause MOAC and mayastor to block
 	}
 
 	go k8stest.KubeCtlDeleteYaml("csi-daemonset.yaml", yamlsDir)
@@ -362,9 +425,7 @@ func TeardownMayastor() error {
 	// FIXME: should we? For now yes if nothing else this ensures consistency
 	// when deploying and redeploying Mayastor with MOAC and Mayastor with control plane
 	// on the same cluster.
-	if k8stest.IsControlPlaneMcp() {
-		k8stest.KubeCtlDeleteYaml("operator-rbac.yaml", yamlsDir)
-	} else {
+	if !k8stest.IsControlPlaneMcp() {
 		k8stest.KubeCtlDeleteYaml("moac-rbac.yaml", yamlsDir)
 		deleteCRD("mayastornodes.openebs.io")
 		deleteCRD("mayastorvolumes.openebs.io")
