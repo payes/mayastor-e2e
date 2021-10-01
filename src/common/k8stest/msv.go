@@ -1,81 +1,85 @@
 package k8stest
 
 import (
-	"sync"
-
 	. "github.com/onsi/gomega"
+	"mayastor-e2e/common"
+	MSVCrd "mayastor-e2e/common/msv/crd"
+	MSVKubectl "mayastor-e2e/common/msv/mayastor_kubectl"
+	"sync"
 )
 
 var once sync.Once
 
-type MayastorVolumeSpec struct {
-	Protocol      string `json:"protocol"`
-	ReplicaCount  int    `json:"replicaCount"`
-	RequiredBytes int    `json:"requiredBytes"`
-}
-
-type NexusChild struct {
-	State string `json:"state"`
-	Uri   string `json:"uri"`
-}
-
-type Nexus struct {
-	Children  []NexusChild `json:"children"`
-	DeviceUri string       `json:"deviceUri"`
-	Node      string       `json:"node"`
-	State     string       `json:"state"`
-}
-
-type Replica struct {
-	Node    string `json:"node"`
-	Offline bool   `json:"offline"`
-	Pool    string `json:"pool"`
-	Uri     string `json:"uri"`
-}
-
-type MayastorVolumeStatus struct {
-	Nexus    Nexus     `json:"nexus"`
-	Reason   string    `json:"reason"`
-	Replicas []Replica `json:"replicas"`
-	Size     int64     `json:"size"`
-	State    string    `json:"state"`
-}
-
-type MayastorVolume struct {
-	Name   string               `json:"name"`
-	Spec   MayastorVolumeSpec   `json:"spec"`
-	Status MayastorVolumeStatus `json:"status"`
-}
-
-type MayastorVolumeInterface interface {
-	getMSV(uuid string) (*MayastorVolume, error)
-	getMsvNodes(uuid string) (string, []string)
-	deleteMsv(volName string) error
-	listMsvs() ([]MayastorVolume, error)
-	setMsvReplicaCount(uuid string, replicaCount int) error
-	getMsvState(uuid string) (string, error)
-	getMsvReplicas(volName string) ([]Replica, error)
-	getMsvNexusChildren(volName string) ([]NexusChild, error)
-	getMsvNexusState(uuid string) (string, error)
-	isMsvPublished(uuid string) bool
-	isMsvDeleted(uuid string) bool
-	checkForMsvs() (bool, error)
-	checkAllMsvsAreHealthy() error
-}
-
 // DO NOT ACCESS DIRECTLY, use GetMsvIfc
-var ifc MayastorVolumeInterface
+var ifc common.MayastorVolumeInterface
 
-func GetMsvIfc() MayastorVolumeInterface {
+func GetMsvIfc() common.MayastorVolumeInterface {
 	once.Do(func() {
-		if IsControlPlaneMoac() {
-			ifc = MakeCrMsv()
-		} else if IsControlPlaneMcp() {
-			ifc = MakeCpMsv()
+		if common.IsControlPlaneMoac() {
+			ifc = MSVCrd.MakeCrMsv()
+		} else if common.IsControlPlaneMcp() {
+			ifc = MSVKubectl.MakeCpMsv(GetMayastorNodeIPAddresses())
 		} else {
 			Expect(false).To(BeTrue())
 		}
 	})
 
 	return ifc
+}
+
+// GetMSV Get pointer to a mayastor volume custom resource
+// returns nil and no error if the msv is in pending state.
+func GetMSV(uuid string) (*common.MayastorVolume, error) {
+	return GetMsvIfc().GetMSV(uuid)
+}
+
+// GetMsvNodes Retrieve the nexus node hosting the Mayastor Volume,
+// and the names of the replica nodes
+// function asserts if the volume CR is not found.
+func GetMsvNodes(uuid string) (string, []string) {
+	return GetMsvIfc().GetMsvNodes(uuid)
+}
+
+func DeleteMsv(volName string) error {
+	return GetMsvIfc().DeleteMsv(volName)
+}
+
+func ListMsvs() ([]common.MayastorVolume, error) {
+	return GetMsvIfc().ListMsvs()
+}
+
+func SetMsvReplicaCount(uuid string, replicaCount int) error {
+	return GetMsvIfc().SetMsvReplicaCount(uuid, replicaCount)
+}
+
+func GetMsvState(uuid string) (string, error) {
+	return GetMsvIfc().GetMsvState(uuid)
+}
+
+func GetMsvReplicas(volName string) ([]common.Replica, error) {
+	return GetMsvIfc().GetMsvReplicas(volName)
+}
+
+func GetMsvNexusChildren(volName string) ([]common.NexusChild, error) {
+	return GetMsvIfc().GetMsvNexusChildren(volName)
+}
+
+func GetMsvNexusState(uuid string) (string, error) {
+	return GetMsvIfc().GetMsvNexusState(uuid)
+}
+
+func IsMsvPublished(uuid string) bool {
+	return GetMsvIfc().IsMsvPublished(uuid)
+}
+
+func IsMsvDeleted(uuid string) bool {
+	return GetMsvIfc().IsMsvDeleted(uuid)
+}
+
+func CheckForMsvs() (bool, error) {
+	return GetMsvIfc().CheckForMsvs()
+}
+
+func CheckAllMsvsAreHealthy() error {
+	return GetMsvIfc().CheckAllMsvsAreHealthy()
 }

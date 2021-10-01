@@ -1,19 +1,22 @@
 package install
 
 import (
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	"testing"
+
+	"mayastor-e2e/common"
 	"mayastor-e2e/common/k8sinstall"
 	"mayastor-e2e/common/k8stest"
-	"testing"
+
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 )
 
 func TestInstallSuite(t *testing.T) {
 	// Initialise test and set class and file names for reports
-	if k8stest.IsControlPlaneMoac() {
+	if common.IsControlPlaneMoac() {
 		k8stest.InitTesting(t, k8sinstall.InstallSuiteName, "install")
 	}
-	if k8stest.IsControlPlaneMcp() {
+	if common.IsControlPlaneMcp() {
 		k8stest.InitTesting(t, k8sinstall.MCPInstallSuiteName, "install")
 	}
 }

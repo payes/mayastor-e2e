@@ -3,12 +3,12 @@ package k8sinstall
 import (
 	"fmt"
 	"io/ioutil"
-	"mayastor-e2e/common"
 	"os/exec"
 	"sort"
 	"strings"
 	"time"
 
+	"mayastor-e2e/common"
 	"mayastor-e2e/common/custom_resources"
 	"mayastor-e2e/common/e2e_config"
 	"mayastor-e2e/common/k8stest"
@@ -46,7 +46,7 @@ func GenerateMayastorYamlFiles() error {
 			if !node.MayastorNode {
 				continue
 			}
-			if !k8stest.IsControlPlaneMcp() {
+			if !common.IsControlPlaneMcp() {
 				poolDirectives += fmt.Sprintf(" -p '%s,%s'", node.NodeName, poolDevice)
 			}
 		}
@@ -101,7 +101,7 @@ func WaitForPoolCrd() bool {
 func GenerateMCPYamlFiles() error {
 	e2eCfg := e2e_config.GetConfig()
 
-	if k8stest.IsControlPlaneMcp() {
+	if common.IsControlPlaneMcp() {
 		registryDirective := ""
 		if len(e2eCfg.Registry) != 0 {
 			registryDirective = fmt.Sprintf(" -r '%s'", e2eCfg.Registry)
@@ -250,7 +250,7 @@ func InstallMayastor() error {
 	k8stest.KubeCtlApplyYaml("csi-daemonset.yaml", yamlsDir)
 	k8stest.KubeCtlApplyYaml("mayastor-daemonset.yaml", yamlsDir)
 
-	if k8stest.IsControlPlaneMcp() {
+	if common.IsControlPlaneMcp() {
 		err = installControlPlane()
 		if err != nil {
 			return err
@@ -352,7 +352,7 @@ func TeardownMayastor() error {
 			return fmt.Errorf(" PersistentVolumes were found, none expected")
 		}
 
-		if !k8stest.IsControlPlaneMcp() {
+		if !common.IsControlPlaneMcp() {
 			found, err = k8stest.CheckForMsvs()
 			if err != nil {
 				logf.Log.Info("Failed to check MSVs", "error", err)
@@ -378,7 +378,7 @@ func TeardownMayastor() error {
 	if err != nil {
 		return err
 	}
-	if k8stest.IsControlPlaneMcp() {
+	if common.IsControlPlaneMcp() {
 		err = GenerateMCPYamlFiles()
 	}
 	if err != nil {
@@ -388,7 +388,7 @@ func TeardownMayastor() error {
 
 	// Deletes can stall indefinitely, try to mitigate this
 	// by running the deletes on different threads
-	if k8stest.IsControlPlaneMcp() {
+	if common.IsControlPlaneMcp() {
 		err := uninstallControlPlane()
 		if err != nil {
 			return err
@@ -425,7 +425,7 @@ func TeardownMayastor() error {
 	// FIXME: should we? For now yes if nothing else this ensures consistency
 	// when deploying and redeploying Mayastor with MOAC and Mayastor with control plane
 	// on the same cluster.
-	if !k8stest.IsControlPlaneMcp() {
+	if !common.IsControlPlaneMcp() {
 		k8stest.KubeCtlDeleteYaml("moac-rbac.yaml", yamlsDir)
 		deleteCRD("mayastornodes.openebs.io")
 		deleteCRD("mayastorvolumes.openebs.io")

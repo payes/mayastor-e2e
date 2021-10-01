@@ -72,7 +72,7 @@ func verifyChildrenCount(uuid string, replicas int) bool {
 	return len(children) == replicas
 }
 
-func getChildren(uuid string) []k8stest.NexusChild {
+func getChildren(uuid string) []common.NexusChild {
 	children, err := k8stest.GetMsvNexusChildren(uuid)
 	if err != nil {
 		panic("Failed to get children")

@@ -52,6 +52,6 @@ const FsxBlockFileName = "/dev/sdm"
 const CpMoac = "moac"
 const CpMcp2 = "mcp2"
 
-// Mayastor kubectl plugin details
+// Mayastor kubectl-plugin plugin details
 const KubectlMayastorPlugin = "kubectl-mayastor"
 const PluginPort = "30011"

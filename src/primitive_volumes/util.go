@@ -111,7 +111,7 @@ func (c *pvcConcurrentConfig) verifyVolumesCreation() {
 			"1s",           // polling interval
 		).Should(Equal(coreV1.VolumeBound))
 
-		Eventually(func() *k8stest.MayastorVolume {
+		Eventually(func() *common.MayastorVolume {
 			msv, err := k8stest.GetMSV(string(pvc.ObjectMeta.UID))
 			Expect(err).ToNot(HaveOccurred(), "%v", err)
 			return msv

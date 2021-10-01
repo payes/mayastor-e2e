@@ -1,8 +1,9 @@
-package k8stest
+package crd
 
 // Utility functions for Mayastor CRDs
 import (
 	"fmt"
+	"mayastor-e2e/common"
 	"mayastor-e2e/common/custom_resources"
 	v1alpha1Api "mayastor-e2e/common/custom_resources/api/types/v1alpha1"
 
@@ -13,25 +14,25 @@ import (
 
 type CrMsv struct{}
 
-func crdToMsv(crdMsv *v1alpha1Api.MayastorVolume) MayastorVolume {
-	var nexusChildren []NexusChild
+func crdToMsv(crdMsv *v1alpha1Api.MayastorVolume) common.MayastorVolume {
+	var nexusChildren []common.NexusChild
 	for _, inChild := range crdMsv.Status.Nexus.Children {
-		nexusChildren = append(nexusChildren, NexusChild(inChild))
+		nexusChildren = append(nexusChildren, common.NexusChild(inChild))
 	}
-	var replicas []Replica
+	var replicas []common.Replica
 	for _, crdReplica := range crdMsv.Status.Replicas {
-		replicas = append(replicas, Replica(crdReplica))
+		replicas = append(replicas, common.Replica(crdReplica))
 	}
 
-	return MayastorVolume{
+	return common.MayastorVolume{
 		Name: crdMsv.GetName(),
-		Spec: MayastorVolumeSpec{
+		Spec: common.MayastorVolumeSpec{
 			Protocol:      crdMsv.Spec.Protocol,
 			ReplicaCount:  crdMsv.Spec.ReplicaCount,
 			RequiredBytes: crdMsv.Spec.RequiredBytes,
 		},
-		Status: MayastorVolumeStatus{
-			Nexus: Nexus{
+		Status: common.MayastorVolumeStatus{
+			Nexus: common.Nexus{
 				Children:  nexusChildren,
 				DeviceUri: crdMsv.Status.Nexus.DeviceUri,
 				Node:      crdMsv.Status.Nexus.Node,
@@ -47,7 +48,7 @@ func crdToMsv(crdMsv *v1alpha1Api.MayastorVolume) MayastorVolume {
 
 // GetMSV Get pointer to a mayastor volume custom resource
 // returns nil and no error if the msv is in pending state.
-func (mc CrMsv) getMSV(uuid string) (*MayastorVolume, error) {
+func (mc CrMsv) GetMSV(uuid string) (*common.MayastorVolume, error) {
 	crdMsv, err := custom_resources.GetMsVol(uuid)
 	if err != nil {
 		return nil, fmt.Errorf("GetMSV: %v", err)
@@ -75,7 +76,7 @@ func (mc CrMsv) getMSV(uuid string) (*MayastorVolume, error) {
 // GetMsvNodes Retrieve the nexus node hosting the Mayastor Volume,
 // and the names of the replica nodes
 // function asserts if the volume CR is not found.
-func (mc CrMsv) getMsvNodes(uuid string) (string, []string) {
+func (mc CrMsv) GetMsvNodes(uuid string) (string, []string) {
 	msv, err := custom_resources.GetMsVol(uuid)
 	Expect(err).ToNot(HaveOccurred())
 	node := msv.Status.Nexus.Node
@@ -86,12 +87,12 @@ func (mc CrMsv) getMsvNodes(uuid string) (string, []string) {
 	return node, replicas
 }
 
-func (mc CrMsv) deleteMsv(volName string) error {
+func (mc CrMsv) DeleteMsv(volName string) error {
 	return custom_resources.CRD_DeleteMsVol(volName)
 }
 
-func (mc CrMsv) listMsvs() ([]MayastorVolume, error) {
-	var msvs []MayastorVolume
+func (mc CrMsv) ListMsvs() ([]common.MayastorVolume, error) {
+	var msvs []common.MayastorVolume
 	crs, err := custom_resources.CRD_ListMsVols()
 	if err == nil {
 		for _, cr := range crs {
@@ -101,55 +102,55 @@ func (mc CrMsv) listMsvs() ([]MayastorVolume, error) {
 	return msvs, err
 }
 
-func (mc CrMsv) setMsvReplicaCount(uuid string, replicaCount int) error {
+func (mc CrMsv) SetMsvReplicaCount(uuid string, replicaCount int) error {
 	err := custom_resources.CRD_UpdateMsVolReplicaCount(uuid, replicaCount)
 	logf.Log.Info("SetMsvReplicaCount", "ReplicaCount", replicaCount)
 	return err
 }
 
-func (mc CrMsv) getMsvState(uuid string) (string, error) {
+func (mc CrMsv) GetMsvState(uuid string) (string, error) {
 	return custom_resources.CRD_GetMsVolState(uuid)
 }
 
-func (mc CrMsv) getMsvReplicas(volName string) ([]Replica, error) {
-	var replicas []Replica
+func (mc CrMsv) GetMsvReplicas(volName string) ([]common.Replica, error) {
+	var replicas []common.Replica
 	crdReplicas, err := custom_resources.CRD_GetMsVolReplicas(volName)
 	if err == nil {
 		for _, cr := range crdReplicas {
-			replicas = append(replicas, Replica(cr))
+			replicas = append(replicas, common.Replica(cr))
 		}
 	}
 	return replicas, err
 }
 
-func (mc CrMsv) getMsvNexusChildren(volName string) ([]NexusChild, error) {
-	var children []NexusChild
+func (mc CrMsv) GetMsvNexusChildren(volName string) ([]common.NexusChild, error) {
+	var children []common.NexusChild
 	crdChildren, err := custom_resources.CRD_GetMsVolNexusChildren(volName)
 	if err == nil {
 		for _, cr := range crdChildren {
-			children = append(children, NexusChild(cr))
+			children = append(children, common.NexusChild(cr))
 		}
 	}
 	return children, err
 }
 
-func (mc CrMsv) getMsvNexusState(uuid string) (string, error) {
+func (mc CrMsv) GetMsvNexusState(uuid string) (string, error) {
 	return custom_resources.CRD_GetMsVolNexusState(uuid)
 }
 
-func (mc CrMsv) isMsvPublished(uuid string) bool {
+func (mc CrMsv) IsMsvPublished(uuid string) bool {
 	return custom_resources.CRD_IsMsVolPublished(uuid)
 }
 
-func (mc CrMsv) isMsvDeleted(uuid string) bool {
+func (mc CrMsv) IsMsvDeleted(uuid string) bool {
 	return custom_resources.CRD_IsMsVolDeleted(uuid)
 }
 
-func (mc CrMsv) checkForMsvs() (bool, error) {
+func (mc CrMsv) CheckForMsvs() (bool, error) {
 	return custom_resources.CRD_CheckForMsVols()
 }
 
-func (mc CrMsv) checkAllMsvsAreHealthy() error {
+func (mc CrMsv) CheckAllMsvsAreHealthy() error {
 	return custom_resources.CRD_CheckAllMsVolsAreHealthy()
 }
 
