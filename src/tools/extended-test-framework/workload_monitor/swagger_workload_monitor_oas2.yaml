@@ -9,6 +9,8 @@ schemes:
   - http
 produces:
   - application/json
+consumes:
+  - application/json
 basePath: /api/v1
 
 tags:

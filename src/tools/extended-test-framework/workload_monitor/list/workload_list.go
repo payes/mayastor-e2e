@@ -61,22 +61,22 @@ func DeleteWorkloads(rid strfmt.UUID) int64 {
 	return int64(items)
 }
 
-func GetWorkloadListByRegistrant(rid strfmt.UUID) []models.Workload {
-	var list []models.Workload
+func GetWorkloadListByRegistrant(rid strfmt.UUID) []*models.Workload {
+	var list []*models.Workload
 	if wlmap, found := gWorkloadList.WorkloadMap[rid]; found {
 		for _, wl := range wlmap {
-			list = append(list, *wl)
+			list = append(list, wl)
 		}
 	}
 	return list
 }
 
-func GetWorkloadList() []models.Workload {
-	var list []models.Workload
+func GetWorkloadList() []*models.Workload {
+	var list []*models.Workload
 
 	for _, wlmap := range gWorkloadList.WorkloadMap {
 		for _, wl := range wlmap {
-			list = append(list, *wl)
+			list = append(list, wl)
 		}
 	}
 	return list

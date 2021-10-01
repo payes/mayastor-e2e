@@ -7,20 +7,17 @@ import (
 	"mayastor-e2e/tools/extended-test-framework/workload_monitor/wm"
 )
 
-func banner() {
-	logf.Log.Info("workload_monitor v1 started")
-}
-
 func main() {
-	banner()
+	logger := zap.New(zap.UseDevMode(true))
+	logf.SetLogger(logger)
+
+	logf.Log.Info("workload_monitor v1 started")
 
 	workloadMonitor, err := wm.NewWorkloadMonitor()
 	if err != nil {
 		logf.Log.Info("failed to create test monitor", "error", err)
 		return
 	}
-	logger := zap.New(zap.UseDevMode(true))
-	logf.SetLogger(logger)
 
 	workloadMonitor.InstallSignalHandler()
 	go workloadMonitor.StartServer()

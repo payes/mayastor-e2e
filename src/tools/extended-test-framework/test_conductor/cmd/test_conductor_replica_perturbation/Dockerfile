@@ -1,7 +1,6 @@
 # syntax=docker/dockerfile:1
-FROM ubuntu:18.04
+FROM alpine
 COPY test_conductor_replica_perturbation /
-#COPY config.yaml /
 
 COPY csi-daemonset.yaml /
 COPY mayastor-daemonset.yaml /

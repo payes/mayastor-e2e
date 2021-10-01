@@ -2,8 +2,10 @@ package tests
 
 import (
 	"fmt"
-	"mayastor-e2e/common/custom_resources"
-	"mayastor-e2e/lib"
+	"mayastor-e2e/tools/extended-test-framework/common/custom_resources"
+
+	"mayastor-e2e/tools/extended-test-framework/common/k8sclient"
+
 	"mayastor-e2e/tools/extended-test-framework/test_conductor/tc"
 	"mayastor-e2e/tools/extended-test-framework/test_conductor/wm/models"
 	"time"
@@ -20,7 +22,7 @@ func getTime() string {
 }
 
 func CheckMSV(msv_uid string) error {
-	msv, err := lib.GetMSV(msv_uid)
+	msv, err := k8sclient.GetMSV(msv_uid)
 	if err != nil {
 		return fmt.Errorf("failed to get the MSV, error: %v", err)
 	}
@@ -58,6 +60,52 @@ func CheckNodes(nodecount int) error {
 	for _, node := range nodeList {
 		if node.Status != "online" {
 			return fmt.Errorf("Found offline node %s", node.Name)
+		}
+	}
+	return nil
+}
+
+func MonitorCRs(testConductor *tc.TestConductor, msv_uids []string, duration time.Duration) string {
+	var waitSecs = 5
+	for ix := 0; ; ix = ix + waitSecs {
+		for _, msv := range msv_uids {
+			if err := CheckMSV(msv); err != nil {
+				return fmt.Sprintf("MSV %s check failed, err: %s", msv, err.Error())
+			}
+		}
+		if err := CheckPools(testConductor.Config.Msnodes); err != nil {
+			return fmt.Sprintf("MSP check failed, err: %s", err.Error())
+		}
+		if err := CheckNodes(testConductor.Config.Msnodes); err != nil {
+			return fmt.Sprintf("MSN check failed, err: %s", err.Error())
+		}
+		if ix > int(duration.Seconds()) {
+			break
+		}
+		time.Sleep(time.Duration(waitSecs) * time.Second)
+	}
+	return ""
+}
+
+func ReportResult(testConductor *tc.TestConductor, failmessage string, testRunId string) error {
+	if failmessage == "" {
+		if err := tc.SendRunCompletedOk(
+			testConductor.TestDirectorClient,
+			testRunId,
+			"",
+			testConductor.Config.Test); err != nil {
+			return fmt.Errorf("failed to inform test director of completion, error: %v", err)
+		}
+		if err := SendTestCompletedOk(testConductor); err != nil {
+			return fmt.Errorf("failed to inform test director of completion event, error: %v", err)
+		}
+	} else {
+		if err := tc.SendRunCompletedFail(
+			testConductor.TestDirectorClient,
+			testRunId,
+			failmessage,
+			testConductor.Config.Test); err != nil {
+			return fmt.Errorf("failed to inform test director of completion, error: %v", err)
 		}
 	}
 	return nil

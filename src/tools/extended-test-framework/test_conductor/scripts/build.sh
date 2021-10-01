@@ -35,5 +35,6 @@ SCRIPT_DIR=$(dirname "$0")
 cd ${SCRIPT_DIR}
 
 build test_conductor_steady_state latest
+build test_conductor_non_steady_state latest
 build test_conductor_replica_perturbation latest
 

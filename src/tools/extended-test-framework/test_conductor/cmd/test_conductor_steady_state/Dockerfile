@@ -1,7 +1,6 @@
 # syntax=docker/dockerfile:1
-FROM ubuntu:18.04
+FROM alpine
 COPY test_conductor_steady_state /
-#COPY config.yaml /
 
 COPY csi-daemonset.yaml /
 COPY mayastor-daemonset.yaml /

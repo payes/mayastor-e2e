@@ -40,10 +40,12 @@ func configureAPI(api *operations.EtfwAPI) http.Handler {
 
 	api.JSONProducer = runtime.JSONProducer()
 
-	api.WorkloadMonitorPutWorkloadByRegistrantHandler = handlers.NewPutWorkloadByRegistrantHandler()
-	api.WorkloadMonitorGetWorkloadByRegistrantHandler = handlers.NewGetWorkloadByRegistrantHandler()
 	api.WorkloadMonitorDeleteWorkloadByRegistrantHandler = handlers.NewDeleteWorkloadByRegistrantHandler()
 	api.WorkloadMonitorDeleteWorkloadsByRegistrantHandler = handlers.NewDeleteWorkloadsByRegistrantHandler()
+	api.WorkloadMonitorGetWorkloadByRegistrantHandler = handlers.NewGetWorkloadByRegistrantHandler()
+	api.WorkloadMonitorGetWorkloadsByRegistrantHandler = handlers.NewGetWorkloadsByRegistrantHandler()
+	api.WorkloadMonitorGetWorkloadsHandler = handlers.NewGetWorkloadsHandler()
+	api.WorkloadMonitorPutWorkloadByRegistrantHandler = handlers.NewPutWorkloadByRegistrantHandler()
 
 	if api.WorkloadMonitorDeleteWorkloadByRegistrantHandler == nil {
 		api.WorkloadMonitorDeleteWorkloadByRegistrantHandler = workload_monitor.DeleteWorkloadByRegistrantHandlerFunc(func(params workload_monitor.DeleteWorkloadByRegistrantParams) middleware.Responder {

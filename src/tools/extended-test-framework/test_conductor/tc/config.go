@@ -5,6 +5,8 @@ import (
 	"os"
 	"sync"
 
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
 	"gopkg.in/yaml.v2"
 
 	"github.com/ilyakaznacheev/cleanenv"
@@ -37,6 +39,11 @@ type ExtendedTestConfig struct {
 		Duration     string `yaml:"duration" env-default:"60m"`
 		VolumeSizeMb int    `yaml:"volumeSizeMb" env-default:"64"`
 	} `yaml:"steadyState"`
+	NonSteadyState struct {
+		Replicas     int    `yaml:"replicas" env-default:"2"`
+		Duration     string `yaml:"duration" env-default:"60m"`
+		VolumeSizeMb int    `yaml:"volumeSizeMb" env-default:"64"`
+	} `yaml:"nonSteadyState"`
 	ReplicaPerturbation struct {
 		Replicas     int    `yaml:"replicas" env-default:"3"`
 		Duration     string `yaml:"duration" env-default:"60m"`
@@ -73,7 +80,7 @@ func GetConfig() (ExtendedTestConfig, error) {
 				return
 			}
 		}
-		fmt.Printf("Using configuration file %s\n", gConfigFile)
+		logf.Log.Info("Config", "Using file", gConfigFile)
 		err = cleanenv.ReadConfig(gConfigFile, &gConfig)
 		if err != nil {
 			err = fmt.Errorf("could not read config file, error %v", err)
@@ -82,6 +89,5 @@ func GetConfig() (ExtendedTestConfig, error) {
 		cfgBytes, _ := yaml.Marshal(gConfig)
 		fmt.Printf("%s\n", string(cfgBytes))
 	})
-
 	return gConfig, err
 }

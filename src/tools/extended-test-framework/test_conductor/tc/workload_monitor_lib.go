@@ -3,7 +3,6 @@ package tc
 import (
 	"fmt"
 
-	"k8s.io/client-go/kubernetes"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"mayastor-e2e/tools/extended-test-framework/test_conductor/wm/client"
@@ -12,23 +11,23 @@ import (
 	"mayastor-e2e/tools/extended-test-framework/test_conductor/wm/models"
 
 	"mayastor-e2e/tools/extended-test-framework/common"
+	"mayastor-e2e/tools/extended-test-framework/common/k8sclient"
 
 	"github.com/go-openapi/strfmt"
 )
 
 func AddWorkload(
-	clientset kubernetes.Clientset,
 	client *client.Etfw,
 	name string,
 	namespace string,
 	violations []models.WorkloadViolationEnum) error {
 
-	tcpod, err := getPod(clientset, "test-conductor", common.EtfwNamespace)
+	tcpod, err := k8sclient.GetPod("test-conductor", common.EtfwNamespace)
 	if err != nil {
 		return fmt.Errorf("failed to get tc pod %s, error: %v\n", name, err)
 	}
 
-	pod, err := getPod(clientset, name, namespace)
+	pod, err := k8sclient.GetPod(name, namespace)
 	if err != nil {
 		return fmt.Errorf("failed to get pod %s, error: %v\n", name, err)
 	}
@@ -54,16 +53,15 @@ func AddWorkload(
 }
 
 func AddWorkloadsInNamespace(
-	clientset kubernetes.Clientset,
 	client *client.Etfw,
 	namespace string,
 	violations []models.WorkloadViolationEnum) error {
-	tcpod, err := getPod(clientset, "test-conductor", common.EtfwNamespace)
+	tcpod, err := k8sclient.GetPod("test-conductor", common.EtfwNamespace)
 	if err != nil {
 		return fmt.Errorf("failed to get tc pod, error: %v\n", err)
 	}
 
-	podlist, err := getPodsInNamespace(clientset, namespace)
+	podlist, err := k8sclient.GetPodsInNamespace(namespace)
 	if err != nil {
 		return fmt.Errorf("failed to get pods in namespace %s, error: %v\n", namespace, err)
 	}
@@ -90,14 +88,14 @@ func AddWorkloadsInNamespace(
 	return nil
 }
 
-func DeleteWorkload(clientset kubernetes.Clientset, client *client.Etfw, name string, namespace string) error {
+func DeleteWorkload(client *client.Etfw, name string, namespace string) error {
 
-	tcpod, err := getPod(clientset, "test-conductor", common.EtfwNamespace)
+	tcpod, err := k8sclient.GetPod("test-conductor", common.EtfwNamespace)
 	if err != nil {
 		return fmt.Errorf("failed to get tc pod %s, error: %v\n", name, err)
 	}
 
-	pod, err := getPod(clientset, name, namespace)
+	pod, err := k8sclient.GetPod(name, namespace)
 	if err != nil {
 		return fmt.Errorf("failed to get pod %s, error: %v\n", name, err)
 	}
@@ -119,9 +117,9 @@ func DeleteWorkload(clientset kubernetes.Clientset, client *client.Etfw, name st
 	return nil
 }
 
-func DeleteWorkloads(clientset kubernetes.Clientset, client *client.Etfw) error {
+func DeleteWorkloads(client *client.Etfw) error {
 
-	tcpod, err := getPod(clientset, "test-conductor", common.EtfwNamespace)
+	tcpod, err := k8sclient.GetPod("test-conductor", common.EtfwNamespace)
 	if err != nil {
 		return fmt.Errorf("failed to get tc pod, error: %v", err)
 	}

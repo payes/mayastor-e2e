@@ -14,7 +14,7 @@ import (
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	"mayastor-e2e/tools/extended-test-framework/workload_monitor/k8sclient"
+	"mayastor-e2e/tools/extended-test-framework/common/k8sclient"
 	wlist "mayastor-e2e/tools/extended-test-framework/workload_monitor/list"
 	"mayastor-e2e/tools/extended-test-framework/workload_monitor/swagger/models"
 	"mayastor-e2e/tools/extended-test-framework/workload_monitor/swagger/restapi"
@@ -34,26 +34,6 @@ type WorkloadMonitor struct {
 }
 
 const SourceInstance = "workload-monitor"
-
-/*
-	// PodPending means the pod has been accepted by the system, but one or more of the containers
-	// has not been started. This includes time before being bound to a node, as well as time spent
-	// pulling images onto the host.
-	PodPending PodPhase = "Pending"
-	// PodRunning means the pod has been bound to a node and all of the containers have been started.
-	// At least one container is still running or is in the process of being restarted.
-	PodRunning PodPhase = "Running"
-	// PodSucceeded means that all containers in the pod have voluntarily terminated
-	// with a container exit code of 0, and the system is not going to restart any of these containers.
-	PodSucceeded PodPhase = "Succeeded"
-	// PodFailed means that all containers in the pod have terminated, and at least one container has
-	// terminated in a failure (exited with a non-zero exit code or was stopped by the system).
-	PodFailed PodPhase = "Failed"
-	// PodUnknown means that for some reason the state of the pod could not be obtained, typically due
-	// to an error in communicating with the host of the pod.
-	// Deprecated: It isn't being set since 2015 (74da3b14b0c0f658b3bb8d2def5094686d0e9095)
-	PodUnknown PodPhase = "Unknown"
-*/
 
 func (workloadMonitor *WorkloadMonitor) InstallSignalHandler() {
 	signal_channel := make(chan os.Signal, 1)
@@ -78,6 +58,7 @@ func (workloadMonitor *WorkloadMonitor) InstallSignalHandler() {
 	}()
 }
 
+// Who guards the guard ? This does.
 func (workloadMonitor *WorkloadMonitor) WaitSignal() {
 	exitCode := <-workloadMonitor.channel
 	if exitCode != 0 { // abnormal termination
@@ -113,7 +94,7 @@ func NewWorkloadMonitor() (*WorkloadMonitor, error) {
 }
 
 func (workloadMonitor *WorkloadMonitor) StartMonitor() {
-	logf.Log.Info("workload monitor polling")
+	logf.Log.Info("workload monitor polling .")
 	for {
 		time.Sleep(10 * time.Second)
 
@@ -123,6 +104,10 @@ func (workloadMonitor *WorkloadMonitor) StartMonitor() {
 		// potential race issue if the test conductor removes a pod from
 		// the list, removes the corresponding pod and the workload monitor
 		// sees it as missing because it has old data.
+		// The alternative - locking the list, copying the data and unlocking -
+		// would suffer from this race issue.
+		// This will obviously add latency to REST calls from the test_conductor,
+		// but hopefully not problematically.
 		wlist.Lock()
 		list := wlist.GetWorkloadList()
 
@@ -194,6 +179,7 @@ func (workloadMonitor *WorkloadMonitor) StartMonitor() {
 	}
 }
 
+// this code copied from generated server code
 func (workloadMonitor *WorkloadMonitor) StartServer() {
 	logf.Log.Info("API server started")
 
@@ -204,7 +190,10 @@ func (workloadMonitor *WorkloadMonitor) StartServer() {
 
 	api := operations.NewEtfwAPI(swaggerSpec)
 	server := restapi.NewServer(api)
-	//defer server.Shutdown()
+
+	// following call commented-out as it violates "unchecked return value" lint error
+	// TODO fix this
+	// defer server.Shutdown()
 
 	parser := flags.NewParser(server, flags.Default)
 	parser.ShortDescription = "Test Framework API"

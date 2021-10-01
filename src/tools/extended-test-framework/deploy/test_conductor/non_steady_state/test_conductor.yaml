@@ -1,0 +1,30 @@
+kind: Pod
+apiVersion: v1
+metadata:
+  name: test-conductor
+  namespace: mayastor-e2e
+  labels:
+    app: test-conductor
+spec:
+  containers:
+    - name: test-conductor
+      image: ci-registry.mayastor-ci.mayadata.io/mayadata/test_conductor_non_steady_state:latest
+      imagePullPolicy: Always
+      args:
+        - "/test_conductor_non_steady_state"
+      ports:
+        - containerPort: 8080
+          protocol: "TCP"
+          name: test-conductor
+      volumeMounts:
+      - name: etfw-config
+        mountPath: "/config.yaml"
+        subPath: "config.yaml"
+        readOnly: true
+  volumes:
+  - name: etfw-config
+    configMap:
+      name: etfw-config
+  restartPolicy: Never
+  serviceAccountName: test-conductor-sa
+

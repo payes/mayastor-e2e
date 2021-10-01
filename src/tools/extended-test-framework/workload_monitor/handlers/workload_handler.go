@@ -1,19 +1,16 @@
 package handlers
 
 import (
-	"fmt"
-
 	"github.com/go-openapi/runtime/middleware"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	"mayastor-e2e/tools/extended-test-framework/workload_monitor/k8sclient"
+	"mayastor-e2e/tools/extended-test-framework/common/k8sclient"
 
 	"mayastor-e2e/tools/extended-test-framework/workload_monitor/list"
 	"mayastor-e2e/tools/extended-test-framework/workload_monitor/swagger/models"
 
 	"mayastor-e2e/tools/extended-test-framework/workload_monitor/swagger/restapi/operations/workload_monitor"
 )
-
-//var WorkloadMap = map[strfmt.UUID]map[strfmt.UUID]*models.Workload{}
 
 type putWorkloadByRegistrantImpl struct{}
 
@@ -22,6 +19,16 @@ func NewPutWorkloadByRegistrantHandler() workload_monitor.PutWorkloadByRegistran
 }
 
 func (impl *putWorkloadByRegistrantImpl) Handle(params workload_monitor.PutWorkloadByRegistrantParams) middleware.Responder {
+	logf.Log.Info("received PutWorkloadByRegistrant")
+	if params.Body == nil {
+		i := int64(1)
+		return workload_monitor.NewPutWorkloadByRegistrantBadRequest().WithPayload(&models.RequestOutcome{
+			Details:       "Body not provided",
+			ItemsAffected: &i,
+			Result:        models.RequestOutcomeResultREFUSED,
+		})
+	}
+
 	var wl models.Workload
 	wl.ID = params.Wid
 	wl.Name = ""
@@ -33,7 +40,13 @@ func (impl *putWorkloadByRegistrantImpl) Handle(params workload_monitor.PutWorkl
 		wl.Name = models.RFC1123Label(name)
 		wl.Namespace = models.RFC1123Label(namespace)
 	} else {
-		fmt.Printf("failed to get pod form uuid, error: %v\n", err)
+		logf.Log.Info("failed to get pod from uuid, error: %v\n", err)
+		i := int64(1)
+		return workload_monitor.NewPutWorkloadByRegistrantBadRequest().WithPayload(&models.RequestOutcome{
+			Details:       err.Error(),
+			ItemsAffected: &i,
+			Result:        models.RequestOutcomeResultREFUSED,
+		})
 	}
 	list.Lock()
 	list.AddToWorkloadList(&wl, params.Rid, params.Wid)
@@ -48,10 +61,43 @@ func NewGetWorkloadByRegistrantHandler() workload_monitor.GetWorkloadByRegistran
 }
 
 func (impl *getWorkloadByRegistrantImpl) Handle(params workload_monitor.GetWorkloadByRegistrantParams) middleware.Responder {
+	logf.Log.Info("received GetWorkloadByRegistrant")
 	list.Lock()
-	wl := *list.GetWorkload(params.Rid, params.Wid)
+	pwl := list.GetWorkload(params.Rid, params.Wid)
 	list.Unlock()
-	return workload_monitor.NewGetWorkloadByRegistrantOK().WithPayload(&wl)
+	if pwl != nil {
+		return workload_monitor.NewGetWorkloadByRegistrantOK().WithPayload(pwl)
+	} else {
+		return workload_monitor.NewGetWorkloadByRegistrantNotFound()
+	}
+}
+
+type getWorkloadsByRegistrantImpl struct{}
+
+func NewGetWorkloadsByRegistrantHandler() workload_monitor.GetWorkloadsByRegistrantHandler {
+	return &getWorkloadsByRegistrantImpl{}
+}
+
+func (impl *getWorkloadsByRegistrantImpl) Handle(params workload_monitor.GetWorkloadsByRegistrantParams) middleware.Responder {
+	logf.Log.Info("received GetWorkloadsByRegistrant")
+	list.Lock()
+	wll := list.GetWorkloadListByRegistrant(params.Rid)
+	list.Unlock()
+	return workload_monitor.NewGetWorkloadsByRegistrantOK().WithPayload(wll)
+}
+
+type getWorkloadsImpl struct{}
+
+func NewGetWorkloadsHandler() workload_monitor.GetWorkloadsHandler {
+	return &getWorkloadsImpl{}
+}
+
+func (impl *getWorkloadsImpl) Handle(params workload_monitor.GetWorkloadsParams) middleware.Responder {
+	logf.Log.Info("received GetWorkloads")
+	list.Lock()
+	wll := list.GetWorkloadList()
+	list.Unlock()
+	return workload_monitor.NewGetWorkloadsOK().WithPayload(wll)
 }
 
 type deleteWorkloadByRegistrantImpl struct{}
@@ -61,8 +107,9 @@ func NewDeleteWorkloadByRegistrantHandler() workload_monitor.DeleteWorkloadByReg
 }
 
 func (impl *deleteWorkloadByRegistrantImpl) Handle(params workload_monitor.DeleteWorkloadByRegistrantParams) middleware.Responder {
-	wl := *list.GetWorkload(params.Rid, params.Wid)
+	logf.Log.Info("received DeleteWorkloadByRegistrant")
 	list.Lock()
+	wl := *list.GetWorkload(params.Rid, params.Wid)
 	list.DeleteWorkload(params.Rid, params.Wid)
 	list.Unlock()
 	return workload_monitor.NewDeleteWorkloadByRegistrantOK().WithPayload(&wl)
@@ -75,6 +122,7 @@ func NewDeleteWorkloadsByRegistrantHandler() workload_monitor.DeleteWorkloadsByR
 }
 
 func (impl *deleteWorkloadsByRegistrantImpl) Handle(params workload_monitor.DeleteWorkloadsByRegistrantParams) middleware.Responder {
+	logf.Log.Info("received DeleteWorkloadsByRegistrant")
 	wl := models.RequestOutcome{}
 	list.Lock()
 	items := list.DeleteWorkloads(params.Rid)
