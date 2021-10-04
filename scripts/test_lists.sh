@@ -110,7 +110,9 @@ dynamic_provisioning
 expand_msp_disk
 io_soak
 mayastorpool_schema
+MQ-1498-primitive_device_retirement
 MQ-1783-fsx_ext4_stress
+maximum_vols_io
 ms_pod_disruption_rm_msv
 ms_pod_restart
 ms_pod_disruption
@@ -118,11 +120,14 @@ ms_pod_disruption_no_io
 ms_pool_delete
 msv_rebuild
 multiple_vols_pod_io
+node_failure
 node_shutdown
 nexus_location
 pool_modify
 primitive_data_integrity
 primitive_fault_injection
+primitive_fuzz_msv
+primitive_msp_state
 primitive_msp_stress
 primitive_msp_deletion
 primitive_replicas
@@ -132,6 +137,7 @@ pvc_readwriteonce
 pvc_stress_fio
 pvc_waitforfirstconsumer
 single_msn_shutdown
+stale_msp_after_node_power_failure
 synchronous_replication
 volume_filesystem
 "
