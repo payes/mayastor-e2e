@@ -125,6 +125,10 @@ if [ -n "$MCP_DIR" ]; then
     pushd "$workdir" \
         && rm -f chart/crds/* \
         && popd
+    # FIXME: remove moac yaml files which are pulled in from mayastor
+    pushd "$workdir" \
+        && find chart/ -name moac\*.yaml -print | xargs rm -f \
+        && popd
 fi
 
 pushd "$workdir" \

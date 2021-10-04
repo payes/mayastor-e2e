@@ -351,19 +351,68 @@ func DeploymentReady(deploymentName, namespace string) bool {
 	return false
 }
 
+func DaemonSetReady(daemonName string, namespace string) bool {
+	var daemon appsV1.DaemonSet
+	if err := gTestEnv.K8sClient.Get(context.TODO(), types.NamespacedName{Name: daemonName, Namespace: namespace}, &daemon); err != nil {
+		logf.Log.Info("Failed to get daemonset", "error", err)
+		return false
+	}
+
+	status := daemon.Status
+	logf.Log.Info("DaemonSet "+daemonName, "status", status)
+	return status.DesiredNumberScheduled == status.CurrentNumberScheduled &&
+		status.DesiredNumberScheduled == status.NumberReady &&
+		status.DesiredNumberScheduled == status.NumberAvailable
+}
+
+func StatefulSetReady(statefulSetName string, namespace string) bool {
+	var statefulSet appsV1.StatefulSet
+	if err := gTestEnv.K8sClient.Get(context.TODO(), types.NamespacedName{Name: statefulSetName, Namespace: namespace}, &statefulSet); err != nil {
+		logf.Log.Info("Failed to get daemonset", "error", err)
+		return false
+	}
+	status := statefulSet.Status
+	logf.Log.Info("StatefulSet "+statefulSetName, "status", status)
+	return status.Replicas == status.ReadyReplicas &&
+		status.ReadyReplicas == status.CurrentReplicas
+}
+
 func ControlPlaneReady(sleepTime int, duration int) bool {
 	ready := false
 	count := (duration + sleepTime - 1) / sleepTime
 
 	if IsControlPlaneMcp() {
-		deploymentNames := []string{"core-agents", "msp-operator", "rest", "csi-controller"}
-
 		for ix := 0; ix < count && !ready; ix++ {
 			time.Sleep(time.Duration(sleepTime) * time.Second)
+			deployments, err := gTestEnv.KubeInt.AppsV1().Deployments(common.NSMayastor()).List(context.TODO(), metaV1.ListOptions{})
+			if err != nil {
+				time.Sleep(time.Duration(sleepTime) * time.Second)
+				continue
+			}
+			daemonsets, err := gTestEnv.KubeInt.AppsV1().DaemonSets(common.NSMayastor()).List(context.TODO(), metaV1.ListOptions{})
+			if err != nil {
+				time.Sleep(time.Duration(sleepTime) * time.Second)
+				continue
+			}
+			statefulsets, err := gTestEnv.KubeInt.AppsV1().StatefulSets(common.NSMayastor()).List(context.TODO(), metaV1.ListOptions{})
+			if err != nil {
+				time.Sleep(time.Duration(sleepTime) * time.Second)
+				continue
+			}
 			ready = true
-			for _, deploymentName := range deploymentNames {
-				tmp := DeploymentReady(deploymentName, common.NSMayastor())
-				logf.Log.Info("mayastor control plane", "deployment", deploymentName, "ready", tmp)
+			for _, deployment := range deployments.Items {
+				tmp := DeploymentReady(deployment.Name, common.NSMayastor())
+				logf.Log.Info("mayastor control plane", "deployment", deployment.Name, "ready", tmp)
+				ready = ready && tmp
+			}
+			for _, daemon := range daemonsets.Items {
+				tmp := DaemonSetReady(daemon.Name, common.NSMayastor())
+				logf.Log.Info("mayastor control plane", "daemonset", daemon.Name, "ready", tmp)
+				ready = ready && tmp
+			}
+			for _, statefulSet := range statefulsets.Items {
+				tmp := StatefulSetReady(statefulSet.Name, common.NSMayastor())
+				logf.Log.Info("mayastor control plane", "statefulset", statefulSet.Name, "ready", tmp)
 				ready = ready && tmp
 			}
 		}
