@@ -211,8 +211,8 @@ func CheckAllMayastorVolumesAreHealthy(address []string) error {
 	msvs, err := ListMayastorCpVolumes(address)
 	if err == nil && msvs != nil && len(msvs) != 0 {
 		for _, msv := range msvs {
-			if strings.ToLower(msv.State.Status) != "healthy" {
-				logf.Log.Info("CheckAllMayastorVolumesAreHealthy", "msv", msv)
+			if msv.State.Status != "Online" {
+				logf.Log.Info("CheckAllMayastorVolumesAreHealthy", "msv.State.Status", msv.State.Status)
 				allHealthy = false
 			}
 		}
