@@ -86,6 +86,7 @@ func GetMayastorCpVolume(uuid string, address []string) (*MayastorCpVolume, erro
 	err = json.Unmarshal(jsonInput, &response)
 	if err != nil {
 		logf.Log.Info("Failed to unmarshal", "string", string(jsonInput))
+		//FIXME: got response which is not valid JSON
 		return &MayastorCpVolume{}, nil
 	}
 	return &response, nil
@@ -117,7 +118,9 @@ func ListMayastorCpVolumes(address []string) ([]MayastorCpVolume, error) {
 	var response []MayastorCpVolume
 	err = json.Unmarshal(jsonInput, &response)
 	if err != nil {
-		return nil, err
+		logf.Log.Info("Failed to unmarshal", "string", string(jsonInput))
+		//FIXME: got response which is not valid JSON
+		return []MayastorCpVolume{}, nil
 	}
 	return response, nil
 }
