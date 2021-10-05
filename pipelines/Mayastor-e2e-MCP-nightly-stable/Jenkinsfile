@@ -36,7 +36,7 @@ def e2e_params = [
     // Xray: test plan
     xray_test_plan : 'MQ-2184',
 
-    publish_tag: 'cp2-nightly',
+    publish_tag: 'hc1-nightly',
 ]
 
 // Environment to run e2e test in (job param of $e2e_build_cluster_job)
@@ -67,7 +67,7 @@ pipeline {
           common = load "./pipelines/common/common.groovy"
           // Common functions use e2e_image-tag so set that up
           // as the test tag
-          e2e_params['e2e_image_tag'] = 'mcp-' + common.GetTestTag()
+          e2e_params['e2e_image_tag'] = 'hc1-' + common.GetTestTag()
           parms = [
             mayastorBranch : 'develop',
             mcpBranch : 'develop',
@@ -186,7 +186,7 @@ pipeline {
         script{
             def test_tag = e2e_params['e2e_image_tag']
             def publish_tag = e2e_params['publish_tag']
-            // on success re-tag images as "mcp-nightly", push to CI registry and DockerHub
+            // on success re-tag images and push to CI registry and DockerHub
             sh "./scripts/re-tag-images.sh --src-tag ${test_tag} --alias-tag ${publish_tag}"
         }
 // For now do not push images to dockerhub

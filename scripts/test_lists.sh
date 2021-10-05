@@ -143,3 +143,5 @@ volume_filesystem
 "
 #stale_msp_after_node_power_failure is moac specific
 
+profiles[hc1-staging]="
+"
