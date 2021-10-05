@@ -665,6 +665,7 @@ func DeleteVolumeAttachments(nodeName string) error {
 // CheckAndSetControlPlane checks which deployments exists and sets config control plane setting
 func CheckAndSetControlPlane() error {
 	var deployment appsV1.Deployment
+	var statefulSet appsV1.StatefulSet
 	var err error
 	var cpIsMoac = false
 	var cpIsMcp2 = false
@@ -673,7 +674,12 @@ func CheckAndSetControlPlane() error {
 	if err = gTestEnv.K8sClient.Get(context.TODO(), types.NamespacedName{Name: "moac", Namespace: common.NSMayastor()}, &deployment); err == nil {
 		cpIsMoac = true
 	}
+	// Check for core-agents either as deployment or statefulset to correctly handle older builds of control plane
+	// which use core-agents deployment and newer builds which use core-agents statefulset
 	if err = gTestEnv.K8sClient.Get(context.TODO(), types.NamespacedName{Name: "core-agents", Namespace: common.NSMayastor()}, &deployment); err == nil {
+		cpIsMcp2 = true
+	}
+	if err = gTestEnv.K8sClient.Get(context.TODO(), types.NamespacedName{Name: "core-agents", Namespace: common.NSMayastor()}, &statefulSet); err == nil {
 		cpIsMcp2 = true
 	}
 	if cpIsMoac {
