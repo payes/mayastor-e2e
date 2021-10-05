@@ -7,12 +7,18 @@ import (
 	"mayastor-e2e/common"
 	"mayastor-e2e/common/e2e_config"
 	"os/exec"
+	"regexp"
 	"strconv"
 	"strings"
 
-	"k8s.io/apimachinery/pkg/api/errors"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
+
+func HasNotFoundRestJsonError(str string) bool {
+	re := regexp.MustCompile(`Error error in response.*RestJsonError.*kind:\s*(\w+)`)
+	frags := re.FindSubmatch([]byte(str))
+	return len(frags) == 2 && string(frags[1]) == "NotFound"
+}
 
 type CpMsv struct {
 	nodeIPAddresses []string
@@ -85,9 +91,11 @@ func GetMayastorCpVolume(uuid string, address []string) (*MayastorCpVolume, erro
 	var response MayastorCpVolume
 	err = json.Unmarshal(jsonInput, &response)
 	if err != nil {
-		logf.Log.Info("Failed to unmarshal", "string", string(jsonInput))
-		//FIXME: got response which is not valid JSON
-		return &MayastorCpVolume{}, nil
+		msg := string(jsonInput)
+		if !HasNotFoundRestJsonError(msg) {
+			logf.Log.Info("Failed to unmarshal (get volume)", "string", msg)
+		}
+		return nil, fmt.Errorf("%s", msg)
 	}
 	return &response, nil
 }
@@ -118,9 +126,9 @@ func ListMayastorCpVolumes(address []string) ([]MayastorCpVolume, error) {
 	var response []MayastorCpVolume
 	err = json.Unmarshal(jsonInput, &response)
 	if err != nil {
-		logf.Log.Info("Failed to unmarshal", "string", string(jsonInput))
-		//FIXME: got response which is not valid JSON
-		return []MayastorCpVolume{}, nil
+		errMsg := string(jsonInput)
+		logf.Log.Info("Failed to unmarshal (get volumes)", "string", string(jsonInput))
+		return []MayastorCpVolume{}, fmt.Errorf("%s", errMsg)
 	}
 	return response, nil
 }
@@ -184,13 +192,14 @@ func IsMmayastorVolumePublished(uuid string, address []string) bool {
 
 func IsMayastorVolumeDeleted(uuid string, address []string) bool {
 	msv, err := GetMayastorCpVolume(uuid, address)
-	if msv.Spec.Uuid == "" {
-		return true
-	}
-	if strings.ToLower(msv.State.Status) == "destroyed" {
+	if err != nil {
+		if HasNotFoundRestJsonError(fmt.Sprintf("%v", err)) {
+			return true
+		}
+		logf.Log.Error(err, "IsMayastorVolumeDeleted msv is nil")
 		return false
 	}
-	if err != nil && errors.IsNotFound(err) {
+	if msv.Spec.Uuid == "" {
 		return true
 	}
 	return false
