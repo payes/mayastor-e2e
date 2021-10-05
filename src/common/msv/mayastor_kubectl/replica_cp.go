@@ -1,4 +1,4 @@
-package k8stest
+package mayastor_kubectl
 
 import (
 	"encoding/json"
@@ -10,7 +10,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-type MayastorCpReplica struct {
+type mayastorCpReplica struct {
 	Node  string `json:"node"`
 	Pool  string `json:"pool"`
 	Share string `json:"share"`
@@ -21,8 +21,7 @@ type MayastorCpReplica struct {
 	Uuid  string `json:"uuid"`
 }
 
-func ListMayastorCpReplicas() ([]MayastorCpReplica, error) {
-	address := GetMayastorNodeIPAddresses()
+func listMayastorCpReplicas(address []string) ([]mayastorCpReplica, error) {
 	if len(address) == 0 {
 		return nil, fmt.Errorf("mayastor nodes not found")
 	}
@@ -50,7 +49,7 @@ func ListMayastorCpReplicas() ([]MayastorCpReplica, error) {
 	if err != nil {
 		return nil, err
 	}
-	var response []MayastorCpReplica
+	var response []mayastorCpReplica
 	err = json.Unmarshal(jsonResponse, &response)
 	if err != nil {
 		return nil, err

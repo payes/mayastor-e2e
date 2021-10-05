@@ -2,6 +2,7 @@ package install_mcp
 
 import (
 	. "github.com/onsi/ginkgo"
+	"mayastor-e2e/common"
 	"mayastor-e2e/common/k8sinstall"
 	"mayastor-e2e/common/k8stest"
 	"testing"
@@ -16,7 +17,7 @@ func TestInstallSuite(t *testing.T) {
 
 var _ = Describe("Mayastor control plane setup", func() {
 	It("should install using yaml files", func() {
-		Expect(k8stest.IsControlPlaneMcp()).To(BeTrue(), "Control plane should be MCP")
+		Expect(common.IsControlPlaneMcp()).To(BeTrue(), "Control plane should be MCP")
 		Expect(k8sinstall.InstallMayastor()).ToNot(HaveOccurred(), "install failed")
 	})
 })

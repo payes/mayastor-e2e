@@ -18,7 +18,6 @@ import (
 
 	appsV1 "k8s.io/api/apps/v1"
 	coreV1 "k8s.io/api/core/v1"
-	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -261,7 +260,7 @@ func MayastorInstancesReady(numMayastorInstances int, sleepTime int, duration in
 	ready := false
 	for ix := 0; ix < count && !ready; ix++ {
 		time.Sleep(time.Duration(sleepTime) * time.Second)
-		if IsControlPlaneMcp() {
+		if common.IsControlPlaneMcp() {
 			ready = mayastorReadyPodCount() == numMayastorInstances && mayastorCSIReadyPodCount() == numMayastorInstances
 		} else {
 			ready = mayastorReadyPodCount() == numMayastorInstances && mayastorCSIReadyPodCount() == numMayastorInstances && msnOnlineCount() == numMayastorInstances
@@ -381,7 +380,8 @@ func ControlPlaneReady(sleepTime int, duration int) bool {
 	ready := false
 	count := (duration + sleepTime - 1) / sleepTime
 
-	if IsControlPlaneMcp() {
+	if common.IsControlPlaneMcp() {
+
 		for ix := 0; ix < count && !ready; ix++ {
 			time.Sleep(time.Duration(sleepTime) * time.Second)
 			deployments, err := gTestEnv.KubeInt.AppsV1().Deployments(common.NSMayastor()).List(context.TODO(), metaV1.ListOptions{})
@@ -604,7 +604,7 @@ func WaitPodComplete(podName string, sleepTimeSecs, timeoutSecs int) error {
 		Expect(err).ToNot(HaveOccurred(), fmt.Sprintf("failed to access pod status %s %v", podName, err))
 		if podPhase == coreV1.PodSucceeded {
 			return nil
-		} else if podPhase == corev1.PodFailed {
+		} else if podPhase == coreV1.PodFailed {
 			break
 		}
 	}
@@ -694,14 +694,4 @@ func CheckAndSetControlPlane() error {
 		return fmt.Errorf("failed to setup config control plane to %s", cpValue)
 	}
 	return nil
-}
-
-func IsControlPlaneMcp() bool {
-	//FIXME should we assert if not moac or mcp2 ?
-	return e2e_config.GetConfig().ControlPlane == common.CpMcp2
-}
-
-func IsControlPlaneMoac() bool {
-	//FIXME should we assert if not moac or mcp2 ?
-	return e2e_config.GetConfig().ControlPlane == common.CpMoac
 }

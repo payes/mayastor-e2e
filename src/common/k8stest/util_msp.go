@@ -51,7 +51,7 @@ func GetMayastorCpPool(name string) (*MayastorCpPool, error) {
 		if err == nil {
 			break
 		} else {
-			logf.Log.Info("Error while executing kubectl mayastor command", "node IP", addr, "error", err)
+			logf.Log.Info("Error while executing kubectl-plugin mayastor command", "node IP", addr, "error", err)
 		}
 	}
 	if err != nil {

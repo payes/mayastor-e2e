@@ -1,11 +1,14 @@
 package uninstall_mcp
 
 import (
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	"testing"
+
+	"mayastor-e2e/common"
 	"mayastor-e2e/common/k8sinstall"
 	"mayastor-e2e/common/k8stest"
-	"testing"
+
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 )
 
 func TestTeardownSuite(t *testing.T) {
@@ -15,7 +18,7 @@ func TestTeardownSuite(t *testing.T) {
 
 var _ = Describe("Mayastor setup", func() {
 	It("should teardown using yamls", func() {
-		Expect(k8stest.IsControlPlaneMcp()).To(BeTrue(), "Control plane should be MCP")
+		Expect(common.IsControlPlaneMcp()).To(BeTrue(), "Control plane should be MCP")
 		Expect(k8sinstall.TeardownMayastor()).ToNot(HaveOccurred(), "uninstall failed")
 	})
 })
