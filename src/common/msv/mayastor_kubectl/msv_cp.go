@@ -272,6 +272,7 @@ func cpVolumeToMsv(cpMsv *MayastorCpVolume, address []string) common.MayastorVol
 				DeviceUri: cpMsv.State.Target.DeviceUri,
 				Node:      cpMsv.State.Target.Node,
 				State:     cpMsv.State.Target.State,
+				Uuid:      cpMsv.State.Target.Uuid,
 			},
 			Replicas: replicas,
 			Size:     cpMsv.State.Size,

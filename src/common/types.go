@@ -50,6 +50,7 @@ type Nexus struct {
 	DeviceUri string       `json:"deviceUri"`
 	Node      string       `json:"node"`
 	State     string       `json:"state"`
+	Uuid      string       `json:"uuid"`
 }
 
 type Replica struct {

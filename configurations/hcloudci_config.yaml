@@ -4,3 +4,4 @@
 #   src/common/e2e_config/e2e_config.go
 configName: hcloudci
 grpcMandated: true
+deferredAssert: true
