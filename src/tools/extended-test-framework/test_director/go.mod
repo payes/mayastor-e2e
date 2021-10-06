@@ -15,7 +15,7 @@ require (
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/viper v1.9.0
-	go.uber.org/zap v1.19.1
+	github.com/tidwall/gjson v1.9.1
 	golang.org/x/net v0.0.0-20210916014120-12bc252f5db8
 )
 
@@ -41,9 +41,9 @@ require (
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/subosito/gotenv v1.2.0 // indirect
+	github.com/tidwall/match v1.0.3 // indirect
+	github.com/tidwall/pretty v1.2.0 // indirect
 	go.mongodb.org/mongo-driver v1.5.1 // indirect
-	go.uber.org/atomic v1.9.0 // indirect
-	go.uber.org/multierr v1.7.0 // indirect
 	golang.org/x/sys v0.0.0-20210823070655-63515b42dcdf // indirect
 	golang.org/x/text v0.3.6 // indirect
 	gopkg.in/ini.v1 v1.63.2 // indirect
