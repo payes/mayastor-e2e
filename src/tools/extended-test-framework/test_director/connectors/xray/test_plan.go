@@ -12,11 +12,10 @@ func GetTestPlan(testPlanId string) []*models.Test {
 	res := gjson.Get(json, "data.getTestPlan.tests.results.#.issueId")
 	m := make([]*models.Test, 0, len(res.Array()))
 	for _, id := range res.Array() {
+		idStr := id.String()
 		test := models.Test{
-			Description: "",
-			IssueID:     &id.Str,
+			IssueID: &idStr,
 		}
-
 		m = append(m, &test)
 	}
 	return m
