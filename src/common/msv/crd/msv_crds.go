@@ -37,6 +37,7 @@ func crdToMsv(crdMsv *v1alpha1Api.MayastorVolume) common.MayastorVolume {
 				DeviceUri: crdMsv.Status.Nexus.DeviceUri,
 				Node:      crdMsv.Status.Nexus.Node,
 				State:     crdMsv.Status.Nexus.State,
+				Uuid:      crdMsv.GetName(),
 			},
 			Reason:   crdMsv.Status.Reason,
 			Replicas: replicas,

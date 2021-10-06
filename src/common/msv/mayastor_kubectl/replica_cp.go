@@ -52,6 +52,7 @@ func listMayastorCpReplicas(address []string) ([]mayastorCpReplica, error) {
 	var response []mayastorCpReplica
 	err = json.Unmarshal(jsonResponse, &response)
 	if err != nil {
+		logf.Log.Info("Failed to unmarshal (get replicas)", "string", string(jsonResponse))
 		return nil, err
 	}
 	return response, nil

@@ -80,12 +80,14 @@ func nexusLocality(replicas int, local bool) {
 	Expect(err).To(BeNil(), "failed to retrieve test pod Host IP addr")
 	logf.Log.Info("Pod", "node", podHostIP)
 
+	msv, err := k8stest.GetMSV(uid)
+	Expect(err).ToNot(HaveOccurred(), "failed to retrieve MSV for volume %s", uid)
 	ips := []string{podHostIP}
 	nexuses, err := mayastorclient.ListNexuses(ips)
 	Expect(err).To(BeNil(), "failed to list nexuses")
 	foundLocalNexus := false
 	for _, nexus := range nexuses {
-		if nexus.Uuid == uid {
+		if nexus.Uuid == msv.Status.Nexus.Uuid {
 			foundLocalNexus = true
 			logf.Log.Info("found matching nexus local to consumer pod", "nexus uuid", nexus.Uuid, "nexus", nexus)
 		}
