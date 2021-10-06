@@ -4,26 +4,14 @@ import (
 	log "github.com/sirupsen/logrus"
 	"os"
 	"test-director/config"
-	"test-director/utils"
 	"time"
 )
 
 // Init logger
-func InitLogger() {
-	configPath := utils.GetConfigPath("local")
+func InitLogger(cfg *config.Logger) {
 
-	cfgFile, err := config.LoadConfig(configPath)
-	if err != nil {
-		log.Fatalf("LoadConfig: %v", err)
-	}
-
-	cfg, err := config.ParseConfig(cfgFile)
-	if err != nil {
-		log.Fatalf("ParseConfig: %v", err)
-	}
-
-	log.SetReportCaller(cfg.Logger.ReportCaller)
-	switch cfg.Logger.Level {
+	log.SetReportCaller(cfg.ReportCaller)
+	switch cfg.Level {
 	case "debug":
 		log.SetLevel(log.DebugLevel)
 	case "info":
@@ -36,24 +24,24 @@ func InitLogger() {
 		log.SetLevel(log.InfoLevel)
 	}
 
-	if cfg.Logger.Encoding == "json" {
+	if cfg.Encoding == "json" {
 		log.SetFormatter(&log.JSONFormatter{
-			TimestampFormat:   time.RFC3339Nano,
+			TimestampFormat: time.RFC3339Nano,
 		})
 	} else {
 		log.SetFormatter(&log.TextFormatter{
-			FullTimestamp:             true,
-			TimestampFormat:           time.RFC3339Nano,
+			FullTimestamp:   true,
+			TimestampFormat: time.RFC3339Nano,
 		})
 	}
 
-	if cfg.Logger.Output == "file" {
+	if cfg.Output == "file" {
 		// You could set this to any `io.Writer` such as a file
 		file, err := os.OpenFile("test_director.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 		if err == nil {
 			log.SetOutput(file)
 		} else {
-		 log.Error("Failed to log to file, using default stderr")
+			log.Error("Failed to log to file, using default stderr")
 		}
 	} else {
 		log.SetOutput(os.Stdout)

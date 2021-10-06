@@ -143,7 +143,6 @@ paths:
           description: Test Run id
           required: true
           type: string
-          format: uuid
         - in: body
           required: true
           name: body
@@ -273,6 +272,9 @@ definitions:
     required:
       - status
     properties:
+      jiraId:
+        type: string
+        description: Jira id representation
       name:
         type: string
         description: display name
@@ -283,6 +285,19 @@ definitions:
         type: string
         description: assigned user to the test plan/owner
         example: John Doe
+      tests:
+        type: array
+        items:
+          $ref: '#/definitions/Test'
+  Test:
+    type: object
+    required:
+      - issueId
+    properties:
+      issueId:
+        type: string
+      description:
+        type: string
   TestPlan:
     allOf:
       - $ref: '#/definitions/TestPlanSpec'
@@ -314,14 +329,17 @@ definitions:
         type: string
         description: data field
         example: e.g. description of test outcome
+      testExecIssueId:
+        type: string
+      testId:
+        type: string
   TestRun:
     allOf:
       - type: object
         properties:
           id:
             type: string
-            format: uuid
-            description: Test Run unqiue identifer (pod metadata.uid)
+            description: Test Run unqiue identifer
           startDateTime:
             type: string
             format: date-time
@@ -334,10 +352,10 @@ definitions:
   TestRunStatusEnum:
     type: string
     enum:
-      - NOT_STARTED
-      - RUNNING
-      - COMPLETE_PASS
-      - COMPLETE_FAIL
+      - TO DO
+      - EXECUTING
+      - PASSED
+      - FAILED
   EventSpec:
     type: object
     required:

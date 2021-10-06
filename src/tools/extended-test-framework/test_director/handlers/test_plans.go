@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"github.com/go-openapi/runtime/middleware"
+	log "github.com/sirupsen/logrus"
 	"test-director/connectors"
 	"test-director/models"
 	"test-director/restapi/operations/test_director"
@@ -83,6 +84,15 @@ func (impl *putTestPlanImpl) Handle(params test_director.PutTestPlanByIDParams) 
 		}
 	} else {
 		jt, err := connectors.GetJiraTaskDetails(id)
+		if jt.Fields.IssueType.Name != "Test Plan" {
+			log.Errorf("Jira key: %s issue type: %s is not a Test Plan", jt.Key, jt.Fields.IssueType.Name)
+			i := int64(1)
+			return test_director.NewPutTestPlanByIDBadRequest().WithPayload(&models.RequestOutcome{
+				Details:       err.Error(),
+				ItemsAffected: &i,
+				Result:        models.RequestOutcomeResultREFUSED,
+			})
+		}
 		if err != nil {
 			i := int64(1)
 			return test_director.NewPutTestPlanByIDBadRequest().WithPayload(&models.RequestOutcome{
@@ -96,6 +106,7 @@ func (impl *putTestPlanImpl) Handle(params test_director.PutTestPlanByIDParams) 
 			IsActive: &b,
 			Key:      models.JiraKey(id),
 			TestPlanSpec: models.TestPlanSpec{
+				JiraID:   *jt.Id,
 				Assignee: jt.Fields.Assignee.Name,
 				Name:     *jt.Fields.Name,
 				Status:   tps.Status,

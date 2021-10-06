@@ -26,17 +26,17 @@ func NewTestRunStatusEnum(value TestRunStatusEnum) *TestRunStatusEnum {
 
 const (
 
-	// TestRunStatusEnumNOTSTARTED captures enum value "NOT_STARTED"
-	TestRunStatusEnumNOTSTARTED TestRunStatusEnum = "NOT_STARTED"
+	// TestRunStatusEnumTODO captures enum value "TO DO"
+	TestRunStatusEnumTODO TestRunStatusEnum = "TO DO"
 
-	// TestRunStatusEnumRUNNING captures enum value "RUNNING"
-	TestRunStatusEnumRUNNING TestRunStatusEnum = "RUNNING"
+	// TestRunStatusEnumEXECUTING captures enum value "EXECUTING"
+	TestRunStatusEnumEXECUTING TestRunStatusEnum = "EXECUTING"
 
-	// TestRunStatusEnumCOMPLETEPASS captures enum value "COMPLETE_PASS"
-	TestRunStatusEnumCOMPLETEPASS TestRunStatusEnum = "COMPLETE_PASS"
+	// TestRunStatusEnumPASSED captures enum value "PASSED"
+	TestRunStatusEnumPASSED TestRunStatusEnum = "PASSED"
 
-	// TestRunStatusEnumCOMPLETEFAIL captures enum value "COMPLETE_FAIL"
-	TestRunStatusEnumCOMPLETEFAIL TestRunStatusEnum = "COMPLETE_FAIL"
+	// TestRunStatusEnumFAILED captures enum value "FAILED"
+	TestRunStatusEnumFAILED TestRunStatusEnum = "FAILED"
 )
 
 // for schema
@@ -44,7 +44,7 @@ var testRunStatusEnumEnum []interface{}
 
 func init() {
 	var res []TestRunStatusEnum
-	if err := json.Unmarshal([]byte(`["NOT_STARTED","RUNNING","COMPLETE_PASS","COMPLETE_FAIL"]`), &res); err != nil {
+	if err := json.Unmarshal([]byte(`["TO DO","EXECUTING","PASSED","FAILED"]`), &res); err != nil {
 		panic(err)
 	}
 	for _, v := range res {

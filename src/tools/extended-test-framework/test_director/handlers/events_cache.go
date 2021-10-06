@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
+	log "github.com/sirupsen/logrus"
 	"test-director/connectors"
 	"test-director/models"
 	"time"
@@ -57,14 +57,14 @@ func InitEventCache() {
 func setupSlackNotification(data *models.EventSpec) {
 	sc := connectors.SlackClient{
 		WebHookUrl: "https://hooks.slack.com/services/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",
-		UserName:   string(*data.SourceClass),
+		UserName:   *data.SourceInstance,
 		Channel:    "#test_director",
 		TimeOut:    10 * time.Second,
 	}
 	sn := connectors.SlackJobNotification{
 		Details:   *data.Message,
 		IconEmoji: ":ghost:",
-		Text:      string(*data.Class) + " - " + *data.SourceInstance,
+		Text:      string(*data.Class) + " - " + data.Resource,
 	}
 	switch *data.Class {
 	case models.EventClassEnumFAIL:
@@ -76,6 +76,6 @@ func setupSlackNotification(data *models.EventSpec) {
 	}
 	err := sc.SendJobNotification(sn)
 	if err != nil {
-		fmt.Print(err.Error())
+		log.Error(err.Error())
 	}
 }

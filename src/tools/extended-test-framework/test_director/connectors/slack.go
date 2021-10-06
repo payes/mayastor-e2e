@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"net/http"
 	"strconv"
 	"time"
@@ -117,6 +118,7 @@ func (sc SlackClient) sendHttpRequest(slackRequest SlackMessage) error {
 	fmt.Print(string(slackBody))
 	req, err := http.NewRequest(http.MethodPost, sc.WebHookUrl, bytes.NewBuffer(slackBody))
 	if err != nil {
+		log.Error(err)
 		return err
 	}
 	req.Header.Add("Content-Type", "application/json")
@@ -126,12 +128,14 @@ func (sc SlackClient) sendHttpRequest(slackRequest SlackMessage) error {
 	client := &http.Client{Timeout: sc.TimeOut}
 	resp, err := client.Do(req)
 	if err != nil {
+		log.Error(err)
 		return err
 	}
 
 	buf := new(bytes.Buffer)
 	_, err = buf.ReadFrom(resp.Body)
 	if err != nil {
+		log.Error(err)
 		return err
 	}
 	if buf.String() != "ok" {

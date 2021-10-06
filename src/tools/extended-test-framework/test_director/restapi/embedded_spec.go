@@ -279,7 +279,6 @@ func init() {
         "parameters": [
           {
             "type": "string",
-            "format": "uuid",
             "description": "Test Run id",
             "name": "id",
             "in": "path",
@@ -439,6 +438,20 @@ func init() {
         }
       }
     },
+    "Test": {
+      "type": "object",
+      "required": [
+        "issueId"
+      ],
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "issueId": {
+          "type": "string"
+        }
+      }
+    },
     "TestPlan": {
       "allOf": [
         {
@@ -470,6 +483,10 @@ func init() {
           "type": "string",
           "example": "John Doe"
         },
+        "jiraId": {
+          "description": "Jira id representation",
+          "type": "string"
+        },
         "name": {
           "description": "display name",
           "type": "string",
@@ -477,6 +494,12 @@ func init() {
         },
         "status": {
           "$ref": "#/definitions/TestPlanStatusEnum"
+        },
+        "tests": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Test"
+          }
         }
       }
     },
@@ -500,9 +523,8 @@ func init() {
               "format": "date-time"
             },
             "id": {
-              "description": "Test Run unqiue identifer (pod metadata.uid)",
-              "type": "string",
-              "format": "uuid"
+              "description": "Test Run unqiue identifer",
+              "type": "string"
             },
             "startDateTime": {
               "description": "Test Run Start Time",
@@ -530,6 +552,12 @@ func init() {
         "status": {
           "$ref": "#/definitions/TestRunStatusEnum"
         },
+        "testExecIssueId": {
+          "type": "string"
+        },
+        "testId": {
+          "type": "string"
+        },
         "testKey": {
           "$ref": "#/definitions/JiraKey"
         }
@@ -538,10 +566,10 @@ func init() {
     "TestRunStatusEnum": {
       "type": "string",
       "enum": [
-        "NOT_STARTED",
-        "RUNNING",
-        "COMPLETE_PASS",
-        "COMPLETE_FAIL"
+        "TO DO",
+        "EXECUTING",
+        "PASSED",
+        "FAILED"
       ]
     }
   },
@@ -887,7 +915,6 @@ func init() {
         "parameters": [
           {
             "type": "string",
-            "format": "uuid",
             "description": "Test Run id",
             "name": "id",
             "in": "path",
@@ -1054,6 +1081,20 @@ func init() {
         }
       }
     },
+    "Test": {
+      "type": "object",
+      "required": [
+        "issueId"
+      ],
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "issueId": {
+          "type": "string"
+        }
+      }
+    },
     "TestPlan": {
       "allOf": [
         {
@@ -1085,6 +1126,10 @@ func init() {
           "type": "string",
           "example": "John Doe"
         },
+        "jiraId": {
+          "description": "Jira id representation",
+          "type": "string"
+        },
         "name": {
           "description": "display name",
           "type": "string",
@@ -1092,6 +1137,12 @@ func init() {
         },
         "status": {
           "$ref": "#/definitions/TestPlanStatusEnum"
+        },
+        "tests": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Test"
+          }
         }
       }
     },
@@ -1115,9 +1166,8 @@ func init() {
               "format": "date-time"
             },
             "id": {
-              "description": "Test Run unqiue identifer (pod metadata.uid)",
-              "type": "string",
-              "format": "uuid"
+              "description": "Test Run unqiue identifer",
+              "type": "string"
             },
             "startDateTime": {
               "description": "Test Run Start Time",
@@ -1145,6 +1195,12 @@ func init() {
         "status": {
           "$ref": "#/definitions/TestRunStatusEnum"
         },
+        "testExecIssueId": {
+          "type": "string"
+        },
+        "testId": {
+          "type": "string"
+        },
         "testKey": {
           "$ref": "#/definitions/JiraKey"
         }
@@ -1153,10 +1209,10 @@ func init() {
     "TestRunStatusEnum": {
       "type": "string",
       "enum": [
-        "NOT_STARTED",
-        "RUNNING",
-        "COMPLETE_PASS",
-        "COMPLETE_FAIL"
+        "TO DO",
+        "EXECUTING",
+        "PASSED",
+        "FAILED"
       ]
     }
   },

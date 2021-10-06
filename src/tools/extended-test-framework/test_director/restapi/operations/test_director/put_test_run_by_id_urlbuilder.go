@@ -10,13 +10,11 @@ import (
 	"net/url"
 	golangswaggerpaths "path"
 	"strings"
-
-	"github.com/go-openapi/strfmt"
 )
 
 // PutTestRunByIDURL generates an URL for the put test run by Id operation
 type PutTestRunByIDURL struct {
-	ID strfmt.UUID
+	ID string
 
 	_basePath string
 	// avoid unkeyed usage
@@ -44,7 +42,7 @@ func (o *PutTestRunByIDURL) Build() (*url.URL, error) {
 
 	var _path = "/td/testruns/{id}"
 
-	id := o.ID.String()
+	id := o.ID
 	if id != "" {
 		_path = strings.Replace(_path, "{id}", id, -1)
 	} else {
