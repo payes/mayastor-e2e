@@ -23,9 +23,8 @@ type TestRun struct {
 	// Format: date-time
 	EndDateTime strfmt.DateTime `json:"endDateTime,omitempty"`
 
-	// Test Run unqiue identifer (pod metadata.uid)
-	// Format: uuid
-	ID strfmt.UUID `json:"id,omitempty"`
+	// Test Run unqiue identifer
+	ID string `json:"id,omitempty"`
 
 	// Test Run Start Time
 	// Format: date-time
@@ -40,7 +39,7 @@ func (m *TestRun) UnmarshalJSON(raw []byte) error {
 	var dataAO0 struct {
 		EndDateTime strfmt.DateTime `json:"endDateTime,omitempty"`
 
-		ID strfmt.UUID `json:"id,omitempty"`
+		ID string `json:"id,omitempty"`
 
 		StartDateTime strfmt.DateTime `json:"startDateTime,omitempty"`
 	}
@@ -71,7 +70,7 @@ func (m TestRun) MarshalJSON() ([]byte, error) {
 	var dataAO0 struct {
 		EndDateTime strfmt.DateTime `json:"endDateTime,omitempty"`
 
-		ID strfmt.UUID `json:"id,omitempty"`
+		ID string `json:"id,omitempty"`
 
 		StartDateTime strfmt.DateTime `json:"startDateTime,omitempty"`
 	}
@@ -104,10 +103,6 @@ func (m *TestRun) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
-	if err := m.validateID(formats); err != nil {
-		res = append(res, err)
-	}
-
 	if err := m.validateStartDateTime(formats); err != nil {
 		res = append(res, err)
 	}
@@ -130,19 +125,6 @@ func (m *TestRun) validateEndDateTime(formats strfmt.Registry) error {
 	}
 
 	if err := validate.FormatOf("endDateTime", "body", "date-time", m.EndDateTime.String(), formats); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (m *TestRun) validateID(formats strfmt.Registry) error {
-
-	if swag.IsZero(m.ID) { // not required
-		return nil
-	}
-
-	if err := validate.FormatOf("id", "body", "uuid", m.ID.String(), formats); err != nil {
 		return err
 	}
 

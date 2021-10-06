@@ -67,10 +67,8 @@ type PutTestRunByIDParams struct {
 	/* ID.
 
 	   Test Run id
-
-	   Format: uuid
 	*/
-	ID strfmt.UUID
+	ID string
 
 	timeout    time.Duration
 	Context    context.Context
@@ -137,13 +135,13 @@ func (o *PutTestRunByIDParams) SetBody(body *models.TestRunSpec) {
 }
 
 // WithID adds the id to the put test run by Id params
-func (o *PutTestRunByIDParams) WithID(id strfmt.UUID) *PutTestRunByIDParams {
+func (o *PutTestRunByIDParams) WithID(id string) *PutTestRunByIDParams {
 	o.SetID(id)
 	return o
 }
 
 // SetID adds the id to the put test run by Id params
-func (o *PutTestRunByIDParams) SetID(id strfmt.UUID) {
+func (o *PutTestRunByIDParams) SetID(id string) {
 	o.ID = id
 }
 
@@ -161,7 +159,7 @@ func (o *PutTestRunByIDParams) WriteToRequest(r runtime.ClientRequest, reg strfm
 	}
 
 	// path param id
-	if err := r.SetPathParam("id", o.ID.String()); err != nil {
+	if err := r.SetPathParam("id", o.ID); err != nil {
 		return err
 	}
 

@@ -3,7 +3,6 @@ package tc
 import (
 	"fmt"
 
-	"github.com/go-openapi/strfmt"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"mayastor-e2e/tools/extended-test-framework/test_conductor/td/client"
@@ -65,7 +64,7 @@ func SendRunStatus(client *client.Etfw, uuid string, message string, jira_key_st
 
 	params := test_director.NewPutTestRunByIDParams()
 	params.Body = &testRunSpec
-	params.ID = strfmt.UUID(uuid)
+	params.ID = uuid
 
 	pRunStatusOk, err := client.TestDirector.PutTestRunByID(params)
 
@@ -81,15 +80,15 @@ func SendRunStatus(client *client.Etfw, uuid string, message string, jira_key_st
 }
 
 func SendRunCompletedOk(client *client.Etfw, uuid string, message string, jira_key string) error {
-	return SendRunStatus(client, uuid, message, jira_key, models.TestRunStatusEnumCOMPLETEPASS)
+	return SendRunStatus(client, uuid, message, jira_key, models.TestRunStatusEnumPASSED)
 }
 
 func SendRunCompletedFail(client *client.Etfw, uuid string, message string, jira_key string) error {
-	return SendRunStatus(client, uuid, message, jira_key, models.TestRunStatusEnumCOMPLETEFAIL)
+	return SendRunStatus(client, uuid, message, jira_key, models.TestRunStatusEnumFAILED)
 }
 
 func SendRunStarted(client *client.Etfw, uuid string, message string, jira_key string) error {
-	return SendRunStatus(client, uuid, message, jira_key, models.TestRunStatusEnumRUNNING)
+	return SendRunStatus(client, uuid, message, jira_key, models.TestRunStatusEnumEXECUTING)
 }
 
 func SendEvent(client *client.Etfw, message string, sourceInstance string, eventClass models.EventClassEnum) error {

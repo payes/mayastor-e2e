@@ -7,6 +7,7 @@ package models
 
 import (
 	"context"
+	"strconv"
 
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
@@ -23,6 +24,9 @@ type TestPlanSpec struct {
 	// Example: John Doe
 	Assignee string `json:"assignee,omitempty"`
 
+	// Jira id representation
+	JiraID string `json:"jiraId,omitempty"`
+
 	// display name
 	// Example: Nightly Stable Test Plan
 	Name string `json:"name,omitempty"`
@@ -30,6 +34,9 @@ type TestPlanSpec struct {
 	// status
 	// Required: true
 	Status *TestPlanStatusEnum `json:"status"`
+
+	// tests
+	Tests []*Test `json:"tests"`
 }
 
 // Validate validates this test plan spec
@@ -37,6 +44,10 @@ func (m *TestPlanSpec) Validate(formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.validateStatus(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateTests(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -68,11 +79,39 @@ func (m *TestPlanSpec) validateStatus(formats strfmt.Registry) error {
 	return nil
 }
 
+func (m *TestPlanSpec) validateTests(formats strfmt.Registry) error {
+	if swag.IsZero(m.Tests) { // not required
+		return nil
+	}
+
+	for i := 0; i < len(m.Tests); i++ {
+		if swag.IsZero(m.Tests[i]) { // not required
+			continue
+		}
+
+		if m.Tests[i] != nil {
+			if err := m.Tests[i].Validate(formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("tests" + "." + strconv.Itoa(i))
+				}
+				return err
+			}
+		}
+
+	}
+
+	return nil
+}
+
 // ContextValidate validate this test plan spec based on the context it is used
 func (m *TestPlanSpec) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.contextValidateStatus(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateTests(ctx, formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -91,6 +130,24 @@ func (m *TestPlanSpec) contextValidateStatus(ctx context.Context, formats strfmt
 			}
 			return err
 		}
+	}
+
+	return nil
+}
+
+func (m *TestPlanSpec) contextValidateTests(ctx context.Context, formats strfmt.Registry) error {
+
+	for i := 0; i < len(m.Tests); i++ {
+
+		if m.Tests[i] != nil {
+			if err := m.Tests[i].ContextValidate(ctx, formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("tests" + "." + strconv.Itoa(i))
+				}
+				return err
+			}
+		}
+
 	}
 
 	return nil
