@@ -30,39 +30,47 @@ type MayastorCpVolume struct {
 }
 
 type msvSpec struct {
-	Labels       []string `json:"labels"`
-	Num_replicas int      `json:"num_replicas"`
-	Operation    string   `json:"operation"`
-	Protocol     string   `json:"protocol"`
-	Size         int64    `json:"size"`
-	State        string   `json:"state"`
-	Target_node  string   `json:"target_node"`
-	Uuid         string   `json:"uuid"`
+	Num_replicas int        `json:"num_replicas"`
+	Size         int64      `json:"size"`
+	Status       string     `json:"status"`
+	Target       specTarget `json:"target"`
+	Uuid         string     `json:"uuid"`
+	Topology     topology   `json:"topology"`
+}
+type specTarget struct {
+	Protocol string `json:"protocol"`
+	Node     string `json:"node"`
+}
+
+type topology struct {
+	Explicit explicit `json:"explicit"`
+}
+type explicit struct {
+	AllowedNodes   []string `json:"allowed_nodes"`
+	PreferredNodes []string `json:"preferred_nodes"`
 }
 
 type msvState struct {
-	Target   target `json:"target"`
-	Protocol string `json:"protocol"`
-	Size     int64  `json:"size"`
-	Status   string `json:"status"`
-	Uuid     string `json:"uuid"`
+	Target stateTarget `json:"target"`
+	Size   int64       `json:"size"`
+	Status string      `json:"status"`
+	Uuid   string      `json:"uuid"`
 }
 
-type target struct {
+type stateTarget struct {
 	Children  []children `json:"children"`
 	DeviceUri string     `json:"deviceUri"`
 	Node      string     `json:"node"`
 	Rebuilds  int        `json:"rebuilds"`
-	Share     string     `json:"share"`
+	Protocol  string     `json:"protocol"`
 	Size      int64      `json:"size"`
 	State     string     `json:"state"`
 	Uuid      string     `json:"uuid"`
 }
 
 type children struct {
-	RebuildProgress string `json:"rebuildProgress"`
-	State           string `json:"state"`
-	Uri             string `json:"uri"`
+	State string `json:"state"`
+	Uri   string `json:"uri"`
 }
 
 func GetMayastorCpVolume(uuid string, address []string) (*MayastorCpVolume, error) {
@@ -185,7 +193,7 @@ func GetMayastorVolumeChildState(uuid string, address []string) (string, error) 
 func IsMmayastorVolumePublished(uuid string, address []string) bool {
 	msv, err := GetMayastorCpVolume(uuid, address)
 	if err == nil {
-		return msv.Spec.Target_node != ""
+		return msv.Spec.Target.Node != ""
 	}
 	return false
 }
@@ -271,7 +279,7 @@ func cpVolumeToMsv(cpMsv *MayastorCpVolume, address []string) common.MayastorVol
 	return common.MayastorVolume{
 		Name: cpMsv.Spec.Uuid,
 		Spec: common.MayastorVolumeSpec{
-			Protocol:      cpMsv.Spec.Protocol,
+			Protocol:      cpMsv.Spec.Target.Protocol,
 			ReplicaCount:  cpMsv.Spec.Num_replicas,
 			RequiredBytes: int(cpMsv.Spec.Size),
 		},
