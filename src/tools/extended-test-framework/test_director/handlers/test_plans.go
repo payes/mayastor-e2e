@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"github.com/go-openapi/runtime/middleware"
+	log "github.com/sirupsen/logrus"
 	"test-director/connectors"
 	"test-director/models"
 	"test-director/restapi/operations/test_director"
@@ -21,7 +22,7 @@ func (impl *getTestPlansImpl) Handle(test_director.GetTestPlansParams) middlewar
 	return test_director.NewGetTestPlansOK().WithPayload(plans)
 }
 
-type getTestPlanImpl struct {}
+type getTestPlanImpl struct{}
 
 func NewGetTestPlanByIdHandler() test_director.GetTestPlanByIDHandler {
 	return &getTestPlanImpl{}
@@ -29,14 +30,14 @@ func NewGetTestPlanByIdHandler() test_director.GetTestPlanByIDHandler {
 
 func (impl *getTestPlanImpl) Handle(params test_director.GetTestPlanByIDParams) middleware.Responder {
 	id := params.ID
-	plan, _  := planInterface.Get(models.JiraKey(id))
+	plan, _ := planInterface.Get(models.JiraKey(id))
 	if plan == nil {
 		return test_director.NewGetTestPlanByIDNotFound()
 	}
 	return test_director.NewGetTestPlanByIDOK().WithPayload(plan)
 }
 
-type deleteTestPlanImpl struct {}
+type deleteTestPlanImpl struct{}
 
 func NewDeleteTestPlanByIdHandler() test_director.DeleteTestPlanByIDHandler {
 	return &deleteTestPlanImpl{}
@@ -44,25 +45,25 @@ func NewDeleteTestPlanByIdHandler() test_director.DeleteTestPlanByIDHandler {
 
 func (impl *deleteTestPlanImpl) Handle(params test_director.DeleteTestPlanByIDParams) middleware.Responder {
 	id := params.ID
-	err  := planInterface.Delete(models.JiraKey(id))
+	err := planInterface.Delete(models.JiraKey(id))
 	if err != nil {
 		return test_director.NewDeleteTestPlanByIDNotFound()
 	}
 	return test_director.NewDeleteTestPlanByIDOK()
 }
 
-type deleteTestPlansImpl struct {}
+type deleteTestPlansImpl struct{}
 
 func NewDeleteTestPlansHandler() test_director.DeleteTestPlansHandler {
 	return &deleteTestPlansImpl{}
 }
 
 func (impl *deleteTestPlansImpl) Handle(params test_director.DeleteTestPlansParams) middleware.Responder {
-	plan  := planInterface.DeleteAll()
+	plan := planInterface.DeleteAll()
 	return test_director.NewDeleteTestPlansOK().WithPayload(plan)
 }
 
-type putTestPlanImpl struct {}
+type putTestPlanImpl struct{}
 
 func NewPutTestPlanHandler() test_director.PutTestPlanByIDHandler {
 	return &putTestPlanImpl{}
@@ -83,6 +84,15 @@ func (impl *putTestPlanImpl) Handle(params test_director.PutTestPlanByIDParams) 
 		}
 	} else {
 		jt, err := connectors.GetJiraTaskDetails(id)
+		if jt.Fields.IssueType.Name != "Test Plan" {
+			log.Errorf("Jira key: %s issue type: %s is not a Test Plan", jt.Key, jt.Fields.IssueType.Name)
+			i := int64(1)
+			return test_director.NewPutTestPlanByIDBadRequest().WithPayload(&models.RequestOutcome{
+				Details:       err.Error(),
+				ItemsAffected: &i,
+				Result:        models.RequestOutcomeResultREFUSED,
+			})
+		}
 		if err != nil {
 			i := int64(1)
 			return test_director.NewPutTestPlanByIDBadRequest().WithPayload(&models.RequestOutcome{
@@ -93,9 +103,10 @@ func (impl *putTestPlanImpl) Handle(params test_director.PutTestPlanByIDParams) 
 		}
 
 		plan = &models.TestPlan{
-			IsActive:     &b,
-			Key:          models.JiraKey(id),
+			IsActive: &b,
+			Key:      models.JiraKey(id),
 			TestPlanSpec: models.TestPlanSpec{
+				JiraID:   *jt.Id,
 				Assignee: jt.Fields.Assignee.Name,
 				Name:     *jt.Fields.Name,
 				Status:   tps.Status,

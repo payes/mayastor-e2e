@@ -26,6 +26,12 @@ type TestRunSpec struct {
 	// status
 	Status TestRunStatusEnum `json:"status,omitempty"`
 
+	// test exec issue Id
+	TestExecIssueID string `json:"testExecIssueId,omitempty"`
+
+	// test Id
+	TestID string `json:"testId,omitempty"`
+
 	// test key
 	// Required: true
 	TestKey *JiraKey `json:"testKey"`

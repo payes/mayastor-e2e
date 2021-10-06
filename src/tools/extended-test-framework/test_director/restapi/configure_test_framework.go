@@ -141,7 +141,7 @@ func setupGlobalMiddleware(handler http.Handler) http.Handler {
 
 func addLogging(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Println("Received request:", r.Method, r.URL)
+		log.Info("Received request:", r.Method, r.URL, r.Body)
 		next.ServeHTTP(w, r)
 	})
 }
