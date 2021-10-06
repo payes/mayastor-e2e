@@ -3,7 +3,7 @@ registry: ci-registry.mayastor-ci.mayadata.io
 imageTag: "nightly-stable"
 poolDevice: "/dev/sdb"
 test: "MQ-2243"
-install: true
+install: false
 e2eFioImage: mayadata/e2e-fio
 msnodes: 3
 nonSteadyState:

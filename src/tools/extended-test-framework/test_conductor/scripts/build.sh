@@ -2,6 +2,10 @@
 
 set -e pipefail
 
+#MAYASTORTAG="nightly-stable"
+MAYASTORTAG="mcp-2021-10-05-00-17-04"
+ETFWTAG="latest"
+
 build_img () {
 	APP=$1
 	TAG=$2
@@ -12,11 +16,11 @@ build_img () {
 	cp ../cmd/${APP}/${APP} .
 	cp ../cmd/${APP}/Dockerfile .
 
-	../../../../../scripts/extract-install-image.sh --alias-tag nightly-stable --installroot .
-	install-bundle/nightly-stable/scripts/generate-deploy-yamls.sh -t nightly-stable -o . test
-
-	docker build -t ${REGISTRY}/mayadata/${APP}:${TAG} .
-	docker push ${REGISTRY}/mayadata/${APP}:${TAG}
+	#../../../../../scripts/extract-install-image.sh --alias-tag ${MAYASTORTAG} --installroot .
+	#install-bundle/${MAYASTORTAG}/scripts/generate-deploy-yamls.sh -t ${MAYASTORTAG} -o . test
+	#cp install-bundle/*/mcp/target/release/kubectl-mayastor .
+	docker build -t ${REGISTRY}/mayadata/${APP}:${ETFWTAG} .
+	docker push ${REGISTRY}/mayadata/${APP}:${ETFWTAG}
 
 	rm -Rf *
 	popd
@@ -34,7 +38,7 @@ build () {
 SCRIPT_DIR=$(dirname "$0")
 cd ${SCRIPT_DIR}
 
-build test_conductor_steady_state latest
-build test_conductor_non_steady_state latest
-build test_conductor_replica_perturbation latest
+build test_conductor_steady_state
+build test_conductor_non_steady_state
+build test_conductor_replica_perturbation
 

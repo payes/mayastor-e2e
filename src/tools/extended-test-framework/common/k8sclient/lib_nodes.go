@@ -72,3 +72,18 @@ func GetMayastorNodeNames() ([]string, error) {
 	}
 	return nodeNames, err
 }
+
+func GetMayastorNodeIPs() ([]string, error) {
+	var nodeIPs []string
+	nodes, err := GetNodeLocs()
+	if err != nil {
+		return nodeIPs, fmt.Errorf("failed to get node locations, error: %v", err)
+	}
+
+	for _, node := range nodes {
+		if node.MayastorNode {
+			nodeIPs = append(nodeIPs, node.IPAddress)
+		}
+	}
+	return nodeIPs, err
+}

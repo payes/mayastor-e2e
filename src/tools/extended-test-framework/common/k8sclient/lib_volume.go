@@ -8,6 +8,8 @@ import (
 
 	"time"
 
+	"mayastor-e2e/common/mayastorclient"
+
 	"mayastor-e2e/tools/extended-test-framework/common/custom_resources"
 	v1alpha1Api "mayastor-e2e/tools/extended-test-framework/common/custom_resources/api/types/v1alpha1"
 
@@ -60,7 +62,7 @@ func GetPvStatusPhase(volname string) (coreV1.PersistentVolumePhase, error) {
 //	1. The PVC status transitions to bound,
 //	2. The associated PV is created and its status transitions bound
 //	3. The associated MV is created and has a State "healthy"
-func MkPVC(volSizeMb int, volName string, scName string, volType VolumeType, nameSpace string) (string, error) {
+func MkPVC(volSizeMb int, volName string, scName string, volType VolumeType, nameSpace string, moac bool) (string, error) {
 	logf.Log.Info("Creating", "volume", volName, "storageClass", scName, "volume type", volType)
 	volSizeMbStr := fmt.Sprintf("%dMi", volSizeMb)
 	// PVC create options
@@ -165,18 +167,18 @@ func MkPVC(volSizeMb int, volName string, scName string, volType VolumeType, nam
 		}
 		time.Sleep(time.Second)
 	}
-
-	for i := 0; ; i++ {
-		if i >= defTimeoutSecs {
-			return "", fmt.Errorf("timed out waiting for PVC to be bound")
+	if moac {
+		for i := 0; ; i++ {
+			if i >= defTimeoutSecs {
+				return "", fmt.Errorf("timed out waiting for PVC to be bound")
+			}
+			msv, _ := GetMSV(string(pvc.ObjectMeta.UID))
+			if msv != nil {
+				break
+			}
+			time.Sleep(time.Second)
 		}
-		msv, _ := GetMSV(string(pvc.ObjectMeta.UID))
-		if msv != nil {
-			break
-		}
-		time.Sleep(time.Second)
 	}
-
 	logf.Log.Info("Created", "volume", volName, "uuid", pvc.ObjectMeta.UID, "storageClass", scName, "volume type", volType)
 	return string(pvc.ObjectMeta.UID), nil
 }
@@ -200,4 +202,22 @@ func DeletePVC(volName string, nameSpace string) error {
 		time.Sleep(time.Second)
 	}
 	return nil
+}
+
+// determine the effective MSV state using grpc calls to the mayastor instances
+// TODO - identify nexus by UUID when the functionality is fixed.
+// For now assume there is one nexus and it is the one to test.
+func GetVolumeState(nodeIPs []string, vol_uuid string) (string, error) {
+	grpcNexuses, err := mayastorclient.ListNexuses(nodeIPs)
+	//grpcNexus, err := mayastorclient.FindNexus(vol_uuid, nodeIPs)
+	if err != nil {
+		return "", fmt.Errorf("failed to list nexuses via gRPC, %v", err)
+	}
+	//if grpcNexus == nil {
+	//	return "", fmt.Errorf("failed to find nexus %s via gRPC", vol_uuid)
+	//}
+	if numNexuses := len(grpcNexuses); numNexuses != 1 {
+		return "", fmt.Errorf("unexpected number of nexuses, %d", numNexuses)
+	}
+	return grpcNexuses[0].State.String(), nil
 }

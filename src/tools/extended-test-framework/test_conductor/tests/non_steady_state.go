@@ -70,7 +70,8 @@ func NonSteadyStateTest(testConductor *tc.TestConductor) error {
 		pvc_name,
 		sc_name,
 		vol_type,
-		k8sclient.NSDefault)
+		k8sclient.NSDefault,
+		false)
 	if err != nil {
 		return fmt.Errorf("failed to create pvc %v", err)
 	}
@@ -118,7 +119,7 @@ func NonSteadyStateTest(testConductor *tc.TestConductor) error {
 	// allow the test to run
 	logf.Log.Info("Running test", "duration (s)", duration.Seconds())
 
-	failmessage := MonitorCRs(testConductor, []string{msv_uid}, duration)
+	failmessage := MonitorCRs(testConductor, []string{msv_uid}, duration, false)
 
 	if failmessage != "" {
 		if err := SendTestCompletedFail(testConductor, failmessage); err != nil {
