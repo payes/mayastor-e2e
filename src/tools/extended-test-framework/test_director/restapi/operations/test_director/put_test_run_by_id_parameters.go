@@ -45,7 +45,7 @@ type PutTestRunByIDParams struct {
 	  Required: true
 	  In: path
 	*/
-	ID strfmt.UUID
+	ID string
 }
 
 // BindRequest both binds and validates a request, it assumes that complex things implement a Validatable(strfmt.Registry) error interface
@@ -104,26 +104,7 @@ func (o *PutTestRunByIDParams) bindID(rawData []string, hasKey bool, formats str
 
 	// Required: true
 	// Parameter is provided by construction from the route
+	o.ID = raw
 
-	// Format: uuid
-	value, err := formats.Parse("uuid", raw)
-	if err != nil {
-		return errors.InvalidType("id", "path", "strfmt.UUID", raw)
-	}
-	o.ID = *(value.(*strfmt.UUID))
-
-	if err := o.validateID(formats); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// validateID carries on validations for parameter ID
-func (o *PutTestRunByIDParams) validateID(formats strfmt.Registry) error {
-
-	if err := validate.FormatOf("id", "path", "uuid", o.ID.String(), formats); err != nil {
-		return err
-	}
 	return nil
 }

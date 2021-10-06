@@ -3,12 +3,15 @@
 package main
 
 import (
-	"github.com/go-openapi/loads"
-	flags "github.com/jessevdk/go-flags"
-	log "github.com/sirupsen/logrus"
+	"log"
 	"os"
+	"test-director/config"
 	"test-director/handlers"
 	"test-director/logger"
+	"test-director/utils"
+
+	"github.com/go-openapi/loads"
+	flags "github.com/jessevdk/go-flags"
 
 	"test-director/restapi"
 	"test-director/restapi/operations"
@@ -19,14 +22,26 @@ import (
 
 func main() {
 
-	logger.InitLogger()
+	configPath := utils.GetConfigPath("local")
+
+	cfgFile, err := config.LoadConfig(configPath)
+	if err != nil {
+		log.Fatalf("LoadConfig: %v", err)
+	}
+
+	cfg, err := config.ParseConfig(cfgFile)
+	if err != nil {
+		log.Fatalf("ParseConfig: %v", err)
+	}
+	logger.InitLogger(&cfg.Logger)
+
 	swaggerSpec, err := loads.Embedded(restapi.SwaggerJSON, restapi.FlatSwaggerJSON)
 	if err != nil {
 		log.Fatalln(err)
 	}
 
 	handlers.InitEventCache()
-	handlers.InitTestPlanCache()
+	handlers.InitTestPlanCache(&cfg.Server)
 	handlers.InitTestRunCache()
 
 	api := operations.NewTestFrameworkAPI(swaggerSpec)

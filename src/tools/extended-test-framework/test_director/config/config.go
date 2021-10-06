@@ -9,22 +9,29 @@ import (
 
 // App config struct
 type Config struct {
-	Server   ServerConfig
-	Logger   Logger
+	Server ServerConfig
+	Logger Logger
+	Xray   Xray
 }
 
 // Server config struct
 type ServerConfig struct {
-	AppVersion 		  string
-	Mode              string
+	AppVersion      string
+	Mode            string
+	DefaultTestPlan string
 }
 
 // Logger config
 type Logger struct {
-	ReportCaller      bool
-	Encoding          string
-	Level             string
-	Output			  string
+	ReportCaller bool
+	Encoding     string
+	Level        string
+	Output       string
+}
+
+type Xray struct {
+	ClientId     string
+	ClientSecret string
 }
 
 // Redis config

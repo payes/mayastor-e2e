@@ -1,9 +1,9 @@
-package connectors
+package xray
 
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
+	log "github.com/sirupsen/logrus"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -12,9 +12,12 @@ import (
 const (
 	clientId     = "2471F500C6154736A3566E24F621A98E"
 	clientSecret = "adbb5a7fa5d2c6a47db1c283f6366480d1321fc1a64ac00d5c2add14e4728700"
-	authURL      = "https://xray.cloud.xpand-it.com/api/v2/authenticate"
-	importURL    = "https://xray.cloud.xpand-it.com/api/v2/import/execution"
+	authUrl      = "https://xray.cloud.xpand-it.com/api/v2/authenticate"
+	graphqlUrl   = "https://xray.cloud.xpand-it.com/api/v2/graphql"
 )
+
+var token *string
+var tries = 0
 
 type Info struct {
 	Summary          string    `json:"summary,omitempty"`
@@ -58,33 +61,56 @@ type Auth struct {
 	ClientSecret string `json:"client_secret"`
 }
 
-func Authorize() *string {
+func authorize() *string {
 	b, _ := json.Marshal(Auth{
 		ClientId:     clientId,
 		ClientSecret: clientSecret,
 	})
-	fmt.Printf("API Request as struct %s\n", string(b))
-	req, err := http.NewRequest(http.MethodPost, authURL, bytes.NewBuffer(b))
+	req, err := http.NewRequest(http.MethodPost, authUrl, bytes.NewBuffer(b))
 	if err != nil {
 		return nil
 	}
+	req.Header.Add("Content-Type", "application/json")
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		fmt.Print(err.Error())
+		log.Error(err.Error())
 		return nil
 	}
 
 	defer resp.Body.Close()
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Print(err.Error())
+		log.Error(err.Error())
 		return nil
 	}
 	s := string(bodyBytes)
 	if resp.StatusCode != 200 {
-		fmt.Print(s)
+		log.Error(s)
 		return nil
 	}
+	s = s[1 : len(s)-1]
 	return &s
+}
+
+func sendQuery(s string) string {
+	jsonData := map[string]string{
+		"query": s,
+	}
+	jsonValue, _ := json.Marshal(jsonData)
+	request, err := http.NewRequest(http.MethodPost, graphqlUrl, bytes.NewBuffer(jsonValue))
+	if err != nil {
+		log.Errorf("The HTTP request failed with error %s\n", err)
+	}
+	request.Header.Add("Authorization", "Bearer "+*authorize())
+	request.Header.Add("Content-Type", "application/json")
+	client := &http.Client{Timeout: time.Second * 10}
+	response, err := client.Do(request)
+	defer response.Body.Close()
+	if err != nil {
+		log.Errorf("The HTTP request failed with error %s\n", err)
+	}
+
+	data, _ := ioutil.ReadAll(response.Body)
+	return string(data)
 }

@@ -19,9 +19,10 @@ type TestRunInterface interface {
 type TestRunCache struct {
 	client *cache.Cache
 }
+
 func (r *TestRunCache) Delete(key string) error {
 	tp, _ := r.Get(key)
-	if tp != nil{
+	if tp != nil {
 		r.client.Delete(key)
 		return nil
 	}
@@ -68,8 +69,6 @@ func (r *TestRunCache) Set(key string, data models.TestRun) error {
 	r.client.Set(key, b, -1)
 	return nil
 }
-
-
 
 func InitTestRunCache() {
 	runInterface = &TestRunCache{
