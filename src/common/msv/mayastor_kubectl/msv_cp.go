@@ -36,6 +36,11 @@ type msvSpec struct {
 	Target       specTarget `json:"target"`
 	Uuid         string     `json:"uuid"`
 	Topology     topology   `json:"topology"`
+	Policy       policy     `json:"policy"`
+}
+
+type policy struct {
+	Self_heal bool `json:"self_heal"`
 }
 type specTarget struct {
 	Protocol string `json:"protocol"`
@@ -43,8 +48,20 @@ type specTarget struct {
 }
 
 type topology struct {
+	NodeTopology node_topology `json:"node_topology"`
+	PoolTopology pool_topology `json:"pool_topology"`
+}
+type node_topology struct {
 	Explicit explicit `json:"explicit"`
 }
+type pool_topology struct {
+	Labelled labelled `json:"labelled"`
+}
+type labelled struct {
+	Inclusion map[string]interface{} `json:"inclusion"`
+	Exclusion map[string]interface{} `json:"exclusion"`
+}
+
 type explicit struct {
 	AllowedNodes   []string `json:"allowed_nodes"`
 	PreferredNodes []string `json:"preferred_nodes"`
