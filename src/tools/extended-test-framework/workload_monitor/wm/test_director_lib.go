@@ -3,6 +3,7 @@ package wm
 import (
 	"fmt"
 
+	"github.com/go-openapi/strfmt"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"mayastor-e2e/tools/extended-test-framework/workload_monitor/swagger/client"
@@ -10,10 +11,14 @@ import (
 	"mayastor-e2e/tools/extended-test-framework/workload_monitor/swagger/models"
 )
 
-func SendEvent(client *client.Etfw, message string, pod string, sourceInstance string) error {
+func SendEvent(client *client.Etfw, message string, pod string, sourceInstanceUid *strfmt.UUID) error {
 
 	var class = models.EventClassEnumFAIL
 	var sourceClass = models.EventSourceClassEnumWorkloadDashMonitor
+	var sourceInstance = ""
+	if sourceInstanceUid != nil {
+		sourceInstance = string(*sourceInstanceUid)
+	}
 
 	eventSpec := models.EventSpec{}
 	eventSpec.Class = &class

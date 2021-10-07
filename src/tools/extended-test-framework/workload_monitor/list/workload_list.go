@@ -11,6 +11,7 @@ import (
 )
 
 type WorkloadList struct {
+	registrant  *strfmt.UUID
 	mu          sync.Mutex
 	WorkloadMap map[strfmt.UUID]map[strfmt.UUID]*models.Workload
 }
@@ -19,6 +20,7 @@ var gWorkloadList WorkloadList
 
 func init() {
 	gWorkloadList.WorkloadMap = make(map[strfmt.UUID]map[strfmt.UUID]*models.Workload)
+	gWorkloadList.registrant = nil
 }
 
 func Lock() {
@@ -30,10 +32,18 @@ func Unlock() {
 }
 
 func AddToWorkloadList(pwl *models.Workload, rid strfmt.UUID, wid strfmt.UUID) {
+	if gWorkloadList.registrant == nil {
+		var r = rid
+		gWorkloadList.registrant = &r
+	}
 	if _, found := gWorkloadList.WorkloadMap[rid]; !found {
 		gWorkloadList.WorkloadMap[rid] = make(map[strfmt.UUID]*models.Workload)
 	}
 	gWorkloadList.WorkloadMap[rid][wid] = pwl
+}
+
+func GetRegistrant() *strfmt.UUID {
+	return gWorkloadList.registrant
 }
 
 func GetWorkload(rid strfmt.UUID, wid strfmt.UUID) *models.Workload {

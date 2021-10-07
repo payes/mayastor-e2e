@@ -25,7 +25,7 @@ while [ "$#" -gt 0 ]; do
     -t|--test)
       shift
       case $1 in
-            steady_state|replica_perturbation|non_steady_state)
+            steady_state|non_steady_state)
                 TEST=$1
                 ;;
             *)
@@ -66,7 +66,7 @@ else
   kubectl create -f ${SCRIPTDIR}/deploy/test_namespace.yaml
   kubectl create configmap etfw-config -n mayastor-e2e --from-file=${SCRIPTDIR}/deploy/test_conductor/${TEST}/config.yaml
   kubectl create -f ${SCRIPTDIR}/deploy/test_conductor.yaml
-  kubectl create -f ${SCRIPTDIR}/deploy/test_conductor/${TEST}/test_conductor.yaml
+  kubectl create -f ${SCRIPTDIR}/deploy/test_conductor/${TEST}/test_conductor_pod.yaml
   kubectl create -f ${SCRIPTDIR}/deploy/test_director.yaml
   kubectl create -f ${SCRIPTDIR}/deploy/workload_monitor.yaml
 fi

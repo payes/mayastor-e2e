@@ -8,8 +8,6 @@ import (
 
 	"time"
 
-	"github.com/google/uuid"
-
 	tc "mayastor-e2e/tools/extended-test-framework/test_conductor/tc"
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -17,12 +15,21 @@ import (
 	storageV1 "k8s.io/api/storage/v1"
 )
 
-func NonSteadyStateTest(testConductor *tc.TestConductor) error {
+func NonSteadyStateTest(testConductor *tc.TestConductor) (testRunId string, failmessage string, err error) {
 	const testName = "non-steady-state"
 
+	// the test run ID is the same as the uuid of the test conductor pod
+	testPodUid, err := k8sclient.GetPod("test-conductor", common.EtfwNamespace)
+	if err != nil {
+		err = fmt.Errorf("failed to get tc pod uid, error: %v\n", err)
+		return
+	}
+	testRunId = testPodUid.String()
+
 	if testConductor.Config.Install {
-		if err := tc.InstallMayastor(testConductor.Config.PoolDevice); err != nil {
-			return fmt.Errorf("failed to install mayastor %v", err)
+		if err = tc.InstallMayastor(testConductor.Config.PoolDevice); err != nil {
+			err = fmt.Errorf("failed to install mayastor %v", err)
+			return
 		}
 	}
 	var protocol k8sclient.ShareProto = k8sclient.ShareProtoNvmf
@@ -32,35 +39,45 @@ func NonSteadyStateTest(testConductor *tc.TestConductor) error {
 	var fio_name = testName + "-fio"
 	var vol_type = k8sclient.VolRawBlock
 
-	if err := tc.AddWorkload(
+	if err = tc.AddWorkload(
 		testConductor.WorkloadMonitorClient,
 		"test-conductor",
 		common.EtfwNamespace,
 		violations); err != nil {
-		return fmt.Errorf("failed to inform workload monitor of test-conductor, error: %v", err)
+		err = fmt.Errorf("failed to inform workload monitor of test-conductor, error: %v", err)
+		return
 	}
 
-	if err := SendTestPreparing(testConductor); err != nil {
-		return fmt.Errorf("failed to inform test director of preparation event, error: %v", err)
+	if err = SendTestPreparing(testConductor); err != nil {
+		err = fmt.Errorf("failed to inform test director of preparation event, error: %v", err)
+		return
 	}
 
 	duration, err := time.ParseDuration(testConductor.Config.NonSteadyState.Duration)
 	if err != nil {
-		return fmt.Errorf("failed to parse duration %v", err)
+		err = fmt.Errorf("failed to parse duration %v", err)
+		return
 	}
 
-	testRun := uuid.New()
-	testRunId := testRun.String()
+	if err = tc.SendRunToDo(
+		testConductor.TestDirectorClient,
+		testRunId,
+		"",
+		testConductor.Config.Test); err != nil {
+		err = fmt.Errorf("failed to inform test director of test start, error: %v", err)
+		return
+	}
 
 	// create storage class
-	if err := k8sclient.NewScBuilder().
+	if err = k8sclient.NewScBuilder().
 		WithName(sc_name).
 		WithReplicas(testConductor.Config.NonSteadyState.Replicas).
 		WithProtocol(protocol).
 		WithNamespace(k8sclient.NSDefault).
 		WithVolumeBindingMode(mode).
 		BuildAndCreate(); err != nil {
-		return fmt.Errorf("failed to create sc %v", err)
+		err = fmt.Errorf("failed to create sc %v", err)
+		return
 	}
 	logf.Log.Info("Created storage class", "sc", sc_name)
 
@@ -73,79 +90,74 @@ func NonSteadyStateTest(testConductor *tc.TestConductor) error {
 		k8sclient.NSDefault,
 		false)
 	if err != nil {
-		return fmt.Errorf("failed to create pvc %v", err)
+		err = fmt.Errorf("failed to create pvc %v", err)
+		return
 	}
 	logf.Log.Info("Created pvc", "msv UID", msv_uid)
 
 	// deploy fio
-	if err := k8sclient.DeployFio(
+	if err = k8sclient.DeployFio(
 		fio_name,
 		pvc_name,
 		vol_type,
 		testConductor.Config.NonSteadyState.VolumeSizeMb,
 		1000000); err != nil {
-		return fmt.Errorf("failed to deploy pod %s, error: %v", fio_name, err)
+		err = fmt.Errorf("failed to deploy pod %s, error: %v", fio_name, err)
+		return
 	}
 	logf.Log.Info("Created pod", "pod", fio_name)
 
-	if err := tc.AddWorkload(
+	if err = tc.AddWorkload(
 		testConductor.WorkloadMonitorClient,
 		fio_name,
 		k8sclient.NSDefault,
 		violations); err != nil {
-		return fmt.Errorf("failed to inform workload monitor of %s, error: %v", fio_name, err)
+		err = fmt.Errorf("failed to inform workload monitor of %s, error: %v", fio_name, err)
+		return
 	}
 
-	if err := tc.AddWorkloadsInNamespace(
+	if err = tc.AddWorkloadsInNamespace(
 		testConductor.WorkloadMonitorClient,
 		"mayastor",
 		violations); err != nil {
-		return fmt.Errorf("failed to inform workload monitor of mayastor pods, error: %v", err)
+		err = fmt.Errorf("failed to inform workload monitor of mayastor pods, error: %v", err)
+		return
 	}
 
-	if err := SendTestStarted(testConductor); err != nil {
-		return fmt.Errorf("failed to inform test director of start event, error: %v", err)
+	if err = SendTestStarted(testConductor); err != nil {
+		err = fmt.Errorf("failed to inform test director of start event, error: %v", err)
+		return
 	}
 
-	if err := tc.SendRunStarted(
+	if err = tc.SendRunStarted(
 		testConductor.TestDirectorClient,
 		testRunId,
 		"",
 		testConductor.Config.Test); err != nil {
-		return fmt.Errorf("failed to inform test director of test start, error: %v", err)
+		err = fmt.Errorf("failed to inform test director of test start, error: %v", err)
+		return
 	}
 
 	// ======== TODO implement changes for test, add/remove pods and PVs ========
 	// allow the test to run
 	logf.Log.Info("Running test", "duration (s)", duration.Seconds())
 
-	failmessage := MonitorCRs(testConductor, []string{msv_uid}, duration, false)
+	failmessage = MonitorCRs(testConductor, []string{msv_uid}, duration, false)
 
-	if failmessage != "" {
-		if err := SendTestCompletedFail(testConductor, failmessage); err != nil {
-			return fmt.Errorf("failed to inform test director of completion, error: %v", err)
-		}
+	if err = tc.DeleteWorkloads(testConductor.WorkloadMonitorClient); err != nil {
+		logf.Log.Info("failed to delete all registered workloads", "error", err)
 	}
 
-	if err := tc.DeleteWorkloads(testConductor.WorkloadMonitorClient); err != nil {
-		return fmt.Errorf("failed to delete all registered workloads, error: %v", err)
+	if err = k8sclient.DeletePod(fio_name, k8sclient.NSDefault); err != nil {
+		logf.Log.Info("failed to delete pod", "pod", fio_name, "error", err)
 	}
 
-	if err := k8sclient.DeletePod(fio_name, k8sclient.NSDefault); err != nil {
-		return fmt.Errorf("failed to delete pod %s, error: %v", fio_name, err)
+	if err = k8sclient.DeletePVC(pvc_name, k8sclient.NSDefault); err != nil {
+		logf.Log.Info("failed to delete PVC", "pvc", pvc_name, "error", err)
 	}
 
-	if err := k8sclient.DeletePVC(pvc_name, k8sclient.NSDefault); err != nil {
-		return fmt.Errorf("failed to delete PVC %s, error: %v", pvc_name, err)
+	if err = k8sclient.DeleteSc(sc_name); err != nil {
+		logf.Log.Info("failed to delete storage class", "sc", sc_name, "error", err)
 	}
-
-	if err := k8sclient.DeleteSc(sc_name); err != nil {
-		return fmt.Errorf("failed to delete storage class %s, error: %v", sc_name, err)
-	}
-
-	if err := ReportResult(testConductor, failmessage, testRunId); err != nil {
-		return fmt.Errorf("failed to report test outcome, error: %v", err)
-	}
-
-	return nil
+	return
 }

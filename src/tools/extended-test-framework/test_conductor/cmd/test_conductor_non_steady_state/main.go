@@ -20,11 +20,17 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = tests.NonSteadyStateTest(testConductor); err != nil {
-		logf.Log.Info("non steady state test failed", "error", err)
-		if err = tests.SendTestCompletedFail(testConductor, err.Error()); err != nil {
-			logf.Log.Info("non steady state test failed to report error", "error", err)
+	testRunId, failmessage, err := tests.NonSteadyStateTest(testConductor)
+	if err != nil {
+		if failmessage == "" {
+			failmessage = err.Error()
+		} else {
+			logf.Log.Info("failed to run test", "error", err)
 		}
+	}
+	err = tests.ReportResult(testConductor, failmessage, testRunId)
+	if err != nil {
+		logf.Log.Info("failed to report result", "error", err)
 		os.Exit(1)
 	}
 }

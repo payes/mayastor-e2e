@@ -91,6 +91,10 @@ func SendRunStarted(client *client.Etfw, uuid string, message string, jira_key s
 	return SendRunStatus(client, uuid, message, jira_key, models.TestRunStatusEnumEXECUTING)
 }
 
+func SendRunToDo(client *client.Etfw, uuid string, message string, jira_key string) error {
+	return SendRunStatus(client, uuid, message, jira_key, models.TestRunStatusEnumTODO)
+}
+
 func SendEvent(client *client.Etfw, message string, sourceInstance string, eventClass models.EventClassEnum) error {
 
 	var sourceClass = models.EventSourceClassEnumWorkloadDashMonitor

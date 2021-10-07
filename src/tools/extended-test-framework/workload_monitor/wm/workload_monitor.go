@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/go-openapi/loads"
+	"github.com/go-openapi/strfmt"
 	flags "github.com/jessevdk/go-flags"
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -33,7 +34,7 @@ type WorkloadMonitor struct {
 	channel             chan int
 }
 
-const SourceInstance = "workload-monitor"
+var current_registrant *strfmt.UUID = nil
 
 func (workloadMonitor *WorkloadMonitor) InstallSignalHandler() {
 	signal_channel := make(chan os.Signal, 1)
@@ -62,7 +63,7 @@ func (workloadMonitor *WorkloadMonitor) InstallSignalHandler() {
 func (workloadMonitor *WorkloadMonitor) WaitSignal() {
 	exitCode := <-workloadMonitor.channel
 	if exitCode != 0 { // abnormal termination
-		if err := SendEvent(workloadMonitor.pTestDirectorClient, "workload monitor terminated", SourceInstance, SourceInstance); err != nil {
+		if err := SendEvent(workloadMonitor.pTestDirectorClient, "workload monitor terminated", "workload-monitor", current_registrant); err != nil {
 			logf.Log.Info("failed to send", "error", err)
 		}
 	}
@@ -95,6 +96,7 @@ func NewWorkloadMonitor() (*WorkloadMonitor, error) {
 
 func (workloadMonitor *WorkloadMonitor) StartMonitor() {
 	logf.Log.Info("workload monitor polling .")
+
 	for {
 		time.Sleep(10 * time.Second)
 
@@ -109,67 +111,76 @@ func (workloadMonitor *WorkloadMonitor) StartMonitor() {
 		// This will obviously add latency to REST calls from the test_conductor,
 		// but hopefully not problematically.
 		wlist.Lock()
-		list := wlist.GetWorkloadList()
+		if current_registrant == nil {
+			current_registrant = wlist.GetRegistrant()
+			if current_registrant != nil {
+				logf.Log.Info("Using registrant", "rid", *current_registrant)
+			}
+		}
+		if current_registrant != nil {
 
-		for _, wl := range list {
-			for _, spec := range wl.WorkloadSpec.Violations {
-				switch spec {
-				case models.WorkloadViolationEnumRESTARTED:
-					pod, present, err := k8sclient.GetPodByUuid(string(wl.ID))
-					if err != nil {
-						logf.Log.Info("failed to get pod by UUID", "pod", wl.ID)
-					}
-					if present {
-						containerStatuses := pod.Status.ContainerStatuses
-						restartcount := int32(0)
-						for _, containerStatus := range containerStatuses {
-							if containerStatus.RestartCount != 0 {
-								if containerStatus.RestartCount > restartcount {
-									restartcount = containerStatus.RestartCount
+			list := wlist.GetWorkloadListByRegistrant(*current_registrant)
+
+			for _, wl := range list {
+				for _, spec := range wl.WorkloadSpec.Violations {
+					switch spec {
+					case models.WorkloadViolationEnumRESTARTED:
+						pod, present, err := k8sclient.GetPodByUuid(string(wl.ID))
+						if err != nil {
+							logf.Log.Info("failed to get pod by UUID", "pod", wl.ID)
+						}
+						if present {
+							containerStatuses := pod.Status.ContainerStatuses
+							restartcount := int32(0)
+							for _, containerStatus := range containerStatuses {
+								if containerStatus.RestartCount != 0 {
+									if containerStatus.RestartCount > restartcount {
+										restartcount = containerStatus.RestartCount
+									}
+									logf.Log.Info(pod.Name, "restarts", containerStatus.RestartCount)
+									break
 								}
-								logf.Log.Info(pod.Name, "restarts", containerStatus.RestartCount)
-								break
+							}
+							if restartcount != 0 {
+								message := fmt.Sprintf("pod %s restarted %d times", wl.Name, restartcount)
+								logf.Log.Info("restart", "message", message)
+								if err := SendEvent(workloadMonitor.pTestDirectorClient, message, string(wl.Name), current_registrant); err != nil {
+									logf.Log.Info("failed to send", "error", err)
+								} else {
+									wlist.DeleteWorkloadById(wl.ID)
+								}
 							}
 						}
-						if restartcount != 0 {
-							message := fmt.Sprintf("pod %s restarted %d times", wl.Name, restartcount)
-							logf.Log.Info("restart", "message", message)
-							if err := SendEvent(workloadMonitor.pTestDirectorClient, message, string(wl.Name), SourceInstance); err != nil {
-								logf.Log.Info("failed to send", "error", err)
-							} else {
-								wlist.DeleteWorkloadById(wl.ID)
+					case models.WorkloadViolationEnumTERMINATED:
+						podstatus, present, err := k8sclient.GetPodStatus(string(wl.ID))
+						if err != nil {
+							logf.Log.Info("failed to get pod status", "error", err)
+						}
+						if present {
+							if podstatus == v1.PodFailed {
+								message := fmt.Sprintf("pod %s terminated", wl.Name)
+								logf.Log.Info("termination", "message", message)
+								if err := SendEvent(workloadMonitor.pTestDirectorClient, message, string(wl.Name), current_registrant); err != nil {
+									logf.Log.Info("failed to send", "error", err)
+								} else {
+									wlist.DeleteWorkloadById(wl.ID)
+								}
 							}
 						}
-					}
-				case models.WorkloadViolationEnumTERMINATED:
-					podstatus, present, err := k8sclient.GetPodStatus(string(wl.ID))
-					if err != nil {
-						logf.Log.Info("failed to get pod status", "error", err)
-					}
-					if present {
-						if podstatus == v1.PodFailed {
-							message := fmt.Sprintf("pod %s terminated", wl.Name)
-							logf.Log.Info("termination", "message", message)
-							if err := SendEvent(workloadMonitor.pTestDirectorClient, message, string(wl.Name), SourceInstance); err != nil {
-								logf.Log.Info("failed to send", "error", err)
-							} else {
-								wlist.DeleteWorkloadById(wl.ID)
-							}
+					case models.WorkloadViolationEnumNOTPRESENT:
+						present, err := k8sclient.GetPodExists(string(wl.ID))
+						if err != nil {
+							fmt.Printf("failed to get pod status %s\n", wl.Name)
 						}
-					}
-				case models.WorkloadViolationEnumNOTPRESENT:
-					present, err := k8sclient.GetPodExists(string(wl.ID))
-					if err != nil {
-						fmt.Printf("failed to get pod status %s\n", wl.Name)
-					}
-					if !present {
-						message := fmt.Sprintf("pod %s absent", wl.Name)
-						logf.Log.Info("absent", "message", message)
+						if !present {
+							message := fmt.Sprintf("pod %s absent", wl.Name)
+							logf.Log.Info("absent", "message", message)
 
-						if err := SendEvent(workloadMonitor.pTestDirectorClient, message, string(wl.Name), SourceInstance); err != nil {
-							logf.Log.Info("failed to send", "error", err)
-						} else {
-							wlist.DeleteWorkloadById(wl.ID)
+							if err := SendEvent(workloadMonitor.pTestDirectorClient, message, string(wl.Name), current_registrant); err != nil {
+								logf.Log.Info("failed to send", "error", err)
+							} else {
+								wlist.DeleteWorkloadById(wl.ID)
+							}
 						}
 					}
 				}
