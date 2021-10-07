@@ -18,7 +18,6 @@ import (
 
 	appsV1 "k8s.io/api/apps/v1"
 	coreV1 "k8s.io/api/core/v1"
-	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -261,7 +260,7 @@ func MayastorInstancesReady(numMayastorInstances int, sleepTime int, duration in
 	ready := false
 	for ix := 0; ix < count && !ready; ix++ {
 		time.Sleep(time.Duration(sleepTime) * time.Second)
-		if IsControlPlaneMcp() {
+		if common.IsControlPlaneMcp() {
 			ready = mayastorReadyPodCount() == numMayastorInstances && mayastorCSIReadyPodCount() == numMayastorInstances
 		} else {
 			ready = mayastorReadyPodCount() == numMayastorInstances && mayastorCSIReadyPodCount() == numMayastorInstances && msnOnlineCount() == numMayastorInstances
@@ -351,19 +350,69 @@ func DeploymentReady(deploymentName, namespace string) bool {
 	return false
 }
 
+func DaemonSetReady(daemonName string, namespace string) bool {
+	var daemon appsV1.DaemonSet
+	if err := gTestEnv.K8sClient.Get(context.TODO(), types.NamespacedName{Name: daemonName, Namespace: namespace}, &daemon); err != nil {
+		logf.Log.Info("Failed to get daemonset", "error", err)
+		return false
+	}
+
+	status := daemon.Status
+	logf.Log.Info("DaemonSet "+daemonName, "status", status)
+	return status.DesiredNumberScheduled == status.CurrentNumberScheduled &&
+		status.DesiredNumberScheduled == status.NumberReady &&
+		status.DesiredNumberScheduled == status.NumberAvailable
+}
+
+func StatefulSetReady(statefulSetName string, namespace string) bool {
+	var statefulSet appsV1.StatefulSet
+	if err := gTestEnv.K8sClient.Get(context.TODO(), types.NamespacedName{Name: statefulSetName, Namespace: namespace}, &statefulSet); err != nil {
+		logf.Log.Info("Failed to get daemonset", "error", err)
+		return false
+	}
+	status := statefulSet.Status
+	logf.Log.Info("StatefulSet "+statefulSetName, "status", status)
+	return status.Replicas == status.ReadyReplicas &&
+		status.ReadyReplicas == status.CurrentReplicas
+}
+
 func ControlPlaneReady(sleepTime int, duration int) bool {
 	ready := false
 	count := (duration + sleepTime - 1) / sleepTime
 
-	if IsControlPlaneMcp() {
-		deploymentNames := []string{"core-agents", "msp-operator", "rest"}
+	if common.IsControlPlaneMcp() {
 
 		for ix := 0; ix < count && !ready; ix++ {
 			time.Sleep(time.Duration(sleepTime) * time.Second)
+			deployments, err := gTestEnv.KubeInt.AppsV1().Deployments(common.NSMayastor()).List(context.TODO(), metaV1.ListOptions{})
+			if err != nil {
+				time.Sleep(time.Duration(sleepTime) * time.Second)
+				continue
+			}
+			daemonsets, err := gTestEnv.KubeInt.AppsV1().DaemonSets(common.NSMayastor()).List(context.TODO(), metaV1.ListOptions{})
+			if err != nil {
+				time.Sleep(time.Duration(sleepTime) * time.Second)
+				continue
+			}
+			statefulsets, err := gTestEnv.KubeInt.AppsV1().StatefulSets(common.NSMayastor()).List(context.TODO(), metaV1.ListOptions{})
+			if err != nil {
+				time.Sleep(time.Duration(sleepTime) * time.Second)
+				continue
+			}
 			ready = true
-			for _, deploymentName := range deploymentNames {
-				tmp := DeploymentReady(deploymentName, common.NSMayastor())
-				logf.Log.Info("mayastor control plane", "deployment", deploymentName, "ready", tmp)
+			for _, deployment := range deployments.Items {
+				tmp := DeploymentReady(deployment.Name, common.NSMayastor())
+				logf.Log.Info("mayastor control plane", "deployment", deployment.Name, "ready", tmp)
+				ready = ready && tmp
+			}
+			for _, daemon := range daemonsets.Items {
+				tmp := DaemonSetReady(daemon.Name, common.NSMayastor())
+				logf.Log.Info("mayastor control plane", "daemonset", daemon.Name, "ready", tmp)
+				ready = ready && tmp
+			}
+			for _, statefulSet := range statefulsets.Items {
+				tmp := StatefulSetReady(statefulSet.Name, common.NSMayastor())
+				logf.Log.Info("mayastor control plane", "statefulset", statefulSet.Name, "ready", tmp)
 				ready = ready && tmp
 			}
 		}
@@ -555,7 +604,7 @@ func WaitPodComplete(podName string, sleepTimeSecs, timeoutSecs int) error {
 		Expect(err).ToNot(HaveOccurred(), fmt.Sprintf("failed to access pod status %s %v", podName, err))
 		if podPhase == coreV1.PodSucceeded {
 			return nil
-		} else if podPhase == corev1.PodFailed {
+		} else if podPhase == coreV1.PodFailed {
 			break
 		}
 	}
@@ -616,6 +665,7 @@ func DeleteVolumeAttachments(nodeName string) error {
 // CheckAndSetControlPlane checks which deployments exists and sets config control plane setting
 func CheckAndSetControlPlane() error {
 	var deployment appsV1.Deployment
+	var statefulSet appsV1.StatefulSet
 	var err error
 	var cpIsMoac = false
 	var cpIsMcp2 = false
@@ -624,7 +674,12 @@ func CheckAndSetControlPlane() error {
 	if err = gTestEnv.K8sClient.Get(context.TODO(), types.NamespacedName{Name: "moac", Namespace: common.NSMayastor()}, &deployment); err == nil {
 		cpIsMoac = true
 	}
+	// Check for core-agents either as deployment or statefulset to correctly handle older builds of control plane
+	// which use core-agents deployment and newer builds which use core-agents statefulset
 	if err = gTestEnv.K8sClient.Get(context.TODO(), types.NamespacedName{Name: "core-agents", Namespace: common.NSMayastor()}, &deployment); err == nil {
+		cpIsMcp2 = true
+	}
+	if err = gTestEnv.K8sClient.Get(context.TODO(), types.NamespacedName{Name: "core-agents", Namespace: common.NSMayastor()}, &statefulSet); err == nil {
 		cpIsMcp2 = true
 	}
 	if cpIsMoac {
@@ -645,14 +700,4 @@ func CheckAndSetControlPlane() error {
 		return fmt.Errorf("failed to setup config control plane to %s", cpValue)
 	}
 	return nil
-}
-
-func IsControlPlaneMcp() bool {
-	//FIXME should we assert if not moac or mcp2 ?
-	return e2e_config.GetConfig().ControlPlane == common.CpMcp2
-}
-
-func IsControlPlaneMoac() bool {
-	//FIXME should we assert if not moac or mcp2 ?
-	return e2e_config.GetConfig().ControlPlane == common.CpMoac
 }

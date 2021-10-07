@@ -152,7 +152,7 @@ func AfterSuiteCleanup() {
 //  2) that finalizers DO NOT EXIST for pools with no replicas (used size == 0)
 //  with timeout to allow MOAC state sync.
 func CheckMsPoolFinalizers() error {
-	if IsControlPlaneMcp() {
+	if common.IsControlPlaneMcp() {
 		// Finalizers do not need to be checked with MCP deployments as finalizers
 		// are not added and removed when volumes/replicas are created or removed
 		return nil
@@ -212,9 +212,9 @@ func ResourceCheck() error {
 	}
 
 	//FIXME: MCP temporary do not check MSVs
-	if !IsControlPlaneMcp() {
+	if !common.IsControlPlaneMcp() {
 		// Mayastor volumes
-		msvs, err := custom_resources.ListMsVols()
+		msvs, err := ListMsvs()
 		if err != nil {
 			errorMsg += fmt.Sprintf("%s %v", errorMsg, err)
 		} else {

@@ -6,24 +6,49 @@ import java.util.concurrent.TimeUnit
 // On-demand E2E infra configuration
 // https://mayadata.atlassian.net/wiki/spaces/MS/pages/247332965/Test+infrastructure#On-Demand-E2E-K8S-Clusters
 
-def e2e_build_cluster_job='k8s-build-cluster' // Jenkins job to build cluster
-def e2e_destroy_cluster_job='k8s-destroy-cluster' // Jenkins job to destroy cluster
-// Environment to run e2e test in (job param of $e2e_build_cluster_job)
-def e2e_environment="hcloud-kubeadm"
-// Global variable to pass current k8s job between stages
-def test_tag=""
-// Tests Queue
-LinkedBlockingQueue tests_queue = [] as LinkedBlockingQueue
-// Failed tests
-LinkedBlockingQueue failed_tests = [] as LinkedBlockingQueue
+def e2e_params = [
+    // Tests Queue
+    tests_queue : [] as LinkedBlockingQueue,
+    // Failed Tests Queue
+    failed_tests_queue : [] as LinkedBlockingQueue,
+    // Artifacts stash name queue
+    artefacts_stash_queue : [] as LinkedBlockingQueue,
+    // Junit stash name queue
+    junit_stash_queue : [] as LinkedBlockingQueue,
 
-e2e_image_tag='nightly-stable'
-e2e_reports_dir='artifacts/reports/'
-e2e_test_profile = 'nightly-stable'
+    // Jenkins job to build cluster
+    e2e_build_cluster_job : 'k8s-build-cluster',
+    // Jenkins job to destroy cluster
+    e2e_destroy_cluster_job : 'k8s-destroy-cluster',
+    // Environment to run e2e test in (job param of e2e_build_cluster_job)
+    e2e_environment : "hcloud-kubeadm",
+
+    // Mayastor image tag - image tag for testing.
+    e2e_image_tag : '',
+
+    // reports directory
+    e2e_reports_dir : 'artifacts/reports/',
+    // Test profile
+    e2e_test_profile : 'hc1-nightly',
+
+    // Xray: send report
+    xray_send_report : true,
+    // Xray: test plan
+    xray_test_plan : 'MQ-2184',
+
+    publish_tag: 'hc1-nightly',
+]
+
+// Environment to run e2e test in (job param of $e2e_build_cluster_job)
+def e2e_environment = e2e_params['e2e_environment']
 
 String cron_schedule = "H 0 * * *"
-xray_send_report=true
-xray_test_plan='MQ-1482'
+
+def Common() {
+    def common = load "./pipelines/common/common.groovy"
+    return common
+}
+
 
 pipeline {
   agent none
@@ -31,19 +56,22 @@ pipeline {
     timeout(time: 23, unit: 'HOURS')
     buildDiscarder(logRotator(numToKeepStr: '365', artifactNumToKeepStr: '365'))
   }
-//  triggers {
-//    cron(cron_schedule)
-//  }
+  triggers {
+    cron(cron_schedule)
+  }
   stages {
     stage('build docker images') {
       agent { label 'nixos-mayastor' }
       steps {
         script {
           common = load "./pipelines/common/common.groovy"
+          // Common functions use e2e_image-tag so set that up
+          // as the test tag
+          e2e_params['e2e_image_tag'] = 'hc1-' + common.GetTestTag()
           parms = [
             mayastorBranch : 'develop',
             mcpBranch : 'develop',
-            test_tag : 'mcp-' + common.GetTestTag()
+            test_tag : e2e_params['e2e_image_tag']
             ]
           common.BuildMCPImages(parms)
         }
@@ -57,5 +85,112 @@ pipeline {
         }
       }
     }//stage build docker images
+    stage('build tests queue')  {
+        agent { label 'nixos' }
+        steps {
+            script {
+                Common().PopulateTestQueue(e2e_params)
+            }
+        }
+    }
+    stage('test') {
+        parallel {
+            stage('run e2e part1') {
+                agent { label 'nixos' }
+                environment {
+                    KUBECONFIG = "${env.WORKSPACE}/${e2e_environment}/modules/k8s/secrets/admin.conf"
+                    RUN_UUID = UUID.randomUUID().toString()
+                }
+                steps {
+                    script {
+                            Common().RunParallelStage(e2e_params)
+                    }
+                }
+                post {
+                    always {
+                        script {
+                            Common().PostParallelStage(e2e_params, "${RUN_UUID}")
+                        }
+                    }
+                }//post
+            }//stage 'run e2e part1'
+            stage('run e2e part2') {
+                agent { label 'nixos' }
+                environment {
+                    KUBECONFIG = "${env.WORKSPACE}/${e2e_environment}/modules/k8s/secrets/admin.conf"
+                    RUN_UUID = UUID.randomUUID().toString()
+                }
+                steps {
+                    script {
+                            Common().RunParallelStage(e2e_params)
+                    }
+                }
+                post {
+                    always {
+                        script {
+                            Common().PostParallelStage(e2e_params, "${RUN_UUID}")
+                        }
+                    }
+                }//post
+            }//stage 'run e2e part2'
+            stage('run e2e part3') {
+                agent { label 'nixos' }
+                environment {
+                    KUBECONFIG = "${env.WORKSPACE}/${e2e_environment}/modules/k8s/secrets/admin.conf"
+                    RUN_UUID = UUID.randomUUID().toString()
+                }
+                steps {
+                    script {
+                            Common().RunParallelStage(e2e_params)
+                    }
+                }
+                post {
+                    always {
+                        script {
+                            Common().PostParallelStage(e2e_params, "${RUN_UUID}")
+                        }
+                    }
+                }//post
+           }//stage 'run e2e part3'
+        }//parallel
+    }//stage 'test'
+    stage('archive artifacts'){
+        agent { label 'nixos' }
+        steps {
+            script{
+                Common().ParallelArchiveArtefacts(e2e_params)
+            }
+        }
+    }
+    stage('handle junit results'){
+        agent { label 'nixos' }
+        steps {
+            script{
+                Common().ParallelJunit(e2e_params)
+            }
+        }
+    }
+    stage('check failed tests'){
+        steps {
+            script{
+                def failed_tests_queue = e2e_params['failed_tests_queue']
+                if (failed_tests_queue.size() > 0) {
+                    error("The following tests failed: " + failed_tests_queue)
+                }
+            }
+        }
+    }
+    stage('push images') {
+      agent { label 'nixos-mayastor' }
+      steps {
+        script{
+            def test_tag = e2e_params['e2e_image_tag']
+            def publish_tag = e2e_params['publish_tag']
+            // on success re-tag images and push to CI registry and DockerHub
+            sh "./scripts/re-tag-images.sh --src-tag ${test_tag} --alias-tag ${publish_tag}"
+        }
+// For now do not push images to dockerhub
+      }
+    }//stage push images
   }//stages
 }

@@ -113,7 +113,7 @@ if [ -n "$MCP_DIR" ]; then
         && mkdir -p "$workdir/mcp/scripts" \
         && cp scripts/generate-deploy-yamls.sh "$workdir/mcp/scripts" \
         && cp -R chart "$workdir/mcp" \
-        && nix-shell --run "cargo build --release -p kubectl-mayastor" \
+        && nix-shell --run "cargo build --release -p kubectl-plugin" \
         && mkdir -p "$workdir/mcp/target/release" \
         && cp target/release/kubectl-mayastor "$workdir/mcp/target/release" \
         && mkdir -p "$workdir/mcp/control-plane/rest/openapi-specs" \
@@ -124,6 +124,10 @@ if [ -n "$MCP_DIR" ]; then
     # FIXME: dangling CRD yaml files break deployment using helm
     pushd "$workdir" \
         && rm -f chart/crds/* \
+        && popd
+    # FIXME: remove moac yaml files which are pulled in from mayastor
+    pushd "$workdir" \
+        && find chart/ -name moac\*.yaml -print | xargs rm -f \
         && popd
 fi
 

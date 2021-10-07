@@ -5,7 +5,6 @@ import (
 	"strings"
 	"time"
 
-	"mayastor-e2e/common/custom_resources"
 	agent "mayastor-e2e/common/e2e-agent"
 	"mayastor-e2e/common/mayastorclient"
 
@@ -163,7 +162,7 @@ func ExcludeNexusReplica(nexusIP string, uuid string) (bool, error) {
 	var found bool
 	for ix := 0; ix < (timeOut-1)/sleepTime; ix++ {
 		found = false
-		replicas, err := custom_resources.GetMsVolReplicas(uuid)
+		replicas, err := GetMsvReplicas(uuid)
 		if err != nil {
 			return false, fmt.Errorf("Failed to get replicas, err=%v", err)
 		}
@@ -184,7 +183,7 @@ func ExcludeNexusReplica(nexusIP string, uuid string) (bool, error) {
 	// wait for the msv to become healthy - now rebuilt with a non-nexus replica
 	state := ""
 	for ix := 0; ix < (timeOut-1)/sleepTime; ix++ {
-		state, err = custom_resources.GetMsVolState(uuid)
+		state, err = GetMsvState(uuid)
 		if err != nil {
 			return false, fmt.Errorf("Failed to get state, err=%v", err)
 		}

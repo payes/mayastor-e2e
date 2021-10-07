@@ -34,6 +34,9 @@ const (
 
 	// EventSourceClassEnumResouceDashMonitor captures enum value "resouce-monitor"
 	EventSourceClassEnumResouceDashMonitor EventSourceClassEnum = "resouce-monitor"
+
+	// EventSourceClassEnumTestDashConductor captures enum value "test-conductor"
+	EventSourceClassEnumTestDashConductor EventSourceClassEnum = "test-conductor"
 )
 
 // for schema
@@ -41,7 +44,7 @@ var eventSourceClassEnumEnum []interface{}
 
 func init() {
 	var res []EventSourceClassEnum
-	if err := json.Unmarshal([]byte(`["workload-monitor","log-monitor","resouce-monitor"]`), &res); err != nil {
+	if err := json.Unmarshal([]byte(`["workload-monitor","log-monitor","resouce-monitor","test-conductor"]`), &res); err != nil {
 		panic(err)
 	}
 	for _, v := range res {

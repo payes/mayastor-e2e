@@ -86,20 +86,11 @@ func (impl *putTestPlanImpl) Handle(params test_director.PutTestPlanByIDParams) 
 		jt, err := connectors.GetJiraTaskDetails(id)
 		if jt.Fields.IssueType.Name != "Test Plan" {
 			log.Errorf("Jira key: %s issue type: %s is not a Test Plan", jt.Key, jt.Fields.IssueType.Name)
-			i := int64(1)
-			return test_director.NewPutTestPlanByIDBadRequest().WithPayload(&models.RequestOutcome{
-				Details:       err.Error(),
-				ItemsAffected: &i,
-				Result:        models.RequestOutcomeResultREFUSED,
-			})
+			return testPlanBadRequest(err)
 		}
 		if err != nil {
-			i := int64(1)
-			return test_director.NewPutTestPlanByIDBadRequest().WithPayload(&models.RequestOutcome{
-				Details:       err.Error(),
-				ItemsAffected: &i,
-				Result:        models.RequestOutcomeResultREFUSED,
-			})
+			log.Error(err)
+			return testPlanBadRequest(err)
 		}
 
 		plan = &models.TestPlan{
@@ -123,12 +114,16 @@ func (impl *putTestPlanImpl) Handle(params test_director.PutTestPlanByIDParams) 
 	}
 	err := planInterface.Set(models.JiraKey(id), *plan)
 	if err != nil {
-		i := int64(1)
-		return test_director.NewPutTestPlanByIDBadRequest().WithPayload(&models.RequestOutcome{
-			Details:       err.Error(),
-			ItemsAffected: &i,
-			Result:        models.RequestOutcomeResultREFUSED,
-		})
+		return testPlanBadRequest(err)
 	}
 	return test_director.NewPutTestPlanByIDOK().WithPayload(plan)
+}
+
+func testPlanBadRequest(err error) middleware.Responder {
+	i := int64(1)
+	return test_director.NewPutTestPlanByIDBadRequest().WithPayload(&models.RequestOutcome{
+		Details:       err.Error(),
+		ItemsAffected: &i,
+		Result:        models.RequestOutcomeResultREFUSED,
+	})
 }

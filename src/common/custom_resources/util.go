@@ -199,17 +199,17 @@ func GetMsVol(volName string) (*v1alpha1Api.MayastorVolume, error) {
 	return &msv, err
 }
 
-func UpdateMsVol(msvIn *v1alpha1Api.MayastorVolume) (*v1alpha1Api.MayastorVolume, error) {
+func updateMsVol(msvIn *v1alpha1Api.MayastorVolume) (*v1alpha1Api.MayastorVolume, error) {
 	msvOut, err := volClientSet.MayastorVolumes().Update(context.TODO(), msvIn, metaV1.UpdateOptions{})
 	return msvOut, err
 }
 
-func DeleteMsVol(volName string) error {
+func CRD_DeleteMsVol(volName string) error {
 	err := volClientSet.MayastorVolumes().Delete(context.TODO(), volName, metaV1.DeleteOptions{})
 	return err
 }
 
-func ListMsVols() ([]v1alpha1Api.MayastorVolume, error) {
+func CRD_ListMsVols() ([]v1alpha1Api.MayastorVolume, error) {
 	volList, err := volClientSet.MayastorVolumes().List(context.TODO(), metaV1.ListOptions{})
 	if err != nil {
 		return []v1alpha1Api.MayastorVolume{}, err
@@ -220,7 +220,7 @@ func ListMsVols() ([]v1alpha1Api.MayastorVolume, error) {
 // Helper functions
 
 // GetMsVolState convenience function to retrieve the volume state.
-func GetMsVolState(volName string) (string, error) {
+func CRD_GetMsVolState(volName string) (string, error) {
 	msv, err := GetMsVol(volName)
 	if err == nil {
 		return msv.Status.State, nil
@@ -229,7 +229,7 @@ func GetMsVolState(volName string) (string, error) {
 }
 
 // GetMsVolReplicas convenience function to retrieve the list of replicas comprising the volume.
-func GetMsVolReplicas(volName string) ([]v1alpha1Api.Replica, error) {
+func CRD_GetMsVolReplicas(volName string) ([]v1alpha1Api.Replica, error) {
 	msv, err := GetMsVol(volName)
 	if err != nil {
 		return nil, err
@@ -238,18 +238,18 @@ func GetMsVolReplicas(volName string) ([]v1alpha1Api.Replica, error) {
 }
 
 // UpdateMsVolReplicaCount update the number of replicas in a volume.
-func UpdateMsVolReplicaCount(volName string, replicaCount int) error {
+func CRD_UpdateMsVolReplicaCount(volName string, replicaCount int) error {
 	msv, err := GetMsVol(volName)
 	if err != nil {
 		return err
 	}
 	msv.Spec.ReplicaCount = replicaCount
-	_, err = UpdateMsVol(msv)
+	_, err = updateMsVol(msv)
 	return err
 }
 
 // GetMsVolNexusChildren convenience function to retrieve the nexus children of a volume.
-func GetMsVolNexusChildren(volName string) ([]v1alpha1Api.NexusChild, error) {
+func CRD_GetMsVolNexusChildren(volName string) ([]v1alpha1Api.NexusChild, error) {
 	msv, err := GetMsVol(volName)
 	if err != nil {
 		return nil, err
@@ -259,7 +259,7 @@ func GetMsVolNexusChildren(volName string) ([]v1alpha1Api.NexusChild, error) {
 
 // GetMsVolNexusState returns the nexus state from the MSV.
 // An error is returned if the nexus state cannot be retrieved.
-func GetMsVolNexusState(uuid string) (string, error) {
+func CRD_GetMsVolNexusState(uuid string) (string, error) {
 	msv, err := GetMsVol(uuid)
 	if err != nil {
 		return "", err
@@ -269,7 +269,7 @@ func GetMsVolNexusState(uuid string) (string, error) {
 
 // IsMsVolPublished returns true if the volume is published.
 // A volume is published if the "targetNodes" field exists in the MSV.
-func IsMsVolPublished(uuid string) bool {
+func CRD_IsMsVolPublished(uuid string) bool {
 	msv, err := GetMsVol(uuid)
 	if err == nil {
 		return 1 == len(msv.Status.TargetNodes)
@@ -278,7 +278,7 @@ func IsMsVolPublished(uuid string) bool {
 }
 
 // IsMsVolDeleted check for a deleted Mayastor Volume, the object does not exist if deleted
-func IsMsVolDeleted(uuid string) bool {
+func CRD_IsMsVolDeleted(uuid string) bool {
 	msv, err := GetMsVol(uuid)
 	if msv.Status.State == "destroyed" {
 		return false
@@ -290,11 +290,11 @@ func IsMsVolDeleted(uuid string) bool {
 }
 
 // CheckForMsVols checks if any mayastor volumes exists
-func CheckForMsVols() (bool, error) {
+func CRD_CheckForMsVols() (bool, error) {
 	log.Log.Info("CheckForMsVols")
 	foundResources := false
 
-	msvs, err := ListMsVols()
+	msvs, err := CRD_ListMsVols()
 	if err == nil && msvs != nil && len(msvs) != 0 {
 		log.Log.Info("CheckForVolumeResources: found MayastorVolumes",
 			"MayastorVolumes", msvs)
@@ -304,9 +304,9 @@ func CheckForMsVols() (bool, error) {
 }
 
 // CheckAllMsVolsAreHealthy checks if all existing mayastor volumes are in healthy state
-func CheckAllMsVolsAreHealthy() error {
+func CRD_CheckAllMsVolsAreHealthy() error {
 	allHealthy := true
-	msvs, err := ListMsVols()
+	msvs, err := CRD_ListMsVols()
 	if err == nil && msvs != nil && len(msvs) != 0 {
 		for _, msv := range msvs {
 			if msv.Status.State != "healthy" {

@@ -195,15 +195,15 @@ func DeleteAllPvs() (int, error) {
 
 // DeleteAllMsvs Make best attempt to delete MayastorVolumes
 func DeleteAllMsvs() (int, error) {
-	//FIXME: MCP temporary do not check MSVs
-	if IsControlPlaneMcp() {
+	// For now on control plane 2 we cannot/should not delete MSVs
+	if common.IsControlPlaneMcp() {
 		return 0, nil
 	}
 
 	// If after deleting PVCs and PVs Mayastor volumes are leftover
 	// try cleaning them up explicitly
 
-	msvs, err := custom_resources.ListMsVols()
+	msvs, err := ListMsvs()
 	if err != nil {
 		// This function may be called by AfterSuite by uninstall test so listing MSVs may fail correctly
 		logf.Log.Info("DeleteAllMsvs: list MSVs failed.", "Error", err)
@@ -211,9 +211,9 @@ func DeleteAllMsvs() (int, error) {
 	}
 	if err == nil && msvs != nil && len(msvs) != 0 {
 		for _, msv := range msvs {
-			logf.Log.Info("DeleteAllMsvs: deleting MayastorVolume", "MayastorVolume", msv.GetName())
-			if delErr := custom_resources.DeleteMsVol(msv.GetName()); delErr != nil {
-				logf.Log.Info("DeleteAllMsvs: failed deleting MayastorVolume", "MayastorVolume", msv.GetName(), "error", delErr)
+			logf.Log.Info("DeleteAllMsvs: deleting MayastorVolume", "MayastorVolume", msv.Name)
+			if delErr := DeleteMsv(msv.Name); delErr != nil {
+				logf.Log.Info("DeleteAllMsvs: failed deleting MayastorVolume", "MayastorVolume", msv.Name, "error", delErr)
 			}
 		}
 	}
@@ -221,7 +221,7 @@ func DeleteAllMsvs() (int, error) {
 	numMsvs := 0
 	// Wait 2 minutes for resources to be deleted
 	for attempts := 0; attempts < 120; attempts++ {
-		msvs, err := custom_resources.ListMsVols()
+		msvs, err := ListMsvs()
 		if err == nil && msvs != nil {
 			numMsvs = len(msvs)
 			if numMsvs == 0 {
@@ -311,7 +311,7 @@ func DeleteAllPools() bool {
 		logf.Log.Info("DeleteAllPools: deleting MayastorPools")
 		for _, pool := range pools {
 			logf.Log.Info("DeleteAllPools: deleting", "pool", pool.GetName())
-			if !IsControlPlaneMcp() {
+			if !common.IsControlPlaneMcp() {
 				finalizers := pool.GetFinalizers()
 				if finalizers != nil {
 					logf.Log.Info("DeleteAllPools: found finalizers on pool ", "pool", pool.GetName(), "finalizers", finalizers)

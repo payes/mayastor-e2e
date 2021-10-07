@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	log "github.com/sirupsen/logrus"
+	"strings"
 	"test-director/connectors"
 	"test-director/models"
 	"time"
@@ -39,12 +40,20 @@ func (r *EventCache) GetAll() []*models.Event {
 }
 
 func (r *EventCache) Set(key string, data models.Event) error {
-	setupSlackNotification(&data.EventSpec)
 	b, err := json.Marshal(data)
 	if err != nil {
 		return err
 	}
+	if *data.Class == models.EventClassEnumFAIL {
+		tr, err := runInterface.Get(*data.SourceInstance)
+		if err != nil {
+			log.Errorf("failed to get test run ID: %s after failed event: %s", *data.SourceInstance, key)
+		} else {
+			FailTestRun(tr)
+		}
+	}
 	r.client.Set(key, b, -1)
+	setupSlackNotification(&data.EventSpec)
 	return nil
 }
 
@@ -57,14 +66,14 @@ func InitEventCache() {
 func setupSlackNotification(data *models.EventSpec) {
 	sc := connectors.SlackClient{
 		WebHookUrl: "https://hooks.slack.com/services/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",
-		UserName:   *data.SourceInstance,
+		UserName:   string(*data.SourceClass),
 		Channel:    "#test_director",
 		TimeOut:    10 * time.Second,
 	}
 	sn := connectors.SlackJobNotification{
-		Details:   *data.Message,
+		Details:   *data.Message + " " + strings.Join(data.Data, ", "),
 		IconEmoji: ":ghost:",
-		Text:      string(*data.Class) + " - " + data.Resource,
+		Text:      string(*data.Class) + " - TestRun ID: " + *data.SourceInstance,
 	}
 	switch *data.Class {
 	case models.EventClassEnumFAIL:
