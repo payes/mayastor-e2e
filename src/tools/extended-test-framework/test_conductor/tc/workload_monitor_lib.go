@@ -5,10 +5,10 @@ import (
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	"mayastor-e2e/tools/extended-test-framework/test_conductor/wm/client"
-	"mayastor-e2e/tools/extended-test-framework/test_conductor/wm/client/workload_monitor"
+	"mayastor-e2e/tools/extended-test-framework/common/wm/client"
+	"mayastor-e2e/tools/extended-test-framework/common/wm/client/workload_monitor"
 
-	"mayastor-e2e/tools/extended-test-framework/test_conductor/wm/models"
+	"mayastor-e2e/tools/extended-test-framework/common/wm/models"
 
 	"mayastor-e2e/tools/extended-test-framework/common"
 	"mayastor-e2e/tools/extended-test-framework/common/k8sclient"

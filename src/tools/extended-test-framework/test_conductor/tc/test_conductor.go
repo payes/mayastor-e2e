@@ -7,8 +7,8 @@ import (
 
 	"mayastor-e2e/tools/extended-test-framework/common"
 	"mayastor-e2e/tools/extended-test-framework/common/k8sclient"
-	td "mayastor-e2e/tools/extended-test-framework/test_conductor/td/client"
-	wm "mayastor-e2e/tools/extended-test-framework/test_conductor/wm/client"
+	td "mayastor-e2e/tools/extended-test-framework/common/td/client"
+	wm "mayastor-e2e/tools/extended-test-framework/common/wm/client"
 )
 
 // TestConductor object for test conductor context

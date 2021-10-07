@@ -10,21 +10,21 @@ import (
 
 	tc "mayastor-e2e/tools/extended-test-framework/test_conductor/tc"
 
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
+	"github.com/go-openapi/strfmt"
 	storageV1 "k8s.io/api/storage/v1"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func NonSteadyStateTest(testConductor *tc.TestConductor) (testRunId string, failmessage string, err error) {
+func NonSteadyStateTest(testConductor *tc.TestConductor) (testRunId strfmt.UUID, failmessage string, err error) {
 	const testName = "non-steady-state"
 
 	// the test run ID is the same as the uuid of the test conductor pod
-	testPodUid, err := k8sclient.GetPod("test-conductor", common.EtfwNamespace)
+	tcpod, err := k8sclient.GetPod("test-conductor", common.EtfwNamespace)
 	if err != nil {
 		err = fmt.Errorf("failed to get tc pod uid, error: %v\n", err)
 		return
 	}
-	testRunId = testPodUid.String()
+	testRunId = strfmt.UUID(tcpod.ObjectMeta.UID)
 
 	if testConductor.Config.Install {
 		if err = tc.InstallMayastor(testConductor.Config.PoolDevice); err != nil {
@@ -48,7 +48,7 @@ func NonSteadyStateTest(testConductor *tc.TestConductor) (testRunId string, fail
 		return
 	}
 
-	if err = SendTestPreparing(testConductor); err != nil {
+	if err = SendEventTestPreparing(testConductor, testRunId); err != nil {
 		err = fmt.Errorf("failed to inform test director of preparation event, error: %v", err)
 		return
 	}
@@ -59,7 +59,7 @@ func NonSteadyStateTest(testConductor *tc.TestConductor) (testRunId string, fail
 		return
 	}
 
-	if err = tc.SendRunToDo(
+	if err = common.SendTestRunToDo(
 		testConductor.TestDirectorClient,
 		testRunId,
 		"",
@@ -124,12 +124,12 @@ func NonSteadyStateTest(testConductor *tc.TestConductor) (testRunId string, fail
 		return
 	}
 
-	if err = SendTestStarted(testConductor); err != nil {
+	if err = SendEventTestStarted(testConductor, testRunId); err != nil {
 		err = fmt.Errorf("failed to inform test director of start event, error: %v", err)
 		return
 	}
 
-	if err = tc.SendRunStarted(
+	if err = common.SendTestRunStarted(
 		testConductor.TestDirectorClient,
 		testRunId,
 		"",
