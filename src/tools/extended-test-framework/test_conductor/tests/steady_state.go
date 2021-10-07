@@ -4,25 +4,26 @@ import (
 	"fmt"
 	"mayastor-e2e/tools/extended-test-framework/common"
 	"mayastor-e2e/tools/extended-test-framework/common/k8sclient"
+	tc "mayastor-e2e/tools/extended-test-framework/test_conductor/tc"
 	"time"
 
-	tc "mayastor-e2e/tools/extended-test-framework/test_conductor/tc"
+	"github.com/go-openapi/strfmt"
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	storageV1 "k8s.io/api/storage/v1"
 )
 
-func SteadyStateTest(testConductor *tc.TestConductor) (testRunId string, failmessage string, err error) {
+func SteadyStateTest(testConductor *tc.TestConductor) (testRunId strfmt.UUID, failmessage string, err error) {
 	const testName = "steady-state"
 
 	// the test run ID is the same as the uuid of the test conductor pod
-	testPodUid, err := k8sclient.GetPod("test-conductor", common.EtfwNamespace)
+	tcpod, err := k8sclient.GetPod("test-conductor", common.EtfwNamespace)
 	if err != nil {
 		err = fmt.Errorf("failed to get tc pod uid, error: %v\n", err)
 		return
 	}
-	testRunId = testPodUid.String()
+	testRunId = strfmt.UUID(tcpod.ObjectMeta.UID)
 
 	if testConductor.Config.Install {
 		if err = tc.InstallMayastor(testConductor.Config.PoolDevice); err != nil {
@@ -46,7 +47,7 @@ func SteadyStateTest(testConductor *tc.TestConductor) (testRunId string, failmes
 		return
 	}
 
-	if err = SendTestPreparing(testConductor); err != nil {
+	if err = SendEventTestPreparing(testConductor, testRunId); err != nil {
 		err = fmt.Errorf("failed to inform test director of preparation event, error: %v", err)
 		return
 	}
@@ -57,11 +58,12 @@ func SteadyStateTest(testConductor *tc.TestConductor) (testRunId string, failmes
 		return
 	}
 
-	if err = tc.SendRunToDo(
+	if err = common.SendTestRunToDo(
 		testConductor.TestDirectorClient,
 		testRunId,
 		"",
 		testConductor.Config.Test); err != nil {
+
 		err = fmt.Errorf("failed to inform test director of test start, error: %v", err)
 		return
 	}
@@ -74,7 +76,9 @@ func SteadyStateTest(testConductor *tc.TestConductor) (testRunId string, failmes
 		WithNamespace(k8sclient.NSDefault).
 		WithVolumeBindingMode(mode).
 		BuildAndCreate(); err != nil {
+
 		err = fmt.Errorf("failed to create sc %v", err)
+		logf.Log.Info("Created storage class failed", "error", err.Error())
 		return
 	}
 	logf.Log.Info("Created storage class", "sc", sc_name)
@@ -122,12 +126,12 @@ func SteadyStateTest(testConductor *tc.TestConductor) (testRunId string, failmes
 		return
 	}
 
-	if err = SendTestStarted(testConductor); err != nil {
+	if err = SendEventTestStarted(testConductor, testRunId); err != nil {
 		err = fmt.Errorf("failed to inform test director of start event, error: %v", err)
 		return
 	}
 
-	if err = tc.SendRunStarted(
+	if err = common.SendTestRunStarted(
 		testConductor.TestDirectorClient,
 		testRunId,
 		"",

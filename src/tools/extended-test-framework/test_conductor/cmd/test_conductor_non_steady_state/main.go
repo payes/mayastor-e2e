@@ -22,10 +22,9 @@ func main() {
 
 	testRunId, failmessage, err := tests.NonSteadyStateTest(testConductor)
 	if err != nil {
+		logf.Log.Info("failed to run test", "error", err)
 		if failmessage == "" {
 			failmessage = err.Error()
-		} else {
-			logf.Log.Info("failed to run test", "error", err)
 		}
 	}
 	err = tests.ReportResult(testConductor, failmessage, testRunId)

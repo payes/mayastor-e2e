@@ -1,5 +1,3 @@
-// This file is safe to edit. Once it exists it will not be overwritten
-
 package list
 
 import (
@@ -10,17 +8,20 @@ import (
 	"mayastor-e2e/tools/extended-test-framework/workload_monitor/swagger/models"
 )
 
+type WorkloadListItem struct {
+	Wl  *models.Workload
+	Rid strfmt.UUID
+}
+
 type WorkloadList struct {
-	registrant  *strfmt.UUID
 	mu          sync.Mutex
-	WorkloadMap map[strfmt.UUID]map[strfmt.UUID]*models.Workload
+	WorkloadMap map[strfmt.UUID]map[strfmt.UUID]WorkloadListItem
 }
 
 var gWorkloadList WorkloadList
 
 func init() {
-	gWorkloadList.WorkloadMap = make(map[strfmt.UUID]map[strfmt.UUID]*models.Workload)
-	gWorkloadList.registrant = nil
+	gWorkloadList.WorkloadMap = make(map[strfmt.UUID]map[strfmt.UUID]WorkloadListItem)
 }
 
 func Lock() {
@@ -32,25 +33,19 @@ func Unlock() {
 }
 
 func AddToWorkloadList(pwl *models.Workload, rid strfmt.UUID, wid strfmt.UUID) {
-	if gWorkloadList.registrant == nil {
-		var r = rid
-		gWorkloadList.registrant = &r
-	}
 	if _, found := gWorkloadList.WorkloadMap[rid]; !found {
-		gWorkloadList.WorkloadMap[rid] = make(map[strfmt.UUID]*models.Workload)
+		gWorkloadList.WorkloadMap[rid] = make(map[strfmt.UUID]WorkloadListItem)
 	}
-	gWorkloadList.WorkloadMap[rid][wid] = pwl
-}
-
-func GetRegistrant() *strfmt.UUID {
-	return gWorkloadList.registrant
+	wli := WorkloadListItem{}
+	wli.Wl = pwl
+	wli.Rid = rid
+	gWorkloadList.WorkloadMap[rid][wid] = wli
 }
 
 func GetWorkload(rid strfmt.UUID, wid strfmt.UUID) *models.Workload {
 	if wlmap, found := gWorkloadList.WorkloadMap[rid]; found {
-		if pwl, found := wlmap[wid]; found {
-			wl := *pwl
-			return &wl
+		if wli, found := wlmap[wid]; found {
+			return wli.Wl
 		}
 	}
 	return nil
@@ -74,8 +69,8 @@ func DeleteWorkloads(rid strfmt.UUID) int64 {
 func GetWorkloadListByRegistrant(rid strfmt.UUID) []*models.Workload {
 	var list []*models.Workload
 	if wlmap, found := gWorkloadList.WorkloadMap[rid]; found {
-		for _, wl := range wlmap {
-			list = append(list, wl)
+		for _, wli := range wlmap {
+			list = append(list, wli.Wl)
 		}
 	}
 	return list
@@ -85,8 +80,19 @@ func GetWorkloadList() []*models.Workload {
 	var list []*models.Workload
 
 	for _, wlmap := range gWorkloadList.WorkloadMap {
-		for _, wl := range wlmap {
-			list = append(list, wl)
+		for _, wli := range wlmap {
+			list = append(list, wli.Wl)
+		}
+	}
+	return list
+}
+
+func GetWorkloadItemList() []WorkloadListItem {
+	var list []WorkloadListItem
+
+	for _, wlmap := range gWorkloadList.WorkloadMap {
+		for _, wli := range wlmap {
+			list = append(list, wli)
 		}
 	}
 	return list
@@ -94,8 +100,8 @@ func GetWorkloadList() []*models.Workload {
 
 func DeleteWorkloadById(ID strfmt.UUID) {
 	for _, wlmap := range gWorkloadList.WorkloadMap {
-		for wid, wl := range wlmap {
-			if wl.ID == ID {
+		for wid, wli := range wlmap {
+			if wli.Wl.ID == ID {
 				delete(wlmap, wid)
 			}
 		}

@@ -32,6 +32,7 @@ while [ "$#" -gt 0 ]; do
                 echo "unrecognized test"
                 help
                 exit 1
+		;;
         esac
       test=$1
       ;;
@@ -42,6 +43,11 @@ while [ "$#" -gt 0 ]; do
     -h)
       help
       exit 0
+      ;;
+    *)
+      echo "unrecognized parameter"
+      help
+      exit 1
       ;;
   esac
   shift

@@ -17,11 +17,13 @@ import (
 
 	"mayastor-e2e/tools/extended-test-framework/common/k8sclient"
 	wlist "mayastor-e2e/tools/extended-test-framework/workload_monitor/list"
+
 	"mayastor-e2e/tools/extended-test-framework/workload_monitor/swagger/models"
 	"mayastor-e2e/tools/extended-test-framework/workload_monitor/swagger/restapi"
 	"mayastor-e2e/tools/extended-test-framework/workload_monitor/swagger/restapi/operations"
 
-	"mayastor-e2e/tools/extended-test-framework/workload_monitor/swagger/client"
+	td "mayastor-e2e/tools/extended-test-framework/common/td/client"
+	tdmodels "mayastor-e2e/tools/extended-test-framework/common/td/models"
 
 	"mayastor-e2e/tools/extended-test-framework/common"
 
@@ -30,7 +32,7 @@ import (
 )
 
 type WorkloadMonitor struct {
-	pTestDirectorClient *client.Etfw
+	pTestDirectorClient *td.Etfw
 	channel             chan int
 }
 
@@ -63,7 +65,11 @@ func (workloadMonitor *WorkloadMonitor) InstallSignalHandler() {
 func (workloadMonitor *WorkloadMonitor) WaitSignal() {
 	exitCode := <-workloadMonitor.channel
 	if exitCode != 0 { // abnormal termination
-		if err := SendEvent(workloadMonitor.pTestDirectorClient, "workload monitor terminated", "workload-monitor", current_registrant); err != nil {
+		if err := common.SendEventFail(
+			workloadMonitor.pTestDirectorClient,
+			*current_registrant,
+			"workload monitor terminated",
+			tdmodels.EventSourceClassEnumWorkloadDashMonitor); err != nil {
 			logf.Log.Info("failed to send", "error", err)
 		}
 	}
@@ -88,8 +94,8 @@ func NewWorkloadMonitor() (*WorkloadMonitor, error) {
 	logf.Log.Info("test-director", "pod IP", testDirectorPod.Status.PodIP)
 	testDirectorLoc := testDirectorPod.Status.PodIP + ":8080"
 
-	transportConfig := client.DefaultTransportConfig().WithHost(testDirectorLoc)
-	workloadMonitor.pTestDirectorClient = client.NewHTTPClientWithConfig(nil, transportConfig)
+	transportConfig := td.DefaultTransportConfig().WithHost(testDirectorLoc)
+	workloadMonitor.pTestDirectorClient = td.NewHTTPClientWithConfig(nil, transportConfig)
 
 	return &workloadMonitor, nil
 }
@@ -110,77 +116,82 @@ func (workloadMonitor *WorkloadMonitor) StartMonitor() {
 		// would suffer from this race issue.
 		// This will obviously add latency to REST calls from the test_conductor,
 		// but hopefully not problematically.
+
 		wlist.Lock()
-		if current_registrant == nil {
-			current_registrant = wlist.GetRegistrant()
-			if current_registrant != nil {
-				logf.Log.Info("Using registrant", "rid", *current_registrant)
-			}
-		}
-		if current_registrant != nil {
 
-			list := wlist.GetWorkloadListByRegistrant(*current_registrant)
+		list := wlist.GetWorkloadItemList()
 
-			for _, wl := range list {
-				for _, spec := range wl.WorkloadSpec.Violations {
-					switch spec {
-					case models.WorkloadViolationEnumRESTARTED:
-						pod, present, err := k8sclient.GetPodByUuid(string(wl.ID))
-						if err != nil {
-							logf.Log.Info("failed to get pod by UUID", "pod", wl.ID)
-						}
-						if present {
-							containerStatuses := pod.Status.ContainerStatuses
-							restartcount := int32(0)
-							for _, containerStatus := range containerStatuses {
-								if containerStatus.RestartCount != 0 {
-									if containerStatus.RestartCount > restartcount {
-										restartcount = containerStatus.RestartCount
-									}
-									logf.Log.Info(pod.Name, "restarts", containerStatus.RestartCount)
-									break
+		for _, wli := range list {
+			for _, spec := range wli.Wl.WorkloadSpec.Violations {
+				switch spec {
+				case models.WorkloadViolationEnumRESTARTED:
+					pod, present, err := k8sclient.GetPodByUuid(string(wli.Wl.ID))
+					if err != nil {
+						logf.Log.Info("failed to get pod by UUID", "pod", wli.Wl.ID)
+					}
+					if present {
+						containerStatuses := pod.Status.ContainerStatuses
+						restartcount := int32(0)
+						for _, containerStatus := range containerStatuses {
+							if containerStatus.RestartCount != 0 {
+								if containerStatus.RestartCount > restartcount {
+									restartcount = containerStatus.RestartCount
 								}
-							}
-							if restartcount != 0 {
-								message := fmt.Sprintf("pod %s restarted %d times", wl.Name, restartcount)
-								logf.Log.Info("restart", "message", message)
-								if err := SendEvent(workloadMonitor.pTestDirectorClient, message, string(wl.Name), current_registrant); err != nil {
-									logf.Log.Info("failed to send", "error", err)
-								} else {
-									wlist.DeleteWorkloadById(wl.ID)
-								}
+								logf.Log.Info(pod.Name, "restarts", containerStatus.RestartCount)
+								break
 							}
 						}
-					case models.WorkloadViolationEnumTERMINATED:
-						podstatus, present, err := k8sclient.GetPodStatus(string(wl.ID))
-						if err != nil {
-							logf.Log.Info("failed to get pod status", "error", err)
-						}
-						if present {
-							if podstatus == v1.PodFailed {
-								message := fmt.Sprintf("pod %s terminated", wl.Name)
-								logf.Log.Info("termination", "message", message)
-								if err := SendEvent(workloadMonitor.pTestDirectorClient, message, string(wl.Name), current_registrant); err != nil {
-									logf.Log.Info("failed to send", "error", err)
-								} else {
-									wlist.DeleteWorkloadById(wl.ID)
-								}
-							}
-						}
-					case models.WorkloadViolationEnumNOTPRESENT:
-						present, err := k8sclient.GetPodExists(string(wl.ID))
-						if err != nil {
-							fmt.Printf("failed to get pod status %s\n", wl.Name)
-						}
-						if !present {
-							message := fmt.Sprintf("pod %s absent", wl.Name)
-							logf.Log.Info("absent", "message", message)
-
-							if err := SendEvent(workloadMonitor.pTestDirectorClient, message, string(wl.Name), current_registrant); err != nil {
+						if restartcount != 0 {
+							message := fmt.Sprintf("pod %s restarted %d times", wli.Wl.Name, restartcount)
+							logf.Log.Info("restart", "message", message)
+							if err := common.SendEventFail(
+								workloadMonitor.pTestDirectorClient,
+								wli.Rid,
+								message,
+								tdmodels.EventSourceClassEnumWorkloadDashMonitor); err != nil {
 								logf.Log.Info("failed to send", "error", err)
 							} else {
-								wlist.DeleteWorkloadById(wl.ID)
+								wlist.DeleteWorkloadById(wli.Wl.ID)
 							}
+						}
+					}
+				case models.WorkloadViolationEnumTERMINATED:
+					podstatus, present, err := k8sclient.GetPodStatus(string(wli.Wl.ID))
+					if err != nil {
+						logf.Log.Info("failed to get pod status", "error", err)
+					}
+					if present {
+						if podstatus == v1.PodFailed {
+							message := fmt.Sprintf("pod %s terminated", wli.Wl.Name)
+							logf.Log.Info("termination", "message", message)
+							if err := common.SendEventFail(
+								workloadMonitor.pTestDirectorClient,
+								wli.Rid,
+								message,
+								tdmodels.EventSourceClassEnumWorkloadDashMonitor); err != nil {
+								logf.Log.Info("failed to send", "error", err)
+							} else {
+								wlist.DeleteWorkloadById(wli.Wl.ID)
+							}
+						}
+					}
+				case models.WorkloadViolationEnumNOTPRESENT:
+					present, err := k8sclient.GetPodExists(string(wli.Wl.ID))
+					if err != nil {
+						fmt.Printf("failed to get pod status %s\n", wli.Wl.Name)
+					}
+					if !present {
+						message := fmt.Sprintf("pod %s absent", wli.Wl.Name)
+						logf.Log.Info("absent", "message", message)
+
+						if err := common.SendEventFail(
+							workloadMonitor.pTestDirectorClient,
+							wli.Rid,
+							message,
+							tdmodels.EventSourceClassEnumWorkloadDashMonitor); err != nil {
+							logf.Log.Info("failed to send", "error", err)
+						} else {
+							wlist.DeleteWorkloadById(wli.Wl.ID)
 						}
 					}
 				}
