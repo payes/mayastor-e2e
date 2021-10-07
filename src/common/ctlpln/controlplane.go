@@ -59,7 +59,7 @@ var ifc ControlPlaneInterface
 
 var once sync.Once
 
-func GetControlPlane() ControlPlaneInterface {
+func getControlPlane() ControlPlaneInterface {
 	once.Do(func() {
 		if common.IsControlPlaneMoac() {
 			ifc = v0.MakeCP()
@@ -75,25 +75,105 @@ func GetControlPlane() ControlPlaneInterface {
 }
 
 func VolStateHealthy() string {
-	return GetControlPlane().VolStateHealthy()
+	return getControlPlane().VolStateHealthy()
 }
 
 func VolStateDegraded() string {
-	return GetControlPlane().VolStateDegraded()
-}
-
-func ChildStateOnline() string {
-	return GetControlPlane().ChildStateOnline()
-}
-
-func ChildStateDegraded() string {
-	return GetControlPlane().ChildStateDegraded()
+	return getControlPlane().VolStateDegraded()
 }
 
 func ChildStateUnknown() string {
-	return GetControlPlane().ChildStateUnknown()
+	return getControlPlane().ChildStateUnknown()
+}
+
+func ChildStateOnline() string {
+	return getControlPlane().ChildStateOnline()
+}
+
+func ChildStateDegraded() string {
+	return getControlPlane().ChildStateDegraded()
 }
 
 func ChildStateFaulted() string {
-	return GetControlPlane().ChildStateFaulted()
+	return getControlPlane().ChildStateFaulted()
+}
+
+func NexusStateUnknown() string {
+	return getControlPlane().NexusStateUnknown()
+}
+
+func NexusStateOnline() string {
+	return getControlPlane().NexusStateOnline()
+}
+
+func NexusStateDegraded() string {
+	return getControlPlane().NexusStateDegraded()
+}
+
+func NexusStateFaulted() string {
+	return getControlPlane().NexusStateFaulted()
+}
+
+//FIXME: MSV These functions are only guaranteed to
+// work correctly if invoked from k8stest/msv.go
+// which ensures that necessary setup functions
+// have been called
+// The issue is that for control plane v1 we need
+// node addresses and the k8stest pkg provides that.
+
+// GetMSV Get pointer to a mayastor volume custom resource
+// returns nil and no error if the msv is in pending state.
+func GetMSV(uuid string) (*common.MayastorVolume, error) {
+	return getControlPlane().GetMSV(uuid)
+}
+
+// GetMsvNodes Retrieve the nexus node hosting the Mayastor Volume,
+// and the names of the replica nodes
+// function asserts if the volume CR is not found.
+func GetMsvNodes(uuid string) (string, []string) {
+	return getControlPlane().GetMsvNodes(uuid)
+}
+
+func DeleteMsv(volName string) error {
+	return getControlPlane().DeleteMsv(volName)
+}
+
+func ListMsvs() ([]common.MayastorVolume, error) {
+	return getControlPlane().ListMsvs()
+}
+
+func SetMsvReplicaCount(uuid string, replicaCount int) error {
+	return getControlPlane().SetMsvReplicaCount(uuid, replicaCount)
+}
+
+func GetMsvState(uuid string) (string, error) {
+	return getControlPlane().GetMsvState(uuid)
+}
+
+func GetMsvReplicas(volName string) ([]common.Replica, error) {
+	return getControlPlane().GetMsvReplicas(volName)
+}
+
+func GetMsvNexusChildren(volName string) ([]common.NexusChild, error) {
+	return getControlPlane().GetMsvNexusChildren(volName)
+}
+
+func GetMsvNexusState(uuid string) (string, error) {
+	return getControlPlane().GetMsvNexusState(uuid)
+}
+
+func IsMsvPublished(uuid string) bool {
+	return getControlPlane().IsMsvPublished(uuid)
+}
+
+func IsMsvDeleted(uuid string) bool {
+	return getControlPlane().IsMsvDeleted(uuid)
+}
+
+func CheckForMsvs() (bool, error) {
+	return getControlPlane().CheckForMsvs()
+}
+
+func CheckAllMsvsAreHealthy() error {
+	return getControlPlane().CheckAllMsvsAreHealthy()
 }

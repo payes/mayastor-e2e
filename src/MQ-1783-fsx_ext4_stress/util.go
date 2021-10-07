@@ -160,7 +160,7 @@ func (c *fsxExt4StressConfig) verifyVolumeStateOverGrpcAndCrd() {
 	Expect(msv).ToNot(BeNil(), "got nil msv for %v", c.uuid)
 	nexusChildren := msv.Status.Nexus.Children
 	for _, nxChild := range nexusChildren {
-		Expect(nxChild.State).Should(Equal(ctlpln.GetControlPlane().ChildStateOnline()), "Nexus child  is not online")
+		Expect(nxChild.State).Should(Equal(ctlpln.ChildStateOnline()), "Nexus child  is not online")
 	}
 
 	nodeList, err := k8stest.GetNodeLocs()
@@ -287,9 +287,9 @@ func (c *fsxExt4StressConfig) verifyFaultedReplica() {
 		faultedCount = 0
 		otherCount = 0
 		for _, child := range msv.Status.Nexus.Children {
-			if child.State == ctlpln.GetControlPlane().ChildStateFaulted() {
+			if child.State == ctlpln.ChildStateFaulted() {
 				faultedCount++
-			} else if child.State == ctlpln.GetControlPlane().ChildStateOnline() {
+			} else if child.State == ctlpln.ChildStateOnline() {
 				onlineCount++
 			} else {
 				logf.Log.Info("Children state other then faulted and online", "child.State", child.State)
@@ -318,9 +318,9 @@ func (c *fsxExt4StressConfig) verifyUpdatedReplica() {
 		faultedCount = 0
 		otherCount = 0
 		for _, child := range msv.Status.Nexus.Children {
-			if child.State == ctlpln.GetControlPlane().ChildStateFaulted() {
+			if child.State == ctlpln.ChildStateFaulted() {
 				faultedCount++
-			} else if child.State == ctlpln.GetControlPlane().ChildStateOnline() {
+			} else if child.State == ctlpln.ChildStateOnline() {
 				onlineCount++
 			} else {
 				logf.Log.Info("Children state other then faulted and online", "child.State", child.State)

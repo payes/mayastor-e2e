@@ -88,9 +88,9 @@ func mayastorRebuildTest() {
 		).Should(Equal(true))
 
 		// Check everything eventually goes healthy following a rebuild.
-		Eventually(func() string { return getChildren(uuid)[0].State }, params.Timeout, params.PollPeriod).Should(BeEquivalentTo(ctlpln.GetControlPlane().ChildStateOnline()))
-		Eventually(func() string { return getChildren(uuid)[1].State }, params.Timeout, params.PollPeriod).Should(BeEquivalentTo(ctlpln.GetControlPlane().ChildStateOnline()))
-		Eventually(func() (string, error) { return k8stest.GetMsvNexusState(uuid) }, params.Timeout, params.PollPeriod).Should(BeEquivalentTo(ctlpln.GetControlPlane().NexusStateOnline()))
+		Eventually(func() string { return getChildren(uuid)[0].State }, params.Timeout, params.PollPeriod).Should(BeEquivalentTo(ctlpln.ChildStateOnline()))
+		Eventually(func() string { return getChildren(uuid)[1].State }, params.Timeout, params.PollPeriod).Should(BeEquivalentTo(ctlpln.ChildStateOnline()))
+		Eventually(func() (string, error) { return k8stest.GetMsvNexusState(uuid) }, params.Timeout, params.PollPeriod).Should(BeEquivalentTo(ctlpln.NexusStateOnline()))
 
 		// remove one child of nexus
 		err = k8stest.SetMsvReplicaCount(uuid, params.Replicas)
@@ -109,8 +109,8 @@ func mayastorRebuildTest() {
 		).Should(Equal(true))
 
 		// Check everything remains in healthy state.
-		Eventually(func() string { return getChildren(uuid)[0].State }, params.Timeout, params.PollPeriod).Should(BeEquivalentTo(ctlpln.GetControlPlane().ChildStateOnline()))
-		Eventually(func() (string, error) { return k8stest.GetMsvNexusState(uuid) }, params.Timeout, params.PollPeriod).Should(BeEquivalentTo(ctlpln.GetControlPlane().NexusStateOnline()))
+		Eventually(func() string { return getChildren(uuid)[0].State }, params.Timeout, params.PollPeriod).Should(BeEquivalentTo(ctlpln.ChildStateOnline()))
+		Eventually(func() (string, error) { return k8stest.GetMsvNexusState(uuid) }, params.Timeout, params.PollPeriod).Should(BeEquivalentTo(ctlpln.NexusStateOnline()))
 	}
 	// Wait untill fio pod is in completed state
 	err = k8stest.WaitPodComplete(fioPodName, params.SleepSecs, params.DurationSecs)
