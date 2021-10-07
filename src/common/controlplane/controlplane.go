@@ -1,9 +1,9 @@
-package ctlpln
+package controlplane
 
 import (
 	"mayastor-e2e/common"
-	"mayastor-e2e/common/ctlpln/v0"
-	"mayastor-e2e/common/ctlpln/v1"
+	"mayastor-e2e/common/controlplane/v0"
+	"mayastor-e2e/common/controlplane/v1"
 	"sync"
 )
 

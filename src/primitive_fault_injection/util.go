@@ -3,7 +3,7 @@ package primitive_fault_injection
 import (
 	"fmt"
 	"mayastor-e2e/common"
-	"mayastor-e2e/common/ctlpln"
+	"mayastor-e2e/common/controlplane"
 	"mayastor-e2e/common/k8stest"
 	"mayastor-e2e/common/mayastorclient"
 	"strings"
@@ -178,7 +178,7 @@ func (c *primitiveFaultInjectionConfig) verifyVolumeStateOverGrpcAndCrd() {
 	Expect(msv).ToNot(BeNil(), "got nil msv for %v", c.uuid)
 	nexusChildren := msv.Status.Nexus.Children
 	for _, nxChild := range nexusChildren {
-		Expect(nxChild.State).Should(Equal(ctlpln.ChildStateOnline()), "Nexus child  is not online")
+		Expect(nxChild.State).Should(Equal(controlplane.ChildStateOnline()), "Nexus child  is not online")
 	}
 
 	nodeList, err := k8stest.GetNodeLocs()
@@ -336,9 +336,9 @@ func (c *primitiveFaultInjectionConfig) verifyFaultedReplica() {
 		faultedCount = 0
 		otherCount = 0
 		for _, child := range msv.Status.Nexus.Children {
-			if child.State == ctlpln.ChildStateFaulted() {
+			if child.State == controlplane.ChildStateFaulted() {
 				faultedCount++
-			} else if child.State == ctlpln.ChildStateOnline() {
+			} else if child.State == controlplane.ChildStateOnline() {
 				onlineCount++
 			} else {
 				logf.Log.Info("Children state other then faulted and online", "child.State", child.State)
@@ -367,9 +367,9 @@ func (c *primitiveFaultInjectionConfig) verifyUpdatedReplica() {
 		faultedCount = 0
 		otherCount = 0
 		for _, child := range msv.Status.Nexus.Children {
-			if child.State == ctlpln.ChildStateFaulted() {
+			if child.State == controlplane.ChildStateFaulted() {
 				faultedCount++
-			} else if child.State == ctlpln.ChildStateOnline() {
+			} else if child.State == controlplane.ChildStateOnline() {
 				onlineCount++
 			} else {
 				logf.Log.Info("Children state other then faulted and online", "child.State", child.State)

@@ -3,7 +3,7 @@ package msv_rebuild
 import (
 	"fmt"
 	"mayastor-e2e/common"
-	"mayastor-e2e/common/ctlpln"
+	"mayastor-e2e/common/controlplane"
 	"mayastor-e2e/common/e2e_config"
 	"mayastor-e2e/common/k8stest"
 	"strings"
@@ -88,9 +88,9 @@ func mayastorRebuildTest() {
 		).Should(Equal(true))
 
 		// Check everything eventually goes healthy following a rebuild.
-		Eventually(func() string { return getChildren(uuid)[0].State }, params.Timeout, params.PollPeriod).Should(BeEquivalentTo(ctlpln.ChildStateOnline()))
-		Eventually(func() string { return getChildren(uuid)[1].State }, params.Timeout, params.PollPeriod).Should(BeEquivalentTo(ctlpln.ChildStateOnline()))
-		Eventually(func() (string, error) { return k8stest.GetMsvNexusState(uuid) }, params.Timeout, params.PollPeriod).Should(BeEquivalentTo(ctlpln.NexusStateOnline()))
+		Eventually(func() string { return getChildren(uuid)[0].State }, params.Timeout, params.PollPeriod).Should(BeEquivalentTo(controlplane.ChildStateOnline()))
+		Eventually(func() string { return getChildren(uuid)[1].State }, params.Timeout, params.PollPeriod).Should(BeEquivalentTo(controlplane.ChildStateOnline()))
+		Eventually(func() (string, error) { return k8stest.GetMsvNexusState(uuid) }, params.Timeout, params.PollPeriod).Should(BeEquivalentTo(controlplane.NexusStateOnline()))
 
 		// remove one child of nexus
 		err = k8stest.SetMsvReplicaCount(uuid, params.Replicas)
@@ -109,8 +109,8 @@ func mayastorRebuildTest() {
 		).Should(Equal(true))
 
 		// Check everything remains in healthy state.
-		Eventually(func() string { return getChildren(uuid)[0].State }, params.Timeout, params.PollPeriod).Should(BeEquivalentTo(ctlpln.ChildStateOnline()))
-		Eventually(func() (string, error) { return k8stest.GetMsvNexusState(uuid) }, params.Timeout, params.PollPeriod).Should(BeEquivalentTo(ctlpln.NexusStateOnline()))
+		Eventually(func() string { return getChildren(uuid)[0].State }, params.Timeout, params.PollPeriod).Should(BeEquivalentTo(controlplane.ChildStateOnline()))
+		Eventually(func() (string, error) { return k8stest.GetMsvNexusState(uuid) }, params.Timeout, params.PollPeriod).Should(BeEquivalentTo(controlplane.NexusStateOnline()))
 	}
 	// Wait untill fio pod is in completed state
 	err = k8stest.WaitPodComplete(fioPodName, params.SleepSecs, params.DurationSecs)
