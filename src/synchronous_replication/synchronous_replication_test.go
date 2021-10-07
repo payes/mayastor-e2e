@@ -9,6 +9,7 @@ import (
 	coreV1 "k8s.io/api/core/v1"
 
 	"mayastor-e2e/common"
+	"mayastor-e2e/common/ctlpln"
 	"mayastor-e2e/common/k8stest"
 
 	. "github.com/onsi/ginkgo"
@@ -177,13 +178,15 @@ func (job srJob) waitVolumeHealthy() {
 		time.Sleep(sleepTimeSecs * time.Second)
 		volState, err = k8stest.GetMsvState(job.status.volUid)
 		if err == nil {
-			if volState == "healthy" {
+			if volState == ctlpln.VolStateHealthy() {
 				return
 			}
-			logf.Log.Info("MayastorVolume", "Status.State", volState)
+			logf.Log.Info("MayastorVolume",
+				"Status.State", volState,
+				"wanted", ctlpln.VolStateHealthy())
 		}
 	}
-	Expect(volState == "healthy").To(BeTrue(), fmt.Sprintf("volume is not healthy %v", volState))
+	Expect(volState == ctlpln.VolStateHealthy()).To(BeTrue(), fmt.Sprintf("volume is not healthy %v", volState))
 }
 
 func (job srJob) assertExpectedReplicas(replicaCount int, failMsg string) {

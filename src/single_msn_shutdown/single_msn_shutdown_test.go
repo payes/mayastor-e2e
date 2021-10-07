@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"mayastor-e2e/common/ctlpln"
 	"mayastor-e2e/common/k8stest"
 	"mayastor-e2e/common/platform"
 
@@ -88,7 +89,7 @@ func (c *shutdownConfig) nonMoacNodeShutdownTest() {
 			continue
 		}
 		// Verify mayastor pods at the other nodes are still running
-		Expect(getMsvState(config.uuid)).To(Equal("degraded"), "Unexpected MSV state")
+		Expect(getMsvState(config.uuid)).To(Equal(ctlpln.VolStateDegraded()), "Unexpected MSV state")
 		config.verifyApplicationPodRunning(true)
 		config.verifyTaskCompletionStatus("success")
 	}
@@ -144,7 +145,7 @@ func (c *shutdownConfig) moacNodeShutdownTest() {
 			continue
 		}
 		// msv will not be marked as degraded unless moac is up
-		//Expect(getMsvState(config.uuid)).To(Equal("degraded"), "Unexpected MSV state")
+		//Expect(getMsvState(config.uuid)).To(Equal(ctlpln.VolStateDegraded()), "Unexpected MSV state")
 		// Verify mayastor pods at the other nodes are still running
 		config.verifyApplicationPodRunning(true)
 		config.verifyTaskCompletionStatus("success")
@@ -159,7 +160,7 @@ func (c *shutdownConfig) moacNodeShutdownTest() {
 		if config.nodeName == conf.nodeName {
 			continue
 		}
-		Expect(getMsvState(config.uuid)).To(Equal("degraded"), "Unexpected MSV state")
+		Expect(getMsvState(config.uuid)).To(Equal(ctlpln.VolStateDegraded()), "Unexpected MSV state")
 	}
 
 	// Poweron the node for other tests to proceed

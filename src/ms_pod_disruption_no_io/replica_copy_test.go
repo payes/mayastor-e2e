@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"mayastor-e2e/common"
+	"mayastor-e2e/common/ctlpln"
 	"mayastor-e2e/common/e2e_config"
 	"mayastor-e2e/common/k8stest"
 	"mayastor-e2e/common/mayastorclient"
@@ -342,7 +343,7 @@ func (env *DisruptionEnv) PodLossTestDataCopy() {
 	},
 		defTimeoutSecs, // timeout
 		"1s",           // polling interval
-	).Should(Equal("degraded"))
+	).Should(Equal(ctlpln.VolStateDegraded()))
 	logf.Log.Info("volume condition", "state", getMsvState(env.uuid))
 
 	logf.Log.Info("verifying the degraded volume")
@@ -359,7 +360,7 @@ func (env *DisruptionEnv) PodLossTestDataCopy() {
 	},
 		env.rebuildTimeoutSecs, // timeout
 		"1s",                   // polling interval
-	).Should(Equal("healthy"))
+	).Should(Equal(ctlpln.VolStateHealthy()))
 	logf.Log.Info("volume condition", "state", getMsvState(env.uuid))
 
 	logf.Log.Info("verifying the repaired volume")
@@ -375,7 +376,7 @@ func (env *DisruptionEnv) PodLossTestDataCopy() {
 	},
 		defTimeoutSecs, // timeout
 		"1s",           // polling interval
-	).Should(Equal("degraded"))
+	).Should(Equal(ctlpln.VolStateDegraded()))
 	logf.Log.Info("volume condition", "state", getMsvState(env.uuid))
 
 	logf.Log.Info("verifying the degraded volume")
@@ -391,7 +392,7 @@ func (env *DisruptionEnv) PodLossTestDataCopy() {
 	},
 		env.rebuildTimeoutSecs, // timeout
 		"1s",                   // polling interval
-	).Should(Equal("healthy"))
+	).Should(Equal(ctlpln.VolStateHealthy()))
 	logf.Log.Info("volume condition", "state", getMsvState(env.uuid))
 }
 

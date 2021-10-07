@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"mayastor-e2e/common"
+	"mayastor-e2e/common/ctlpln"
 	"mayastor-e2e/common/e2e_config"
 	"mayastor-e2e/common/k8stest"
 	"mayastor-e2e/common/mayastorclient"
@@ -343,7 +344,7 @@ func (env *DisruptionEnv) PodLossTestWriteContinuously() {
 
 	// 2) Verify that the volume has become degraded and the data is correct
 	// We make the assumption that the volume has had enough time to become faulted
-	Expect(getMsvState(env.uuid)).To(Equal("degraded"), "Unexpected MSV state")
+	Expect(getMsvState(env.uuid)).To(Equal(ctlpln.VolStateDegraded()), "Unexpected MSV state")
 	logf.Log.Info("volume condition", "state", getMsvState(env.uuid))
 
 	// Running fio with --verify=crc32 and --rw=randread means that only reads will occur
@@ -366,7 +367,7 @@ func (env *DisruptionEnv) PodLossTestWriteContinuously() {
 
 	// 4) Verify that the volume becomes healthy and the data is correct
 	// We make the assumption that the volume has had enough time to be repaired
-	Expect(getMsvState(env.uuid)).To(Equal("healthy"), "Unexpected MSV state")
+	Expect(getMsvState(env.uuid)).To(Equal(ctlpln.VolStateHealthy()), "Unexpected MSV state")
 	logf.Log.Info("volume condition", "state", getMsvState(env.uuid))
 
 	// Verify the data just written.
@@ -386,7 +387,7 @@ func (env *DisruptionEnv) PodLossTestWriteContinuously() {
 
 	// 6) Verify that the volume becomes degraded and the data is correct
 	// We make the assumption that the volume has had enough time to become faulted
-	Expect(getMsvState(env.uuid)).To(Equal("degraded"), "Unexpected MSV state")
+	Expect(getMsvState(env.uuid)).To(Equal(ctlpln.VolStateDegraded()), "Unexpected MSV state")
 
 	// Running fio with --verify=sha1 and --rw=randread means that only reads will occur
 	// and verification happens
@@ -404,7 +405,7 @@ func (env *DisruptionEnv) PodLossTestWriteContinuously() {
 	},
 		env.rebuildTimeoutSecs, // timeout
 		"1s",                   // polling interval
-	).Should(Equal("healthy"))
+	).Should(Equal(ctlpln.VolStateHealthy()))
 	logf.Log.Info("volume condition", "state", getMsvState(env.uuid))
 
 	// Re-verify with the original replica on-line, It it gets any IO the

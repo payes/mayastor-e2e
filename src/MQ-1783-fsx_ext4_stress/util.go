@@ -2,6 +2,7 @@ package fsx_ext4_stress
 
 import (
 	"mayastor-e2e/common"
+	"mayastor-e2e/common/ctlpln"
 	"mayastor-e2e/common/k8stest"
 	"mayastor-e2e/common/mayastorclient"
 	"strconv"
@@ -159,7 +160,7 @@ func (c *fsxExt4StressConfig) verifyVolumeStateOverGrpcAndCrd() {
 	Expect(msv).ToNot(BeNil(), "got nil msv for %v", c.uuid)
 	nexusChildren := msv.Status.Nexus.Children
 	for _, nxChild := range nexusChildren {
-		Expect(nxChild.State).Should(Equal("CHILD_ONLINE"), "Nexus child  is not online")
+		Expect(nxChild.State).Should(Equal(ctlpln.GetControlPlane().ChildStateOnline()), "Nexus child  is not online")
 	}
 
 	nodeList, err := k8stest.GetNodeLocs()
@@ -286,9 +287,9 @@ func (c *fsxExt4StressConfig) verifyFaultedReplica() {
 		faultedCount = 0
 		otherCount = 0
 		for _, child := range msv.Status.Nexus.Children {
-			if child.State == "CHILD_FAULTED" {
+			if child.State == ctlpln.GetControlPlane().ChildStateFaulted() {
 				faultedCount++
-			} else if child.State == "CHILD_ONLINE" {
+			} else if child.State == ctlpln.GetControlPlane().ChildStateOnline() {
 				onlineCount++
 			} else {
 				logf.Log.Info("Children state other then faulted and online", "child.State", child.State)
@@ -317,9 +318,9 @@ func (c *fsxExt4StressConfig) verifyUpdatedReplica() {
 		faultedCount = 0
 		otherCount = 0
 		for _, child := range msv.Status.Nexus.Children {
-			if child.State == "CHILD_FAULTED" {
+			if child.State == ctlpln.GetControlPlane().ChildStateFaulted() {
 				faultedCount++
-			} else if child.State == "CHILD_ONLINE" {
+			} else if child.State == ctlpln.GetControlPlane().ChildStateOnline() {
 				onlineCount++
 			} else {
 				logf.Log.Info("Children state other then faulted and online", "child.State", child.State)
