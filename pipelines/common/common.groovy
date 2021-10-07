@@ -62,7 +62,7 @@ def GetMCP(branch) {
       ]],
       submoduleCfg: [],
         userRemoteConfigs:
-        [[url: "https://github.com/openebs/mayastor-control-plane", credentialsId: "github-checkout"]]
+        [[url: "https://github.com/mayadata-io/mayastor-control-plane", credentialsId: "github-checkout"]]
     ])
 }
 
@@ -297,8 +297,7 @@ def RunTestsOnePerCluster(e2e_test_profile,
         }
       }
     }
-    // associate uninstall test results with this test
-    AlterUninstallReports(e2e_reports_dir, tests[i])
+    HandleUninstallReports(e2e_reports_dir, tests[i])
 
     DestroyCluster(e2e_destroy_cluster_job, k8s_job)
   } //loop
@@ -334,8 +333,7 @@ def RunOneTestPerCluster(e2e_test,
           failed_tests = e2e_test
       }
     }
-    // associate uninstall test results with this test
-    AlterUninstallReports(e2e_reports_dir, e2e_test)
+    HandleUninstallReports(e2e_reports_dir, e2e_test)
 
     DestroyCluster(e2e_destroy_cluster_job, k8s_job)
     return failed_tests
@@ -401,6 +399,14 @@ def SendXrayReport(xray_testplan, test_tag, e2e_reports_dir) {
   }
 }
 
+// See below, for now we delete all uninstall reports.
+// When fixed, this function should call the correct behaviour,
+// e.g. AlterUninstallReports()
+def HandleUninstallReports(e2e_reports_dir, e2e_test) {
+    DeleteUninstallReports(e2e_reports_dir)
+}
+
+// deprecated until we decide how to keep the number of test results predictable
 def AlterUninstallReports(e2e_reports_dir, e2e_test) {
     def junit_name = "e2e.uninstall-junit.xml"
     def junit_find_path = "${e2e_reports_dir}/*"
@@ -416,6 +422,13 @@ def AlterUninstallReports(e2e_reports_dir, e2e_test) {
     } else {
         println("no uninstall junit files found")
     }
+}
+
+def DeleteUninstallReports(e2e_reports_dir) {
+    def junit_name = "e2e.uninstall-junit.xml"
+    def junit_find_path = "${e2e_reports_dir}/*"
+    def junit_full_find_path = " ${junit_find_path}/${junit_name}"
+    sh "rm -f ${junit_full_find_path}"
 }
 
 def DeDupeInstallReports(e2e_reports_dir) {

@@ -395,6 +395,7 @@ definitions:
       - workload-monitor
       - log-monitor
       - resouce-monitor
+      - test-conductor
   EventClassEnum:
     type: string
     enum:

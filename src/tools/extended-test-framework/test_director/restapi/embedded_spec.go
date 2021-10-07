@@ -376,7 +376,8 @@ func init() {
       "enum": [
         "workload-monitor",
         "log-monitor",
-        "resouce-monitor"
+        "resouce-monitor",
+        "test-conductor"
       ]
     },
     "EventSpec": {
@@ -1018,7 +1019,8 @@ func init() {
       "enum": [
         "workload-monitor",
         "log-monitor",
-        "resouce-monitor"
+        "resouce-monitor",
+        "test-conductor"
       ]
     },
     "EventSpec": {

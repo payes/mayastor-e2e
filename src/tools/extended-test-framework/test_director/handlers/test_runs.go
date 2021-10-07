@@ -81,16 +81,7 @@ func (impl *putTestRunImpl) Handle(params test_director.PutTestRunByIDParams) mi
 			testRun.EndDateTime = strfmt.DateTime(time.Now())
 			testRun.TestRunSpec.Data = testRunSpec.Data
 			testRun.Status = testRunSpec.Status
-			xray.UpdateTestRun(*testRun)
-			tp, _ := planInterface.Get(*testRun.TestKey)
-			if tp != nil {
-				if testRun.Status == models.TestRunStatusEnumPASSED && *tp.Status != models.TestPlanStatusEnumCOMPLETEFAIL {
-					*tp.Status = models.TestPlanStatusEnumCOMPLETEPASS
-				} else {
-					*tp.Status = models.TestPlanStatusEnumCOMPLETEFAIL
-				}
-				planInterface.Set(tp.Key, *tp)
-			}
+			FailTestRun(testRun)
 		}
 	} else {
 		jt, err := connectors.GetJiraTaskDetails(string(*testRunSpec.TestKey))
@@ -124,6 +115,19 @@ func (impl *putTestRunImpl) Handle(params test_director.PutTestRunByIDParams) mi
 	}
 
 	return test_director.NewPutTestRunByIDOK().WithPayload(testRun)
+}
+
+func FailTestRun(testRun *models.TestRun) {
+	xray.UpdateTestRun(*testRun)
+	tp, _ := planInterface.Get(*testRun.TestKey)
+	if tp != nil {
+		if testRun.Status == models.TestRunStatusEnumPASSED && *tp.Status != models.TestPlanStatusEnumCOMPLETEFAIL {
+			*tp.Status = models.TestPlanStatusEnumCOMPLETEPASS
+		} else {
+			*tp.Status = models.TestPlanStatusEnumCOMPLETEFAIL
+		}
+		planInterface.Set(tp.Key, *tp)
+	}
 }
 
 func badRequestResponse(err error) middleware.Responder {

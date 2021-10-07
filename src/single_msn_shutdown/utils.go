@@ -3,7 +3,6 @@ package single_msn_shutdown
 import (
 	"fmt"
 	"mayastor-e2e/common"
-	"mayastor-e2e/common/custom_resources"
 	"mayastor-e2e/common/k8stest"
 	"os/exec"
 	"time"
@@ -277,7 +276,7 @@ func (c *appConfig) verifyTaskCompletionStatus(status string) {
 }
 
 func getMsvState(uuid string) string {
-	volState, err := custom_resources.GetMsVolState(uuid)
+	volState, err := k8stest.GetMsvState(uuid)
 	Expect(err).To(BeNil(), "failed to access volume state %s, error=%v", uuid, err)
 	return volState
 }

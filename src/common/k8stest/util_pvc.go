@@ -4,8 +4,6 @@ package k8stest
 import (
 	"context"
 	"fmt"
-	"mayastor-e2e/common/custom_resources"
-	"mayastor-e2e/common/custom_resources/api/types/v1alpha1"
 	"mayastor-e2e/common/mayastorclient"
 	"strings"
 	"sync"
@@ -184,7 +182,7 @@ func MkPVC(volSizeMb int, volName string, scName string, volType common.VolumeTy
 		"1s",           // polling interval
 	).Should(Equal(coreV1.VolumeBound))
 
-	Eventually(func() *v1alpha1.MayastorVolume {
+	Eventually(func() *common.MayastorVolume {
 		msv, _ := GetMSV(string(pvc.ObjectMeta.UID))
 		return msv
 	},
@@ -201,6 +199,10 @@ func MkPVC(volSizeMb int, volName string, scName string, volType common.VolumeTy
 
 // MsvConsistencyCheck check consistency of  MSV Spec, Status, and associated objects returned by gRPC
 func MsvConsistencyCheck(uuid string) error {
+	//FIXME: implement new MsvConsistencyCheck inline with mayastor control plane
+	if common.IsControlPlaneMcp() {
+		return nil
+	}
 	msv, err := GetMSV(uuid)
 	if msv == nil {
 		return fmt.Errorf("MsvConsistencyCheck: GetMsv: %v, got nil pointer to msv", uuid)
@@ -311,7 +313,7 @@ func RmPVC(volName string, scName string, nameSpace string) {
 
 	// Wait for the MSV to be deleted.
 	Eventually(func() bool {
-		return custom_resources.IsMsVolDeleted(string(pvc.ObjectMeta.UID))
+		return IsMsvDeleted(string(pvc.ObjectMeta.UID))
 	},
 		"360s", // timeout
 		"1s",   // polling interval
