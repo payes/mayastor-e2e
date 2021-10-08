@@ -1,5 +1,35 @@
+
+def e2e_environment="hcloud-kubeadm"
+def e2e_build_cluster_job='k8s-build-cluster' // Jenkins job to build cluster
+
+def GetClusterAdminConf(e2e_build_cluster_job, e2e_environment, k8s_job_number) {
+  // FIXME(arne-rusek): move hcloud's config to top-level dir in TF scripts
+  sh """
+    mkdir -p "${e2e_environment}/modules/k8s/secrets"
+  """
+
+  copyArtifacts(
+    projectName: "${e2e_build_cluster_job}",
+    selector: specific("${k8s_job_number}"),
+    filter: "${e2e_environment}/modules/k8s/secrets/admin.conf",
+    target: "",
+    fingerprintArtifacts: true
+  )
+  sh 'kubectl get nodes -o wide'
+}
+
 pipeline {
     agent { label 'nixos-mayastor' }
+    parameters {
+        run(
+            name:'BUILD',
+            projectName: 'k8s-build-cluster',
+            description: 'Selects cluster to use.'
+        )
+        choice(choices: ['steady_state', 'non_steady_state'], name: 'test', description: 'test to run')
+        choice(choices: ['ET-435'], name: 'plan', description: 'test plan')
+    }
+
     stages {
         stage('checkout') {
             steps {
@@ -13,9 +43,23 @@ pipeline {
                     [[url: "https://github.com/mayadata-io/mayastor-e2e", credentialsId: "github-checkout"]]])
             }
         }
-        stage('build the actors') {
+        stage('run the test') {
+            environment {
+                KUBECONFIG = "${env.WORKSPACE}/${e2e_environment}/modules/k8s/secrets/admin.conf"
+            }
             steps {
-                sh "nix-shell --run 'cd src/tools/extended-test-framework && ./build.sh' "
+                script {
+                    GetClusterAdminConf("${BUILD_JOBNAME}", e2e_environment, "${BUILD_NUMBER}")
+                    cmd = "cd src/tools/extended-test-framework/scripts && ./deploy.sh -t \"${test}\" -p \"${plan}\" && ./wait_finished.sh"
+                    sh "nix-shell --run '${cmd}'"
+                }
+            }
+            post {
+                always {
+                    script {
+                        sh "nix-shell --run 'cd src/tools/extended-test-framework/scripts && ./deploy.sh -r' "
+                    }
+                }
             }
         }
     }

@@ -2,17 +2,16 @@ package tests
 
 import (
 	"fmt"
-	"mayastor-e2e/tools/extended-test-framework/common/k8sclient"
-
 	"mayastor-e2e/tools/extended-test-framework/common"
-
+	"mayastor-e2e/tools/extended-test-framework/common/k8sclient"
+	tc "mayastor-e2e/tools/extended-test-framework/test_conductor/tc"
 	"time"
 
-	tc "mayastor-e2e/tools/extended-test-framework/test_conductor/tc"
-
 	"github.com/go-openapi/strfmt"
-	storageV1 "k8s.io/api/storage/v1"
+
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	storageV1 "k8s.io/api/storage/v1"
 )
 
 func NonSteadyStateTest(testConductor *tc.TestConductor) (testRunId strfmt.UUID, failmessage string, err error) {
@@ -25,6 +24,21 @@ func NonSteadyStateTest(testConductor *tc.TestConductor) (testRunId strfmt.UUID,
 		return
 	}
 	testRunId = strfmt.UUID(tcpod.ObjectMeta.UID)
+
+	if err = common.SendTestRunToDo(
+		testConductor.TestDirectorClient,
+		testRunId,
+		"",
+		testConductor.Config.Test); err != nil {
+
+		err = fmt.Errorf("failed to inform test director of test start, error: %v", err)
+		return
+	}
+
+	if err = SendEventTestPreparing(testConductor, testRunId); err != nil {
+		err = fmt.Errorf("failed to inform test director of preparation event, error: %v", err)
+		return
+	}
 
 	if testConductor.Config.Install {
 		if err = tc.InstallMayastor(testConductor.Config.PoolDevice); err != nil {
@@ -39,32 +53,23 @@ func NonSteadyStateTest(testConductor *tc.TestConductor) (testRunId strfmt.UUID,
 	var fio_name = testName + "-fio"
 	var vol_type = k8sclient.VolRawBlock
 
-	if err = tc.AddWorkload(
-		testConductor.WorkloadMonitorClient,
-		"test-conductor",
-		common.EtfwNamespace,
-		violations); err != nil {
-		err = fmt.Errorf("failed to inform workload monitor of test-conductor, error: %v", err)
-		return
-	}
-
-	if err = SendEventTestPreparing(testConductor, testRunId); err != nil {
-		err = fmt.Errorf("failed to inform test director of preparation event, error: %v", err)
-		return
-	}
-
 	duration, err := time.ParseDuration(testConductor.Config.NonSteadyState.Duration)
 	if err != nil {
 		err = fmt.Errorf("failed to parse duration %v", err)
 		return
 	}
 
-	if err = common.SendTestRunToDo(
+	if err = common.SendTestRunStarted(
 		testConductor.TestDirectorClient,
 		testRunId,
 		"",
 		testConductor.Config.Test); err != nil {
 		err = fmt.Errorf("failed to inform test director of test start, error: %v", err)
+		return
+	}
+
+	if err = SendEventTestStarted(testConductor, testRunId); err != nil {
+		err = fmt.Errorf("failed to inform test director of start event, error: %v", err)
 		return
 	}
 
@@ -76,7 +81,9 @@ func NonSteadyStateTest(testConductor *tc.TestConductor) (testRunId strfmt.UUID,
 		WithNamespace(k8sclient.NSDefault).
 		WithVolumeBindingMode(mode).
 		BuildAndCreate(); err != nil {
+
 		err = fmt.Errorf("failed to create sc %v", err)
+		logf.Log.Info("Created storage class failed", "error", err.Error())
 		return
 	}
 	logf.Log.Info("Created storage class", "sc", sc_name)
@@ -109,6 +116,15 @@ func NonSteadyStateTest(testConductor *tc.TestConductor) (testRunId strfmt.UUID,
 
 	if err = tc.AddWorkload(
 		testConductor.WorkloadMonitorClient,
+		"test-conductor",
+		common.EtfwNamespace,
+		violations); err != nil {
+		err = fmt.Errorf("failed to inform workload monitor of test-conductor, error: %v", err)
+		return
+	}
+
+	if err = tc.AddWorkload(
+		testConductor.WorkloadMonitorClient,
 		fio_name,
 		k8sclient.NSDefault,
 		violations); err != nil {
@@ -124,24 +140,9 @@ func NonSteadyStateTest(testConductor *tc.TestConductor) (testRunId strfmt.UUID,
 		return
 	}
 
-	if err = SendEventTestStarted(testConductor, testRunId); err != nil {
-		err = fmt.Errorf("failed to inform test director of start event, error: %v", err)
-		return
-	}
-
-	if err = common.SendTestRunStarted(
-		testConductor.TestDirectorClient,
-		testRunId,
-		"",
-		testConductor.Config.Test); err != nil {
-		err = fmt.Errorf("failed to inform test director of test start, error: %v", err)
-		return
-	}
-
 	// ======== TODO implement changes for test, add/remove pods and PVs ========
 	// allow the test to run
 	logf.Log.Info("Running test", "duration (s)", duration.Seconds())
-
 	failmessage = MonitorCRs(testConductor, []string{msv_uid}, duration, false)
 
 	if err = tc.DeleteWorkloads(testConductor.WorkloadMonitorClient); err != nil {

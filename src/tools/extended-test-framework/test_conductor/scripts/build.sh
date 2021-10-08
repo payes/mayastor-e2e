@@ -2,8 +2,6 @@
 
 set -e pipefail
 
-#MAYASTORTAG="nightly-stable"
-MAYASTORTAG="mcp-2021-10-05-00-17-04"
 ETFWTAG="latest"
 
 build_img () {
@@ -16,9 +14,6 @@ build_img () {
 	cp ../cmd/${APP}/${APP} .
 	cp ../cmd/${APP}/Dockerfile .
 
-	#../../../../../scripts/extract-install-image.sh --alias-tag ${MAYASTORTAG} --installroot .
-	#install-bundle/${MAYASTORTAG}/scripts/generate-deploy-yamls.sh -t ${MAYASTORTAG} -o . test
-	#cp install-bundle/*/mcp/target/release/kubectl-mayastor .
 	docker build -t ${REGISTRY}/mayadata/${APP}:${ETFWTAG} .
 	docker push ${REGISTRY}/mayadata/${APP}:${ETFWTAG}
 

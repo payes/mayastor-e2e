@@ -25,6 +25,21 @@ func SteadyStateTest(testConductor *tc.TestConductor) (testRunId strfmt.UUID, fa
 	}
 	testRunId = strfmt.UUID(tcpod.ObjectMeta.UID)
 
+	if err = common.SendTestRunToDo(
+		testConductor.TestDirectorClient,
+		testRunId,
+		"",
+		testConductor.Config.Test); err != nil {
+
+		err = fmt.Errorf("failed to inform test director of test start, error: %v", err)
+		return
+	}
+
+	if err = SendEventTestPreparing(testConductor, testRunId); err != nil {
+		err = fmt.Errorf("failed to inform test director of preparation event, error: %v", err)
+		return
+	}
+
 	if testConductor.Config.Install {
 		if err = tc.InstallMayastor(testConductor.Config.PoolDevice); err != nil {
 			err = fmt.Errorf("failed to install mayastor %v", err)
@@ -38,33 +53,23 @@ func SteadyStateTest(testConductor *tc.TestConductor) (testRunId strfmt.UUID, fa
 	var fio_name = testName + "-fio"
 	var vol_type = k8sclient.VolRawBlock
 
-	if err = tc.AddWorkload(
-		testConductor.WorkloadMonitorClient,
-		"test-conductor",
-		common.EtfwNamespace,
-		violations); err != nil {
-		err = fmt.Errorf("failed to inform workload monitor of test-conductor, error: %v", err)
-		return
-	}
-
-	if err = SendEventTestPreparing(testConductor, testRunId); err != nil {
-		err = fmt.Errorf("failed to inform test director of preparation event, error: %v", err)
-		return
-	}
-
 	duration, err := time.ParseDuration(testConductor.Config.SteadyState.Duration)
 	if err != nil {
 		err = fmt.Errorf("failed to parse duration %v", err)
 		return
 	}
 
-	if err = common.SendTestRunToDo(
+	if err = common.SendTestRunStarted(
 		testConductor.TestDirectorClient,
 		testRunId,
 		"",
 		testConductor.Config.Test); err != nil {
-
 		err = fmt.Errorf("failed to inform test director of test start, error: %v", err)
+		return
+	}
+
+	if err = SendEventTestStarted(testConductor, testRunId); err != nil {
+		err = fmt.Errorf("failed to inform test director of start event, error: %v", err)
 		return
 	}
 
@@ -111,6 +116,15 @@ func SteadyStateTest(testConductor *tc.TestConductor) (testRunId strfmt.UUID, fa
 
 	if err = tc.AddWorkload(
 		testConductor.WorkloadMonitorClient,
+		"test-conductor",
+		common.EtfwNamespace,
+		violations); err != nil {
+		err = fmt.Errorf("failed to inform workload monitor of test-conductor, error: %v", err)
+		return
+	}
+
+	if err = tc.AddWorkload(
+		testConductor.WorkloadMonitorClient,
 		fio_name,
 		k8sclient.NSDefault,
 		violations); err != nil {
@@ -123,20 +137,6 @@ func SteadyStateTest(testConductor *tc.TestConductor) (testRunId strfmt.UUID, fa
 		"mayastor",
 		violations); err != nil {
 		err = fmt.Errorf("failed to inform workload monitor of mayastor pods, error: %v", err)
-		return
-	}
-
-	if err = SendEventTestStarted(testConductor, testRunId); err != nil {
-		err = fmt.Errorf("failed to inform test director of start event, error: %v", err)
-		return
-	}
-
-	if err = common.SendTestRunStarted(
-		testConductor.TestDirectorClient,
-		testRunId,
-		"",
-		testConductor.Config.Test); err != nil {
-		err = fmt.Errorf("failed to inform test director of test start, error: %v", err)
 		return
 	}
 

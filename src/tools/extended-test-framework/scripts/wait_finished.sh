@@ -11,16 +11,17 @@ for i in {0..100}; do
 	sleep 1
 done
 
-for i in {0..1000}; do
-	kubectl get pod -n mayastor-e2e test-conductor | grep Completed
+LIMIT=10080
+for ((i=0; i<=${LIMIT}; i++)); do
+	kubectl get pod -n mayastor-e2e test-conductor | grep 'Completed\|Error'
 	if [ "$?" == "0" ]; then
 		exit 0
 	fi
-	        if [ "$i" == "1000" ]; then
+	        if [ "$i" == "${LIMIT}" ]; then
 		echo "timed out"
                 exit 1
         fi
-	sleep 10
+	sleep 60
 	echo "waiting"
 done
 

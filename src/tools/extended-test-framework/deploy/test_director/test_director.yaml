@@ -9,7 +9,6 @@ spec:
     app: test-director
   ports:
     - port: 8080
-      #targetPort: 8080
 ---
 kind: Pod
 apiVersion: v1
@@ -33,8 +32,17 @@ spec:
           fieldRef:
             fieldPath: status.podIP
       ports:
-        - containerPort: 8080
-          protocol: "TCP"
-          name: test-dir
+      - containerPort: 8080
+        protocol: "TCP"
+        name: test-dir
+      volumeMounts:
+      - name: td-config
+        mountPath: "/config/config-local.yaml"
+        subPath: "config-local.yaml"
+        readOnly: true
+  volumes:
+    - name: td-config
+      configMap:
+        name: td-config
   restartPolicy: Never
 

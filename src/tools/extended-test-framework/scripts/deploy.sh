@@ -2,18 +2,23 @@
 
 set -e
 
-TEST=""
-OPERATION="create"
+TESTARG=""
+OPERATION=""
+PLANARG=""
 
 help() {
   cat <<EOF
 Usage: $0 [OPTIONS]
+or:    $0 --remove
 
 Options:
-  --test <name> test_conductor test to run, steady_state or replica_perturbation
+  --test <name> test_conductor test to run, steady_state or non_steady_state
+  --plan <test plan ID>
+
   --remove      remove instead of deploy
 Examples:
-  $0 --test steady_state
+  $0 --test steady_state --plan AB-123
+  $0 --remove
 EOF
 }
 
@@ -24,45 +29,74 @@ while [ "$#" -gt 0 ]; do
     -t|--test)
       shift
       case $1 in
-            steady_state|replica_perturbation|non_steady_state)
-                TEST=$1
+            steady_state|non_steady_state)
+                TESTARG=$1
                 ;;
             *)
                 echo "unrecognized test"
                 help
                 exit 1
-        esac
-      test=$1
+		;;
+      esac
+      ;;
+    -p|--plan)
+      shift
+      PLANARG=$1
       ;;
     -r|--remove)
       OPERATION="delete"
       set +e # we can ignore errors when undeploying
       ;;
+    -h)
+      help
+      exit 0
+      ;;
+    *)
+      echo "unrecognized parameter"
+      help
+      exit 1
+      ;;
   esac
   shift
 done
 
-if [ -z ${TEST} ]; then
-  echo "undefined test"
-  help
-  exit 1
+if [ -z ${OPERATION} ]; then
+  if [ -z ${TESTARG} ]; then
+    echo "undefined test"
+    help
+    exit 1
+  fi
+  if [ -z ${PLANARG} ]; then
+    echo "undefined plan"
+    help
+    exit 1
+  fi
 fi
 
 SCRIPTDIR=$(dirname "$(realpath "$0")")
-
+DEPLOYDIR="${SCRIPTDIR}/../deploy/"
 if [ "${OPERATION}" == "delete" ]; then
-  kubectl delete configmap etfw-config -n mayastor-e2e
-  kubectl delete -f ${SCRIPTDIR}/../deploy/workload_monitor.yaml
-  kubectl delete -f ${SCRIPTDIR}/../deploy/test_director.yaml
-  kubectl delete -f ${SCRIPTDIR}/../deploy/test_conductor/${TEST}/test_conductor.yaml
-  kubectl delete -f ${SCRIPTDIR}/../deploy/test_conductor.yaml
-  kubectl delete -f ${SCRIPTDIR}/../deploy/test_namespace.yaml
+  kubectl delete configmap tc-config -n mayastor-e2e
+  kubectl delete -f ${DEPLOYDIR}/workload_monitor/workload_monitor.yaml
+  kubectl delete configmap td-config -n mayastor-e2e
+  kubectl delete -f ${DEPLOYDIR}/test_director/test_director.yaml
+  kubectl delete pod -n mayastor-e2e test-conductor
+  kubectl delete -f ${DEPLOYDIR}/test_conductor/test_conductor.yaml
+  kubectl delete -f ${DEPLOYDIR}/test_namespace.yaml
 else
-  kubectl create -f ${SCRIPTDIR}/../deploy/test_namespace.yaml
-  kubectl create configmap etfw-config -n mayastor-e2e --from-file=${SCRIPTDIR}/../deploy/test_conductor/${TEST}/config.yaml
-  kubectl create -f ${SCRIPTDIR}/../deploy/test_conductor.yaml
-  kubectl create -f ${SCRIPTDIR}/../deploy/test_conductor/${TEST}/test_conductor.yaml
-  kubectl create -f ${SCRIPTDIR}/../deploy/test_director.yaml
-  kubectl create -f ${SCRIPTDIR}/../deploy/workload_monitor.yaml
+  kubectl create -f ${DEPLOYDIR}/test_namespace.yaml
+
+  tmpfile=$(mktemp /tmp/tmp.XXXX)
+  PLAN=${PLANARG} envsubst < ${DEPLOYDIR}/test_director/config.yaml.template > $tmpfile
+  kubectl create configmap td-config -n mayastor-e2e --from-file=config-local.yaml=${tmpfile}
+  rm ${tmpfile}
+
+  kubectl create configmap tc-config -n mayastor-e2e --from-file=${DEPLOYDIR}/test_conductor/${TESTARG}/config.yaml
+
+  kubectl create -f ${DEPLOYDIR}/test_conductor/test_conductor.yaml
+  TEST=${TESTARG} envsubst -no-unset < ${DEPLOYDIR}/test_conductor/test_conductor_pod.yaml.template | kubectl apply -f -
+
+  kubectl create -f ${DEPLOYDIR}/test_director/test_director.yaml
+  kubectl create -f ${DEPLOYDIR}/workload_monitor/workload_monitor.yaml
 fi
 

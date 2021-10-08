@@ -1,0 +1,30 @@
+kind: Pod
+apiVersion: v1
+metadata:
+  name: test-conductor
+  namespace: mayastor-e2e
+  labels:
+    app: test-conductor
+spec:
+  containers:
+    - name: test-conductor
+      image: ci-registry.mayastor-ci.mayadata.io/mayadata/test_conductor_${TEST}:latest
+      imagePullPolicy: Always
+      args:
+        - "/test_conductor_${TEST}"
+      ports:
+        - containerPort: 8080
+          protocol: "TCP"
+          name: test-conductor
+      volumeMounts:
+      - name: tc-config
+        mountPath: "/config.yaml"
+        subPath: "config.yaml"
+        readOnly: true
+  volumes:
+  - name: tc-config
+    configMap:
+      name: tc-config
+  restartPolicy: Never
+  serviceAccountName: test-conductor-sa
+
