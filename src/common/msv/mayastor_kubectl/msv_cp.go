@@ -278,8 +278,8 @@ func cpVolumeToMsv(cpMsv *MayastorCpVolume, address []string) common.MayastorVol
 		})
 	}
 	var replicas []common.Replica
-	for uuid, _ := range cpMsv.State.Replica_topology {
-		replica, err := getMayastorCpReplicas(uuid, address)
+	for uuid := range cpMsv.State.Replica_topology {
+		replica, err := getMayastorCpReplica(uuid, address)
 		if err != nil {
 			logf.Log.Info("Failed to get replicas", "uuid", uuid, "error", err)
 			return common.MayastorVolume{}

@@ -57,7 +57,7 @@ func listMayastorCpReplicas(address []string) ([]mayastorCpReplica, error) {
 	}
 	return response, nil
 }
-func getMayastorCpReplicas(replicaUuid string, address []string) (mayastorCpReplica, error) {
+func getMayastorCpReplica(replicaUuid string, address []string) (mayastorCpReplica, error) {
 	if len(address) == 0 {
 		return mayastorCpReplica{}, fmt.Errorf("mayastor nodes not found")
 	}
