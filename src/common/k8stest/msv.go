@@ -1,85 +1,90 @@
 package k8stest
 
 import (
-	. "github.com/onsi/gomega"
 	"mayastor-e2e/common"
-	MSVCrd "mayastor-e2e/common/msv/crd"
-	MSVKubectl "mayastor-e2e/common/msv/mayastor_kubectl"
+	"mayastor-e2e/common/controlplane"
 	"sync"
 )
 
 var once sync.Once
 
-// DO NOT ACCESS DIRECTLY, use GetMsvIfc
-var ifc common.MayastorVolumeInterface
-
-func GetMsvIfc() common.MayastorVolumeInterface {
+// FIXME: MSV
+// This two-step initialisation of the control plane interface
+// ensures that the node IP addresses are set for control plane
+// before any MSV related call is made.
+// Facilitates abstraction without introducing a dependency on k8stest
+func ensure_msv() {
 	once.Do(func() {
-		if common.IsControlPlaneMoac() {
-			ifc = MSVCrd.MakeCrMsv()
-		} else if common.IsControlPlaneMcp() {
-			ifc = MSVKubectl.MakeCpMsv(GetMayastorNodeIPAddresses())
-		} else {
-			Expect(false).To(BeTrue())
-		}
+		controlplane.SetIpNodeAddresses(GetMayastorNodeIPAddresses())
 	})
-
-	return ifc
 }
 
 // GetMSV Get pointer to a mayastor volume custom resource
 // returns nil and no error if the msv is in pending state.
 func GetMSV(uuid string) (*common.MayastorVolume, error) {
-	return GetMsvIfc().GetMSV(uuid)
+	ensure_msv()
+	return controlplane.GetMSV(uuid)
 }
 
 // GetMsvNodes Retrieve the nexus node hosting the Mayastor Volume,
 // and the names of the replica nodes
 // function asserts if the volume CR is not found.
 func GetMsvNodes(uuid string) (string, []string) {
-	return GetMsvIfc().GetMsvNodes(uuid)
+	ensure_msv()
+	return controlplane.GetMsvNodes(uuid)
 }
 
 func DeleteMsv(volName string) error {
-	return GetMsvIfc().DeleteMsv(volName)
+	ensure_msv()
+	return controlplane.DeleteMsv(volName)
 }
 
 func ListMsvs() ([]common.MayastorVolume, error) {
-	return GetMsvIfc().ListMsvs()
+	ensure_msv()
+	return controlplane.ListMsvs()
 }
 
 func SetMsvReplicaCount(uuid string, replicaCount int) error {
-	return GetMsvIfc().SetMsvReplicaCount(uuid, replicaCount)
+	ensure_msv()
+	return controlplane.SetMsvReplicaCount(uuid, replicaCount)
 }
 
 func GetMsvState(uuid string) (string, error) {
-	return GetMsvIfc().GetMsvState(uuid)
+	ensure_msv()
+	return controlplane.GetMsvState(uuid)
 }
 
 func GetMsvReplicas(volName string) ([]common.Replica, error) {
-	return GetMsvIfc().GetMsvReplicas(volName)
+	ensure_msv()
+	return controlplane.GetMsvReplicas(volName)
 }
 
 func GetMsvNexusChildren(volName string) ([]common.NexusChild, error) {
-	return GetMsvIfc().GetMsvNexusChildren(volName)
+	ensure_msv()
+	return controlplane.GetMsvNexusChildren(volName)
 }
 
 func GetMsvNexusState(uuid string) (string, error) {
-	return GetMsvIfc().GetMsvNexusState(uuid)
+	ensure_msv()
+	return controlplane.GetMsvNexusState(uuid)
 }
 
 func IsMsvPublished(uuid string) bool {
-	return GetMsvIfc().IsMsvPublished(uuid)
+	ensure_msv()
+	return controlplane.IsMsvPublished(uuid)
 }
 
 func IsMsvDeleted(uuid string) bool {
-	return GetMsvIfc().IsMsvDeleted(uuid)
+	ensure_msv()
+	return controlplane.IsMsvDeleted(uuid)
 }
 
 func CheckForMsvs() (bool, error) {
-	return GetMsvIfc().CheckForMsvs()
+	ensure_msv()
+	return controlplane.CheckForMsvs()
 }
 
 func CheckAllMsvsAreHealthy() error {
-	return GetMsvIfc().CheckAllMsvsAreHealthy()
+	ensure_msv()
+	return controlplane.CheckAllMsvsAreHealthy()
 }
