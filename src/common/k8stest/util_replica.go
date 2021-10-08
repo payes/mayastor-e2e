@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"mayastor-e2e/common/controlplane"
 	agent "mayastor-e2e/common/e2e-agent"
 	"mayastor-e2e/common/mayastorclient"
 
@@ -187,12 +188,12 @@ func ExcludeNexusReplica(nexusIP string, uuid string) (bool, error) {
 		if err != nil {
 			return false, fmt.Errorf("Failed to get state, err=%v", err)
 		}
-		if state == "healthy" {
+		if state == controlplane.VolStateHealthy() {
 			break
 		}
 		time.Sleep(sleepTime * time.Second)
 	}
-	if state != "healthy" {
+	if state != controlplane.VolStateHealthy() {
 		return true, fmt.Errorf("timed out waiting for volume to become healthy")
 	}
 	return true, nil

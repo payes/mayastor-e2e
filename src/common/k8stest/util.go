@@ -612,6 +612,7 @@ func WaitPodComplete(podName string, sleepTimeSecs, timeoutSecs int) error {
 }
 
 // MspGrpcStateToCrdstate return corresponding msp crd state
+//FIXME: changes between from MOAC and Restful control plane
 func MspGrpcStateToCrdstate(mspState grpc.PoolState) string {
 	switch mspState {
 	case 0:
