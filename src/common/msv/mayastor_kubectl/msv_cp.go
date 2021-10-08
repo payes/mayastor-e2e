@@ -270,25 +270,25 @@ func CheckAllMayastorVolumesAreHealthy(address []string) error {
 
 func cpVolumeToMsv(cpMsv *MayastorCpVolume, address []string) common.MayastorVolume {
 	var nexusChildren []common.NexusChild
-	var childrenUri = make(map[string]bool)
 
 	for _, children := range cpMsv.State.Target.Children {
 		nexusChildren = append(nexusChildren, common.NexusChild{
 			State: children.State,
 			Uri:   children.Uri,
 		})
-		//storing uri as key in map[string]boll
-		//will be used to determine replica corresponding to children uri
-		childrenUri[children.Uri] = true
 	}
-
 	var replicas []common.Replica
-	for uri, cpReplica := range cpMsv.State.Replica_topology {
+	for uuid, _ := range cpMsv.State.Replica_topology {
+		replica, err := getMayastorCpReplicas(uuid, address)
+		if err != nil {
+			logf.Log.Info("Failed to get replicas", "uuid", uuid, "error", err)
+			return common.MayastorVolume{}
+		}
 		replicas = append(replicas, common.Replica{
-			Uri:     uri,
-			Offline: strings.ToLower(cpReplica.State) != "online",
-			Node:    cpReplica.Node,
-			Pool:    cpReplica.Pool,
+			Uri:     replica.Uri,
+			Offline: strings.ToLower(replica.State) != "online",
+			Node:    replica.Node,
+			Pool:    replica.Pool,
 		})
 	}
 
