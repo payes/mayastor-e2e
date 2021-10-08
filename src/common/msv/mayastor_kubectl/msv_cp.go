@@ -68,10 +68,17 @@ type explicit struct {
 }
 
 type msvState struct {
-	Target stateTarget `json:"target"`
-	Size   int64       `json:"size"`
-	Status string      `json:"status"`
-	Uuid   string      `json:"uuid"`
+	Target           stateTarget                 `json:"target"`
+	Size             int64                       `json:"size"`
+	Status           string                      `json:"status"`
+	Uuid             string                      `json:"uuid"`
+	Replica_topology map[string]replica_topology `json:"replica_topology"`
+}
+
+type replica_topology struct {
+	Node  string `json:"node"`
+	Pool  string `json:"pool"`
+	State string `json:"state"`
 }
 
 type stateTarget struct {
@@ -276,21 +283,13 @@ func cpVolumeToMsv(cpMsv *MayastorCpVolume, address []string) common.MayastorVol
 	}
 
 	var replicas []common.Replica
-	cpReplicas, err := listMayastorCpReplicas(address)
-	if err != nil {
-		logf.Log.Info("Failed to list replicas", "error", err)
-		return common.MayastorVolume{}
-	}
-	for _, cpReplica := range cpReplicas {
-		if _, ok := childrenUri[cpReplica.Uri]; ok {
-			replicas = append(replicas, common.Replica{
-				Uri:     cpReplica.Uri,
-				Offline: strings.ToLower(cpReplica.State) != "online",
-				Node:    cpReplica.Node,
-				Pool:    cpReplica.Pool,
-			})
-		}
-
+	for uri, cpReplica := range cpMsv.State.Replica_topology {
+		replicas = append(replicas, common.Replica{
+			Uri:     uri,
+			Offline: strings.ToLower(cpReplica.State) != "online",
+			Node:    cpReplica.Node,
+			Pool:    cpReplica.Pool,
+		})
 	}
 
 	return common.MayastorVolume{
