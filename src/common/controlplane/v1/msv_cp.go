@@ -64,10 +64,17 @@ type explicit struct {
 }
 
 type msvState struct {
-	Target stateTarget `json:"target"`
-	Size   int64       `json:"size"`
-	Status string      `json:"status"`
-	Uuid   string      `json:"uuid"`
+	Target           stateTarget                 `json:"target"`
+	Size             int64                       `json:"size"`
+	Status           string                      `json:"status"`
+	Uuid             string                      `json:"uuid"`
+	Replica_topology map[string]replica_topology `json:"replica_topology"`
+}
+
+type replica_topology struct {
+	Node  string `json:"node"`
+	Pool  string `json:"pool"`
+	State string `json:"state"`
 }
 
 type stateTarget struct {
@@ -259,34 +266,26 @@ func CheckAllMayastorVolumesAreHealthy(address []string) error {
 
 func cpVolumeToMsv(cpMsv *MayastorCpVolume, address []string) common.MayastorVolume {
 	var nexusChildren []common.NexusChild
-	var childrenUri = make(map[string]bool)
 
 	for _, children := range cpMsv.State.Target.Children {
 		nexusChildren = append(nexusChildren, common.NexusChild{
 			State: children.State,
 			Uri:   children.Uri,
 		})
-		//storing uri as key in map[string]boll
-		//will be used to determine replica corresponding to children uri
-		childrenUri[children.Uri] = true
 	}
-
 	var replicas []common.Replica
-	cpReplicas, err := listMayastorCpReplicas(address)
-	if err != nil {
-		logf.Log.Info("Failed to list replicas", "error", err)
-		return common.MayastorVolume{}
-	}
-	for _, cpReplica := range cpReplicas {
-		if _, ok := childrenUri[cpReplica.Uri]; ok {
-			replicas = append(replicas, common.Replica{
-				Uri:     cpReplica.Uri,
-				Offline: strings.ToLower(cpReplica.State) != "online",
-				Node:    cpReplica.Node,
-				Pool:    cpReplica.Pool,
-			})
+	for uuid := range cpMsv.State.Replica_topology {
+		replica, err := getMayastorCpReplica(uuid, address)
+		if err != nil {
+			logf.Log.Info("Failed to get replicas", "uuid", uuid, "error", err)
+			return common.MayastorVolume{}
 		}
-
+		replicas = append(replicas, common.Replica{
+			Uri:     replica.Uri,
+			Offline: strings.ToLower(replica.State) != "online",
+			Node:    replica.Node,
+			Pool:    replica.Pool,
+		})
 	}
 
 	return common.MayastorVolume{
