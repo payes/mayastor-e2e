@@ -94,26 +94,26 @@ func MonitorCRs(testConductor *tc.TestConductor, msv_uids []string, duration tim
 		if moac {
 			for _, msv := range msv_uids {
 				if err := CheckMSVmoac(msv); err != nil {
-					return fmt.Sprintf("MSV %s check failed, err: %s", msv, err.Error())
+					return fmt.Sprintf("MSV %s check failed, err: %s\n", msv, err.Error())
 				}
 			}
 		} else {
 			ms_ips, err := k8sclient.GetMayastorNodeIPs()
 			if err != nil {
-				return fmt.Sprintf("MSV grpc check failed to get nodes, err: %s", err.Error())
+				return fmt.Sprintf("MSV grpc check failed to get nodes, err: %s\n", err.Error())
 			}
 			for _, msv := range msv_uids {
 				if err := CheckMSVwithGrpc(ms_ips, msv); err != nil {
-					return fmt.Sprintf("MSV grpc %s check failed, err: %s", msv, err.Error())
+					return fmt.Sprintf("MSV grpc %s check failed, err: %s\n", msv, err.Error())
 				}
 			}
 		}
 		if err := CheckPools(testConductor.Config.Msnodes); err != nil {
-			return fmt.Sprintf("MSP check failed, err: %s", err.Error())
+			return fmt.Sprintf("MSP check failed, err: %s\n", err.Error())
 		}
 		if moac {
 			if err := CheckNodes(testConductor.Config.Msnodes); err != nil {
-				return fmt.Sprintf("MSN check failed, err: %s", err.Error())
+				return fmt.Sprintf("MSN check failed, err: %s\n", err.Error())
 			}
 		}
 		if time.Now().After(endTime) {

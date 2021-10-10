@@ -1,0 +1,23 @@
+pipeline {
+    agent { label 'nixos-mayastor' }
+    stages {
+        stage('checkout') {
+            steps {
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: "*/extended-test-framework"]],
+                    doGenerateSubmoduleConfigurations: false,
+                    extensions: [],
+                    submoduleCfg: [],
+                    userRemoteConfigs:
+                    [[url: "https://github.com/mayadata-io/mayastor-e2e", credentialsId: "github-checkout"]]])
+            }
+        }
+        stage('build the actors') {
+            steps {
+                sh "nix-shell --run 'cd src/tools/extended-test-framework/scripts/ && ./build.sh' "
+            }
+        }
+    }
+}
+

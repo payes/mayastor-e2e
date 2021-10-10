@@ -43,12 +43,8 @@ type ExtendedTestConfig struct {
 		Replicas     int    `yaml:"replicas" env-default:"2"`
 		Duration     string `yaml:"duration" env-default:"60m"`
 		VolumeSizeMb int    `yaml:"volumeSizeMb" env-default:"64"`
+		VolLifetime  string `yaml:"vollifetime" env-default:"5m"`
 	} `yaml:"nonSteadyState"`
-	ReplicaPerturbation struct {
-		Replicas     int    `yaml:"replicas" env-default:"3"`
-		Duration     string `yaml:"duration" env-default:"60m"`
-		VolumeSizeMb int    `yaml:"volumeSizeMb" env-default:"64"`
-	} `yaml:"replicaPerturbation"`
 }
 
 var once sync.Once

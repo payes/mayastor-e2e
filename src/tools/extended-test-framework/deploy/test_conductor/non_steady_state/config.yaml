@@ -10,4 +10,4 @@ nonSteadyState:
   replicas: 2
   duration: 10m
   volumeSizeMb: 64
-
+  vollifetime: 2m
