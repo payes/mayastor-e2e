@@ -11,7 +11,6 @@ import (
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/go-openapi/strfmt"
-	"github.com/go-openapi/validate"
 )
 
 // NewGetTestRunByIDParams creates a new GetTestRunByIDParams object
@@ -31,9 +30,8 @@ type GetTestRunByIDParams struct {
 	// HTTP Request Object
 	HTTPRequest *http.Request `json:"-"`
 
-	/*Test Plan Id
+	/*Test Run id
 	  Required: true
-	  Pattern: ^[A-Z]{2,3}-\d{1,4}$
 	  In: path
 	*/
 	ID string
@@ -68,20 +66,6 @@ func (o *GetTestRunByIDParams) bindID(rawData []string, hasKey bool, formats str
 	// Required: true
 	// Parameter is provided by construction from the route
 	o.ID = raw
-
-	if err := o.validateID(formats); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// validateID carries on validations for parameter ID
-func (o *GetTestRunByIDParams) validateID(formats strfmt.Registry) error {
-
-	if err := validate.Pattern("id", "path", o.ID, `^[A-Z]{2,3}-\d{1,4}$`); err != nil {
-		return err
-	}
 
 	return nil
 }

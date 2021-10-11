@@ -2,11 +2,12 @@ package handlers
 
 import (
 	"encoding/json"
-	log "github.com/sirupsen/logrus"
 	"strings"
 	"test-director/connectors"
 	"test-director/models"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/patrickmn/go-cache"
 )
@@ -49,6 +50,8 @@ func (r *EventCache) Set(key string, data models.Event) error {
 		if err != nil {
 			log.Errorf("failed to get test run ID: %s after failed event: %s", *data.SourceInstance, key)
 		} else {
+			tr.Status = models.TestRunStatusEnumFAILED
+			runInterface.Set(*data.SourceInstance, *tr)
 			FailTestRun(tr)
 		}
 	}

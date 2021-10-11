@@ -255,7 +255,11 @@ func init() {
         "operationId": "GetTestRunById",
         "parameters": [
           {
-            "$ref": "#/parameters/JiraKeyPathParam"
+            "type": "string",
+            "description": "Test Run id",
+            "name": "id",
+            "in": "path",
+            "required": true
           }
         ],
         "responses": {
@@ -886,10 +890,8 @@ func init() {
         "operationId": "GetTestRunById",
         "parameters": [
           {
-            "pattern": "^[A-Z]{2,3}-\\d{1,4}$",
             "type": "string",
-            "format": "Jira issue key",
-            "description": "Test Plan Id",
+            "description": "Test Run id",
             "name": "id",
             "in": "path",
             "required": true

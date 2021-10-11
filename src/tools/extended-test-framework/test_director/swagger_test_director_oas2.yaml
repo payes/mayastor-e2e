@@ -124,7 +124,11 @@ paths:
       summary: returns a Test Run with the corresponding id
       operationId: GetTestRunById
       parameters:
-        - $ref: '#/parameters/JiraKeyPathParam'
+        - in: path
+          name: id
+          description: Test Run id
+          required: true
+          type: string
       responses:
         '200':
           description: A Test Run was returned to the caller
