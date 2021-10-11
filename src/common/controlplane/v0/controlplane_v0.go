@@ -50,6 +50,21 @@ func (cp CPv0p8) NexusStateFaulted() string {
 	return "NEXUS_FAULTED"
 }
 
+func (cp CPv0p8) MspGrpcStateToCrdState(mspState int) string {
+	switch mspState {
+	case 0:
+		return "pending"
+	case 1:
+		return "online"
+	case 2:
+		return "degraded"
+	case 3:
+		return "faulted"
+	default:
+		return "offline"
+	}
+}
+
 func MakeCP() CPv0p8 {
 	return CPv0p8{}
 }

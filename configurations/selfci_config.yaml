@@ -72,7 +72,7 @@ pvcDelete:
   # fsVolSizeMb units are MiB
   fsVolSizeMb: 50
 primitiveReplicas:
-    iterations: 10
+    iterations: 2
     startSizeMb: 64
     endSizeMb: 512
     sizeStepMb: 64
@@ -80,3 +80,9 @@ primitiveMaxVolsInPool:
   volMb: 64
   volumeCountPerPool: 110
   replicas: 1
+primitiveMspState:
+  iterationCount: 10
+primitiveMspDelete:
+  iterations: 10
+PrimitiveMspStressTest:
+  iterations: 2
