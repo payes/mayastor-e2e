@@ -26,13 +26,22 @@ pipeline {
             projectName: 'k8s-build-cluster',
             description: 'Selects cluster to use.'
         )
+        booleanParam(name: 'available', defaultValue: false,  description: 'is the above cluster correct ?')
         choice(choices: ['steady_state', 'non_steady_state'], name: 'test', description: 'test to run')
         choice(choices: ['ET-435'], name: 'plan', description: 'test plan')
         string(defaultValue: '10m', name: 'duration', trim: true, description: 'run duration')
-
     }
 
     stages {
+        stage('confirm') {
+            steps {
+                script {
+                    if (params.available != true) {
+                        error 'cluster not confirmed available'
+                    }
+                }
+            }
+        }
         stage('checkout') {
             steps {
                 checkout([
@@ -52,7 +61,7 @@ pipeline {
             steps {
                 script {
                     GetClusterAdminConf("${BUILD_JOBNAME}", e2e_environment, "${BUILD_NUMBER}")
-                    cmd = "cd src/tools/extended-test-framework/scripts && ./deploy.sh -t \"${test}\" -p \"${plan}\" -d \"${duration}\" && ./wait_finished.sh"
+                    cmd = "cd src/tools/extended-test-framework/scripts && ./deploy.sh -t \"${params.test}\" -p \"${params.plan}\" -d \"${params.duration}\" && ./wait_finished.sh"
                     sh "nix-shell --run '${cmd}'"
                 }
             }
