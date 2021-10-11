@@ -38,6 +38,7 @@ type DisruptionEnv struct {
 	podRescheduleTimeoutSecs int
 	rebuildTimeoutSecs       int
 	fioTimeoutSecs           int
+	nexusUuid                string
 }
 
 var env DisruptionEnv
@@ -98,6 +99,12 @@ func (env *DisruptionEnv) getNodes() {
 	}
 	Expect(toRemove).NotTo(Equal(""), "Could not find a replica to remove")
 	env.replicaToRemove = toRemove
+
+	// get nexus uuid
+	msv, err := k8stest.GetMSV(env.uuid)
+	Expect(err).ToNot(HaveOccurred(), "failed to retrieve MSV for volume %s", env.uuid)
+	env.nexusUuid = msv.Status.Nexus.Uuid
+
 	logf.Log.Info("identified", "nexus IP", env.nexusIP, "local replica", env.nexusLocalRep, "node of replica to remove", env.replicaToRemove)
 }
 
@@ -213,7 +220,7 @@ func (env *DisruptionEnv) unsuppressMayastorPodOn(nodeName string, delay int) {
 func (env *DisruptionEnv) faultNexusChild(delay int) {
 	time.Sleep(time.Duration(delay) * time.Second)
 	logf.Log.Info("faulting the nexus replica")
-	err := mayastorclient.FaultNexusChild(env.nexusIP, env.uuid, env.nexusLocalRep)
+	err := mayastorclient.FaultNexusChild(env.nexusIP, env.nexusUuid, env.nexusLocalRep)
 	Expect(err).ToNot(HaveOccurred(), "%v", err)
 }
 

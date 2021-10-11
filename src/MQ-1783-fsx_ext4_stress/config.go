@@ -25,6 +25,7 @@ type fsxExt4StressConfig struct {
 	uuid              string
 	nexusNodeIP       string
 	nexusRep          string
+	nexusUuid         string
 	replicaIPs        []string
 	fileSystemType    string
 	numberOfOperation int

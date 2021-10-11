@@ -159,6 +159,9 @@ func (c *primitiveFaultInjectionConfig) getNexusDetail() {
 	}
 	Expect(nxChildUri).NotTo(Equal(""), "Could not find nexus replica")
 	c.nexusRep = nxChildUri
+	msv, err := k8stest.GetMSV(c.uuid)
+	Expect(err).ToNot(HaveOccurred(), "failed to retrieve MSV for volume %s", c.uuid)
+	c.nexusUuid = msv.Status.Nexus.Uuid
 
 	logf.Log.Info("identified", "nexus", c.nexusNodeIP, "replica1", c.replicaIPs[0], "replica2", c.replicaIPs[1])
 }
@@ -166,7 +169,7 @@ func (c *primitiveFaultInjectionConfig) getNexusDetail() {
 // Fault the replica hosted on the nexus node
 func (c *primitiveFaultInjectionConfig) faultNexusChild() {
 	logf.Log.Info("faulting the nexus replica")
-	err := mayastorclient.FaultNexusChild(c.nexusNodeIP, c.uuid, c.nexusRep)
+	err := mayastorclient.FaultNexusChild(c.nexusNodeIP, c.nexusUuid, c.nexusRep)
 	Expect(err).ToNot(HaveOccurred(), "failed to fault local replica")
 }
 
