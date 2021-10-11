@@ -12,6 +12,9 @@ spec:
       imagePullPolicy: Always
       args:
         - "/test_conductor_${TEST}"
+      env:
+      - name: DURATION
+        value: ${DURATION}
       ports:
         - containerPort: 8080
           protocol: "TCP"

@@ -36,12 +36,12 @@ type ExtendedTestConfig struct {
 	// Individual Test parameters
 	SteadyState struct {
 		Replicas     int    `yaml:"replicas" env-default:"2"`
-		Duration     string `yaml:"duration" env-default:"60m"`
+		Duration     string `yaml:"duration" env-default:"60m" env:"DURATION"`
 		VolumeSizeMb int    `yaml:"volumeSizeMb" env-default:"64"`
 	} `yaml:"steadyState"`
 	NonSteadyState struct {
 		Replicas     int    `yaml:"replicas" env-default:"2"`
-		Duration     string `yaml:"duration" env-default:"60m"`
+		Duration     string `yaml:"duration" env-default:"60m" env:"DURATION"`
 		VolumeSizeMb int    `yaml:"volumeSizeMb" env-default:"64"`
 		VolLifetime  string `yaml:"vollifetime" env-default:"5m"`
 	} `yaml:"nonSteadyState"`

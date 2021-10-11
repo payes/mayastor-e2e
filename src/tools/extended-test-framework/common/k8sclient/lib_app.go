@@ -145,7 +145,5 @@ func DeployFio(fioPodName string, pvcName string, volumeType VolumeType, volSize
 		}
 		time.Sleep(timoSleepSecs * time.Second)
 	}
-
-	logf.Log.Info("Waiting for run to complete", "timeout", timoSecs)
 	return nil
 }
