@@ -51,6 +51,7 @@ func (r *EventCache) Set(key string, data models.Event) error {
 			log.Errorf("failed to get test run ID: %s after failed event: %s", *data.SourceInstance, key)
 		} else {
 			tr.Status = models.TestRunStatusEnumFAILED
+			tr.Data = *data.Message + " " + strings.Join(data.Data, ", ")
 			runInterface.Set(*data.SourceInstance, *tr)
 			FailTestRun(tr)
 		}
