@@ -19,7 +19,7 @@ Options:
 or
   --remove               remove instead of deploy
 Examples:
-  $0 --test steady_state --plan AB-123
+  $0 --test steady_state --plan AB-123 --duration 6d12h
   $0 --remove
 EOF
 }

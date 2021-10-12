@@ -61,7 +61,7 @@ pipeline {
             steps {
                 script {
                     GetClusterAdminConf("${BUILD_JOBNAME}", e2e_environment, "${BUILD_NUMBER}")
-                    cmd = "cd src/tools/extended-test-framework/scripts && ./deploy.sh -t \"${params.test}\" -p \"${params.plan}\" -d \"${params.duration}\" && ./wait_finished.sh"
+                    cmd = "cd src/tools/extended-test-framework/scripts && ./deploy.sh -t \"${params.test}\" -p \"${params.plan}\" -d \"${params.duration}\" && ./wait.sh"
                     sh "nix-shell --run '${cmd}'"
                 }
             }

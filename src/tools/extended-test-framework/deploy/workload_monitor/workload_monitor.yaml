@@ -65,6 +65,8 @@ spec:
         - containerPort: 8080
           protocol: "TCP"
           name: test-monitor
+  nodeSelector:
+    openebs.io/role: mayastor-e2e
   restartPolicy: Never
   serviceAccountName: workload-monitor-sa
 

@@ -24,6 +24,8 @@ spec:
         mountPath: "/config.yaml"
         subPath: "config.yaml"
         readOnly: true
+  nodeSelector:
+    openebs.io/role: mayastor-e2e
   volumes:
   - name: tc-config
     configMap:
