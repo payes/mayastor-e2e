@@ -38,6 +38,8 @@ type ControlPlaneInterface interface {
 	NexusStateDegraded() string
 	NexusStateFaulted() string
 
+	MspGrpcStateToCrdState(int) string
+
 	// MSV abstraction
 
 	GetMSV(uuid string) (*common.MayastorVolume, error)
@@ -112,6 +114,10 @@ func NexusStateDegraded() string {
 
 func NexusStateFaulted() string {
 	return getControlPlane().NexusStateFaulted()
+}
+
+func MspGrpcStateToCrdState(mspState int) string {
+	return getControlPlane().MspGrpcStateToCrdState(mspState)
 }
 
 //FIXME: MSV These functions are only guaranteed to
