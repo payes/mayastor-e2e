@@ -73,7 +73,7 @@ in ./deploy/test_conductor/\<test\>/config.yaml
 
 	-p <plan ID>
 
-How long to run the test with units (e.g. 60s 5m50s 6d12h30m):
+How long to run the test with units (e.g. 60s / 5m50s / 36h):
 
 	-d <duration>
 

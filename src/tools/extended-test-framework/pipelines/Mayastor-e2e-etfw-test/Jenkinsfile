@@ -26,18 +26,18 @@ pipeline {
             projectName: 'k8s-build-cluster',
             description: 'Selects cluster to use.'
         )
-        booleanParam(name: 'available', defaultValue: false,  description: 'is the above cluster correct ?')
-        choice(choices: ['steady_state', 'non_steady_state'], name: 'test', description: 'test to run')
+        booleanParam(name: 'node_correct', defaultValue: false,  description: 'Is the above cluster correct ? It must have mayastor installed and a node labelled openebs.io/role=mayastor-e2e. See README.md.')
+        choice(choices: ['steady_state', 'non_steady_state'], name: 'test', description: 'select which test to run')
         choice(choices: ['ET-435'], name: 'plan', description: 'test plan')
-        string(defaultValue: '10m', name: 'duration', trim: true, description: 'run duration')
+        string(defaultValue: '10m', name: 'duration', trim: true, description: 'run duration, use units h, m and s')
     }
 
     stages {
         stage('confirm') {
             steps {
                 script {
-                    if (params.available != true) {
-                        error 'cluster not confirmed available'
+                    if (params.node_correct != true) {
+                        error 'cluster not confirmed as correct'
                     }
                 }
             }
