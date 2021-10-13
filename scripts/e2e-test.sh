@@ -453,6 +453,15 @@ export e2e_policy_cleanup_before="$policy_cleanup_before"
 #preprocess tests so that command line can use commas as delimiters
 tests=${tests//,/ }
 
+# Generate openapi client code for new installs.
+if contains "$tests" "install" ; then
+    if [ "$control_plane" == "mcp2" ]; then
+        specyaml=$(find "$sessiondir/install-bundle/$tag" -name \*api_spec.yaml -type f)
+        ./scripts/genOpenApiClient.py "$specyaml"
+    fi
+fi
+
+
 echo "Environment:"
 echo "    e2e_session_dir=$e2e_session_dir"
 echo "    e2e_mayastor_root_dir=$e2e_mayastor_root_dir"

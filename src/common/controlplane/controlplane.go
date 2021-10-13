@@ -3,7 +3,8 @@ package controlplane
 import (
 	"mayastor-e2e/common"
 	"mayastor-e2e/common/controlplane/v0"
-	"mayastor-e2e/common/controlplane/v1"
+	v1cpkp "mayastor-e2e/common/controlplane/v1"
+	v1oa "mayastor-e2e/common/controlplane/v1/cp-openapi"
 	"sync"
 )
 
@@ -19,7 +20,7 @@ func SetIpNodeAddresses(address []string) {
 	nodeIpAddresses = append(nodeIpAddresses, address...)
 }
 
-type ControlPlaneInterface interface {
+type cpInterface interface {
 	// Version
 
 	MajorVersion() int
@@ -57,17 +58,18 @@ type ControlPlaneInterface interface {
 	CheckAllMsvsAreHealthy() error
 }
 
-var ifc ControlPlaneInterface
+var ifc cpInterface
 
 var once sync.Once
 
-func getControlPlane() ControlPlaneInterface {
+func getControlPlane() cpInterface {
 	once.Do(func() {
 		if common.IsControlPlaneMoac() {
 			ifc = v0.MakeCP()
 		}
 		if common.IsControlPlaneMcp() {
-			ifc = v1.MakeCP(&nodeIpAddresses)
+			_ = v1cpkp.MakeCP(&nodeIpAddresses)
+			ifc = v1oa.MakeCP(&nodeIpAddresses)
 		}
 		if ifc == nil {
 			panic("failed to set control plane object")
