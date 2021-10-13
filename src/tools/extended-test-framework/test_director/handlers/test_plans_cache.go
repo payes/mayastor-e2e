@@ -16,7 +16,7 @@ var planInterface testPlanInterface
 type testPlanInterface interface {
 	Delete(key models.JiraKey) error
 	DeleteAll() *models.RequestOutcome
-	Get(key models.JiraKey) (*models.TestPlan, error)
+	Get(key models.JiraKey) *models.TestPlan
 	GetActive() *models.TestPlan
 	GetAll() []*models.TestPlan
 	Set(key models.JiraKey, plan models.TestPlan) error
@@ -27,7 +27,7 @@ type TestPlanCache struct {
 }
 
 func (r *TestPlanCache) Delete(key models.JiraKey) error {
-	tp, _ := r.Get(key)
+	tp := r.Get(key)
 	if tp != nil {
 		r.client.Delete(string(key))
 		return nil
@@ -36,33 +36,36 @@ func (r *TestPlanCache) Delete(key models.JiraKey) error {
 }
 
 func (r *TestPlanCache) DeleteAll() *models.RequestOutcome {
-	i64 := int64(r.client.ItemCount() - 1)
+	var counter int64
+	counter = 0
 	for _, item := range r.GetAll() {
 		if !*item.IsActive {
 			r.Delete(item.Key)
+			counter++
 		}
 	}
 	ro := models.RequestOutcome{
 		Details:       "Deleted all test plans instead of active one",
-		ItemsAffected: &i64,
+		ItemsAffected: &counter,
 		Result:        models.RequestOutcomeResultOK,
 	}
 	return &ro
 }
 
-func (r *TestPlanCache) Get(key models.JiraKey) (*models.TestPlan, error) {
+func (r *TestPlanCache) Get(key models.JiraKey) *models.TestPlan {
 	tp, exist := r.client.Get(string(key))
 	if !exist {
-		return nil, nil
+		return nil
 	}
 
 	var result models.TestPlan
 	err := json.Unmarshal(tp.([]byte), &result)
 	if err != nil {
-		return nil, err
+		log.Error("Failed to unmarshall test plan record.", err)
+		return nil
 	}
 
-	return &result, nil
+	return &result
 }
 
 func (r *TestPlanCache) GetActive() *models.TestPlan {
@@ -74,6 +77,7 @@ func (r *TestPlanCache) GetActive() *models.TestPlan {
 		var result models.TestPlan
 		err := json.Unmarshal(val.Object.([]byte), &result)
 		if err != nil {
+			log.Error("Failed to unmarshall test plan records.", err)
 			return nil
 		}
 		if *result.IsActive {
@@ -115,7 +119,7 @@ func InitTestPlanCache(dtp *config.ServerConfig) {
 	}
 	jt, err := connectors.GetJiraTaskDetails(dtp.DefaultTestPlan)
 	if err != nil {
-		log.Error("default test plan is invalid")
+		log.Error("Default test plan is invalid.")
 		return
 	}
 	b := true

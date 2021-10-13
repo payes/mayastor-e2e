@@ -12,6 +12,11 @@ import (
 	"github.com/patrickmn/go-cache"
 )
 
+const (
+	SlackWebhookUrl = "https://hooks.slack.com/services/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"
+)
+const SlackChannel = "#test_director"
+
 var eventInterface EventInterface
 
 type EventInterface interface {
@@ -33,6 +38,7 @@ func (r *EventCache) GetAll() []*models.Event {
 		var result models.Event
 		err := json.Unmarshal(val.Object.([]byte), &result)
 		if err != nil {
+			log.Error("Failed to unmarshall event records.", err)
 			return nil
 		}
 		m = append(m, &result)
@@ -46,18 +52,15 @@ func (r *EventCache) Set(key string, data models.Event) error {
 		return err
 	}
 	if *data.Class == models.EventClassEnumFAIL {
-		tr, err := runInterface.Get(*data.SourceInstance)
-		if err != nil {
-			log.Errorf("failed to get test run ID: %s after failed event: %s", *data.SourceInstance, key)
-		} else {
-			tr.Status = models.TestRunStatusEnumFAILED
-			tr.Data = *data.Message + " " + strings.Join(data.Data, ", ")
-			runInterface.Set(*data.SourceInstance, *tr)
-			FailTestRun(tr)
-		}
+		tr := runInterface.Get(*data.SourceInstance)
+		tr.Status = models.TestRunStatusEnumFAILED
+		tr.Data = *data.Message + " " + strings.Join(data.Data, ", ")
+		runInterface.Set(*data.SourceInstance, *tr)
+		FailTestRun(tr)
 	}
+	// -1 means that the item never expires
 	r.client.Set(key, b, -1)
-	setupSlackNotification(&data.EventSpec)
+	sendSlackNotification(&data.EventSpec)
 	return nil
 }
 
@@ -67,11 +70,11 @@ func InitEventCache() {
 	}
 }
 
-func setupSlackNotification(data *models.EventSpec) {
+func sendSlackNotification(data *models.EventSpec) {
 	sc := connectors.SlackClient{
-		WebHookUrl: "https://hooks.slack.com/services/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",
+		WebHookUrl: SlackWebhookUrl,
 		UserName:   string(*data.SourceClass),
-		Channel:    "#test_director",
+		Channel:    SlackChannel,
 		TimeOut:    10 * time.Second,
 	}
 	sn := connectors.SlackJobNotification{

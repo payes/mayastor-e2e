@@ -2,9 +2,11 @@ package connectors
 
 import (
 	"encoding/json"
+	"errors"
 	log "github.com/sirupsen/logrus"
 	"io/ioutil"
 	"net/http"
+	"time"
 )
 
 const (
@@ -40,7 +42,7 @@ type IssueType struct {
 }
 
 func GetJiraTaskDetails(key string) (*JiraTask, error) {
-	client := &http.Client{}
+	client := &http.Client{Timeout: 10 * time.Second}
 	req, err := http.NewRequest(http.MethodGet, issueURL+key, nil)
 	if err != nil {
 		log.Error(err.Error())
@@ -60,6 +62,9 @@ func GetJiraTaskDetails(key string) (*JiraTask, error) {
 	if err != nil {
 		log.Error(err.Error())
 		return nil, err
+	}
+	if resp.StatusCode != 200 {
+		return nil, errors.New(string(bodyBytes))
 	}
 
 	var jt JiraTask

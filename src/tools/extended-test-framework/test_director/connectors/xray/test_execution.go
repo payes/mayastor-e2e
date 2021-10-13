@@ -3,11 +3,17 @@ package xray
 import (
 	"fmt"
 	"github.com/tidwall/gjson"
+	"strings"
 	"test-director/models"
 )
 
 func CreateTestExecution(testPlanId, testId, testJiraKey string) string {
-	s := fmt.Sprintf(`mutation{createTestExecution(testIssueIds:["%s"] jira: {fields: {summary: "Test Execution for %s", project: {key: "ET"}}}) {testExecution {issueId jira(fields: ["key"])} warnings createdTestEnvironments}}`, testId, testJiraKey)
+	s := fmt.Sprintf(
+		`mutation{createTestExecution(testIssueIds:["%s"] jira: {fields: {summary: "Test Execution for %s", project: {key: "%s"}}}) {testExecution {issueId jira(fields: ["key"])} warnings createdTestEnvironments}}`,
+		testId,
+		testJiraKey,
+		strings.Split(testJiraKey, "-")[0],
+	)
 	json := sendQuery(s)
 	testExecId := gjson.Get(json, "data.createTestExecution.testExecution.issueId").Str
 	addTestExecutionToTestPlan(testPlanId, testExecId)

@@ -30,7 +30,7 @@ func NewGetTestPlanByIdHandler() test_director.GetTestPlanByIDHandler {
 
 func (impl *getTestPlanImpl) Handle(params test_director.GetTestPlanByIDParams) middleware.Responder {
 	id := params.ID
-	plan, _ := planInterface.Get(models.JiraKey(id))
+	plan := planInterface.Get(models.JiraKey(id))
 	if plan == nil {
 		return test_director.NewGetTestPlanByIDNotFound()
 	}
@@ -72,7 +72,7 @@ func NewPutTestPlanHandler() test_director.PutTestPlanByIDHandler {
 func (impl *putTestPlanImpl) Handle(params test_director.PutTestPlanByIDParams) middleware.Responder {
 	id := params.ID
 	tps := params.Body
-	plan, _ := planInterface.Get(models.JiraKey(id))
+	plan := planInterface.Get(models.JiraKey(id))
 	b := true
 	if plan != nil {
 		if *plan.Status == models.TestPlanStatusEnumNOTSTARTED && *tps.Status == models.TestPlanStatusEnumRUNNING {
@@ -84,12 +84,12 @@ func (impl *putTestPlanImpl) Handle(params test_director.PutTestPlanByIDParams) 
 		}
 	} else {
 		jt, err := connectors.GetJiraTaskDetails(id)
-		if jt.Fields.IssueType.Name != "Test Plan" {
-			log.Errorf("Jira key: %s issue type: %s is not a Test Plan", jt.Key, jt.Fields.IssueType.Name)
-			return testPlanBadRequest(err)
-		}
 		if err != nil {
 			log.Error(err)
+			return testPlanBadRequest(err)
+		}
+		if jt.Fields.IssueType.Name != "Test Plan" {
+			log.Errorf("Jira key: %s issue type: %s is not a Test Plan", jt.Key, jt.Fields.IssueType.Name)
 			return testPlanBadRequest(err)
 		}
 
