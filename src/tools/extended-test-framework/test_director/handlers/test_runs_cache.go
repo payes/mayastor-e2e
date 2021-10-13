@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/go-openapi/errors"
 	"github.com/patrickmn/go-cache"
+	log "github.com/sirupsen/logrus"
 	"test-director/models"
 )
 
@@ -11,7 +12,7 @@ var runInterface TestRunInterface
 
 type TestRunInterface interface {
 	Delete(key string) error
-	Get(key string) (*models.TestRun, error)
+	Get(key string) *models.TestRun
 	GetAll() []*models.TestRun
 	Set(key string, data models.TestRun) error
 }
@@ -21,27 +22,28 @@ type TestRunCache struct {
 }
 
 func (r *TestRunCache) Delete(key string) error {
-	tp, _ := r.Get(key)
+	tp := r.Get(key)
 	if tp != nil {
 		r.client.Delete(key)
 		return nil
 	}
-	return errors.NotFound("Not found")
+	return errors.NotFound("not found")
 }
 
-func (r *TestRunCache) Get(key string) (*models.TestRun, error) {
+func (r *TestRunCache) Get(key string) *models.TestRun {
 	tp, exist := r.client.Get(key)
 	if !exist {
-		return nil, nil
+		return nil
 	}
 
 	var result models.TestRun
 	err := json.Unmarshal(tp.([]byte), &result)
 	if err != nil {
-		return nil, err
+		log.Error("Failed to unmarshall test run record.", err)
+		return nil
 	}
 
-	return &result, nil
+	return &result
 }
 
 func (r *TestRunCache) GetAll() []*models.TestRun {
@@ -54,6 +56,7 @@ func (r *TestRunCache) GetAll() []*models.TestRun {
 		var result models.TestRun
 		err := json.Unmarshal(val.Object.([]byte), &result)
 		if err != nil {
+			log.Error("Failed to unmarshall test run records.", err)
 			return nil
 		}
 		m = append(m, &result)

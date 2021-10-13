@@ -33,7 +33,7 @@ func NewGetTestRunByIdHandler() test_director.GetTestRunByIDHandler {
 
 func (impl *getTestRunImpl) Handle(params test_director.GetTestRunByIDParams) middleware.Responder {
 	id := params.ID
-	run, _ := runInterface.Get(id)
+	run := runInterface.Get(id)
 	if run == nil {
 		return test_director.NewGetTestRunByIDNotFound()
 	}
@@ -64,18 +64,19 @@ func NewPutTestRunHandler() test_director.PutTestRunByIDHandler {
 func (impl *putTestRunImpl) Handle(params test_director.PutTestRunByIDParams) middleware.Responder {
 	id := params.ID
 	testRunSpec := params.Body
-	testRun, _ := runInterface.Get(id)
+	testRun := runInterface.Get(id)
 	if testRun != nil {
 		if testRun.Status == models.TestRunStatusEnumTODO && testRunSpec.Status == models.TestRunStatusEnumEXECUTING {
 			testRun.StartDateTime = strfmt.DateTime(time.Now())
 			testRun.TestRunSpec.Data = testRunSpec.Data
 			testRun.Status = testRunSpec.Status
 			xray.UpdateTestRun(*testRun)
-			tp, _ := planInterface.Get(*testRun.TestKey)
-			if tp != nil {
-				*tp.Status = models.TestPlanStatusEnumRUNNING
-				planInterface.Set(tp.Key, *tp)
+			tp := planInterface.Get(*testRun.TestKey)
+			if tp == nil {
+				return badRequestResponse(errors.New("there is no test plan belongs to test run"))
 			}
+			*tp.Status = models.TestPlanStatusEnumRUNNING
+			planInterface.Set(tp.Key, *tp)
 		}
 		if testRun.Status == models.TestRunStatusEnumEXECUTING && (testRunSpec.Status == models.TestRunStatusEnumFAILED || testRunSpec.Status == models.TestRunStatusEnumPASSED) {
 			testRun.EndDateTime = strfmt.DateTime(time.Now())
@@ -94,6 +95,9 @@ func (impl *putTestRunImpl) Handle(params test_director.PutTestRunByIDParams) mi
 		}
 
 		tp := planInterface.GetActive()
+		if tp == nil {
+			badRequestResponse(errors.New("there is no active test plan"))
+		}
 		if !contains(tp.Tests, jt.Id) {
 			return badRequestResponse(errors.New("test doesn't belong to active test plan"))
 		}
@@ -119,7 +123,7 @@ func (impl *putTestRunImpl) Handle(params test_director.PutTestRunByIDParams) mi
 
 func FailTestRun(testRun *models.TestRun) {
 	xray.UpdateTestRun(*testRun)
-	tp, _ := planInterface.Get(*testRun.TestKey)
+	tp := planInterface.Get(*testRun.TestKey)
 	if tp != nil {
 		if testRun.Status == models.TestRunStatusEnumPASSED && *tp.Status != models.TestPlanStatusEnumCOMPLETEFAIL {
 			*tp.Status = models.TestPlanStatusEnumCOMPLETEPASS
