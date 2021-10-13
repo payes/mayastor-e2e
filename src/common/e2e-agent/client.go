@@ -22,6 +22,11 @@ type CmdList struct {
 	Cmd string `json:"cmd"`
 }
 
+type Device struct {
+	Device string `json:"device"`
+	Table  string `json:"table"`
+}
+
 func sendRequest(reqType, url string, data interface{}) error {
 	_, err := sendRequestGetResponse(reqType, url, data, true)
 	return err
@@ -101,6 +106,16 @@ func DiskPartition(serverAddr string, cmd string) error {
 	url := "http://" + serverAddr + ":" + RestPort + "/exec"
 	data := CmdList{
 		Cmd: cmd,
+	}
+	return sendRequest("POST", url, data)
+}
+
+// CreateFaultyDevice creates a device which returns an error on write IOs
+func CreateFaultyDevice(serverAddr, device, table string) error {
+	url := "http://" + serverAddr + ":" + RestPort + "/createFaultyDevice"
+	data := Device{
+		Device: device,
+		Table:  table,
 	}
 	return sendRequest("POST", url, data)
 }

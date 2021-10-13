@@ -140,6 +140,7 @@ single_msn_shutdown
 stale_msp_after_node_power_failure
 synchronous_replication
 volume_filesystem
+MQ-2219-rc-reconciliation
 "
 #stale_msp_after_node_power_failure is moac specific
 
