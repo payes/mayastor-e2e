@@ -62,7 +62,10 @@ pipeline {
                 script {
                     GetClusterAdminConf("${BUILD_JOBNAME}", e2e_environment, "${BUILD_NUMBER}")
                     // cluster should have one node dedicated to etfw pods
-                    sh 'kubectl get nodes --show-labels | grep openebs.io/role=mayastor-e2e'
+                    def rc = sh(script: 'kubectl get nodes --show-labels | grep openebs.io/role=mayastor-e2e', returnStatus: true)
+                    if (rc != 0) {
+                        error "Failed, cluster not labelled for extended-test-framework"
+                    }
                     cmd = "cd src/tools/extended-test-framework/scripts && ./deploy.sh -t \"${params.test}\" -p \"${params.plan}\" -d \"${params.duration}\" && ./wait.sh"
                     sh "nix-shell --run '${cmd}'"
                 }
