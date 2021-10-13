@@ -385,34 +385,12 @@ func (cp CPv1) GetMsvState(uuid string) (string, error) {
 }
 
 func (cp CPv1) GetMsvReplicas(volName string) ([]common.Replica, error) {
-	var replicas []common.Replica
-	var childrenUri = make(map[string]bool)
-	cpVolumeChildren, err := GetMayastorVolumeChildren(volName, *cp.nodeIPAddresses)
-	if err == nil {
-		for _, child := range cpVolumeChildren {
-			//storing uri as key in map[string]boll
-			//will be used to determine replica corresponding to children uri
-			childrenUri[child.Uri] = true
-		}
-		cpReplicas, err := listMayastorCpReplicas(*cp.nodeIPAddresses)
-		if err != nil {
-			logf.Log.Info("Failed to list replicas", "error", err)
-			return nil, err
-		}
-		for _, cpReplica := range cpReplicas {
-			if _, ok := childrenUri[cpReplica.Uri]; ok {
-				replicas = append(replicas, common.Replica{
-					Uri:     cpReplica.Uri,
-					Offline: strings.ToLower(cpReplica.State) != "online",
-					Node:    cpReplica.Node,
-					Pool:    cpReplica.Pool,
-				})
-			}
-
-		}
-
+	vol, err := cp.GetMSV(volName)
+	if err != nil {
+		logf.Log.Info("Failed to get replicas", "uuid", volName, "error", err)
+		return nil, err
 	}
-	return replicas, nil
+	return vol.Status.Replicas, nil
 }
 
 func (cp CPv1) GetMsvNexusChildren(volName string) ([]common.NexusChild, error) {
