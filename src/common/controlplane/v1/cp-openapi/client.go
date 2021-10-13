@@ -47,7 +47,7 @@ func (oac oaClient) getReplica(uuid string) (openapiClient.Replica, error) {
 		req := client.ReplicasApi.GetReplica(context.TODO(), uuid)
 		replica, resp, err = req.Execute()
 		if err != nil {
-			log.Log.Info("", "resp", resp)
+			log.Log.Info("getReplica", "statusCode", resp.StatusCode, "resp", resp)
 		} else {
 			break
 		}
@@ -65,7 +65,7 @@ func (oac oaClient) getVolume(uuid string) (openapiClient.Volume, error, int) {
 		req := client.VolumesApi.GetVolume(context.TODO(), uuid)
 		volume, resp, err = req.Execute()
 		if err != nil {
-			log.Log.Info("getVolume", "resp", resp)
+			log.Log.Info("getVolume", "statusCode", resp.StatusCode, "resp", resp)
 		} else {
 			break
 		}
@@ -84,7 +84,7 @@ func (oac oaClient) getVolumes() ([]openapiClient.Volume, error) {
 		req := client.VolumesApi.GetVolumes(context.TODO())
 		volumes, resp, err = req.Execute()
 		if err != nil {
-			log.Log.Info("", "resp", resp)
+			log.Log.Info("getVolumes", "statusCode", resp.StatusCode, "resp", resp)
 		} else {
 			break
 		}
@@ -101,7 +101,7 @@ func (oac oaClient) deleteVolume(uuid string) error {
 		req := client.VolumesApi.DelVolume(context.TODO(), uuid)
 		resp, err = req.Execute()
 		if err != nil {
-			log.Log.Info("", "resp", resp)
+			log.Log.Info("deleteVolume", "statusCode", resp.StatusCode, "resp", resp)
 		} else {
 			break
 		}
@@ -118,7 +118,7 @@ func (oac oaClient) putReplicaCount(uuid string, replicaCount int) error {
 		req := client.VolumesApi.PutVolumeReplicaCount(context.TODO(), uuid, int32(replicaCount))
 		_, resp, err = req.Execute()
 		if err != nil {
-			log.Log.Info("", "resp", resp)
+			log.Log.Info("putReplicaCount", "statusCode", resp.StatusCode, "resp", resp)
 		} else {
 			break
 		}
@@ -197,7 +197,7 @@ func (oac oaClient) getReplicas() (map[string]openapiClient.Replica, error) {
 			}
 			break
 		} else {
-			logf.Log.Info("", "resp", resp)
+			logf.Log.Info("getReplicas", "resp"statusCode", resp.StatusCode, ", resp)
 		}
 	}
 	return replicaMap, err
