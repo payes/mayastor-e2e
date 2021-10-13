@@ -1,7 +1,6 @@
 package install_v1
 
 import (
-	"mayastor-e2e/common/controlplane"
 	"mayastor-e2e/common/k8sinstall"
 	"mayastor-e2e/common/k8stest"
 	"testing"
@@ -17,7 +16,9 @@ func TestInstallSuite(t *testing.T) {
 
 var _ = Describe("Mayastor control plane setup", func() {
 	It("should install using yaml files", func() {
-		Expect(controlplane.MajorVersion()).To(Equal(1), "Version should be 1")
+		major, err := k8sinstall.GetConfigMajorVersion()
+		Expect(err).ToNot(HaveOccurred(), "%v", err)
+		Expect(major).To(Equal(1), "Version should be 1")
 		Expect(k8sinstall.InstallMayastor()).ToNot(HaveOccurred(), "install failed")
 	})
 })

@@ -2,7 +2,6 @@ package uninstall
 
 import (
 	. "github.com/onsi/ginkgo"
-	"mayastor-e2e/common/controlplane"
 	"testing"
 
 	"mayastor-e2e/common/k8sinstall"
@@ -12,12 +11,19 @@ import (
 )
 
 func TestTeardownSuite(t *testing.T) {
+	major, err := k8sinstall.GetConfigMajorVersion()
+	if err != nil {
+		panic(err)
+	}
+
 	// Initialise test and set class and file names for reports
-	switch controlplane.MajorVersion() {
+	switch major {
 	case 0:
 		k8stest.InitTesting(t, k8sinstall.UninstallSuiteName, "uninstall")
 	case 1:
 		k8stest.InitTesting(t, k8sinstall.UninstallSuiteNameV1, "uninstall")
+	default:
+		Expect(major < 2).To(BeTrue(), "unsupported version %d", major)
 	}
 }
 

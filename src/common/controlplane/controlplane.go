@@ -2,28 +2,20 @@ package controlplane
 
 import (
 	"fmt"
-	"mayastor-e2e/common"
-	v0 "mayastor-e2e/common/controlplane/v0"
-	v1 "mayastor-e2e/common/controlplane/v1"
-	"mayastor-e2e/common/e2e_config"
 	"strconv"
 	"strings"
 	"sync"
+
+	"mayastor-e2e/common"
+	"mayastor-e2e/common/controlplane/v0"
+	cpv1_kubectl_plugin "mayastor-e2e/common/controlplane/v1"
+	cpv1_rest_api "mayastor-e2e/common/controlplane/v1/rest-api"
+	"mayastor-e2e/common/e2e_config"
+
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-// To circumvent circular dependency on k8stest and avoid hidden initialisation dependencies
-// declare an array of nodeIpAddresses the address of which is passed to relevant control
-// plane interface implementations as required.
-// The array can be updated by a subsequent calls
-// This works because we only ever use a single instance of a control plane interface
-var nodeIpAddresses []string
-
-func SetIpNodeAddresses(address []string) {
-	nodeIpAddresses = nodeIpAddresses[:0]
-	nodeIpAddresses = append(nodeIpAddresses, address...)
-}
-
-type ControlPlaneInterface interface {
+type cpInterface interface {
 	// Version
 
 	MajorVersion() int
@@ -80,25 +72,33 @@ type ControlPlaneInterface interface {
 	ListMsPools() ([]common.MayastorPool, error)
 }
 
-var ifc ControlPlaneInterface
+var ifc cpInterface
 
 var once sync.Once
 
-func getControlPlane() ControlPlaneInterface {
+func getControlPlane() cpInterface {
 	once.Do(func() {
 		version := e2e_config.GetConfig().MayastorVersion
 		verComponents := strings.Split(version, ".")
 		major, err := strconv.Atoi(verComponents[0])
+		if err == nil {
+			switch major {
+			case 0:
+				ifc, err = v0.MakeCP(major)
+			case 1:
+				if e2e_config.GetConfig().UseRestApiForControlPlaneV1 {
+					logf.Log.Info("Using go rest API client for control plane V1")
+					ifc, err = cpv1_rest_api.MakeCP(major)
+				} else {
+					logf.Log.Info("Using kubectl plugin for control plane V1")
+					ifc, err = cpv1_kubectl_plugin.MakeCP(major)
+				}
+			default:
+				err = fmt.Errorf("unsupported control plane version %v", version)
+			}
+		}
 		if err != nil {
 			panic(err)
-		}
-		switch major {
-		case 0:
-			ifc = v0.MakeCP()
-		case 1:
-			ifc = v1.MakeCP(&nodeIpAddresses)
-		default:
-			panic(fmt.Errorf("unsupported control plane version %v", version))
 		}
 		if ifc == nil {
 			panic("failed to set control plane object")

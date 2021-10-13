@@ -7,7 +7,6 @@ import (
 	"mayastor-e2e/common"
 	"mayastor-e2e/common/e2e_config"
 	"os/exec"
-	"strings"
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )

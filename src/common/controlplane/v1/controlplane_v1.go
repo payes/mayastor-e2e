@@ -2,11 +2,15 @@ package v1
 
 import (
 	"fmt"
+	"mayastor-e2e/common"
+	"mayastor-e2e/common/e2e_config"
 	"regexp"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 type CPv1 struct {
-	nodeIPAddresses *[]string
+	nodeIPAddresses []string
+	pluginPath      string
 }
 
 func (cp CPv1) Version() string {
@@ -92,10 +96,16 @@ func (cp CPv1) MspGrpcStateToCrdState(mspState int) string {
 	}
 }
 
-func MakeCP(addr *[]string) CPv1 {
-	return CPv1{
-		nodeIPAddresses: addr,
+func MakeCP(majorVersion int) (CPv1, error) {
+	if majorVersion != 1 {
+		return CPv1{}, fmt.Errorf("incompatible version %d, expected 1", majorVersion)
 	}
+	addrs, err := GetMasterNodeIPs()
+	logf.Log.Info("Control Plane v1 - using kubectl plugin")
+	return CPv1{
+		nodeIPAddresses: addrs,
+		pluginPath:      fmt.Sprintf("%s/%s", e2e_config.GetConfig().KubectlPluginDir, common.KubectlMayastorPlugin),
+	}, err
 }
 
 func (cp CPv1) NodeStateOnline() string {

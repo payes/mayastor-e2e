@@ -6,11 +6,9 @@ import (
 )
 
 func GetMsPool(poolName string) (*common.MayastorPool, error) {
-	EnsureNodeAddressesAreSet()
 	return controlplane.GetMsPool(poolName)
 }
 
 func ListMsPools() ([]common.MayastorPool, error) {
-	EnsureNodeAddressesAreSet()
 	return controlplane.ListMsPools()
 }

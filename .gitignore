@@ -3,3 +3,4 @@ artifacts/
 .idea
 /.vagrant
 __pycache__
+src/generated/

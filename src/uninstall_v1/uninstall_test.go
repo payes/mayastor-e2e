@@ -3,7 +3,6 @@ package uninstall_v1
 import (
 	"testing"
 
-	"mayastor-e2e/common/controlplane"
 	"mayastor-e2e/common/k8sinstall"
 	"mayastor-e2e/common/k8stest"
 
@@ -18,7 +17,9 @@ func TestTeardownSuite(t *testing.T) {
 
 var _ = Describe("Mayastor setup", func() {
 	It("should teardown using yamls", func() {
-		Expect(controlplane.MajorVersion()).To(Equal(1), "Mayastor version should be 1")
+		major, err := k8sinstall.GetConfigMajorVersion()
+		Expect(err).ToNot(HaveOccurred(), "%v", err)
+		Expect(major).To(Equal(1), "Mayastor version should be 1")
 		Expect(k8sinstall.TeardownMayastor()).ToNot(HaveOccurred(), "uninstall failed")
 	})
 })

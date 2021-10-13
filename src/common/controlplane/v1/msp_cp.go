@@ -45,7 +45,6 @@ func GetMayastorCpPool(name string) (*MayastorCpPool, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	var response MayastorCpPool
 	err = json.Unmarshal(jsonInput, &response)
 	if err != nil {

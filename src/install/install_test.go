@@ -1,7 +1,7 @@
 package install
 
 import (
-	"mayastor-e2e/common/controlplane"
+	"fmt"
 	"testing"
 
 	"mayastor-e2e/common/k8sinstall"
@@ -12,12 +12,19 @@ import (
 )
 
 func TestInstallSuite(t *testing.T) {
+	major, err := k8sinstall.GetConfigMajorVersion()
+	if err != nil {
+		panic(err)
+	}
+
 	// Initialise test and set class and file names for reports
-	switch controlplane.MajorVersion() {
+	switch major {
 	case 0:
 		k8stest.InitTesting(t, k8sinstall.InstallSuiteName, "install")
 	case 1:
 		k8stest.InitTesting(t, k8sinstall.InstallSuiteNameV1, "install")
+	default:
+		panic(fmt.Errorf("unsupported version %d", major))
 	}
 }
 

@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os/exec"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -524,4 +525,14 @@ func TeardownMayastor() error {
 	}
 	logf.Log.Info("Deleted the mayastor namespace")
 	return nil
+}
+
+func GetConfigMajorVersion() (int, error) {
+	version := e2e_config.GetConfig().MayastorVersion
+	verComponents := strings.Split(version, ".")
+	major, err := strconv.Atoi(verComponents[0])
+	if err != nil {
+		return -1, fmt.Errorf("invalid version string %s, %v", version, err)
+	}
+	return major, nil
 }

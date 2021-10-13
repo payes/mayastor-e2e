@@ -91,6 +91,7 @@ func SetupTestEnvBasic() {
 	}
 
 	k8sClient := k8sManager.GetClient()
+	common.SetK8sClient(&k8sClient)
 	Expect(k8sClient).ToNot(BeNil())
 
 	restConfig := config.GetConfigOrDie()

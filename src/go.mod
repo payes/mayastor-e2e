@@ -5,13 +5,13 @@ go 1.15
 require (
 	github.com/container-storage-interface/spec v1.2.0 // indirect
 	github.com/go-openapi/errors v0.19.9
-	github.com/go-openapi/runtime v0.19.24
-	github.com/google/uuid v1.1.2
 	github.com/go-openapi/loads v0.20.2
+	github.com/go-openapi/runtime v0.19.24
 	github.com/go-openapi/spec v0.20.3
 	github.com/go-openapi/strfmt v0.20.0
 	github.com/go-openapi/swag v0.19.14
 	github.com/go-openapi/validate v0.20.2
+	github.com/google/uuid v1.1.2
 	github.com/gorilla/mux v1.7.3
 	github.com/ilyakaznacheev/cleanenv v1.2.5
 	github.com/jessevdk/go-flags v1.5.0
@@ -19,6 +19,7 @@ require (
 	github.com/onsi/gomega v1.10.2
 	github.com/pkg/errors v0.9.1
 	golang.org/x/net v0.0.0-20210119194325-5f4716e94777
+	golang.org/x/oauth2 v0.0.0-20191202225959-858c2ad4c8b6
 	google.golang.org/grpc v1.37.0
 	google.golang.org/protobuf v1.26.0
 	gopkg.in/yaml.v2 v2.4.0

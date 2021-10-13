@@ -77,6 +77,10 @@ type E2EConfig struct {
 	// Fail  quickly after failure of a prior AfterEach, overrides BeforeEachCheckAndRestart
 	FailQuick bool `yaml:"failQuick" env-default:"false" env:"e2e_fail_quick"`
 
+	//Temporary to enable rest API for control plane V1, defaults to false which implies that the kubectl-plugin will
+	//be used instead
+	UseRestApiForControlPlaneV1 bool `yaml:"UseRestApiForControlPlaneV1 " env-default:"false" env:"use_rest_api_for_control_plane_v1"`
+
 	// Run configuration
 	ReportsDir string `yaml:"reportsDir" env:"e2e_reports_dir"`
 	SelfTest   bool   `yaml:"selfTest" env:"e2e_self_test" env-default:"false"`

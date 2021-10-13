@@ -1,5 +1,7 @@
 package v0
 
+import "fmt"
+
 type CPv0p8 struct{}
 
 func (cp CPv0p8) Version() string {
@@ -73,8 +75,12 @@ func (cp CPv0p8) MspGrpcStateToCrdState(mspState int) string {
 	}
 }
 
-func MakeCP() CPv0p8 {
-	return CPv0p8{}
+func MakeCP(majorVersion int) (CPv0p8, error) {
+	var err error
+	if majorVersion != 0 {
+		err = fmt.Errorf("incompatible major version %d, expected 0", majorVersion)
+	}
+	return CPv0p8{}, err
 }
 
 func (cp CPv0p8) NodeStateOnline() string {
