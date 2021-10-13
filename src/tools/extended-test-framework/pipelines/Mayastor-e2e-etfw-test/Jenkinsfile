@@ -61,6 +61,8 @@ pipeline {
             steps {
                 script {
                     GetClusterAdminConf("${BUILD_JOBNAME}", e2e_environment, "${BUILD_NUMBER}")
+                    // cluster should have one node dedicated to etfw pods
+                    sh 'kubectl get nodes --show-labels | grep openebs.io/role=mayastor-e2e'
                     cmd = "cd src/tools/extended-test-framework/scripts && ./deploy.sh -t \"${params.test}\" -p \"${params.plan}\" -d \"${params.duration}\" && ./wait.sh"
                     sh "nix-shell --run '${cmd}'"
                 }
