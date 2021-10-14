@@ -71,9 +71,9 @@ func (impl *putTestRunImpl) Handle(params test_director.PutTestRunByIDParams) mi
 			testRun.TestRunSpec.Data = testRunSpec.Data
 			testRun.Status = testRunSpec.Status
 			xray.UpdateTestRun(*testRun)
-			tp := planInterface.Get(*testRun.TestKey)
-			if tp == nil {
-				return badRequestResponse(errors.New("there is no test plan belongs to test run"))
+			tp := planInterface.GetActive()
+			if tp == nil || !contains(tp.Tests, &testRun.TestID) {
+				return badRequestResponse(errors.New("there is no active test plan belongs to test run"))
 			}
 			*tp.Status = models.TestPlanStatusEnumRUNNING
 			planInterface.Set(tp.Key, *tp)
