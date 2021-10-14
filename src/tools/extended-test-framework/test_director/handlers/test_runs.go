@@ -91,13 +91,14 @@ func (impl *putTestRunImpl) Handle(params test_director.PutTestRunByIDParams) mi
 		}
 
 		if jt.Fields.IssueType.Name != "Test" {
-			return badRequestResponse(err)
+			return badRequestResponse(errors.New("test doesn't have issueType 'Test'"))
 		}
 
 		tp := planInterface.GetActive()
 		if tp == nil {
 			return badRequestResponse(errors.New("there is no active test plan"))
 		}
+
 		if !contains(tp.Tests, jt.Id) {
 			return badRequestResponse(errors.New("test doesn't belong to active test plan"))
 		}
