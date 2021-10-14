@@ -230,6 +230,7 @@ func IsMayastorVolumeDeleted(uuid string, address []string) bool {
 	if msv.Spec.Uuid == "" {
 		return true
 	}
+	logf.Log.Info("IsMayastorVolumeDeleted", "msv", msv)
 	return false
 }
 

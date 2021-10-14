@@ -39,6 +39,7 @@ type ControlPlaneInterface interface {
 	NexusStateOnline() string
 	NexusStateDegraded() string
 	NexusStateFaulted() string
+	MspStateOnline() string
 
 	MspGrpcStateToCrdState(int) string
 
@@ -125,6 +126,10 @@ func NexusStateDegraded() string {
 
 func NexusStateFaulted() string {
 	return getControlPlane().NexusStateFaulted()
+}
+
+func MspStateOnline() string {
+	return getControlPlane().MspStateOnline()
 }
 
 func MspGrpcStateToCrdState(mspState int) string {

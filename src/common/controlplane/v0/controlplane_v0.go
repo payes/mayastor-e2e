@@ -54,6 +54,10 @@ func (cp CPv0p8) NexusStateFaulted() string {
 	return "NEXUS_FAULTED"
 }
 
+func (cp CPv0p8) MspStateOnline() string {
+	return "online"
+}
+
 func (cp CPv0p8) MspGrpcStateToCrdState(mspState int) string {
 	switch mspState {
 	case 0:
