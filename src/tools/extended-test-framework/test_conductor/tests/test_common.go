@@ -4,17 +4,17 @@ import (
 	"fmt"
 	"mayastor-e2e/tools/extended-test-framework/common/custom_resources"
 
+	"mayastor-e2e/tools/extended-test-framework/common"
+
 	"mayastor-e2e/tools/extended-test-framework/common/k8sclient"
 
-	//logf "sigs.k8s.io/controller-runtime/pkg/log"
-
-	"mayastor-e2e/tools/extended-test-framework/common"
 	td "mayastor-e2e/tools/extended-test-framework/common/td/models"
 	"mayastor-e2e/tools/extended-test-framework/common/wm/models"
 	"mayastor-e2e/tools/extended-test-framework/test_conductor/tc"
 	"time"
 
 	"github.com/go-openapi/strfmt"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const MCP_NEXUS_ONLINE = "NEXUS_ONLINE"
@@ -24,10 +24,6 @@ var violations = []models.WorkloadViolationEnum{
 	models.WorkloadViolationEnumRESTARTED,
 	models.WorkloadViolationEnumTERMINATED,
 	models.WorkloadViolationEnumNOTPRESENT,
-}
-
-func getTime() string {
-	return time.Now().Format("2006-01-02 15:04:05")
 }
 
 func CheckMSVmoac(msv_uid string) error {
@@ -124,7 +120,14 @@ func MonitorCRs(testConductor *tc.TestConductor, msv_uids []string, duration tim
 	return ""
 }
 
-func ReportResult(testConductor *tc.TestConductor, failmessage string, testRunId strfmt.UUID) error {
+func ReportResult(testConductor *tc.TestConductor, failmessage string, testRunId strfmt.UUID, err error) error {
+	if err != nil {
+		logf.Log.Info("failed to run test", "error", err)
+		if failmessage != "" {
+			failmessage = "\n"
+		}
+		failmessage = failmessage + err.Error()
+	}
 	if failmessage == "" {
 		if err := common.SendTestRunCompletedOk(
 			testConductor.TestDirectorClient,
@@ -149,7 +152,7 @@ func ReportResult(testConductor *tc.TestConductor, failmessage string, testRunId
 }
 
 func SendEventTestPreparing(testConductor *tc.TestConductor, testUid strfmt.UUID) error {
-	message := "Test preparing, " + testConductor.Config.Test + ", time: " + getTime()
+	message := "Test preparing, " + testConductor.Config.Test
 	if err := common.SendEventInfo(testConductor.TestDirectorClient, testUid, message, td.EventSourceClassEnumTestDashConductor); err != nil {
 		return fmt.Errorf("failed to inform test director of event, error: %v", err)
 	}
@@ -157,7 +160,7 @@ func SendEventTestPreparing(testConductor *tc.TestConductor, testUid strfmt.UUID
 }
 
 func SendEventTestStarted(testConductor *tc.TestConductor, testUid strfmt.UUID) error {
-	message := "Test started, " + testConductor.Config.Test + ", time: " + getTime()
+	message := "Test started, " + testConductor.Config.Test
 	if err := common.SendEventInfo(testConductor.TestDirectorClient, testUid, message, td.EventSourceClassEnumTestDashConductor); err != nil {
 		return fmt.Errorf("failed to inform test director of event, error: %v", err)
 	}
@@ -165,7 +168,7 @@ func SendEventTestStarted(testConductor *tc.TestConductor, testUid strfmt.UUID) 
 }
 
 func SendEventTestCompletedOk(testConductor *tc.TestConductor, testUid strfmt.UUID) error {
-	message := "Test completed, " + testConductor.Config.Test + ", time: " + getTime()
+	message := "Test completed, " + testConductor.Config.Test
 	if err := common.SendEventInfo(testConductor.TestDirectorClient, testUid, message, td.EventSourceClassEnumTestDashConductor); err != nil {
 		return fmt.Errorf("failed to inform test director of event, error: %v", err)
 	}
@@ -173,7 +176,7 @@ func SendEventTestCompletedOk(testConductor *tc.TestConductor, testUid strfmt.UU
 }
 
 func SendEventTestCompletedFail(testConductor *tc.TestConductor, text string, testUid strfmt.UUID) error {
-	message := "Test failed:, " + text + ", time: " + getTime()
+	message := "Test failed:, " + text
 	if err := common.SendEventFail(testConductor.TestDirectorClient, testUid, message, td.EventSourceClassEnumTestDashConductor); err != nil {
 		return fmt.Errorf("failed to inform test director of event, error: %v", err)
 	}

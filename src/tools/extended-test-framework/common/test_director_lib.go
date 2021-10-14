@@ -2,6 +2,7 @@ package common
 
 import (
 	"fmt"
+	"time"
 
 	"mayastor-e2e/tools/extended-test-framework/common/td/client"
 	"mayastor-e2e/tools/extended-test-framework/common/td/client/test_director"
@@ -11,6 +12,10 @@ import (
 
 	"mayastor-e2e/tools/extended-test-framework/common/td/models"
 )
+
+func getTime() string {
+	return time.Now().Format("2006-01-02 15:04:05")
+}
 
 func sendTestRunStatus(client *client.Etfw, uuid strfmt.UUID, message string, jira_key_str string, status models.TestRunStatusEnum) error {
 
@@ -65,6 +70,8 @@ func sendEvent(
 	sourceClass models.EventSourceClassEnum) error {
 
 	var sourceInstanceString = string(sourceInstance)
+
+	message = message + " time: " + getTime()
 
 	eventSpec := models.EventSpec{}
 	eventSpec.Class = &eventClass
