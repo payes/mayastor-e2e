@@ -101,7 +101,7 @@ func NewWorkloadMonitor() (*WorkloadMonitor, error) {
 }
 
 func (workloadMonitor *WorkloadMonitor) StartMonitor() {
-	logf.Log.Info("workload monitor polling .")
+	logf.Log.Info("workload monitor polling")
 
 	for {
 		time.Sleep(10 * time.Second)
@@ -137,12 +137,12 @@ func (workloadMonitor *WorkloadMonitor) StartMonitor() {
 								if containerStatus.RestartCount > restartcount {
 									restartcount = containerStatus.RestartCount
 								}
-								logf.Log.Info(pod.Name, "restarts", containerStatus.RestartCount)
 								break
 							}
 						}
-						if restartcount != 0 {
-							message := fmt.Sprintf("pod %s restarted %d times", wli.Wl.Name, restartcount)
+						if restartcount != wli.Restarts {
+							wli.Restarts = restartcount
+							message := fmt.Sprintf("pod %s restarted %d time(s)", wli.Wl.Name, restartcount)
 							logf.Log.Info("restart", "message", message)
 							if err := common.SendEventFail(
 								workloadMonitor.pTestDirectorClient,
@@ -150,8 +150,9 @@ func (workloadMonitor *WorkloadMonitor) StartMonitor() {
 								message,
 								tdmodels.EventSourceClassEnumWorkloadDashMonitor); err != nil {
 								logf.Log.Info("failed to send", "error", err)
-							} else {
-								wlist.DeleteWorkloadById(wli.Wl.ID)
+							}
+							if !wlist.SetWorkloadListItemRestarts(wli.Rid, wli.Wl.ID, restartcount) {
+								logf.Log.Info("failed to update restarts", "ID", wli.Wl.ID)
 							}
 						}
 					}

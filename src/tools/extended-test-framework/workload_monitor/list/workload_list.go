@@ -9,8 +9,9 @@ import (
 )
 
 type WorkloadListItem struct {
-	Wl  *models.Workload
-	Rid strfmt.UUID
+	Restarts int32
+	Wl       *models.Workload
+	Rid      strfmt.UUID
 }
 
 type WorkloadList struct {
@@ -37,9 +38,21 @@ func AddToWorkloadList(pwl *models.Workload, rid strfmt.UUID, wid strfmt.UUID) {
 		gWorkloadList.WorkloadMap[rid] = make(map[strfmt.UUID]WorkloadListItem)
 	}
 	wli := WorkloadListItem{}
+	wli.Restarts = 0
 	wli.Wl = pwl
 	wli.Rid = rid
 	gWorkloadList.WorkloadMap[rid][wid] = wli
+}
+
+func SetWorkloadListItemRestarts(rid strfmt.UUID, wid strfmt.UUID, restarts int32) bool {
+	if _, found := gWorkloadList.WorkloadMap[rid]; found {
+		if wli, found := gWorkloadList.WorkloadMap[rid][wid]; found {
+			wli.Restarts = restarts
+			gWorkloadList.WorkloadMap[rid][wid] = wli
+			return true
+		}
+	}
+	return false
 }
 
 func GetWorkload(rid strfmt.UUID, wid strfmt.UUID) *models.Workload {

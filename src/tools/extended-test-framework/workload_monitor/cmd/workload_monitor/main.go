@@ -11,7 +11,7 @@ func main() {
 	logger := zap.New(zap.UseDevMode(true))
 	logf.SetLogger(logger)
 
-	logf.Log.Info("workload_monitor v1 started")
+	logf.Log.Info("workload_monitor started")
 
 	workloadMonitor, err := wm.NewWorkloadMonitor()
 	if err != nil {
