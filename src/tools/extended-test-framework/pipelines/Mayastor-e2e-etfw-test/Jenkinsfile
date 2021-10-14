@@ -73,6 +73,12 @@ pipeline {
             post {
                 always {
                     script {
+                        sh "mkdir -p ./artifacts"
+                        sh "kubectl logs -n mayastor-e2e test-conductor > ./artifacts/test_conductor.log"
+                        sh "kubectl logs -n mayastor-e2e test-director > ./artifacts/test_director.log"
+                        sh "kubectl logs -n mayastor-e2e workload-monitor > ./artifacts/workload_monitor.log"
+                        archiveArtifacts 'artifacts/**/*.*'
+
                         sh "nix-shell --run 'cd src/tools/extended-test-framework/scripts && ./deploy.sh -r' "
                     }
                 }

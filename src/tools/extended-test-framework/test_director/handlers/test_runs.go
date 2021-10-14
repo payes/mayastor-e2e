@@ -96,7 +96,7 @@ func (impl *putTestRunImpl) Handle(params test_director.PutTestRunByIDParams) mi
 
 		tp := planInterface.GetActive()
 		if tp == nil {
-			badRequestResponse(errors.New("there is no active test plan"))
+			return badRequestResponse(errors.New("there is no active test plan"))
 		}
 		if !contains(tp.Tests, jt.Id) {
 			return badRequestResponse(errors.New("test doesn't belong to active test plan"))
