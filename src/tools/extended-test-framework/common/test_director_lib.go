@@ -71,7 +71,7 @@ func sendEvent(
 
 	var sourceInstanceString = string(sourceInstance)
 
-	message = message + " time: " + getTime()
+	message = getTime() + ": " + message
 
 	eventSpec := models.EventSpec{}
 	eventSpec.Class = &eventClass
@@ -110,4 +110,23 @@ func SendEventInfo(client *client.Etfw, source strfmt.UUID, message string, sour
 func SendEventWarn(client *client.Etfw, source strfmt.UUID, message string, sourceClass models.EventSourceClassEnum) error {
 	logf.Log.Info("SendEventWarn")
 	return sendEvent(client, source, message, models.EventClassEnumWARN, sourceClass)
+}
+
+func WaitTestDirector(client *client.Etfw) {
+	testPlanParams := test_director.NewGetTestPlansParams()
+	for {
+		pTestPlansOk, err := client.TestDirector.GetTestPlans(testPlanParams)
+		if err != nil {
+			logf.Log.Info("failed to get plans", "error", err)
+		} else {
+			for _, tp := range pTestPlansOk.Payload {
+				logf.Log.Info("Found test plan", "name:", tp.Name, "key:", tp.Key)
+			}
+			if len(pTestPlansOk.Payload) > 0 {
+				break
+			}
+		}
+		logf.Log.Info("Waiting for a test plan")
+		time.Sleep(5 * time.Second)
+	}
 }

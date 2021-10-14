@@ -25,6 +25,8 @@ func NonSteadyStateTest(testConductor *tc.TestConductor) (testRunId strfmt.UUID,
 	}
 	testRunId = strfmt.UUID(tcpod.ObjectMeta.UID)
 
+	common.WaitTestDirector(testConductor.TestDirectorClient)
+
 	if err = common.SendTestRunToDo(
 		testConductor.TestDirectorClient,
 		testRunId,

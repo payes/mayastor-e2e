@@ -102,12 +102,13 @@ else
   kubectl create configmap td-config -n mayastor-e2e --from-file=config-local.yaml=${tmpfile}
   rm ${tmpfile}
 
+  kubectl create -f ${DEPLOYDIR}/test_director/test_director.yaml
+
   kubectl create configmap tc-config -n mayastor-e2e --from-file=${DEPLOYDIR}/test_conductor/${TESTARG}/config.yaml
 
   kubectl create -f ${DEPLOYDIR}/test_conductor/test_conductor.yaml
   TEST=${TESTARG} DURATION=${DURATIONARG} envsubst -no-unset < ${DEPLOYDIR}/test_conductor/test_conductor_pod.yaml.template | kubectl apply -f -
 
-  kubectl create -f ${DEPLOYDIR}/test_director/test_director.yaml
   kubectl create -f ${DEPLOYDIR}/workload_monitor/workload_monitor.yaml
 fi
 

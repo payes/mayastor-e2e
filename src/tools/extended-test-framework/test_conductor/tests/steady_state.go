@@ -25,13 +25,15 @@ func SteadyStateTest(testConductor *tc.TestConductor) (testRunId strfmt.UUID, fa
 	}
 	testRunId = strfmt.UUID(tcpod.ObjectMeta.UID)
 
+	common.WaitTestDirector(testConductor.TestDirectorClient)
+
 	if err = common.SendTestRunToDo(
 		testConductor.TestDirectorClient,
 		testRunId,
 		"",
 		testConductor.Config.Test); err != nil {
 
-		err = fmt.Errorf("failed to inform test director of test start, error: %v", err)
+		err = fmt.Errorf("failed to inform test director of test creation, error: %v", err)
 		return
 	}
 

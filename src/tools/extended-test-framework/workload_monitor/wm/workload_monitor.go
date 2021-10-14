@@ -133,12 +133,7 @@ func (workloadMonitor *WorkloadMonitor) StartMonitor() {
 						containerStatuses := pod.Status.ContainerStatuses
 						restartcount := int32(0)
 						for _, containerStatus := range containerStatuses {
-							if containerStatus.RestartCount != 0 {
-								if containerStatus.RestartCount > restartcount {
-									restartcount = containerStatus.RestartCount
-								}
-								break
-							}
+							restartcount += containerStatus.RestartCount
 						}
 						if restartcount != wli.Restarts {
 							wli.Restarts = restartcount
