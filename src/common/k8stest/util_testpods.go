@@ -622,6 +622,20 @@ func GetMoacNodeName() (string, error) {
 	return "", nil
 }
 
+func GetCoreAgentNodeName() (string, error) {
+	podApi := gTestEnv.KubeInt.CoreV1().Pods
+	pods, err := podApi(common.NSMayastor()).List(context.TODO(), metaV1.ListOptions{})
+	if err != nil {
+		return "", err
+	}
+	for _, pod := range pods.Items {
+		if strings.HasPrefix(pod.Name, "core-agent") && pod.Status.Phase == "Running" {
+			return pod.Spec.NodeName, nil
+		}
+	}
+	return "", nil
+}
+
 // MakeFioContainer returns a container object setup to use e2e-fio and run fio with appropriate permissions.
 // Privileged: True, AllowPrivilegeEscalation: True, RunAsUser root,
 // parameters:
