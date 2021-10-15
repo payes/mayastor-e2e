@@ -149,11 +149,11 @@ func CheckAllMsPoolFinalizers() error {
 
 // == Mayastor Nodes ======================
 
-func GetMsNode(nodeName string) (v1alpha1Api.MayastorNode, error) {
-	msn := v1alpha1Api.MayastorNode{}
+func GetMsNode(nodeName string) (*v1alpha1Api.MayastorNode, error) {
+	var msn *v1alpha1Api.MayastorNode
 	res, err := nodeClientSet.MayastorNodes().Get(context.TODO(), nodeName, metaV1.GetOptions{})
 	if res != nil && err == nil {
-		msn = *res
+		msn = res
 	}
 	return msn, err
 }

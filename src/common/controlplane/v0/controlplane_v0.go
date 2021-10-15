@@ -68,3 +68,11 @@ func (cp CPv0p8) MspGrpcStateToCrdState(mspState int) string {
 func MakeCP() CPv0p8 {
 	return CPv0p8{}
 }
+
+func (cp CPv0p8) NodeStateOnline() string {
+	return "online"
+}
+
+func (cp CPv0p8) NodeStateOffline() string {
+	return "offline"
+}

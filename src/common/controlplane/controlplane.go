@@ -2,8 +2,8 @@ package controlplane
 
 import (
 	"mayastor-e2e/common"
-	"mayastor-e2e/common/controlplane/v0"
-	"mayastor-e2e/common/controlplane/v1"
+	v0 "mayastor-e2e/common/controlplane/v0"
+	v1 "mayastor-e2e/common/controlplane/v1"
 	"sync"
 )
 
@@ -55,6 +55,15 @@ type ControlPlaneInterface interface {
 	IsMsvDeleted(uuid string) bool
 	CheckForMsvs() (bool, error)
 	CheckAllMsvsAreHealthy() error
+
+	// Mayastor Node abstraction
+
+	GetMSN(node string) (*common.MayastorNode, error)
+	ListMsns() ([]common.MayastorNode, error)
+	GetMsNodeStatus(node string) (string, error)
+
+	NodeStateOffline() string
+	NodeStateOnline() string
 }
 
 var ifc ControlPlaneInterface
@@ -182,4 +191,32 @@ func CheckForMsvs() (bool, error) {
 
 func CheckAllMsvsAreHealthy() error {
 	return getControlPlane().CheckAllMsvsAreHealthy()
+}
+
+//FIXME: MSN These functions are only guaranteed to
+// work correctly if invoked from k8stest/msn.go
+// which ensures that necessary setup functions
+// have been called
+// The issue is that for control plane v1 we need
+// node addresses and the k8stest pkg provides that.
+
+// GetMSN Get pointer to a mayastor node custom resource
+// returns nil and no error if the msn is in pending state.
+func GetMSN(nodeName string) (*common.MayastorNode, error) {
+	return getControlPlane().GetMSN(nodeName)
+}
+
+func ListMsns() ([]common.MayastorNode, error) {
+	return getControlPlane().ListMsns()
+}
+func GetMsNodeStatus(nodeName string) (string, error) {
+	return getControlPlane().GetMsNodeStatus(nodeName)
+}
+
+func NodeStateOnline() string {
+	return getControlPlane().NodeStateOnline()
+}
+
+func NodeStateOffline() string {
+	return getControlPlane().NodeStateOffline()
 }
