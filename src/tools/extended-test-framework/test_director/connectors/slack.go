@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-const DefaultSlackTimeout = 5 * time.Second
+const DefaultSlackTimeout = 15 * time.Second
 
 type SlackClient struct {
 	WebHookUrl string
