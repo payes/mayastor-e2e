@@ -78,7 +78,7 @@ pipeline {
                 def e2e_test = tests_queue.poll(60L, TimeUnit.SECONDS)
                 if (e2e_test != "" && e2e_test != null){
                   def failed_test = common.RunOneTestPerCluster(e2e_test,
-                                                          e2e_image_tag,
+                                                          test_tag,
                                                           loki_run_id,
                                                           e2e_build_cluster_job,
                                                           e2e_destroy_cluster_job,
@@ -115,7 +115,7 @@ pipeline {
                 def e2e_test = tests_queue.poll(60L, TimeUnit.SECONDS)
                 if (e2e_test != "" && e2e_test != null){
                   def failed_test = common.RunOneTestPerCluster(e2e_test,
-                                                          e2e_image_tag,
+                                                          test_tag,
                                                           loki_run_id,
                                                           e2e_build_cluster_job,
                                                           e2e_destroy_cluster_job,
@@ -152,7 +152,7 @@ pipeline {
                 def e2e_test = tests_queue.poll(60L, TimeUnit.SECONDS)
                 if (e2e_test != "" && e2e_test != null){
                   def failed_test = common.RunOneTestPerCluster(e2e_test,
-                                                          e2e_image_tag,
+                                                          test_tag,
                                                           loki_run_id,
                                                           e2e_build_cluster_job,
                                                           e2e_destroy_cluster_job,
@@ -202,7 +202,7 @@ pipeline {
               // xray_send_report alters the report artifacts
               // so should run after archiveArtifacts and junit
               common = load "./pipelines/common/common.groovy"
-              common.SendXrayReport(xray_test_plan, e2e_image_tag, e2e_reports_dir)
+              common.SendXrayReport(xray_test_plan, test_tag, e2e_reports_dir)
           }
         }
       }
