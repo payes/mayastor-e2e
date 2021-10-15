@@ -16,7 +16,7 @@ const gConfigFile = "/config.yaml"
 
 // E2EConfig is a application configuration structure
 type ExtendedTestConfig struct {
-	ConfigName string `yaml:"configName" env-default:"default"`
+	TestName string `yaml:"testName" env-default:"default"`
 
 	// Operational parameters
 	Cores int `yaml:"cores,omitempty"`
@@ -32,18 +32,18 @@ type ExtendedTestConfig struct {
 	Test        string `yaml:"test" env:"e2e_test"`
 	Install     bool   `yaml:"install" env-default:"false" env:"e2e_install"`
 	Msnodes     int    `yaml:"msnodes" env-default:"3" env:"e2e_msnodes"`
+	Duration    string `yaml:"duration" env-default:"60m" env:"DURATION"`
 
 	// Individual Test parameters
 	SteadyState struct {
-		Replicas     int    `yaml:"replicas" env-default:"2"`
-		Duration     string `yaml:"duration" env-default:"60m" env:"DURATION"`
-		VolumeSizeMb int    `yaml:"volumeSizeMb" env-default:"64"`
+		Replicas     int `yaml:"replicas" env-default:"2"`
+		VolumeSizeMb int `yaml:"volumeSizeMb" env-default:"64"`
 	} `yaml:"steadyState"`
 	NonSteadyState struct {
-		Replicas     int    `yaml:"replicas" env-default:"2"`
-		Duration     string `yaml:"duration" env-default:"60m" env:"DURATION"`
-		VolumeSizeMb int    `yaml:"volumeSizeMb" env-default:"64"`
-		VolLifetime  string `yaml:"vollifetime" env-default:"5m"`
+		Replicas       int    `yaml:"replicas" env-default:"2"`
+		VolumeSizeMb   int    `yaml:"volumeSizeMb" env-default:"64"`
+		Timeout        string `yaml:"timeout" env-default:"5m"`
+		ConcurrentVols int    `yaml:"concurrentvols" env-default:"1"`
 	} `yaml:"nonSteadyState"`
 }
 

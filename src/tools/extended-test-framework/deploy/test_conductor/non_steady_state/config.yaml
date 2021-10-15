@@ -1,4 +1,4 @@
-configName: "non_steady_state"
+testName: "non-steady-state"
 registry: ci-registry.mayastor-ci.mayadata.io
 imageTag: "nightly-stable"
 poolDevice: "/dev/sdb"
@@ -6,8 +6,9 @@ test: "MQ-2243"
 install: false
 e2eFioImage: mayadata/e2e-fio
 msnodes: 3
+duration: 336
 nonSteadyState:
   replicas: 2
-  duration: 10m
-  volumeSizeMb: 64
-  vollifetime: 2m
+  volumeSizeMb: 512
+  timeout: 20m
+  concurrentvols: 1

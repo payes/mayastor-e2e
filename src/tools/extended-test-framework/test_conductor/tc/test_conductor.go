@@ -2,7 +2,7 @@ package tc
 
 import (
 	"fmt"
-
+	"github.com/go-openapi/strfmt"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"mayastor-e2e/tools/extended-test-framework/common"
@@ -16,6 +16,7 @@ type TestConductor struct {
 	TestDirectorClient    *td.Etfw
 	WorkloadMonitorClient *wm.Etfw
 	Config                ExtendedTestConfig
+	TestRunId             strfmt.UUID
 }
 
 const SourceInstance = "test-conductor"
@@ -28,7 +29,7 @@ func NewTestConductor() (*TestConductor, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get config")
 	}
-	logf.Log.Info("config", "name", config.ConfigName)
+	logf.Log.Info("test", "name", config.TestName)
 	testConductor.Config = config
 
 	workloadMonitorPod, err := k8sclient.WaitForPodReady("workload-monitor", common.EtfwNamespace)
@@ -52,6 +53,13 @@ func NewTestConductor() (*TestConductor, error) {
 
 	transportConfigWm := wm.DefaultTransportConfig().WithHost(workloadMonitorLoc)
 	testConductor.WorkloadMonitorClient = wm.NewHTTPClientWithConfig(nil, transportConfigWm)
+
+	// the test run ID is the same as the uuid of the test conductor pod
+	tcpod, err := k8sclient.GetPod("test-conductor", common.EtfwNamespace)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get tc pod uid, error: %v", err)
+	}
+	testConductor.TestRunId = strfmt.UUID(tcpod.ObjectMeta.UID)
 
 	return &testConductor, nil
 }

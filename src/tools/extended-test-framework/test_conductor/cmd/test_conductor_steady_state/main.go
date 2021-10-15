@@ -20,9 +20,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	testRunId, failmessage, err := tests.SteadyStateTest(testConductor)
+	err = tests.SteadyStateTest(testConductor)
 
-	err = tests.ReportResult(testConductor, failmessage, testRunId, err)
+	err = tests.SendTestRunFinished(testConductor, err)
 	if err != nil {
 		logf.Log.Info("failed to report result", "error", err)
 		os.Exit(1)

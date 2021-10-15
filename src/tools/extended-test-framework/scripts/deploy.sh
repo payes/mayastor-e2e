@@ -13,7 +13,7 @@ Usage: $0 [OPTIONS]
 or:    $0 --remove
 
 Options:
-  --test <name>          test_conductor test to run, steady_state or non_steady_state
+  --test <name>          test_conductor test to run, steady_state, non_steady_state or non_steady_state_multi_vols
   --plan <test plan ID>  specify the test plan to receive the test runs
   --duration <duration>  set the overal run time for the test with units, e.g. 12d, 34h, 56m27s etc
 or
@@ -31,7 +31,7 @@ while [ "$#" -gt 0 ]; do
     -t|--test)
       shift
       case $1 in
-            steady_state|non_steady_state)
+            steady_state|non_steady_state|non_steady_state_multi_vols)
                 TESTARG=$1
                 ;;
             *)
@@ -84,6 +84,12 @@ if [ -z ${OPERATION} ]; then
   fi
 fi
 
+if [ "${TESTARG}" == "non_steady_state_multi_vols" ]; then
+	IMAGEARG="non_steady_state"
+else
+	IMAGEARG=${TESTARG}
+fi
+
 SCRIPTDIR=$(dirname "$(realpath "$0")")
 DEPLOYDIR="${SCRIPTDIR}/../deploy/"
 if [ "${OPERATION}" == "delete" ]; then
@@ -107,7 +113,7 @@ else
   kubectl create configmap tc-config -n mayastor-e2e --from-file=${DEPLOYDIR}/test_conductor/${TESTARG}/config.yaml
 
   kubectl create -f ${DEPLOYDIR}/test_conductor/test_conductor.yaml
-  TEST=${TESTARG} DURATION=${DURATIONARG} envsubst -no-unset < ${DEPLOYDIR}/test_conductor/test_conductor_pod.yaml.template | kubectl apply -f -
+  TEST=${IMAGEARG} DURATION=${DURATIONARG} envsubst -no-unset < ${DEPLOYDIR}/test_conductor/test_conductor_pod.yaml.template | kubectl apply -f -
 
   kubectl create -f ${DEPLOYDIR}/workload_monitor/workload_monitor.yaml
 fi

@@ -16,6 +16,11 @@ type NodeList struct {
 	Nodes []string `json:"nodes"`
 }
 
+type Device struct {
+	Device string `json:"device"`
+	Table  string `json:"table"`
+}
+
 func homePage(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "Welcome home!\n")
 }
@@ -45,6 +50,7 @@ func handleRequests() {
 	router.HandleFunc("/gracefulReboot", gracefulReboot).Methods("POST")
 	router.HandleFunc("/dropConnectionsFromNodes", dropConnectionsFromNodes).Methods("POST")
 	router.HandleFunc("/acceptConnectionsFromNodes", acceptConnectionsFromNodes).Methods("POST")
+	router.HandleFunc("/createFaultyDevice", createFaultyDevice).Methods("POST")
 	router.HandleFunc("/exec", execCmd).Methods("POST")
 	log.Fatal(http.ListenAndServe(podIP+":"+restPort, router))
 }
@@ -109,6 +115,60 @@ func execCmd(w http.ResponseWriter, r *http.Request) {
 	} else {
 		cmd = exec.Command(cmdName)
 		log.Printf("%s\n", cmdName)
+	}
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		w.WriteHeader(InternalServerErrorCode)
+		fmt.Fprint(w, err.Error())
+	} else {
+		fmt.Fprint(w, string(output))
+	}
+}
+
+func createFaultyDevice(w http.ResponseWriter, r *http.Request) {
+	var (
+		device Device
+		cmd    *exec.Cmd
+	)
+	d := json.NewDecoder(r.Body)
+	if err := d.Decode(&device); err != nil {
+		fmt.Fprint(w, err.Error())
+	}
+	if len(device.Device) == 0 {
+		w.WriteHeader(UnprocessableEntityErrorCode)
+		fmt.Fprint(w, "no device passed")
+		return
+	}
+	if len(device.Table) == 0 {
+		w.WriteHeader(UnprocessableEntityErrorCode)
+		fmt.Fprint(w, "no table passed")
+		return
+	}
+	f, err := os.Create("table")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	_, err = f.WriteString(device.Table)
+	if err != nil {
+		fmt.Println(err)
+		f.Close()
+		return
+	}
+	err = f.Close()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	devName := strings.Split(device.Device, "/")
+
+	cmdStr := "dmsetup create" + " " + devName[2] + " " + "table"
+	cmdArgs := strings.Split(cmdStr, " ")
+	cmdName := cmdArgs[0]
+	if len(cmdArgs) > 1 {
+		cmd = exec.Command(cmdName, cmdArgs[1:]...)
+	} else {
+		cmd = exec.Command(cmdName)
 	}
 	output, err := cmd.CombinedOutput()
 	if err != nil {

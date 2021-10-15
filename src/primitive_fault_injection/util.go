@@ -3,6 +3,7 @@ package primitive_fault_injection
 import (
 	"fmt"
 	"mayastor-e2e/common"
+	"mayastor-e2e/common/controlplane"
 	"mayastor-e2e/common/k8stest"
 	"mayastor-e2e/common/mayastorclient"
 	"strings"
@@ -158,6 +159,9 @@ func (c *primitiveFaultInjectionConfig) getNexusDetail() {
 	}
 	Expect(nxChildUri).NotTo(Equal(""), "Could not find nexus replica")
 	c.nexusRep = nxChildUri
+	msv, err := k8stest.GetMSV(c.uuid)
+	Expect(err).ToNot(HaveOccurred(), "failed to retrieve MSV for volume %s", c.uuid)
+	c.nexusUuid = msv.Status.Nexus.Uuid
 
 	logf.Log.Info("identified", "nexus", c.nexusNodeIP, "replica1", c.replicaIPs[0], "replica2", c.replicaIPs[1])
 }
@@ -165,7 +169,7 @@ func (c *primitiveFaultInjectionConfig) getNexusDetail() {
 // Fault the replica hosted on the nexus node
 func (c *primitiveFaultInjectionConfig) faultNexusChild() {
 	logf.Log.Info("faulting the nexus replica")
-	err := mayastorclient.FaultNexusChild(c.nexusNodeIP, c.uuid, c.nexusRep)
+	err := mayastorclient.FaultNexusChild(c.nexusNodeIP, c.nexusUuid, c.nexusRep)
 	Expect(err).ToNot(HaveOccurred(), "failed to fault local replica")
 }
 
@@ -177,7 +181,7 @@ func (c *primitiveFaultInjectionConfig) verifyVolumeStateOverGrpcAndCrd() {
 	Expect(msv).ToNot(BeNil(), "got nil msv for %v", c.uuid)
 	nexusChildren := msv.Status.Nexus.Children
 	for _, nxChild := range nexusChildren {
-		Expect(nxChild.State).Should(Equal("CHILD_ONLINE"), "Nexus child  is not online")
+		Expect(nxChild.State).Should(Equal(controlplane.ChildStateOnline()), "Nexus child  is not online")
 	}
 
 	nodeList, err := k8stest.GetNodeLocs()
@@ -335,9 +339,9 @@ func (c *primitiveFaultInjectionConfig) verifyFaultedReplica() {
 		faultedCount = 0
 		otherCount = 0
 		for _, child := range msv.Status.Nexus.Children {
-			if child.State == "CHILD_FAULTED" {
+			if child.State == controlplane.ChildStateFaulted() {
 				faultedCount++
-			} else if child.State == "CHILD_ONLINE" {
+			} else if child.State == controlplane.ChildStateOnline() {
 				onlineCount++
 			} else {
 				logf.Log.Info("Children state other then faulted and online", "child.State", child.State)
@@ -366,9 +370,9 @@ func (c *primitiveFaultInjectionConfig) verifyUpdatedReplica() {
 		faultedCount = 0
 		otherCount = 0
 		for _, child := range msv.Status.Nexus.Children {
-			if child.State == "CHILD_FAULTED" {
+			if child.State == controlplane.ChildStateFaulted() {
 				faultedCount++
-			} else if child.State == "CHILD_ONLINE" {
+			} else if child.State == controlplane.ChildStateOnline() {
 				onlineCount++
 			} else {
 				logf.Log.Info("Children state other then faulted and online", "child.State", child.State)

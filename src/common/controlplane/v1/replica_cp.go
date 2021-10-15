@@ -1,4 +1,4 @@
-package mayastor_kubectl
+package v1
 
 import (
 	"encoding/json"
@@ -21,14 +21,14 @@ type mayastorCpReplica struct {
 	Uuid  string `json:"uuid"`
 }
 
-func listMayastorCpReplicas(address []string) ([]mayastorCpReplica, error) {
+func getMayastorCpReplica(replicaUuid string, address []string) (mayastorCpReplica, error) {
 	if len(address) == 0 {
-		return nil, fmt.Errorf("mayastor nodes not found")
+		return mayastorCpReplica{}, fmt.Errorf("mayastor nodes not found")
 	}
 	var jsonResponse []byte
 	var err error
 	for _, addr := range address {
-		url := fmt.Sprintf("http://%s:%s/v0/replicas", addr, common.PluginPort)
+		url := fmt.Sprintf("http://%s:%s/v0/replicas/%s", addr, common.PluginPort, replicaUuid)
 		req, err := http.NewRequest("GET", url, nil)
 		if err != nil {
 			logf.Log.Info("Error in GET request", "node IP", addr, "url", url, "error", err)
@@ -47,13 +47,13 @@ func listMayastorCpReplicas(address []string) ([]mayastorCpReplica, error) {
 		}
 	}
 	if err != nil {
-		return nil, err
+		return mayastorCpReplica{}, err
 	}
-	var response []mayastorCpReplica
+	var response mayastorCpReplica
 	err = json.Unmarshal(jsonResponse, &response)
 	if err != nil {
 		logf.Log.Info("Failed to unmarshal (get replicas)", "string", string(jsonResponse))
-		return nil, err
+		return mayastorCpReplica{}, err
 	}
 	return response, nil
 }

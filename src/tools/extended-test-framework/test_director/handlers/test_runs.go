@@ -2,13 +2,14 @@ package handlers
 
 import (
 	"errors"
-	"github.com/go-openapi/runtime/middleware"
-	"github.com/go-openapi/strfmt"
 	"test-director/connectors"
 	"test-director/connectors/xray"
 	"test-director/models"
 	"test-director/restapi/operations/test_director"
 	"time"
+
+	"github.com/go-openapi/runtime/middleware"
+	"github.com/go-openapi/strfmt"
 )
 
 type getTestRunsImpl struct{}
@@ -67,6 +68,7 @@ func (impl *putTestRunImpl) Handle(params test_director.PutTestRunByIDParams) mi
 	testRun := runInterface.Get(id)
 	if testRun != nil {
 		if testRun.Status == models.TestRunStatusEnumTODO && testRunSpec.Status == models.TestRunStatusEnumEXECUTING {
+			// transition TODO -> EXECUTING
 			testRun.StartDateTime = strfmt.DateTime(time.Now())
 			testRun.TestRunSpec.Data = testRunSpec.Data
 			testRun.Status = testRunSpec.Status
@@ -77,12 +79,21 @@ func (impl *putTestRunImpl) Handle(params test_director.PutTestRunByIDParams) mi
 			}
 			*tp.Status = models.TestPlanStatusEnumRUNNING
 			planInterface.Set(tp.Key, *tp)
-		}
-		if testRun.Status == models.TestRunStatusEnumEXECUTING && (testRunSpec.Status == models.TestRunStatusEnumFAILED || testRunSpec.Status == models.TestRunStatusEnumPASSED) {
+		} else if testRun.Status != models.TestRunStatusEnumTODO && testRunSpec.Status == models.TestRunStatusEnumFAILED {
+			// transition EXEC || PASSED || FAILED -> FAILED
+			testRun.EndDateTime = strfmt.DateTime(time.Now())
+			if testRun.TestRunSpec.Data != "" {
+				testRun.TestRunSpec.Data = testRun.TestRunSpec.Data + ": "
+			}
+			testRun.TestRunSpec.Data = testRun.TestRunSpec.Data + testRunSpec.Data
+			testRun.Status = testRunSpec.Status
+			FailTestRun(testRun)
+		} else if testRun.Status == models.TestRunStatusEnumEXECUTING && testRunSpec.Status == models.TestRunStatusEnumPASSED {
+			// transition EXEC -> PASSED
 			testRun.EndDateTime = strfmt.DateTime(time.Now())
 			testRun.TestRunSpec.Data = testRunSpec.Data
 			testRun.Status = testRunSpec.Status
-			FailTestRun(testRun)
+			xray.UpdateTestRun(*testRun)
 		}
 	} else {
 		jt, err := connectors.GetJiraTaskDetails(string(*testRunSpec.TestKey))

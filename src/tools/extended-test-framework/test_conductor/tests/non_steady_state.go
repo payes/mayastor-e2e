@@ -5,80 +5,179 @@ import (
 	"mayastor-e2e/tools/extended-test-framework/common"
 	"mayastor-e2e/tools/extended-test-framework/common/k8sclient"
 	tc "mayastor-e2e/tools/extended-test-framework/test_conductor/tc"
+	"sync"
 	"time"
 
-	"github.com/go-openapi/strfmt"
+	//"github.com/go-openapi/strfmt"
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	storageV1 "k8s.io/api/storage/v1"
 )
 
-func NonSteadyStateTest(testConductor *tc.TestConductor) (testRunId strfmt.UUID, failmessage string, err error) {
-	const testName = "non-steady-state"
+type VolSpec struct {
+	sc_name     string
+	vol_type    k8sclient.VolumeType
+	vol_size_mb int
+}
 
-	// the test run ID is the same as the uuid of the test conductor pod
-	tcpod, err := k8sclient.GetPod("test-conductor", common.EtfwNamespace)
-	if err != nil {
-		err = fmt.Errorf("failed to get tc pod uid, error: %v\n", err)
-		return
+func testVolume(
+	testConductor *tc.TestConductor,
+	id int,
+	testName string,
+	vol_spec VolSpec,
+	duration time.Duration,
+	timeout time.Duration) error {
+	var i int
+	var endTime = time.Now().Add(duration)
+	var combinederr error
+
+	for {
+		i = i + 1
+		if time.Now().After(endTime) {
+			break
+		}
+		pvc_name := fmt.Sprintf("%s-pvc-%d-%d", testName, id, i)
+		fio_name := fmt.Sprintf("%s-fio-%d-%d", testName, id, i)
+		// create PV
+		msv_uid, err := k8sclient.MkPVC(
+			vol_spec.vol_size_mb,
+			pvc_name,
+			vol_spec.sc_name,
+			vol_spec.vol_type,
+			k8sclient.NSDefault,
+			false)
+		if err != nil {
+			return fmt.Errorf("failed to create pvc %s, error: %v", pvc_name, err)
+		}
+		logf.Log.Info("Created pvc", "name", pvc_name, "msv UID", msv_uid)
+
+		// deploy fio
+		if err = k8sclient.DeployFio(
+			fio_name,
+			pvc_name,
+			vol_spec.vol_type,
+			vol_spec.vol_size_mb,
+			1); err != nil {
+			return fmt.Errorf("failed to deploy pod %s, error: %v", fio_name, err)
+		}
+		logf.Log.Info("Created pod", "pod", fio_name)
+
+		if err = tc.AddWorkload(
+			testConductor.WorkloadMonitorClient,
+			fio_name,
+			k8sclient.NSDefault,
+			violations); err != nil {
+			return fmt.Errorf("failed to inform workload monitor of %s, error: %v", fio_name, err)
+		}
+
+		// allow the test to run
+		//logf.Log.Info("Testing volume", "timeout (s)", timeout.Seconds())
+
+		// wait for fio to be not running
+		if err = WaitPodNotRunning(fio_name, timeout); err != nil {
+			combinederr = err
+		}
+		//if failmessage != "" {
+		//	logf.Log.Info("Monitor CR check failed", "text", failmessage)
+		//}
+
+		if err = tc.DeleteWorkload(testConductor.WorkloadMonitorClient, fio_name, k8sclient.NSDefault); err != nil {
+			combinederr = fmt.Errorf("%v : failed to delete application workload %s, error = %v", combinederr, fio_name, err)
+			logf.Log.Info("failed to delete all application workload", "error", err)
+		}
+		if err = k8sclient.DeletePod(fio_name, k8sclient.NSDefault); err != nil {
+			combinederr = fmt.Errorf("%v : failed to delete application workload %s, error = %v", combinederr, fio_name, err)
+			logf.Log.Info("failed to delete pod", "error", err)
+		}
+		if err = k8sclient.DeletePVC(pvc_name, k8sclient.NSDefault); err != nil {
+			combinederr = fmt.Errorf("%v: failed to delete pvc %s, error = %v", combinederr, pvc_name, err)
+			logf.Log.Info("failed to delete PVC", "error", err)
+		}
+		if combinederr != nil {
+			break
+		}
 	}
-	testRunId = strfmt.UUID(tcpod.ObjectMeta.UID)
+	return combinederr
+}
+
+func testVolumes(
+	concurrentVolumes int,
+	testConductor *tc.TestConductor,
+	testName string,
+	vol_spec VolSpec,
+	duration time.Duration,
+	timeout time.Duration) error {
+
+	var allerrs error
+	var errchan = make(chan error, concurrentVolumes)
+	var wg sync.WaitGroup
+
+	for i := 0; i < concurrentVolumes; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			err := testVolume(testConductor, i, testName, vol_spec, duration, timeout)
+			if err != nil {
+				errchan <- err
+			}
+		}(i)
+	}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		err := MonitorCRs(
+			testConductor,
+			[]string{},
+			duration,
+			false,
+			"",
+		)
+		if err != nil {
+			errchan <- err
+		}
+	}()
+
+	wg.Wait()
+	close(errchan)
+	for err := range errchan {
+		if allerrs == nil {
+			allerrs = err
+		} else {
+			allerrs = fmt.Errorf("%v: %v", allerrs, err)
+		}
+	}
+	return allerrs
+}
+
+func NonSteadyStateTest(testConductor *tc.TestConductor) error {
+	var testName = testConductor.Config.TestName
+	var combinederr error
+	var err error
 
 	common.WaitTestDirector(testConductor.TestDirectorClient)
 
-	if err = common.SendTestRunToDo(
-		testConductor.TestDirectorClient,
-		testRunId,
-		"",
-		testConductor.Config.Test); err != nil {
-
-		err = fmt.Errorf("failed to inform test director of test start, error: %v", err)
-		return
+	if err = SendTestRunToDo(testConductor); err != nil {
+		return fmt.Errorf("failed to inform test director of test start, error: %v", err)
 	}
 
-	if err = SendEventTestPreparing(testConductor, testRunId); err != nil {
-		err = fmt.Errorf("failed to inform test director of preparation event, error: %v", err)
-		return
-	}
-
-	if testConductor.Config.Install {
-		if err = tc.InstallMayastor(testConductor.Config.PoolDevice); err != nil {
-			err = fmt.Errorf("failed to install mayastor %v", err)
-			return
-		}
-	}
 	var protocol k8sclient.ShareProto = k8sclient.ShareProtoNvmf
 	var mode storageV1.VolumeBindingMode = storageV1.VolumeBindingImmediate
-	var pvc_name = ""
-	var fio_name = ""
 	var sc_name = testName + "-sc"
 	var vol_type = k8sclient.VolRawBlock
 
-	duration, err := time.ParseDuration(testConductor.Config.NonSteadyState.Duration)
+	duration, err := time.ParseDuration(testConductor.Config.Duration)
 	if err != nil {
-		err = fmt.Errorf("failed to parse duration %v", err)
-		return
+		return fmt.Errorf("failed to parse duration %v", err)
 	}
 
-	vollifetime, err := time.ParseDuration(testConductor.Config.NonSteadyState.VolLifetime)
+	timeout, err := time.ParseDuration(testConductor.Config.NonSteadyState.Timeout)
 	if err != nil {
-		err = fmt.Errorf("failed to parse duration %v", err)
-		return
+		return fmt.Errorf("failed to parse duration %v", err)
 	}
 
-	if err = common.SendTestRunStarted(
-		testConductor.TestDirectorClient,
-		testRunId,
-		"",
-		testConductor.Config.Test); err != nil {
-		err = fmt.Errorf("failed to inform test director of test start, error: %v", err)
-		return
-	}
-
-	if err = SendEventTestStarted(testConductor, testRunId); err != nil {
-		err = fmt.Errorf("failed to inform test director of start event, error: %v", err)
-		return
+	if err = SendTestRunStarted(testConductor); err != nil {
+		return fmt.Errorf("failed to inform test director of test start, error: %v", err)
 	}
 
 	// create storage class
@@ -90,9 +189,9 @@ func NonSteadyStateTest(testConductor *tc.TestConductor) (testRunId strfmt.UUID,
 		WithVolumeBindingMode(mode).
 		BuildAndCreate(); err != nil {
 
-		err = fmt.Errorf("failed to create sc %v", err)
 		logf.Log.Info("Created storage class failed", "error", err.Error())
-		return
+
+		return fmt.Errorf("failed to create sc %v", err)
 	}
 	logf.Log.Info("Created storage class", "sc", sc_name)
 
@@ -101,105 +200,39 @@ func NonSteadyStateTest(testConductor *tc.TestConductor) (testRunId strfmt.UUID,
 		"test-conductor",
 		common.EtfwNamespace,
 		violations); err != nil {
-		err = fmt.Errorf("failed to inform workload monitor of test-conductor, error: %v", err)
-		return
+		return fmt.Errorf("failed to inform workload monitor of test-conductor, error: %v", err)
 	}
 
 	if err = tc.AddWorkloadsInNamespace(
 		testConductor.WorkloadMonitorClient,
 		"mayastor",
 		violations); err != nil {
-		err = fmt.Errorf("failed to inform workload monitor of mayastor pods, error: %v", err)
-		return
+		return fmt.Errorf("failed to inform workload monitor of mayastor pods, error: %v", err)
 	}
 
-	var endTime = time.Now().Add(duration)
-	var i int
-	for {
-		i = i + 1
-		if time.Now().After(endTime) {
-			break
-		}
-		pvc_name = fmt.Sprintf("%s-pvc-%d", testName, i)
-		fio_name = fmt.Sprintf("%s-fio-%d", testName, i)
-		// create PV
-		msv_uid, pvcerr := k8sclient.MkPVC(
-			testConductor.Config.NonSteadyState.VolumeSizeMb,
-			pvc_name,
-			sc_name,
-			vol_type,
-			k8sclient.NSDefault,
-			false)
-		if pvcerr != nil {
-			failmessage = fmt.Sprintf("failed to create pvc %v\n", err)
-			break
-		}
-		logf.Log.Info("Created pvc", "msv UID", msv_uid)
+	var vol_spec VolSpec
+	vol_spec.sc_name = sc_name
+	vol_spec.vol_type = vol_type
+	vol_spec.vol_size_mb = testConductor.Config.NonSteadyState.VolumeSizeMb
 
-		// deploy fio
-		if err = k8sclient.DeployFio(
-			fio_name,
-			pvc_name,
-			vol_type,
-			testConductor.Config.NonSteadyState.VolumeSizeMb,
-			1000000); err != nil {
-			failmessage = fmt.Sprintf("failed to deploy pod %s, error: %v\n", fio_name, err)
-			break
-		}
-		logf.Log.Info("Created pod", "pod", fio_name)
-
-		if err = tc.AddWorkload(
-			testConductor.WorkloadMonitorClient,
-			fio_name,
-			k8sclient.NSDefault,
-			violations); err != nil {
-			failmessage = fmt.Sprintf("failed to inform workload monitor of %s, error: %v\n", fio_name, err)
-			break
-		}
-
-		// ======== TODO implement changes for test, add/remove pods and PVs ========
-		// allow the test to run
-		logf.Log.Info("Running test", "duration (s)", vollifetime.Seconds())
-
-		failmessage = MonitorCRs(testConductor, []string{msv_uid}, vollifetime, false)
-
-		if err = tc.DeleteWorkload(testConductor.WorkloadMonitorClient, fio_name, k8sclient.NSDefault); err != nil {
-			failmessage = failmessage + fmt.Sprintf("failed to delete application workload %s, error = %v\n", fio_name, err)
-			logf.Log.Info("failed to delete all application workload", "error", failmessage)
-		}
-		if err = k8sclient.DeletePod(fio_name, k8sclient.NSDefault); err != nil {
-			failmessage = failmessage + fmt.Sprintf("failed to delete application workload %s, error = %v\n", fio_name, err)
-			logf.Log.Info("failed to delete pod", "error", failmessage)
-		}
-		fio_name = ""
-		if err = k8sclient.DeletePVC(pvc_name, k8sclient.NSDefault); err != nil {
-			failmessage = failmessage + fmt.Sprintf("failed to delete pvc %s, error = %v\n", pvc_name, err)
-			logf.Log.Info("failed to delete PVC", "error", failmessage)
-		}
-		pvc_name = ""
-		if failmessage != "" {
-			break
-		}
+	if err = testVolumes(
+		testConductor.Config.NonSteadyState.ConcurrentVols,
+		testConductor,
+		testName,
+		vol_spec,
+		duration,
+		timeout); err != nil {
+		combinederr = err
 	}
+
 	if err = tc.DeleteWorkloads(testConductor.WorkloadMonitorClient); err != nil {
+		combinederr = fmt.Errorf("%v: failed to delete all registered workloads, err %v", combinederr, err)
 		logf.Log.Info("failed to delete all registered workloads", "error", err)
 	}
 
-	if fio_name != "" {
-		if err = k8sclient.DeletePod(fio_name, k8sclient.NSDefault); err != nil {
-			failmessage = failmessage + fmt.Sprintf("failed to delete application workload %s, error = %v\n", fio_name, err)
-			logf.Log.Info("failed to delete pod", "error", err)
-		}
-	}
-	if pvc_name != "" {
-		if err = k8sclient.DeletePVC(pvc_name, k8sclient.NSDefault); err != nil {
-			failmessage = failmessage + fmt.Sprintf("failed to delete pvc %s, error = %v\n", pvc_name, err)
-			logf.Log.Info("failed to delete PVC", "error", err)
-		}
-	}
 	if err = k8sclient.DeleteSc(sc_name); err != nil {
-		failmessage = failmessage + fmt.Sprintf("failed to delete SC %s, error = %v\n", sc_name, err)
+		combinederr = fmt.Errorf("%v: failed to delete SC %s, error = %v", combinederr, sc_name, err)
 		logf.Log.Info("failed to delete SC", "error", err)
 	}
-	return
+	return combinederr
 }

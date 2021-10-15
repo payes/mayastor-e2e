@@ -13,11 +13,11 @@ import (
 	"mayastor-e2e/tools/extended-test-framework/test_conductor/tc"
 	"time"
 
-	"github.com/go-openapi/strfmt"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	v1 "k8s.io/api/core/v1"
 )
 
 const MCP_NEXUS_ONLINE = "NEXUS_ONLINE"
+const MCP_NEXUS_FAULTED = "NEXUS_FAULTED"
 const MSV_ONLINE = "healthy"
 
 var violations = []models.WorkloadViolationEnum{
@@ -40,15 +40,16 @@ func CheckMSVmoac(msv_uid string) error {
 	return nil
 }
 
-func CheckMSVwithGrpc(ms_ips []string, msv_uid string) error {
-	state, err := k8sclient.GetVolumeState(ms_ips, msv_uid)
+func CheckMSVwithGrpc(ms_ips []string) error {
+	states, err := k8sclient.CheckVolumeStates(ms_ips)
 	if err != nil {
 		return fmt.Errorf("MSV grpc check failed, err: %v", err)
 	}
-	if state != MCP_NEXUS_ONLINE {
-		return fmt.Errorf("MSV is not healthy, state is %s", state)
+	for _, state := range states {
+		if state == MCP_NEXUS_FAULTED {
+			return fmt.Errorf("MSV is not healthy, state is %s", state)
+		}
 	}
-	//logf.Log.Info("check MSV", "uid", msv_uid, "state", state)
 	return nil
 }
 
@@ -82,7 +83,14 @@ func CheckNodes(nodecount int) error {
 	return nil
 }
 
-func MonitorCRs(testConductor *tc.TestConductor, msv_uids []string, duration time.Duration, moac bool) string {
+// if pod_to_check is given, the test wait for the pod to complete and duration is a timeout
+// otherwise run the check for the full length of duration.
+func MonitorCRs(
+	testConductor *tc.TestConductor,
+	msv_uids []string,
+	duration time.Duration,
+	moac bool,
+	pod_to_check string) error {
 
 	var endTime = time.Now().Add(duration)
 	var waitSecs = 5
@@ -90,94 +98,169 @@ func MonitorCRs(testConductor *tc.TestConductor, msv_uids []string, duration tim
 		if moac {
 			for _, msv := range msv_uids {
 				if err := CheckMSVmoac(msv); err != nil {
-					return fmt.Sprintf("MSV %s check failed, err: %s\n", msv, err.Error())
+					return fmt.Errorf("MSV %s check failed, err: %s", msv, err.Error())
 				}
 			}
 		} else {
 			ms_ips, err := k8sclient.GetMayastorNodeIPs()
 			if err != nil {
-				return fmt.Sprintf("MSV grpc check failed to get nodes, err: %s\n", err.Error())
+				return fmt.Errorf("MSV grpc check failed to get nodes, err: %s", err.Error())
 			}
-			for _, msv := range msv_uids {
-				if err := CheckMSVwithGrpc(ms_ips, msv); err != nil {
-					return fmt.Sprintf("MSV grpc %s check failed, err: %s\n", msv, err.Error())
-				}
+			if err := CheckMSVwithGrpc(ms_ips); err != nil {
+				return fmt.Errorf("MSV grpc check failed, err: %s", err.Error())
 			}
 		}
 		if err := CheckPools(testConductor.Config.Msnodes); err != nil {
-			return fmt.Sprintf("MSP check failed, err: %s\n", err.Error())
+			return fmt.Errorf("MSP check failed, err: %s", err.Error())
 		}
 		if moac {
 			if err := CheckNodes(testConductor.Config.Msnodes); err != nil {
-				return fmt.Sprintf("MSN check failed, err: %s\n", err.Error())
+				return fmt.Errorf("MSN check failed, err: %s", err.Error())
+			}
+		}
+		if pod_to_check != "" {
+			pod, err := k8sclient.GetPod(pod_to_check, k8sclient.NSDefault)
+			if err != nil {
+				return fmt.Errorf("Failed to get application pod %s, err: %s", pod_to_check, err.Error())
+			}
+			if pod.Status.Phase != v1.PodRunning {
+				break
 			}
 		}
 		if time.Now().After(endTime) {
-			break
+			if pod_to_check == "" {
+				break // the run is time-limited, force stop
+			} else {
+				// we expected the pod to complete by now
+				return fmt.Errorf("Pod is still running, timeout triggered")
+			}
 		}
 		time.Sleep(time.Duration(waitSecs) * time.Second)
 	}
-	return ""
+	return nil
 }
 
-func ReportResult(testConductor *tc.TestConductor, failmessage string, testRunId strfmt.UUID, err error) error {
-	if err != nil {
-		logf.Log.Info("failed to run test", "error", err)
-		if failmessage != "" {
-			failmessage = "\n"
+func WaitPodNotRunning(pod_to_check string, timeout time.Duration) error {
+
+	var endTime = time.Now().Add(timeout)
+	var waitSecs = 5
+
+	for {
+		pod, err := k8sclient.GetPod(pod_to_check, k8sclient.NSDefault)
+		if err != nil {
+			return fmt.Errorf("Failed to get application pod %s, err: %s", pod_to_check, err.Error())
 		}
-		failmessage = failmessage + err.Error()
+		if pod.Status.Phase != v1.PodRunning {
+			break
+		}
+		if time.Now().After(endTime) {
+			return fmt.Errorf("Pod %s is still running, timeout triggered", pod_to_check)
+		}
+		time.Sleep(time.Duration(waitSecs) * time.Second)
 	}
-	if failmessage == "" {
+	return nil
+}
+
+func SendTestRunToDo(testConductor *tc.TestConductor) error {
+	if err := common.SendTestRunToDo(
+		testConductor.TestDirectorClient,
+		testConductor.TestRunId,
+		"",
+		testConductor.Config.Test); err != nil {
+
+		return fmt.Errorf("failed to create test run, error: %v", err)
+	}
+	if err := SendEventTestPreparing(testConductor); err != nil {
+		return fmt.Errorf("failed to inform test director of preparation event, error: %v", err)
+	}
+	return nil
+}
+
+func SendTestRunStarted(testConductor *tc.TestConductor) error {
+	if err := common.SendTestRunStarted(
+		testConductor.TestDirectorClient,
+		testConductor.TestRunId,
+		"",
+		testConductor.Config.Test); err != nil {
+
+		return fmt.Errorf("failed to set test run to executing, error: %v", err)
+	}
+	if err := SendEventTestStarted(testConductor); err != nil {
+		return fmt.Errorf("failed to inform test director of start event, error: %v", err)
+	}
+	return nil
+}
+
+func SendTestRunFinished(testConductor *tc.TestConductor, err error) error {
+	if err == nil {
 		if err := common.SendTestRunCompletedOk(
 			testConductor.TestDirectorClient,
-			testRunId,
+			testConductor.TestRunId,
 			"",
 			testConductor.Config.Test); err != nil {
-			return fmt.Errorf("failed to inform test director of completion, error: %v", err)
+			return fmt.Errorf("failed to set test run to completed, error: %v", err)
 		}
-		if err := SendEventTestCompletedOk(testConductor, testRunId); err != nil {
+		if err := SendEventTestCompletedOk(testConductor); err != nil {
 			return fmt.Errorf("failed to inform test director of completion event, error: %v", err)
 		}
 	} else {
 		if err := common.SendTestRunCompletedFail(
 			testConductor.TestDirectorClient,
-			testRunId,
-			failmessage,
+			testConductor.TestRunId,
+			err.Error(),
 			testConductor.Config.Test); err != nil {
-			return fmt.Errorf("failed to inform test director of completion, error: %v", err)
+			return fmt.Errorf("failed to set test run to failed, error: %v", err)
+		}
+		if err := SendEventTestCompletedFail(testConductor, err.Error()); err != nil {
+			return fmt.Errorf("failed to inform test director of completion event, error: %v", err)
 		}
 	}
 	return nil
 }
 
-func SendEventTestPreparing(testConductor *tc.TestConductor, testUid strfmt.UUID) error {
+func SendEventTestPreparing(testConductor *tc.TestConductor) error {
 	message := "Test preparing, " + testConductor.Config.Test
-	if err := common.SendEventInfo(testConductor.TestDirectorClient, testUid, message, td.EventSourceClassEnumTestDashConductor); err != nil {
+	if err := common.SendEventInfo(
+		testConductor.TestDirectorClient,
+		testConductor.TestRunId,
+		message,
+		td.EventSourceClassEnumTestDashConductor); err != nil {
 		return fmt.Errorf("failed to inform test director of event, error: %v", err)
 	}
 	return nil
 }
 
-func SendEventTestStarted(testConductor *tc.TestConductor, testUid strfmt.UUID) error {
+func SendEventTestStarted(testConductor *tc.TestConductor) error {
 	message := "Test started, " + testConductor.Config.Test
-	if err := common.SendEventInfo(testConductor.TestDirectorClient, testUid, message, td.EventSourceClassEnumTestDashConductor); err != nil {
+	if err := common.SendEventInfo(
+		testConductor.TestDirectorClient,
+		testConductor.TestRunId,
+		message,
+		td.EventSourceClassEnumTestDashConductor); err != nil {
 		return fmt.Errorf("failed to inform test director of event, error: %v", err)
 	}
 	return nil
 }
 
-func SendEventTestCompletedOk(testConductor *tc.TestConductor, testUid strfmt.UUID) error {
+func SendEventTestCompletedOk(testConductor *tc.TestConductor) error {
 	message := "Test completed, " + testConductor.Config.Test
-	if err := common.SendEventInfo(testConductor.TestDirectorClient, testUid, message, td.EventSourceClassEnumTestDashConductor); err != nil {
+	if err := common.SendEventInfo(
+		testConductor.TestDirectorClient,
+		testConductor.TestRunId,
+		message,
+		td.EventSourceClassEnumTestDashConductor); err != nil {
 		return fmt.Errorf("failed to inform test director of event, error: %v", err)
 	}
 	return nil
 }
 
-func SendEventTestCompletedFail(testConductor *tc.TestConductor, text string, testUid strfmt.UUID) error {
+func SendEventTestCompletedFail(testConductor *tc.TestConductor, text string) error {
 	message := "Test failed:, " + text
-	if err := common.SendEventFail(testConductor.TestDirectorClient, testUid, message, td.EventSourceClassEnumTestDashConductor); err != nil {
+	if err := common.SendEventFail(
+		testConductor.TestDirectorClient,
+		testConductor.TestRunId,
+		message,
+		td.EventSourceClassEnumTestDashConductor); err != nil {
 		return fmt.Errorf("failed to inform test director of event, error: %v", err)
 	}
 	return nil

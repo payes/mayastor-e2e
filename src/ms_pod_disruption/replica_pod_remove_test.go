@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"mayastor-e2e/common"
+	"mayastor-e2e/common/controlplane"
 	"mayastor-e2e/common/e2e_config"
 	"mayastor-e2e/common/k8stest"
 	"mayastor-e2e/common/mayastorclient"
@@ -40,6 +41,7 @@ type DisruptionEnv struct {
 	thinkTimeBlocks          int
 	rebuildTimeoutSecs       int
 	fioTimeoutSecs           int
+	nexusUuid                string
 }
 
 var env DisruptionEnv
@@ -100,6 +102,12 @@ func (env *DisruptionEnv) getNodes() {
 	}
 	Expect(toRemove).NotTo(Equal(""), "Could not find a replica to remove")
 	env.replicaToRemove = toRemove
+
+	// get nexus uuid
+	msv, err := k8stest.GetMSV(env.uuid)
+	Expect(err).ToNot(HaveOccurred(), "failed to retrieve MSV for volume %s", env.uuid)
+	env.nexusUuid = msv.Status.Nexus.Uuid
+
 	logf.Log.Info("identified", "nexus IP", env.nexusIP, "local replica", env.nexusLocalRep, "node of replica to remove", env.replicaToRemove)
 }
 
@@ -220,7 +228,7 @@ func (env *DisruptionEnv) unsuppressMayastorPodOn(nodeName string, delay int) {
 func (env *DisruptionEnv) faultNexusChild(delay int) {
 	time.Sleep(time.Duration(delay) * time.Second)
 	logf.Log.Info("faulting the nexus replica")
-	err := mayastorclient.FaultNexusChild(env.nexusIP, env.uuid, env.nexusLocalRep)
+	err := mayastorclient.FaultNexusChild(env.nexusIP, env.nexusUuid, env.nexusLocalRep)
 	Expect(err).ToNot(HaveOccurred(), "%v", err)
 }
 
@@ -343,7 +351,7 @@ func (env *DisruptionEnv) PodLossTestWriteContinuously() {
 
 	// 2) Verify that the volume has become degraded and the data is correct
 	// We make the assumption that the volume has had enough time to become faulted
-	Expect(getMsvState(env.uuid)).To(Equal("degraded"), "Unexpected MSV state")
+	Expect(getMsvState(env.uuid)).To(Equal(controlplane.VolStateDegraded()), "Unexpected MSV state")
 	logf.Log.Info("volume condition", "state", getMsvState(env.uuid))
 
 	// Running fio with --verify=crc32 and --rw=randread means that only reads will occur
@@ -366,7 +374,7 @@ func (env *DisruptionEnv) PodLossTestWriteContinuously() {
 
 	// 4) Verify that the volume becomes healthy and the data is correct
 	// We make the assumption that the volume has had enough time to be repaired
-	Expect(getMsvState(env.uuid)).To(Equal("healthy"), "Unexpected MSV state")
+	Expect(getMsvState(env.uuid)).To(Equal(controlplane.VolStateHealthy()), "Unexpected MSV state")
 	logf.Log.Info("volume condition", "state", getMsvState(env.uuid))
 
 	// Verify the data just written.
@@ -386,7 +394,7 @@ func (env *DisruptionEnv) PodLossTestWriteContinuously() {
 
 	// 6) Verify that the volume becomes degraded and the data is correct
 	// We make the assumption that the volume has had enough time to become faulted
-	Expect(getMsvState(env.uuid)).To(Equal("degraded"), "Unexpected MSV state")
+	Expect(getMsvState(env.uuid)).To(Equal(controlplane.VolStateDegraded()), "Unexpected MSV state")
 
 	// Running fio with --verify=sha1 and --rw=randread means that only reads will occur
 	// and verification happens
@@ -404,7 +412,7 @@ func (env *DisruptionEnv) PodLossTestWriteContinuously() {
 	},
 		env.rebuildTimeoutSecs, // timeout
 		"1s",                   // polling interval
-	).Should(Equal("healthy"))
+	).Should(Equal(controlplane.VolStateHealthy()))
 	logf.Log.Info("volume condition", "state", getMsvState(env.uuid))
 
 	// Re-verify with the original replica on-line, It it gets any IO the

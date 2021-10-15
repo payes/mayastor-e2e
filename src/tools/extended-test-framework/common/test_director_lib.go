@@ -2,6 +2,7 @@ package common
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"mayastor-e2e/tools/extended-test-framework/common/td/client"
@@ -17,11 +18,17 @@ func getTime() string {
 	return time.Now().Format("2006-01-02 15:04:05")
 }
 
+func removespecial(input string) string {
+	tmp := strings.ReplaceAll(input, "\n", ": ")
+	tmp = strings.ReplaceAll(tmp, "\"", " ")
+	return tmp
+}
+
 func sendTestRunStatus(client *client.Etfw, uuid strfmt.UUID, message string, jira_key_str string, status models.TestRunStatusEnum) error {
 
 	var jira_key = models.JiraKey(jira_key_str)
 	testRunSpec := models.TestRunSpec{}
-	testRunSpec.Data = message
+	testRunSpec.Data = getTime() + ": " + removespecial(message)
 	testRunSpec.Status = status
 	testRunSpec.TestKey = &jira_key
 
@@ -32,7 +39,7 @@ func sendTestRunStatus(client *client.Etfw, uuid strfmt.UUID, message string, ji
 	pRunStatusOk, err := client.TestDirector.PutTestRunByID(params)
 
 	if err != nil {
-		return fmt.Errorf("failed to put event, error: %v %v\n", err, pRunStatusOk)
+		return fmt.Errorf("failed to put event, error: %v %v", err, pRunStatusOk)
 	} else {
 		logf.Log.Info("put test run",
 			"message", pRunStatusOk.Payload.Data,
@@ -72,6 +79,7 @@ func sendEvent(
 	var sourceInstanceString = string(sourceInstance)
 
 	message = getTime() + ": " + message
+	message = removespecial(message)
 
 	eventSpec := models.EventSpec{}
 	eventSpec.Class = &eventClass
@@ -87,7 +95,7 @@ func sendEvent(
 	pAddEventOk, err := client.TestDirector.AddEvent(params)
 
 	if err != nil {
-		return fmt.Errorf("failed to put event, error: %v %v\n", err, pAddEventOk)
+		return fmt.Errorf("failed to put event, error: %v %v", err, pAddEventOk)
 	} else {
 		logf.Log.Info("put event",
 			"data", pAddEventOk.Payload.Data[0],

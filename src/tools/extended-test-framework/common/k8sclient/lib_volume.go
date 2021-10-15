@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"mayastor-e2e/common/mayastorclient"
+	//"mayastor-e2e/tools/extended-test-framework/common/controlplane"
 
 	"mayastor-e2e/tools/extended-test-framework/common/custom_resources"
 	v1alpha1Api "mayastor-e2e/tools/extended-test-framework/common/custom_resources/api/types/v1alpha1"
@@ -207,17 +208,19 @@ func DeletePVC(volName string, nameSpace string) error {
 // determine the effective MSV state using grpc calls to the mayastor instances
 // TODO - identify nexus by UUID when the functionality is fixed.
 // For now assume there is one nexus and it is the one to test.
-func GetVolumeState(nodeIPs []string, vol_uuid string) (string, error) {
+func CheckVolumeStates(nodeIPs []string) ([]string, error) {
+	//const nexusTimeoutSecs = 180
+	//const waitTimeSecs = 10
+
+	var states []string
+
 	grpcNexuses, err := mayastorclient.ListNexuses(nodeIPs)
-	//grpcNexus, err := mayastorclient.FindNexus(vol_uuid, nodeIPs)
 	if err != nil {
-		return "", fmt.Errorf("failed to list nexuses via gRPC, %v", err)
+		return states, fmt.Errorf("failed to list nexuses via gRPC, %v", err)
 	}
-	//if grpcNexus == nil {
-	//	return "", fmt.Errorf("failed to find nexus %s via gRPC", vol_uuid)
-	//}
-	if numNexuses := len(grpcNexuses); numNexuses != 1 {
-		return "", fmt.Errorf("unexpected number of nexuses, %d", numNexuses)
+
+	for _, n := range grpcNexuses {
+		states = append(states, n.State.String())
 	}
-	return grpcNexuses[0].State.String(), nil
+	return states, nil
 }

@@ -28,6 +28,7 @@ type IntegrityEnv struct {
 	nexusIP        string
 	replicaIPs     []string
 	fioTimeoutSecs int
+	nexusUuid      string
 }
 
 var env IntegrityEnv
@@ -49,9 +50,11 @@ func (env *IntegrityEnv) setupReplicas() {
 	}
 	Expect(nexusIP).NotTo(Equal(""), "Nexus IP address not found")
 	env.nexusIP = nexusIP
-
+	msv, err := k8stest.GetMSV(env.volUuid)
+	Expect(err).ToNot(HaveOccurred(), "failed to retrieve MSV for volume %s", env.volUuid)
+	env.nexusUuid = msv.Status.Nexus.Uuid
 	// if necessary, reconfigure the volume not to include the nexus node as a replica
-	changed, err := k8stest.ExcludeNexusReplica(nexusIP, env.volUuid)
+	changed, err := k8stest.ExcludeNexusReplica(nexusIP, env.nexusUuid, env.volUuid)
 	Expect(err).ToNot(HaveOccurred(), "%v", err)
 
 	if changed {

@@ -1,4 +1,4 @@
-package mayastor_kubectl
+package v1
 
 // Utility functions for Mayastor control plane volume
 import (
@@ -20,49 +20,77 @@ func HasNotFoundRestJsonError(str string) bool {
 	return len(frags) == 2 && string(frags[1]) == "NotFound"
 }
 
-type CpMsv struct {
-	nodeIPAddresses []string
-}
-
 type MayastorCpVolume struct {
 	Spec  msvSpec  `json:"spec"`
 	State msvState `json:"state"`
 }
 
 type msvSpec struct {
-	Labels       []string `json:"labels"`
-	Num_replicas int      `json:"num_replicas"`
-	Operation    string   `json:"operation"`
-	Protocol     string   `json:"protocol"`
-	Size         int64    `json:"size"`
-	State        string   `json:"state"`
-	Target_node  string   `json:"target_node"`
-	Uuid         string   `json:"uuid"`
+	Num_replicas int        `json:"num_replicas"`
+	Size         int64      `json:"size"`
+	Status       string     `json:"status"`
+	Target       specTarget `json:"target"`
+	Uuid         string     `json:"uuid"`
+	Topology     topology   `json:"topology"`
+	Policy       policy     `json:"policy"`
+}
+
+type policy struct {
+	Self_heal bool `json:"self_heal"`
+}
+type specTarget struct {
+	Protocol string `json:"protocol"`
+	Node     string `json:"node"`
+}
+
+type topology struct {
+	NodeTopology node_topology `json:"node_topology"`
+	PoolTopology pool_topology `json:"pool_topology"`
+}
+type node_topology struct {
+	Explicit explicit `json:"explicit"`
+}
+type pool_topology struct {
+	Labelled labelled `json:"labelled"`
+}
+type labelled struct {
+	Inclusion map[string]interface{} `json:"inclusion"`
+	Exclusion map[string]interface{} `json:"exclusion"`
+}
+
+type explicit struct {
+	AllowedNodes   []string `json:"allowed_nodes"`
+	PreferredNodes []string `json:"preferred_nodes"`
 }
 
 type msvState struct {
-	Target   target `json:"target"`
-	Protocol string `json:"protocol"`
-	Size     int64  `json:"size"`
-	Status   string `json:"status"`
-	Uuid     string `json:"uuid"`
+	Target           stateTarget                 `json:"target"`
+	Size             int64                       `json:"size"`
+	Status           string                      `json:"status"`
+	Uuid             string                      `json:"uuid"`
+	Replica_topology map[string]replica_topology `json:"replica_topology"`
 }
 
-type target struct {
+type replica_topology struct {
+	Node  string `json:"node"`
+	Pool  string `json:"pool"`
+	State string `json:"state"`
+}
+
+type stateTarget struct {
 	Children  []children `json:"children"`
 	DeviceUri string     `json:"deviceUri"`
 	Node      string     `json:"node"`
 	Rebuilds  int        `json:"rebuilds"`
-	Share     string     `json:"share"`
+	Protocol  string     `json:"protocol"`
 	Size      int64      `json:"size"`
 	State     string     `json:"state"`
 	Uuid      string     `json:"uuid"`
 }
 
 type children struct {
-	RebuildProgress string `json:"rebuildProgress"`
-	State           string `json:"state"`
-	Uri             string `json:"uri"`
+	State string `json:"state"`
+	Uri   string `json:"uri"`
 }
 
 func GetMayastorCpVolume(uuid string, address []string) (*MayastorCpVolume, error) {
@@ -185,7 +213,7 @@ func GetMayastorVolumeChildState(uuid string, address []string) (string, error) 
 func IsMmayastorVolumePublished(uuid string, address []string) bool {
 	msv, err := GetMayastorCpVolume(uuid, address)
 	if err == nil {
-		return msv.Spec.Target_node != ""
+		return msv.Spec.Target.Node != ""
 	}
 	return false
 }
@@ -238,40 +266,32 @@ func CheckAllMayastorVolumesAreHealthy(address []string) error {
 
 func cpVolumeToMsv(cpMsv *MayastorCpVolume, address []string) common.MayastorVolume {
 	var nexusChildren []common.NexusChild
-	var childrenUri = make(map[string]bool)
 
 	for _, children := range cpMsv.State.Target.Children {
 		nexusChildren = append(nexusChildren, common.NexusChild{
 			State: children.State,
 			Uri:   children.Uri,
 		})
-		//storing uri as key in map[string]boll
-		//will be used to determine replica corresponding to children uri
-		childrenUri[children.Uri] = true
 	}
-
 	var replicas []common.Replica
-	cpReplicas, err := listMayastorCpReplicas(address)
-	if err != nil {
-		logf.Log.Info("Failed to list replicas", "error", err)
-		return common.MayastorVolume{}
-	}
-	for _, cpReplica := range cpReplicas {
-		if _, ok := childrenUri[cpReplica.Uri]; ok {
-			replicas = append(replicas, common.Replica{
-				Uri:     cpReplica.Uri,
-				Offline: strings.ToLower(cpReplica.State) != "online",
-				Node:    cpReplica.Node,
-				Pool:    cpReplica.Pool,
-			})
+	for uuid := range cpMsv.State.Replica_topology {
+		replica, err := getMayastorCpReplica(uuid, address)
+		if err != nil {
+			logf.Log.Info("Failed to get replicas", "uuid", uuid, "error", err)
+			return common.MayastorVolume{}
 		}
-
+		replicas = append(replicas, common.Replica{
+			Uri:     replica.Uri,
+			Offline: strings.ToLower(replica.State) != "online",
+			Node:    replica.Node,
+			Pool:    replica.Pool,
+		})
 	}
 
 	return common.MayastorVolume{
 		Name: cpMsv.Spec.Uuid,
 		Spec: common.MayastorVolumeSpec{
-			Protocol:      cpMsv.Spec.Protocol,
+			Protocol:      cpMsv.Spec.Target.Protocol,
 			ReplicaCount:  cpMsv.Spec.Num_replicas,
 			RequiredBytes: int(cpMsv.Spec.Size),
 		},
@@ -292,8 +312,8 @@ func cpVolumeToMsv(cpMsv *MayastorCpVolume, address []string) common.MayastorVol
 
 // GetMSV Get pointer to a mayastor control plane volume
 // returns nil and no error if the msv is in pending state.
-func (mc CpMsv) GetMSV(uuid string) (*common.MayastorVolume, error) {
-	cpMsv, err := GetMayastorCpVolume(uuid, mc.nodeIPAddresses)
+func (cp CPv1) GetMSV(uuid string) (*common.MayastorVolume, error) {
+	cpMsv, err := GetMayastorCpVolume(uuid, *cp.nodeIPAddresses)
 	if err != nil {
 		return nil, fmt.Errorf("GetMSV: %v", err)
 	}
@@ -317,14 +337,14 @@ func (mc CpMsv) GetMSV(uuid string) (*common.MayastorVolume, error) {
 		return nil, fmt.Errorf("GetMSV: msv.Spec.Num_replicas=\"%v\"", cpMsv.Spec.Num_replicas)
 	}
 
-	msv := cpVolumeToMsv(cpMsv, mc.nodeIPAddresses)
+	msv := cpVolumeToMsv(cpMsv, *cp.nodeIPAddresses)
 	return &msv, nil
 }
 
 // GetMsvNodes Retrieve the nexus node hosting the Mayastor Volume,
 // and the names of the replica nodes
-func (mc CpMsv) GetMsvNodes(uuid string) (string, []string) {
-	msv, err := GetMayastorCpVolume(uuid, mc.nodeIPAddresses)
+func (cp CPv1) GetMsvNodes(uuid string) (string, []string) {
+	msv, err := GetMayastorCpVolume(uuid, *cp.nodeIPAddresses)
 	if err != nil {
 		logf.Log.Info("failed to get mayastor volume", "uuid", uuid)
 		return "", nil
@@ -332,7 +352,7 @@ func (mc CpMsv) GetMsvNodes(uuid string) (string, []string) {
 	node := msv.State.Target.Node
 	replicas := make([]string, msv.Spec.Num_replicas)
 
-	msvReplicas, err := mc.GetMsvReplicas(uuid)
+	msvReplicas, err := cp.GetMsvReplicas(uuid)
 	if err != nil {
 		logf.Log.Info("failed to get mayastor volume replica", "uuid", uuid)
 		return node, nil
@@ -343,61 +363,39 @@ func (mc CpMsv) GetMsvNodes(uuid string) (string, []string) {
 	return node, replicas
 }
 
-func (mc CpMsv) ListMsvs() ([]common.MayastorVolume, error) {
+func (cp CPv1) ListMsvs() ([]common.MayastorVolume, error) {
 	var msvs []common.MayastorVolume
-	list, err := ListMayastorCpVolumes(mc.nodeIPAddresses)
+	list, err := ListMayastorCpVolumes(*cp.nodeIPAddresses)
 	if err == nil {
 		for _, item := range list {
-			msvs = append(msvs, cpVolumeToMsv(&item, mc.nodeIPAddresses))
+			msvs = append(msvs, cpVolumeToMsv(&item, *cp.nodeIPAddresses))
 		}
 	}
 	return msvs, err
 }
 
-func (mc CpMsv) SetMsvReplicaCount(uuid string, replicaCount int) error {
-	err := scaleMayastorVolume(uuid, replicaCount, mc.nodeIPAddresses)
+func (cp CPv1) SetMsvReplicaCount(uuid string, replicaCount int) error {
+	err := scaleMayastorVolume(uuid, replicaCount, *cp.nodeIPAddresses)
 	logf.Log.Info("ScaleMayastorVolume", "Num_replicas", replicaCount)
 	return err
 }
 
-func (mc CpMsv) GetMsvState(uuid string) (string, error) {
-	return GetMayastorVolumeState(uuid, mc.nodeIPAddresses)
+func (cp CPv1) GetMsvState(uuid string) (string, error) {
+	return GetMayastorVolumeState(uuid, *cp.nodeIPAddresses)
 }
 
-func (mc CpMsv) GetMsvReplicas(volName string) ([]common.Replica, error) {
-	var replicas []common.Replica
-	var childrenUri = make(map[string]bool)
-	cpVolumeChildren, err := GetMayastorVolumeChildren(volName, mc.nodeIPAddresses)
-	if err == nil {
-		for _, child := range cpVolumeChildren {
-			//storing uri as key in map[string]boll
-			//will be used to determine replica corresponding to children uri
-			childrenUri[child.Uri] = true
-		}
-		cpReplicas, err := listMayastorCpReplicas(mc.nodeIPAddresses)
-		if err != nil {
-			logf.Log.Info("Failed to list replicas", "error", err)
-			return nil, err
-		}
-		for _, cpReplica := range cpReplicas {
-			if _, ok := childrenUri[cpReplica.Uri]; ok {
-				replicas = append(replicas, common.Replica{
-					Uri:     cpReplica.Uri,
-					Offline: strings.ToLower(cpReplica.State) != "online",
-					Node:    cpReplica.Node,
-					Pool:    cpReplica.Pool,
-				})
-			}
-
-		}
-
+func (cp CPv1) GetMsvReplicas(volName string) ([]common.Replica, error) {
+	vol, err := cp.GetMSV(volName)
+	if err != nil {
+		logf.Log.Info("Failed to get replicas", "uuid", volName, "error", err)
+		return nil, err
 	}
-	return replicas, nil
+	return vol.Status.Replicas, nil
 }
 
-func (mc CpMsv) GetMsvNexusChildren(volName string) ([]common.NexusChild, error) {
+func (cp CPv1) GetMsvNexusChildren(volName string) ([]common.NexusChild, error) {
 	var children []common.NexusChild
-	cpVolumeChildren, err := GetMayastorVolumeChildren(volName, mc.nodeIPAddresses)
+	cpVolumeChildren, err := GetMayastorVolumeChildren(volName, *cp.nodeIPAddresses)
 	if err == nil {
 		for _, child := range cpVolumeChildren {
 			children = append(children, common.NexusChild{
@@ -409,32 +407,26 @@ func (mc CpMsv) GetMsvNexusChildren(volName string) ([]common.NexusChild, error)
 	return children, err
 }
 
-func (mc CpMsv) GetMsvNexusState(uuid string) (string, error) {
-	return GetMayastorVolumeChildState(uuid, mc.nodeIPAddresses)
+func (cp CPv1) GetMsvNexusState(uuid string) (string, error) {
+	return GetMayastorVolumeChildState(uuid, *cp.nodeIPAddresses)
 }
 
-func (mc CpMsv) IsMsvPublished(uuid string) bool {
-	return IsMmayastorVolumePublished(uuid, mc.nodeIPAddresses)
+func (cp CPv1) IsMsvPublished(uuid string) bool {
+	return IsMmayastorVolumePublished(uuid, *cp.nodeIPAddresses)
 }
 
-func (mc CpMsv) IsMsvDeleted(uuid string) bool {
-	return IsMayastorVolumeDeleted(uuid, mc.nodeIPAddresses)
+func (cp CPv1) IsMsvDeleted(uuid string) bool {
+	return IsMayastorVolumeDeleted(uuid, *cp.nodeIPAddresses)
 }
 
-func (mc CpMsv) CheckForMsvs() (bool, error) {
-	return CheckForMayastorVolumes(mc.nodeIPAddresses)
+func (cp CPv1) CheckForMsvs() (bool, error) {
+	return CheckForMayastorVolumes(*cp.nodeIPAddresses)
 }
 
-func (mc CpMsv) CheckAllMsvsAreHealthy() error {
-	return CheckAllMayastorVolumesAreHealthy(mc.nodeIPAddresses)
+func (cp CPv1) CheckAllMsvsAreHealthy() error {
+	return CheckAllMayastorVolumesAreHealthy(*cp.nodeIPAddresses)
 }
 
-func (mc CpMsv) DeleteMsv(volName string) error {
+func (cp CPv1) DeleteMsv(volName string) error {
 	return fmt.Errorf("delete of mayastor volume not supported %v", volName)
-}
-
-func MakeCpMsv(nodeIPAddresses []string) CpMsv {
-	return CpMsv{
-		nodeIPAddresses: nodeIPAddresses,
-	}
 }

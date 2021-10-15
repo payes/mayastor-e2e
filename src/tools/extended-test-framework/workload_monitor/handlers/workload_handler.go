@@ -40,7 +40,7 @@ func (impl *putWorkloadByRegistrantImpl) Handle(params workload_monitor.PutWorkl
 		wl.Name = models.RFC1123Label(name)
 		wl.Namespace = models.RFC1123Label(namespace)
 	} else {
-		logf.Log.Info("failed to get pod from uuid, error: %v\n", err)
+		logf.Log.Info("failed to get pod from uuid", "error", err)
 		i := int64(1)
 		return workload_monitor.NewPutWorkloadByRegistrantBadRequest().WithPayload(&models.RequestOutcome{
 			Details:       err.Error(),

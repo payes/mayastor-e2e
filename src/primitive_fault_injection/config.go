@@ -26,6 +26,7 @@ type primitiveFaultInjectionConfig struct {
 	uuid         string
 	nexusNodeIP  string
 	nexusRep     string
+	nexusUuid    string
 	replicaIPs   []string
 	duration     time.Duration
 	thinkTime    time.Duration
