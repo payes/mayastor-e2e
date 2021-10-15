@@ -210,7 +210,7 @@ func GetMayastorVolumeChildState(uuid string, address []string) (string, error) 
 	return msv.State.Target.State, nil
 }
 
-func IsMmayastorVolumePublished(uuid string, address []string) bool {
+func IsMayastorVolumePublished(uuid string, address []string) bool {
 	msv, err := GetMayastorCpVolume(uuid, address)
 	if err == nil {
 		return msv.Spec.Target.Node != ""
@@ -412,7 +412,7 @@ func (cp CPv1) GetMsvNexusState(uuid string) (string, error) {
 }
 
 func (cp CPv1) IsMsvPublished(uuid string) bool {
-	return IsMmayastorVolumePublished(uuid, *cp.nodeIPAddresses)
+	return IsMayastorVolumePublished(uuid, *cp.nodeIPAddresses)
 }
 
 func (cp CPv1) IsMsvDeleted(uuid string) bool {

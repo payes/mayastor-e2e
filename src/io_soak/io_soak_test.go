@@ -5,6 +5,7 @@ package io_soak
 import (
 	"fmt"
 	"mayastor-e2e/common/custom_resources"
+	"regexp"
 	"sort"
 	"testing"
 	"time"
@@ -26,6 +27,12 @@ var jobs []IoSoakJob
 func TestIOSoak(t *testing.T) {
 	// Initialise test and set class and file names for reports
 	k8stest.InitTesting(t, "IO soak test, NVMe-oF TCP and iSCSI", "io_soak")
+}
+
+func IsTimeoutErr(str string) bool {
+	re := regexp.MustCompile(`(Error error in request: Timeout while waiting for response)`)
+	frags := re.FindSubmatch([]byte(str))
+	return len(frags) == 2 && string(frags[1]) == "Timeout while waiting for response"
 }
 
 func monitor() error {
@@ -57,8 +64,13 @@ func monitor() error {
 
 		err = k8stest.CheckAllMsvsAreHealthy()
 		if err != nil {
-			logf.Log.Info("IOSoakTest monitor Mayastor volumes check", "error", err)
-			break
+			// See MQ-2305
+			if IsTimeoutErr(fmt.Sprintf("%v", err)) {
+				logf.Log.Info("IOSoakTest monitor Mayastor volumes check: Ignoring", "error", err)
+			} else {
+				logf.Log.Info("IOSoakTest monitor Mayastor volumes check", "error", err)
+				break
+			}
 		}
 
 		err = custom_resources.CheckAllMsPoolsAreOnline()
