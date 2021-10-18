@@ -72,3 +72,11 @@ func MakeCP(addr *[]string) CPv1 {
 		nodeIPAddresses: addr,
 	}
 }
+
+func (cp CPv1) NodeStateOnline() string {
+	return "Online"
+}
+
+func (cp CPv1) NodeStateOffline() string {
+	return "Offline"
+}

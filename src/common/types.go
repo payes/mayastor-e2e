@@ -89,3 +89,25 @@ type MayastorVolumeInterface interface {
 	CheckForMsvs() (bool, error)
 	CheckAllMsvsAreHealthy() error
 }
+
+type MayastorNodeInterface interface {
+	GetMSN(node string) (*MayastorNode, error)
+	ListMsns() ([]MayastorNode, error)
+}
+
+type MayastorNode struct {
+	Name  string            `json:"name"`
+	Spec  MayastorNodeSpec  `json:"spec"`
+	State MayastorNodeState `json:"state"`
+}
+
+type MayastorNodeSpec struct {
+	GrpcEndpoint string `json:"grpcEndpoint"`
+	ID           string `json:"id"`
+}
+
+type MayastorNodeState struct {
+	GrpcEndpoint string `json:"grpcEndpoint"`
+	ID           string `json:"id"`
+	Status       string `json:"status"`
+}
