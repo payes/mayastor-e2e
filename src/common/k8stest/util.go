@@ -151,6 +151,27 @@ func SetDeploymentReplication(deploymentName string, namespace string, replicas 
 	Expect(err).ToNot(HaveOccurred())
 }
 
+// Adjust the number of replicas in the statefulset
+func SetStatefulsetReplication(statefulsetName string, namespace string, replicas *int32) {
+	stsAPI := gTestEnv.KubeInt.AppsV1().StatefulSets
+	var err error
+
+	// this is to cater for a race condition, occasionally seen,
+	// when the deployment is changed between Get and Update
+	for attempts := 0; attempts < 10; attempts++ {
+		sts, err := stsAPI(namespace).Get(context.TODO(), statefulsetName, metaV1.GetOptions{})
+		Expect(err).ToNot(HaveOccurred())
+		sts.Spec.Replicas = replicas
+		_, err = stsAPI(namespace).Update(context.TODO(), sts, metaV1.UpdateOptions{})
+		if err == nil {
+			break
+		}
+		logf.Log.Info("Re-trying update attempt due to error", "error", err)
+		time.Sleep(1 * time.Second)
+	}
+	Expect(err).ToNot(HaveOccurred())
+}
+
 // Wait until all instances of the specified pod are absent from the given node
 func WaitForPodAbsentFromNode(podNameRegexp string, namespace string, nodeName string, timeoutSeconds int) error {
 	var validID = regexp.MustCompile(podNameRegexp)
