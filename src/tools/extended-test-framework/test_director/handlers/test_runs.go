@@ -77,12 +77,19 @@ func (impl *putTestRunImpl) Handle(params test_director.PutTestRunByIDParams) mi
 			}
 			*tp.Status = models.TestPlanStatusEnumRUNNING
 			planInterface.Set(tp.Key, *tp)
-		}
-		if testRun.Status == models.TestRunStatusEnumEXECUTING && (testRunSpec.Status == models.TestRunStatusEnumFAILED || testRunSpec.Status == models.TestRunStatusEnumPASSED) {
+		} else if testRun.Status != models.TestRunStatusEnumTODO && testRunSpec.Status == models.TestRunStatusEnumFAILED {
+			testRun.EndDateTime = strfmt.DateTime(time.Now())
+			if testRun.Data != "" {
+				testRun.Data += ": "
+			}
+			testRun.Data += testRunSpec.Data
+			testRun.Status = testRunSpec.Status
+			UpdateTestRun(testRun)
+		} else if testRun.Status != models.TestRunStatusEnumTODO && testRunSpec.Status == models.TestRunStatusEnumPASSED {
 			testRun.EndDateTime = strfmt.DateTime(time.Now())
 			testRun.TestRunSpec.Data = testRunSpec.Data
 			testRun.Status = testRunSpec.Status
-			FailTestRun(testRun)
+			UpdateTestRun(testRun)
 		}
 	} else {
 		jt, err := connectors.GetJiraTaskDetails(string(*testRunSpec.TestKey))
@@ -122,7 +129,7 @@ func (impl *putTestRunImpl) Handle(params test_director.PutTestRunByIDParams) mi
 	return test_director.NewPutTestRunByIDOK().WithPayload(testRun)
 }
 
-func FailTestRun(testRun *models.TestRun) {
+func UpdateTestRun(testRun *models.TestRun) {
 	xray.UpdateTestRun(*testRun)
 	tp := planInterface.Get(*testRun.TestKey)
 	if tp != nil {

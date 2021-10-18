@@ -54,9 +54,12 @@ func (r *EventCache) Set(key string, data models.Event) error {
 	if *data.Class == models.EventClassEnumFAIL {
 		tr := runInterface.Get(*data.SourceInstance)
 		tr.Status = models.TestRunStatusEnumFAILED
-		tr.Data = *data.Message + " " + strings.Join(data.Data, ", ")
+		if tr.Data != "" {
+			tr.Data += ": "
+		}
+		tr.Data += *data.Message + " " + strings.Join(data.Data, ", ")
 		runInterface.Set(*data.SourceInstance, *tr)
-		FailTestRun(tr)
+		UpdateTestRun(tr)
 	}
 	// -1 means that the item never expires
 	r.client.Set(key, b, -1)
