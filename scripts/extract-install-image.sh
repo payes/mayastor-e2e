@@ -13,7 +13,7 @@ INSTALLROOT=""
 
 help() {
   cat <<EOF
-This scriopt extracts the templates and files required for E2E to install mayastor
+This script extracts the templates and files required for E2E to install mayastor
 from a mayastor install image.
 
 Usage: $(basename $0) [OPTIONS]
@@ -51,7 +51,7 @@ while [ "$#" -gt 0 ]; do
     --installroot)
       shift
       if [ -n "$1" ]; then
-            INSTALLROOT="$1/install-bundle"
+            INSTALLROOT="$1"
       fi
       shift
       ;;
@@ -75,13 +75,19 @@ fi
 image=${REGISTRY}/mayadata/install-images:${TAG}
 docker pull "${image}"
 
-rm -rf "${INSTALLROOT:?}/${TAG}"
-mkdir -p "$INSTALLROOT/${TAG}"
+# if the install bundle directory exists, we should
+# not assume contents are valid for this installation
+# remove the directory
+if [ -d "${INSTALLROOT}" ]; then
+    echo "Deleting contents of ${INSTALLROOT}"
+    (cd "${INSTALLROOT}" && rm -rf "*") || exit 255
+fi
+mkdir -p "$INSTALLROOT"
 
 tmpdir=$(mktemp -d)
 contnr=$(docker create "${image}")
 docker cp "${contnr}:/install.tar" "$tmpdir"
-echo "Extracting install files to $INSTALLROOT/${TAG}"
-pushd "$INSTALLROOT/${TAG}" && tar xf "$tmpdir/install.tar" && popd
+echo "Extracting install files to $INSTALLROOT"
+pushd "$INSTALLROOT" && tar xf "$tmpdir/install.tar" && popd
 docker rm "${contnr}" >& /dev/null
 rm -rf "$tmpdir"

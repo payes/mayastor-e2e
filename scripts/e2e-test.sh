@@ -266,13 +266,15 @@ fi
 mcp=''
 
 if [ -z "$mayastor_root_dir" ]; then
-    if ! "$SCRIPTDIR/extract-install-image.sh" --alias-tag "$tag" --installroot "$sessiondir"
+    mkdir -p "$sessiondir"
+    export mayastor_root_dir="$ARTIFACTSDIR/install-bundle/$tag"
+    mkdir -p "$mayastor_root_dir"
+    if ! "$SCRIPTDIR/extract-install-image.sh" --alias-tag "$tag" --installroot "$mayastor_root_dir"
     then
         echo "Unable to extract install files for $tag"
         exit $EXITV_INVALID_OPTION
     fi
-    export mayastor_root_dir="$sessiondir/install-bundle/$tag"
-    mcp=$(find "$sessiondir" -name mcp -type d)
+    mcp=$(find "$mayastor_root_dir" -name mcp -type d)
     if [ -z "$mcp" ] ; then
         # "$mayastor_root_dir/csi/moac/crds/mayastor*.yaml" doesn't work
         # in that the script does not receive a list of yaml files but instead
@@ -283,7 +285,7 @@ if [ -z "$mayastor_root_dir" ]; then
             exit $EXITV_CRD_GO_GEN
         fi
     else
-        kbctl_plugin=$(find "$sessiondir" -name kubectl-mayastor)
+        kbctl_plugin=$(find "$mayastor_root_dir" -name kubectl-mayastor)
         if [ -n "$kbctl_plugin" ]; then
             kbctl_plugin_dir=$(dirname "$kbctl_plugin")
             echo "Found kubectl plugin $kbctl_plugin"
