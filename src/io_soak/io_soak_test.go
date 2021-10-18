@@ -5,12 +5,12 @@ package io_soak
 import (
 	"fmt"
 	"mayastor-e2e/common/custom_resources"
-	"regexp"
 	"sort"
 	"testing"
 	"time"
 
 	"mayastor-e2e/common"
+	"mayastor-e2e/common/controlplane"
 	"mayastor-e2e/common/e2e_config"
 	"mayastor-e2e/common/k8stest"
 
@@ -27,12 +27,6 @@ var jobs []IoSoakJob
 func TestIOSoak(t *testing.T) {
 	// Initialise test and set class and file names for reports
 	k8stest.InitTesting(t, "IO soak test, NVMe-oF TCP and iSCSI", "io_soak")
-}
-
-func IsTimeoutErr(str string) bool {
-	re := regexp.MustCompile(`(Error error in request: Timeout while waiting for response)`)
-	frags := re.FindSubmatch([]byte(str))
-	return len(frags) == 2 && string(frags[1]) == "Timeout while waiting for response"
 }
 
 func monitor() error {
@@ -65,7 +59,7 @@ func monitor() error {
 		err = k8stest.CheckAllMsvsAreHealthy()
 		if err != nil {
 			// See MQ-2305
-			if IsTimeoutErr(fmt.Sprintf("%v", err)) {
+			if controlplane.IsTimeoutError(err) {
 				logf.Log.Info("IOSoakTest monitor Mayastor volumes check: Ignoring", "error", err)
 			} else {
 				logf.Log.Info("IOSoakTest monitor Mayastor volumes check", "error", err)
