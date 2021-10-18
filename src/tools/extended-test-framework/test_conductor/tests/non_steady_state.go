@@ -15,12 +15,6 @@ import (
 	storageV1 "k8s.io/api/storage/v1"
 )
 
-type VolSpec struct {
-	sc_name     string
-	vol_type    k8sclient.VolumeType
-	vol_size_mb int
-}
-
 func testVolume(
 	testConductor *tc.TestConductor,
 	id int,
@@ -72,21 +66,16 @@ func testVolume(
 		}
 
 		// allow the test to run
-		//logf.Log.Info("Testing volume", "timeout (s)", timeout.Seconds())
-
 		// wait for fio to be not running
 		if err = WaitPodNotRunning(fio_name, timeout); err != nil {
 			combinederr = err
 		}
-		//if failmessage != "" {
-		//	logf.Log.Info("Monitor CR check failed", "text", failmessage)
-		//}
 
 		if err = tc.DeleteWorkload(testConductor.WorkloadMonitorClient, fio_name, k8sclient.NSDefault); err != nil {
 			combinederr = fmt.Errorf("%v : failed to delete application workload %s, error = %v", combinederr, fio_name, err)
 			logf.Log.Info("failed to delete all application workload", "error", err)
 		}
-		if err = k8sclient.DeletePod(fio_name, k8sclient.NSDefault); err != nil {
+		if err = k8sclient.DeletePodIfCompleted(fio_name, k8sclient.NSDefault); err != nil {
 			combinederr = fmt.Errorf("%v : failed to delete application workload %s, error = %v", combinederr, fio_name, err)
 			logf.Log.Info("failed to delete pod", "error", err)
 		}
@@ -95,6 +84,9 @@ func testVolume(
 			logf.Log.Info("failed to delete PVC", "error", err)
 		}
 		if combinederr != nil {
+			if err = SendEventTestCompletedFail(testConductor, combinederr.Error()); err != nil {
+				logf.Log.Info("failed to send fail event", "error", err)
+			}
 			break
 		}
 	}

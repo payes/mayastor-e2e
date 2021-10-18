@@ -111,7 +111,7 @@ func SteadyStateTest(testConductor *tc.TestConductor) error {
 		combinederr = fmt.Errorf("%v: failed to delete all registered workloads, error: %v", combinederr, err)
 	}
 
-	if err = k8sclient.DeletePod(fio_name, k8sclient.NSDefault); err != nil {
+	if err = k8sclient.DeletePodIfCompleted(fio_name, k8sclient.NSDefault); err != nil {
 		logf.Log.Info("failed to delete pod", "pod", fio_name, "error", err)
 		combinederr = fmt.Errorf("%v: failed to delete pod %s, error: %v", combinederr, fio_name, err)
 	}

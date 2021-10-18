@@ -274,6 +274,19 @@ func DeletePod(name string, nameSpace string) error {
 	return gKubeInt.CoreV1().Pods(nameSpace).Delete(context.TODO(), name, metaV1.DeleteOptions{})
 }
 
+// DeletePodIfCompleted Delete a Pod if it completed with no container errors
+func DeletePodIfCompleted(podName string, nameSpace string) error {
+	pod, err := gKubeInt.CoreV1().Pods(nameSpace).Get(context.TODO(), podName, metaV1.GetOptions{})
+	if err != nil {
+		return err
+	}
+	if pod.Status.Phase != v1.PodSucceeded {
+		return fmt.Errorf("Not deleting non-completed pod, status %s", pod.Status.Phase)
+	}
+	logf.Log.Info("Deleting", "pod", podName)
+	return gKubeInt.CoreV1().Pods(nameSpace).Delete(context.TODO(), podName, metaV1.DeleteOptions{})
+}
+
 // ListPod return lis of pods in the given namespace
 func ListPod(ns string) (*v1.PodList, error) {
 	pods, err := gKubeInt.CoreV1().Pods(ns).List(context.TODO(), metaV1.ListOptions{})

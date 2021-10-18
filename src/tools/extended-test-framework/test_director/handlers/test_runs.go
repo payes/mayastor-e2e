@@ -2,14 +2,13 @@ package handlers
 
 import (
 	"errors"
+	"github.com/go-openapi/runtime/middleware"
+	"github.com/go-openapi/strfmt"
 	"test-director/connectors"
 	"test-director/connectors/xray"
 	"test-director/models"
 	"test-director/restapi/operations/test_director"
 	"time"
-
-	"github.com/go-openapi/runtime/middleware"
-	"github.com/go-openapi/strfmt"
 )
 
 type getTestRunsImpl struct{}
@@ -68,7 +67,6 @@ func (impl *putTestRunImpl) Handle(params test_director.PutTestRunByIDParams) mi
 	testRun := runInterface.Get(id)
 	if testRun != nil {
 		if testRun.Status == models.TestRunStatusEnumTODO && testRunSpec.Status == models.TestRunStatusEnumEXECUTING {
-			// transition TODO -> EXECUTING
 			testRun.StartDateTime = strfmt.DateTime(time.Now())
 			testRun.TestRunSpec.Data = testRunSpec.Data
 			testRun.Status = testRunSpec.Status
@@ -80,20 +78,18 @@ func (impl *putTestRunImpl) Handle(params test_director.PutTestRunByIDParams) mi
 			*tp.Status = models.TestPlanStatusEnumRUNNING
 			planInterface.Set(tp.Key, *tp)
 		} else if testRun.Status != models.TestRunStatusEnumTODO && testRunSpec.Status == models.TestRunStatusEnumFAILED {
-			// transition EXEC || PASSED || FAILED -> FAILED
 			testRun.EndDateTime = strfmt.DateTime(time.Now())
-			if testRun.TestRunSpec.Data != "" {
-				testRun.TestRunSpec.Data = testRun.TestRunSpec.Data + ": "
+			if testRun.Data != "" {
+				testRun.Data += ": "
 			}
-			testRun.TestRunSpec.Data = testRun.TestRunSpec.Data + testRunSpec.Data
+			testRun.Data += testRunSpec.Data
 			testRun.Status = testRunSpec.Status
-			FailTestRun(testRun)
-		} else if testRun.Status == models.TestRunStatusEnumEXECUTING && testRunSpec.Status == models.TestRunStatusEnumPASSED {
-			// transition EXEC -> PASSED
+			UpdateTestRun(testRun)
+		} else if testRun.Status != models.TestRunStatusEnumTODO && testRunSpec.Status == models.TestRunStatusEnumPASSED {
 			testRun.EndDateTime = strfmt.DateTime(time.Now())
 			testRun.TestRunSpec.Data = testRunSpec.Data
 			testRun.Status = testRunSpec.Status
-			xray.UpdateTestRun(*testRun)
+			UpdateTestRun(testRun)
 		}
 	} else {
 		jt, err := connectors.GetJiraTaskDetails(string(*testRunSpec.TestKey))
@@ -133,7 +129,7 @@ func (impl *putTestRunImpl) Handle(params test_director.PutTestRunByIDParams) mi
 	return test_director.NewPutTestRunByIDOK().WithPayload(testRun)
 }
 
-func FailTestRun(testRun *models.TestRun) {
+func UpdateTestRun(testRun *models.TestRun) {
 	xray.UpdateTestRun(*testRun)
 	tp := planInterface.Get(*testRun.TestKey)
 	if tp != nil {

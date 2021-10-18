@@ -62,11 +62,15 @@ func NewGetWorkloadByRegistrantHandler() workload_monitor.GetWorkloadByRegistran
 
 func (impl *getWorkloadByRegistrantImpl) Handle(params workload_monitor.GetWorkloadByRegistrantParams) middleware.Responder {
 	logf.Log.Info("received GetWorkloadByRegistrant")
+	var wl models.Workload
 	list.Lock()
 	pwl := list.GetWorkload(params.Rid, params.Wid)
+	if pwl != nil {
+		wl = *pwl
+	}
 	list.Unlock()
 	if pwl != nil {
-		return workload_monitor.NewGetWorkloadByRegistrantOK().WithPayload(pwl)
+		return workload_monitor.NewGetWorkloadByRegistrantOK().WithPayload(&wl)
 	} else {
 		return workload_monitor.NewGetWorkloadByRegistrantNotFound()
 	}
@@ -108,11 +112,20 @@ func NewDeleteWorkloadByRegistrantHandler() workload_monitor.DeleteWorkloadByReg
 
 func (impl *deleteWorkloadByRegistrantImpl) Handle(params workload_monitor.DeleteWorkloadByRegistrantParams) middleware.Responder {
 	logf.Log.Info("received DeleteWorkloadByRegistrant")
+	var wl models.Workload
 	list.Lock()
-	wl := *list.GetWorkload(params.Rid, params.Wid)
-	list.DeleteWorkload(params.Rid, params.Wid)
+	pwl := list.GetWorkload(params.Rid, params.Wid)
+	if pwl != nil {
+		list.DeleteWorkload(params.Rid, params.Wid)
+		wl = *pwl
+	}
 	list.Unlock()
-	return workload_monitor.NewDeleteWorkloadByRegistrantOK().WithPayload(&wl)
+	if pwl != nil {
+		return workload_monitor.NewDeleteWorkloadByRegistrantOK().WithPayload(&wl)
+	} else {
+		logf.Log.Info("DeleteWorkloadByRegistrant could not find workload", "Rid", params.Rid, "Wid", params.Wid)
+		return workload_monitor.NewDeleteWorkloadByRegistrantNotFound()
+	}
 }
 
 type deleteWorkloadsByRegistrantImpl struct{}

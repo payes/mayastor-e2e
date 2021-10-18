@@ -16,6 +16,12 @@ import (
 	v1 "k8s.io/api/core/v1"
 )
 
+type VolSpec struct {
+	sc_name     string
+	vol_type    k8sclient.VolumeType
+	vol_size_mb int
+}
+
 const MCP_NEXUS_ONLINE = "NEXUS_ONLINE"
 const MCP_NEXUS_FAULTED = "NEXUS_FAULTED"
 const MSV_ONLINE = "healthy"

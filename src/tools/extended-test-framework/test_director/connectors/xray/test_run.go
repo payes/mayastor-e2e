@@ -2,12 +2,11 @@ package xray
 
 import (
 	"fmt"
-	"test-director/models"
-	"time"
-
 	"github.com/go-openapi/strfmt"
 	log "github.com/sirupsen/logrus"
 	"github.com/tidwall/gjson"
+	"test-director/models"
+	"time"
 )
 
 func UpdateTestRun(testRun models.TestRun) {

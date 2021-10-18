@@ -27,7 +27,7 @@ pipeline {
             description: 'Selects cluster to use.'
         )
         booleanParam(name: 'node_correct', defaultValue: false,  description: 'Is the above cluster correct ? It must have mayastor installed and a node labelled openebs.io/role=mayastor-e2e. See README.md.')
-        choice(choices: ['steady_state', 'non_steady_state', "non_steady_state_multi_vols"], name: 'test', description: 'select which test to run')
+        choice(choices: ['steady_state', 'non_steady_state', 'non_steady_state_multi_vols'], name: 'test', description: 'select which test to run')
         choice(choices: ['ET-435'], name: 'plan', description: 'test plan')
         string(defaultValue: '10m', name: 'duration', trim: true, description: 'run duration, use units h, m and s')
     }
