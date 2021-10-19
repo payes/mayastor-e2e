@@ -25,6 +25,8 @@ type ControlPlaneInterface interface {
 	MajorVersion() int
 	Version() string
 
+	IsTimeoutError(error) bool
+
 	// Resource state strings abstraction
 
 	VolStateHealthy() string
@@ -219,4 +221,16 @@ func NodeStateOnline() string {
 
 func NodeStateOffline() string {
 	return getControlPlane().NodeStateOffline()
+}
+
+func Version() string {
+	return getControlPlane().Version()
+}
+
+func MajorVersion() int {
+	return getControlPlane().MajorVersion()
+}
+
+func IsTimeoutError(err error) bool {
+	return getControlPlane().IsTimeoutError(err)
 }

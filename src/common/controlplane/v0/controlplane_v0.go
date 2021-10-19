@@ -10,6 +10,10 @@ func (cp CPv0p8) MajorVersion() int {
 	return 0
 }
 
+func (cp CPv0p8) IsTimeoutError(_ error) bool {
+	return false
+}
+
 func (cp CPv0p8) VolStateHealthy() string {
 	return "healthy"
 }

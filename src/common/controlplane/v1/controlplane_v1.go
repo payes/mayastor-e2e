@@ -1,5 +1,10 @@
 package v1
 
+import (
+	"fmt"
+	"regexp"
+)
+
 type CPv1 struct {
 	nodeIPAddresses *[]string
 }
@@ -10,6 +15,14 @@ func (cp CPv1) Version() string {
 
 func (cp CPv1) MajorVersion() int {
 	return 1
+}
+
+var re = regexp.MustCompile(`(request timed out)`)
+
+func (cp CPv1) IsTimeoutError(err error) bool {
+	str := fmt.Sprintf("%v", err)
+	frags := re.FindSubmatch([]byte(str))
+	return len(frags) == 2 && string(frags[1]) == "request timed out"
 }
 
 func (cp CPv1) VolStateHealthy() string {
