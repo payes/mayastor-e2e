@@ -151,7 +151,64 @@ pipeline {
                         }
                     }
                 }//post
-           }//stage 'run e2e part3'
+            }//stage 'run e2e part3'
+            stage('run e2e part4') {
+                agent { label 'nixos' }
+                environment {
+                    KUBECONFIG = "${env.WORKSPACE}/${e2e_environment}/modules/k8s/secrets/admin.conf"
+                    RUN_UUID = UUID.randomUUID().toString()
+                }
+                steps {
+                    script {
+                            Common().RunParallelStage(e2e_params)
+                    }
+                }
+                post {
+                    always {
+                        script {
+                            Common().PostParallelStage(e2e_params, "${RUN_UUID}")
+                        }
+                    }
+                }//post
+            }//stage 'run e2e part4'
+            stage('run e2e part5') {
+                agent { label 'nixos' }
+                environment {
+                    KUBECONFIG = "${env.WORKSPACE}/${e2e_environment}/modules/k8s/secrets/admin.conf"
+                    RUN_UUID = UUID.randomUUID().toString()
+                }
+                steps {
+                    script {
+                            Common().RunParallelStage(e2e_params)
+                    }
+                }
+                post {
+                    always {
+                        script {
+                            Common().PostParallelStage(e2e_params, "${RUN_UUID}")
+                        }
+                    }
+                }//post
+            }//stage 'run e2e part5'
+            stage('run e2e part6') {
+                agent { label 'nixos' }
+                environment {
+                    KUBECONFIG = "${env.WORKSPACE}/${e2e_environment}/modules/k8s/secrets/admin.conf"
+                    RUN_UUID = UUID.randomUUID().toString()
+                }
+                steps {
+                    script {
+                            Common().RunParallelStage(e2e_params)
+                    }
+                }
+                post {
+                    always {
+                        script {
+                            Common().PostParallelStage(e2e_params, "${RUN_UUID}")
+                        }
+                    }
+                }//post
+            }//stage 'run e2e part6'
         }//parallel
     }//stage 'test'
     stage('archive artifacts'){
