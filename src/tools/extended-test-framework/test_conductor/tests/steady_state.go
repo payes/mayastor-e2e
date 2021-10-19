@@ -40,6 +40,12 @@ func SteadyStateTest(testConductor *tc.TestConductor) error {
 		return fmt.Errorf("failed to inform test director of test start, error: %v", err)
 	}
 
+	if err = tc.AddCommonWorkloads(
+		testConductor.WorkloadMonitorClient,
+		violations); err != nil {
+		return fmt.Errorf("failed add common workloads, error: %v", err)
+	}
+
 	// create storage class
 	if err = k8sclient.NewScBuilder().
 		WithName(sc_name).
@@ -81,25 +87,10 @@ func SteadyStateTest(testConductor *tc.TestConductor) error {
 
 	if err = tc.AddWorkload(
 		testConductor.WorkloadMonitorClient,
-		"test-conductor",
-		common.EtfwNamespace,
-		violations); err != nil {
-		return fmt.Errorf("failed to inform workload monitor of test-conductor, error: %v", err)
-	}
-
-	if err = tc.AddWorkload(
-		testConductor.WorkloadMonitorClient,
 		fio_name,
 		k8sclient.NSDefault,
 		violations); err != nil {
 		return fmt.Errorf("failed to inform workload monitor of %s, error: %v", fio_name, err)
-	}
-
-	if err = tc.AddWorkloadsInNamespace(
-		testConductor.WorkloadMonitorClient,
-		"mayastor",
-		violations); err != nil {
-		return fmt.Errorf("failed to inform workload monitor of mayastor pods, error: %v", err)
 	}
 
 	// allow the test to run

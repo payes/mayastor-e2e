@@ -2,6 +2,7 @@ package tc
 
 import (
 	"fmt"
+	"strings"
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -24,7 +25,7 @@ func AddWorkload(
 
 	tcpod, err := k8sclient.GetPod("test-conductor", common.EtfwNamespace)
 	if err != nil {
-		return fmt.Errorf("failed to get tc pod %s, error: %v\n", name, err)
+		return fmt.Errorf("failed to get test-conductor pod, error: %v\n", err)
 	}
 
 	pod, err := k8sclient.GetPod(name, namespace)
@@ -52,37 +53,45 @@ func AddWorkload(
 	return nil
 }
 
-func AddWorkloadsInNamespace(
-	client *client.Etfw,
-	namespace string,
-	violations []models.WorkloadViolationEnum) error {
+func AddCommonWorkloads(client *client.Etfw, violations []models.WorkloadViolationEnum) error {
+
 	tcpod, err := k8sclient.GetPod("test-conductor", common.EtfwNamespace)
 	if err != nil {
-		return fmt.Errorf("failed to get tc pod, error: %v\n", err)
+		return fmt.Errorf("failed to get test-conductor pod, error: %v\n", err)
 	}
 
-	podlist, err := k8sclient.GetPodsInNamespace(namespace)
+	if err = AddWorkload(
+		client,
+		"test-conductor",
+		common.EtfwNamespace,
+		violations); err != nil {
+		return fmt.Errorf("failed to inform workload monitor of test-conductor, error: %v", err)
+	}
+
+	podlist, err := k8sclient.GetPodsInNamespace("mayastor")
 	if err != nil {
-		return fmt.Errorf("failed to get pods in namespace %s, error: %v\n", namespace, err)
+		return fmt.Errorf("failed to get pods in mayastor namespace, error: %v\n", err)
 	}
 
 	for _, pod := range podlist.Items {
-		workload_spec := models.WorkloadSpec{}
-		workload_spec.Violations = violations
-		workload_params := workload_monitor.NewPutWorkloadByRegistrantParams()
+		if !strings.HasPrefix(pod.ObjectMeta.Name, "msp-operator-") {
+			workload_spec := models.WorkloadSpec{}
+			workload_spec.Violations = violations
+			workload_params := workload_monitor.NewPutWorkloadByRegistrantParams()
 
-		workload_params.Rid = strfmt.UUID(tcpod.ObjectMeta.UID)
-		workload_params.Wid = strfmt.UUID(pod.ObjectMeta.UID)
-		workload_params.Body = &workload_spec
-		pPutWorkloadOk, err := client.WorkloadMonitor.PutWorkloadByRegistrant(workload_params)
+			workload_params.Rid = strfmt.UUID(tcpod.ObjectMeta.UID)
+			workload_params.Wid = strfmt.UUID(pod.ObjectMeta.UID)
+			workload_params.Body = &workload_spec
+			pPutWorkloadOk, err := client.WorkloadMonitor.PutWorkloadByRegistrant(workload_params)
 
-		if err != nil {
-			return fmt.Errorf("failed to put workload %v %v\n", err, pPutWorkloadOk)
-		} else {
-			logf.Log.Info("put workload",
-				"name", string(pPutWorkloadOk.Payload.Name),
-				"namespace", pPutWorkloadOk.Payload.Namespace,
-				"wid", pPutWorkloadOk.Payload.ID)
+			if err != nil {
+				return fmt.Errorf("failed to put workload %v %v\n", err, pPutWorkloadOk)
+			} else {
+				logf.Log.Info("put workload",
+					"name", string(pPutWorkloadOk.Payload.Name),
+					"namespace", pPutWorkloadOk.Payload.Namespace,
+					"wid", pPutWorkloadOk.Payload.ID)
+			}
 		}
 	}
 	return nil
