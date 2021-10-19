@@ -24,7 +24,7 @@ func testVolume(
 	timeout time.Duration) error {
 	var i int
 	var endTime = time.Now().Add(duration)
-	var combinederr error
+	var finalerr error
 
 	for {
 		i = i + 1
@@ -42,7 +42,8 @@ func testVolume(
 			k8sclient.NSDefault,
 			false)
 		if err != nil {
-			return fmt.Errorf("failed to create pvc %s, error: %v", pvc_name, err)
+			finalerr = fmt.Errorf("failed to create pvc %s, error: %v", pvc_name, err)
+			break
 		}
 		logf.Log.Info("Created pvc", "name", pvc_name, "msv UID", msv_uid)
 
@@ -53,7 +54,8 @@ func testVolume(
 			vol_spec.vol_type,
 			vol_spec.vol_size_mb,
 			1); err != nil {
-			return fmt.Errorf("failed to deploy pod %s, error: %v", fio_name, err)
+			finalerr = fmt.Errorf("failed to deploy pod %s, error: %v", fio_name, err)
+			break
 		}
 		logf.Log.Info("Created pod", "pod", fio_name)
 
@@ -62,35 +64,37 @@ func testVolume(
 			fio_name,
 			k8sclient.NSDefault,
 			violations); err != nil {
-			return fmt.Errorf("failed to inform workload monitor of %s, error: %v", fio_name, err)
+			finalerr = fmt.Errorf("failed to inform workload monitor of %s, error: %v", fio_name, err)
+			break
 		}
 
 		// allow the test to run
 		// wait for fio to be not running
 		if err = WaitPodNotRunning(fio_name, timeout); err != nil {
-			combinederr = err
+			finalerr = err
+			break
 		}
 
 		if err = tc.DeleteWorkload(testConductor.WorkloadMonitorClient, fio_name, k8sclient.NSDefault); err != nil {
-			combinederr = fmt.Errorf("%v : failed to delete application workload %s, error = %v", combinederr, fio_name, err)
-			logf.Log.Info("failed to delete all application workload", "error", err)
+			finalerr = fmt.Errorf("failed to delete application workload %s, error = %v", fio_name, err)
+			break
 		}
 		if err = k8sclient.DeletePodIfCompleted(fio_name, k8sclient.NSDefault); err != nil {
-			combinederr = fmt.Errorf("%v : failed to delete application workload %s, error = %v", combinederr, fio_name, err)
-			logf.Log.Info("failed to delete pod", "error", err)
+			finalerr = fmt.Errorf("failed to delete application %s, error = %v", fio_name, err)
+			break
 		}
 		if err = k8sclient.DeletePVC(pvc_name, k8sclient.NSDefault); err != nil {
-			combinederr = fmt.Errorf("%v: failed to delete pvc %s, error = %v", combinederr, pvc_name, err)
-			logf.Log.Info("failed to delete PVC", "error", err)
-		}
-		if combinederr != nil {
-			if err = SendEventTestCompletedFail(testConductor, combinederr.Error()); err != nil {
-				logf.Log.Info("failed to send fail event", "error", err)
-			}
+			finalerr = fmt.Errorf("failed to delete pvc %s, error = %v", pvc_name, err)
 			break
 		}
 	}
-	return combinederr
+	if finalerr != nil {
+		logf.Log.Info("test failed", "error", finalerr)
+		if err := SendEventTestCompletedFail(testConductor, finalerr.Error()); err != nil {
+			logf.Log.Info("failed to send fail event", "error", err)
+		}
+	}
+	return finalerr
 }
 
 func testVolumes(
@@ -111,6 +115,7 @@ func testVolumes(
 			defer wg.Done()
 			err := testVolume(testConductor, i, testName, vol_spec, duration, timeout)
 			if err != nil {
+				logf.Log.Info("Test thread exiting", "thread", i, "error", err.Error())
 				errchan <- err
 			}
 		}(i)
@@ -126,6 +131,7 @@ func testVolumes(
 			"",
 		)
 		if err != nil {
+			logf.Log.Info("Monitor thread exiting", "error", err.Error())
 			errchan <- err
 		}
 	}()

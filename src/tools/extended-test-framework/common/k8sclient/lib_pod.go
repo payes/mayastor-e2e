@@ -108,6 +108,13 @@ func (b *PodBuilder) WithLabels(labels map[string]string) *PodBuilder {
 	return b
 }
 
+func (b *PodBuilder) WithAppLabel(applabel string) *PodBuilder {
+	label := make(map[string]string)
+	label["app"] = applabel
+	b.pod.object.Labels = label
+	return b
+}
+
 // WithRestartPolicy sets the RestartPolicy field in Pod with provided arguments
 func (b *PodBuilder) WithRestartPolicy(
 	restartPolicy corev1.RestartPolicy,

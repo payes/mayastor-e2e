@@ -110,7 +110,8 @@ func DeployFio(fioPodName string, pvcName string, volumeType VolumeType, volSize
 		WithNamespace(NSDefault).
 		WithRestartPolicy(coreV1.RestartPolicyNever).
 		WithContainer(container).
-		WithVolumes(volumes)
+		WithVolumes(volumes).
+		WithAppLabel("fio")
 
 	if len(volDevices) != 0 {
 		podBuilder.WithVolumeDevices(volDevices)
