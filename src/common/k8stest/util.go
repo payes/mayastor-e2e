@@ -260,9 +260,9 @@ func MayastorInstancesReady(numMayastorInstances int, sleepTime int, duration in
 	for ix := 0; ix < count && !ready; ix++ {
 		time.Sleep(time.Duration(sleepTime) * time.Second)
 		if common.IsControlPlaneMcp() {
-			ready = mayastorReadyPodCount() == numMayastorInstances && mayastorCSIReadyPodCount() == numMayastorInstances
+			ready = mayastorReadyPodCount() == numMayastorInstances && mayastorCSIReadyPodCount() >= numMayastorInstances
 		} else {
-			ready = mayastorReadyPodCount() == numMayastorInstances && mayastorCSIReadyPodCount() == numMayastorInstances && msnOnlineCount() == numMayastorInstances
+			ready = mayastorReadyPodCount() == numMayastorInstances && mayastorCSIReadyPodCount() >= numMayastorInstances && msnOnlineCount() == numMayastorInstances
 		}
 	}
 
