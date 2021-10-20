@@ -39,8 +39,6 @@ func BasicVolumeIOTest(protocol common.ShareProto, volumeType common.VolumeType,
 
 	// Create the fio Pod
 	fioPodName := "fio-" + volName
-	pod := k8stest.CreateFioPodDef(fioPodName, volName, volumeType, common.NSDefault)
-	Expect(pod).ToNot(BeNil())
 
 	var args = []string{
 		"--",
@@ -54,11 +52,33 @@ func BasicVolumeIOTest(protocol common.ShareProto, volumeType common.VolumeType,
 	}
 	args = append(args, common.GetFioArgs()...)
 	log.Log.Info("fio", "arguments", args)
-	pod.Spec.Containers[0].Args = args
 
-	pod, err = k8stest.CreatePod(pod, common.NSDefault)
-	Expect(err).ToNot(HaveOccurred())
-	Expect(pod).ToNot(BeNil())
+	// fio pod container
+	podContainer := k8stest.MakeFioContainer(fioPodName, args)
+
+	// volume claim details
+	volume := coreV1.Volume{
+		Name: "ms-volume",
+		VolumeSource: coreV1.VolumeSource{
+			PersistentVolumeClaim: &coreV1.PersistentVolumeClaimVolumeSource{
+				ClaimName: volName,
+			},
+		},
+	}
+
+	podObj, err := k8stest.NewPodBuilder().
+		WithName(fioPodName).
+		WithNamespace(common.NSDefault).
+		WithRestartPolicy(coreV1.RestartPolicyNever).
+		WithContainer(podContainer).
+		WithVolume(volume).
+		WithVolumeDeviceOrMount(volumeType).Build()
+	Expect(err).ToNot(HaveOccurred(), "Generating fio pod definition %s", fioPodName)
+	Expect(podObj).ToNot(BeNil(), "failed to generate fio pod definition")
+
+	// Create fio pod
+	_, err = k8stest.CreatePod(podObj, common.NSDefault)
+	Expect(err).ToNot(HaveOccurred(), "Creating fio pod %s", fioPodName)
 
 	// Wait for the fio Pod to transition to running
 	Eventually(func() bool {
