@@ -14,6 +14,7 @@ import (
 	"time"
 
 	v1 "k8s.io/api/core/v1"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 type VolSpec struct {
@@ -100,7 +101,10 @@ func MonitorCRs(
 
 	var endTime = time.Now().Add(duration)
 	var waitSecs = 5
-	for {
+	for i := 0; ; i++ {
+		if i%100 == 0 {
+			logf.Log.Info("Monitoring CRs", "seconds elapsed", i*waitSecs)
+		}
 		if moac {
 			for _, msv := range msv_uids {
 				if err := CheckMSVmoac(msv); err != nil {

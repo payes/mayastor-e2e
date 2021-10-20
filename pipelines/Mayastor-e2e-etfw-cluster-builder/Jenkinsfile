@@ -69,18 +69,6 @@ pipeline {
                 }
             }
         }
-        stage('checkout') {
-            steps {
-                checkout([
-                    $class: 'GitSCM',
-                    branches: [[name: "*/extended-test-framework"]],
-                    doGenerateSubmoduleConfigurations: false,
-                    extensions: [],
-                    submoduleCfg: [],
-                    userRemoteConfigs:
-                    [[url: "https://github.com/mayadata-io/mayastor-e2e", credentialsId: "github-checkout"]]])
-            }
-        }
         stage('prepare the etfw node') {
             environment {
                 KUBECONFIG = "${env.WORKSPACE}/${e2e_environment}/modules/k8s/secrets/admin.conf"
