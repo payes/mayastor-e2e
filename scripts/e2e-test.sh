@@ -17,13 +17,13 @@ EXITV_MISSING_OPTION=2
 EXITV_FAILED=4
 EXITV_FILE_MISMATCH=5
 EXITV_CRD_GO_GEN=6
-EXITV_MCP_MISMATCH=7
+EXITV_VERSION_MISMATCH=7
 EXITV_MISSING_KUBECTL_PLUGIN=8
 EXITV_FAILED_CLUSTER_OK=255
 
 platform_config_file="hetzner.yaml"
 config_file="hcloudci_config.yaml"
-control_plane=""
+mayastor_version=""
 
 # Global state variables
 #  test configuration state variables
@@ -86,7 +86,7 @@ Options:
                             instead of the tagged image.
   --session                 session name, adds a subdirectory with session name to artifacts, logs and reports
                             directories to facilitate concurrent execution of test runs (default timestamp-uuid)
-  --control_plane <moac|mcp2> Mayastor control plane to use MOAC or mayastor control plane
+  --version                 Mayastor version, 0 => MOAC, > 1 => restful control plane
 Examples:
   $0 --device /dev/nvme0n1 --registry 127.0.0.1:5000 --tag a80ce0c
 EOF
@@ -229,11 +229,11 @@ while [ "$#" -gt 0 ]; do
         shift
         ssh_identity="$1"
         ;;
-    --control_plane)
+    --version)
         shift
             case "$1" in
-                moac|mcp2)
-                    control_plane=$1
+                0|1)
+                    mayastor_version=$1
                     ;;
                 *)
                     echo "Unknown control plane: $1"
@@ -433,21 +433,21 @@ contains() {
 # The values of e2e_control_plane must match control plane values
 # in src/common/constants.go
 if [ -z "$mcp" ]; then
-    cp_from_bundle="moac"
+    version_from_bundle="0.8.2"
 else
-    cp_from_bundle="mcp2"
+    version_from_bundle="1.0.0"
 fi
 
-if [ -n "$control_plane" ]; then
-    if [ "$cp_from_bundle" != "$control_plane" ]; then
-        echo "Install bundle control plane ($cp_from_bundle) does not match $control_plane"
-        exit $EXITV_MCP_MISMATCH
+if [ -n "$mayastor_version" ]; then
+    if [ "$version_from_bundle" != "$mayastor_version" ]; then
+        echo "Install bundle version ($version_from_bundle) does not match $mayastor_version"
+        exit $EXITV_VERSION_MISMATCH
     fi
 else
-    control_plane="$cp_from_bundle"
+    mayastor_version="$version_from_bundle"
 fi
 
-export e2e_control_plane=$control_plane
+export e2e_mayastor_version=$mayastor_version
 export e2e_config_file="$config_file"
 export e2e_platform_config_file="$platform_config_file"
 export e2e_policy_cleanup_before="$policy_cleanup_before"
@@ -469,7 +469,7 @@ echo "    e2e_uninstall_cleanup=$e2e_uninstall_cleanup"
 echo "    e2e_config_file=$e2e_config_file"
 echo "    e2e_platform_config_file=$e2e_platform_config_file"
 echo "    e2e_policy_cleanup_before=$e2e_policy_cleanup_before"
-echo "    e2e_control_plane=$e2e_control_plane"
+echo "    e2e_mayastor_version=$e2e_mayastor_version"
 echo ""
 echo "Script control settings:"
 echo "    profile=$profile"

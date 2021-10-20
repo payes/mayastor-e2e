@@ -1,9 +1,9 @@
 package install
 
 import (
+	"mayastor-e2e/common/controlplane"
 	"testing"
 
-	"mayastor-e2e/common"
 	"mayastor-e2e/common/k8sinstall"
 	"mayastor-e2e/common/k8stest"
 
@@ -13,11 +13,11 @@ import (
 
 func TestInstallSuite(t *testing.T) {
 	// Initialise test and set class and file names for reports
-	if common.IsControlPlaneMoac() {
+	switch controlplane.MajorVersion() {
+	case 0:
 		k8stest.InitTesting(t, k8sinstall.InstallSuiteName, "install")
-	}
-	if common.IsControlPlaneMcp() {
-		k8stest.InitTesting(t, k8sinstall.MCPInstallSuiteName, "install")
+	case 1:
+		k8stest.InitTesting(t, k8sinstall.InstallSuiteNameV1, "install")
 	}
 }
 

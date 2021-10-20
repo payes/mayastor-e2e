@@ -1,9 +1,13 @@
 package controlplane
 
 import (
+	"fmt"
 	"mayastor-e2e/common"
 	v0 "mayastor-e2e/common/controlplane/v0"
 	v1 "mayastor-e2e/common/controlplane/v1"
+	"mayastor-e2e/common/e2e_config"
+	"strconv"
+	"strings"
 	"sync"
 )
 
@@ -75,11 +79,19 @@ var once sync.Once
 
 func getControlPlane() ControlPlaneInterface {
 	once.Do(func() {
-		if common.IsControlPlaneMoac() {
-			ifc = v0.MakeCP()
+		version := e2e_config.GetConfig().MayastorVersion
+		verComponents := strings.Split(version, ".")
+		major, err := strconv.Atoi(verComponents[0])
+		if err != nil {
+			panic(err)
 		}
-		if common.IsControlPlaneMcp() {
+		switch major {
+		case 0:
+			ifc = v0.MakeCP()
+		case 1:
 			ifc = v1.MakeCP(&nodeIpAddresses)
+		default:
+			panic(fmt.Errorf("unsupported control plane version %v", version))
 		}
 		if ifc == nil {
 			panic("failed to set control plane object")

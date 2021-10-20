@@ -1,6 +1,7 @@
 package rc_reconciliation
 
 import (
+	"mayastor-e2e/common/controlplane"
 	"testing"
 
 	"mayastor-e2e/common"
@@ -32,7 +33,7 @@ var _ = Describe("Mayastor replica count reconciliation tests", func() {
 
 	BeforeEach(func() {
 		// Check ready to run
-		Expect(common.IsControlPlaneMcp()).To(BeTrue())
+		Expect(controlplane.MajorVersion()).To(Equal(1))
 		err := k8stest.BeforeEachCheck()
 		Expect(err).ToNot(HaveOccurred())
 	})

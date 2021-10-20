@@ -2,9 +2,9 @@ package uninstall
 
 import (
 	. "github.com/onsi/ginkgo"
+	"mayastor-e2e/common/controlplane"
 	"testing"
 
-	"mayastor-e2e/common"
 	"mayastor-e2e/common/k8sinstall"
 	"mayastor-e2e/common/k8stest"
 
@@ -13,11 +13,11 @@ import (
 
 func TestTeardownSuite(t *testing.T) {
 	// Initialise test and set class and file names for reports
-	if common.IsControlPlaneMoac() {
+	switch controlplane.MajorVersion() {
+	case 0:
 		k8stest.InitTesting(t, k8sinstall.UninstallSuiteName, "uninstall")
-	}
-	if common.IsControlPlaneMcp() {
-		k8stest.InitTesting(t, k8sinstall.MCPUninstallSuiteName, "uninstall")
+	case 1:
+		k8stest.InitTesting(t, k8sinstall.UninstallSuiteNameV1, "uninstall")
 	}
 }
 

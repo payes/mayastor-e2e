@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"mayastor-e2e/common"
+	"mayastor-e2e/common/controlplane"
 	"mayastor-e2e/common/custom_resources"
 	"mayastor-e2e/common/e2e_config"
 	"mayastor-e2e/common/k8stest"
@@ -19,9 +20,9 @@ import (
 )
 
 const InstallSuiteName = "Basic Install Suite"
-const MCPInstallSuiteName = "Basic Install Suite (mayastor control plane)"
+const InstallSuiteNameV1 = "Basic Install Suite (mayastor control plane)"
 const UninstallSuiteName = "Basic Teardown Suite"
-const MCPUninstallSuiteName = "Basic Teardown Suite (mayastor control plane)"
+const UninstallSuiteNameV1 = "Basic Teardown Suite (mayastor control plane)"
 
 func GenerateMayastorYamlFiles() error {
 	e2eCfg := e2e_config.GetConfig()
@@ -46,7 +47,8 @@ func GenerateMayastorYamlFiles() error {
 			if !node.MayastorNode {
 				continue
 			}
-			if !common.IsControlPlaneMcp() {
+			if controlplane.MajorVersion() == 0 {
+				// MOAC
 				poolDirectives += fmt.Sprintf(" -p '%s,%s'", node.NodeName, poolDevice)
 			}
 		}
@@ -98,10 +100,10 @@ func WaitForPoolCrd() bool {
 	return false
 }
 
-func GenerateMCPYamlFiles() error {
+func GenerateControlPlaneYamlFiles() error {
 	e2eCfg := e2e_config.GetConfig()
 
-	if common.IsControlPlaneMcp() {
+	if controlplane.MajorVersion() == 1 {
 		registryDirective := ""
 		if len(e2eCfg.Registry) != 0 {
 			registryDirective = fmt.Sprintf(" -r '%s'", e2eCfg.Registry)
@@ -111,7 +113,7 @@ func GenerateMCPYamlFiles() error {
 
 		bashCmd := fmt.Sprintf(
 			"%s/generate-deploy-yamls.sh -o %s -t '%s' %s test",
-			locations.GetMCPScriptsDir(),
+			locations.GetControlPlaneScriptsDir(),
 			locations.GetControlPlaneGeneratedYamlsDir(),
 			imageTag, registryDirective,
 		)
@@ -215,6 +217,9 @@ func InstallMayastor() error {
 		return fmt.Errorf("configuration error pools are not defined.")
 	}
 
+	cpVersion := controlplane.Version()
+	logf.Log.Info("Control Plane", "version", cpVersion)
+
 	mayastorNodes, err := k8stest.GetMayastorNodeNames()
 	if err != nil {
 		return err
@@ -227,7 +232,7 @@ func InstallMayastor() error {
 
 	logf.Log.Info("Install", "tag", e2eCfg.ImageTag, "registry", e2eCfg.Registry, "# of mayastor instances", numMayastorInstances)
 
-	err = GenerateMCPYamlFiles()
+	err = GenerateControlPlaneYamlFiles()
 	if err != nil {
 		return err
 	}
@@ -250,12 +255,14 @@ func InstallMayastor() error {
 	k8stest.KubeCtlApplyYaml("csi-daemonset.yaml", yamlsDir)
 	k8stest.KubeCtlApplyYaml("mayastor-daemonset.yaml", yamlsDir)
 
-	if common.IsControlPlaneMcp() {
+	if controlplane.MajorVersion() == 1 {
 		err = installControlPlane()
 		if err != nil {
 			return err
 		}
-	} else {
+	}
+
+	if controlplane.MajorVersion() == 0 {
 		k8stest.KubeCtlApplyYaml("moac-rbac.yaml", yamlsDir)
 		k8stest.KubeCtlApplyYaml("moac-deployment.yaml", yamlsDir)
 	}
@@ -321,7 +328,10 @@ func deleteNamespace() error {
 func TeardownMayastor() error {
 	var cleaned bool
 	cleanup := e2e_config.GetConfig().Uninstall.Cleanup != 0
-
+	err := k8stest.CheckAndSetControlPlane()
+	if err != nil {
+		return err
+	}
 	logf.Log.Info("Settings:", "cleanup", cleanup)
 	if cleanup {
 		cleaned = k8stest.CleanUp()
@@ -352,7 +362,7 @@ func TeardownMayastor() error {
 			return fmt.Errorf(" PersistentVolumes were found, none expected")
 		}
 
-		if !common.IsControlPlaneMcp() {
+		if controlplane.MajorVersion() == 0 {
 			found, err = k8stest.CheckForMsvs()
 			if err != nil {
 				logf.Log.Info("Failed to check MSVs", "error", err)
@@ -374,12 +384,12 @@ func TeardownMayastor() error {
 	}
 
 	logf.Log.Info("Cleanup done, Uninstalling mayastor")
-	err := GenerateMayastorYamlFiles()
+	err = GenerateMayastorYamlFiles()
 	if err != nil {
 		return err
 	}
-	if common.IsControlPlaneMcp() {
-		err = GenerateMCPYamlFiles()
+	if controlplane.MajorVersion() == 1 {
+		err = GenerateControlPlaneYamlFiles()
 	}
 	if err != nil {
 		return err
@@ -388,7 +398,7 @@ func TeardownMayastor() error {
 
 	// Deletes can stall indefinitely, try to mitigate this
 	// by running the deletes on different threads
-	if common.IsControlPlaneMcp() {
+	if controlplane.MajorVersion() == 1 {
 		err := uninstallControlPlane()
 		if err != nil {
 			return err
@@ -425,7 +435,7 @@ func TeardownMayastor() error {
 	// FIXME: should we? For now yes if nothing else this ensures consistency
 	// when deploying and redeploying Mayastor with MOAC and Mayastor with control plane
 	// on the same cluster.
-	if !common.IsControlPlaneMcp() {
+	if controlplane.MajorVersion() == 0 {
 		k8stest.KubeCtlDeleteYaml("moac-rbac.yaml", yamlsDir)
 		deleteCRD("mayastornodes.openebs.io")
 		deleteCRD("mayastorvolumes.openebs.io")
