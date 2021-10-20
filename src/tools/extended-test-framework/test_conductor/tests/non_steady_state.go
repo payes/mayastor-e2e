@@ -53,7 +53,10 @@ func testVolume(
 			pvc_name,
 			vol_spec.vol_type,
 			vol_spec.vol_size_mb,
-			1); err != nil {
+			1,
+			testConductor.Config.NonSteadyState.ThinkTime,
+			testConductor.Config.NonSteadyState.ThinkTimeBlocks,
+		); err != nil {
 			finalerr = fmt.Errorf("failed to deploy pod %s, error: %v", fio_name, err)
 			break
 		}
@@ -106,7 +109,7 @@ func testVolumes(
 	timeout time.Duration) error {
 
 	var allerrs error
-	var errchan = make(chan error, concurrentVolumes)
+	var errchan = make(chan error, concurrentVolumes+1)
 	var wg sync.WaitGroup
 
 	for i := 0; i < concurrentVolumes; i++ {
@@ -131,6 +134,9 @@ func testVolumes(
 			"",
 		)
 		if err != nil {
+			if senderr := SendEventTestCompletedFail(testConductor, err.Error()); senderr != nil {
+				logf.Log.Info("failed to send fail event", "error", senderr)
+			}
 			logf.Log.Info("Monitor thread exiting", "error", err.Error())
 			errchan <- err
 		}

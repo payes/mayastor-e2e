@@ -36,14 +36,19 @@ type ExtendedTestConfig struct {
 
 	// Individual Test parameters
 	SteadyState struct {
-		Replicas     int `yaml:"replicas" env-default:"2"`
-		VolumeSizeMb int `yaml:"volumeSizeMb" env-default:"64"`
+		Replicas        int `yaml:"replicas" env-default:"2"`
+		VolumeSizeMb    int `yaml:"volumeSizeMb" env-default:"64"`
+		ThinkTime       int `yaml:"ThinkTime" env-default:"500000"`
+		ThinkTimeBlocks int `yaml:"ThinkTimeBlocks" env-default:"1000"`
 	} `yaml:"steadyState"`
+
 	NonSteadyState struct {
-		Replicas       int    `yaml:"replicas" env-default:"2"`
-		VolumeSizeMb   int    `yaml:"volumeSizeMb" env-default:"64"`
-		Timeout        string `yaml:"timeout" env-default:"5m"`
-		ConcurrentVols int    `yaml:"concurrentvols" env-default:"1"`
+		Replicas        int    `yaml:"replicas" env-default:"2"`
+		VolumeSizeMb    int    `yaml:"volumeSizeMb" env-default:"64"`
+		Timeout         string `yaml:"timeout" env-default:"5m"`
+		ConcurrentVols  int    `yaml:"concurrentvols" env-default:"1"`
+		ThinkTime       int    `yaml:"ThinkTime" env-default:"500000"`
+		ThinkTimeBlocks int    `yaml:"ThinkTimeBlocks" env-default:"1000"`
 	} `yaml:"nonSteadyState"`
 }
 

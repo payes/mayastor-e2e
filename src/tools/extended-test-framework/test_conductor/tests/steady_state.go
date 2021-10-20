@@ -80,7 +80,10 @@ func SteadyStateTest(testConductor *tc.TestConductor) error {
 		pvc_name,
 		vol_type,
 		testConductor.Config.SteadyState.VolumeSizeMb,
-		1000000); err != nil {
+		1000000,
+		testConductor.Config.SteadyState.ThinkTime,
+		testConductor.Config.SteadyState.ThinkTimeBlocks,
+	); err != nil {
 		return fmt.Errorf("failed to deploy pod %s, error: %v", fio_name, err)
 	}
 	logf.Log.Info("Created pod", "pod", fio_name)

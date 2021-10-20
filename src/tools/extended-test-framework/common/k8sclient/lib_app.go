@@ -36,7 +36,14 @@ func MakeFioContainer(name string, args []string) coreV1.Container {
 	}
 }
 
-func DeployFio(fioPodName string, pvcName string, volumeType VolumeType, volSize int, fioLoops int) error {
+func DeployFio(
+	fioPodName string,
+	pvcName string,
+	volumeType VolumeType,
+	volSize int,
+	fioLoops int,
+	thinkTime int,
+	thinkTimeBlocks int) error {
 
 	vname := "ms-volume"
 	volume := coreV1.Volume{
@@ -52,6 +59,17 @@ func DeployFio(fioPodName string, pvcName string, volumeType VolumeType, volSize
 	var volDevices []coreV1.VolumeDevice
 	var volFioArgs [][]string
 	volumes = append(volumes, volume)
+
+	if thinkTime > 0 {
+		volFioArgs = append(volFioArgs, []string{
+			fmt.Sprintf("--thinktime=%d", thinkTime),
+		})
+	}
+	if thinkTimeBlocks > 0 {
+		volFioArgs = append(volFioArgs, []string{
+			fmt.Sprintf("--thinktime_blocks=%d", thinkTimeBlocks),
+		})
+	}
 
 	if volumeType == VolFileSystem {
 		mount := coreV1.VolumeMount{
