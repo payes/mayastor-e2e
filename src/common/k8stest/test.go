@@ -173,6 +173,20 @@ func CheckMsPoolFinalizers() error {
 	return err
 }
 
+func getMspUsage() (int64, error) {
+	var mspUsage int64
+	msPools, err := custom_resources.ListMsPools()
+	if err != nil {
+		logf.Log.Info("unable to list mayastor pools")
+	} else {
+		mspUsage = 0
+		for _, pool := range msPools {
+			mspUsage += pool.Status.Used
+		}
+	}
+	return mspUsage, err
+}
+
 // ResourceCheck  Fit for purpose checks
 // - No pods
 // - No PVCs
@@ -252,22 +266,18 @@ func ResourceCheck() error {
 		logf.Log.Info("ResourceCheck: not all pools are online")
 	}
 
-	{
-		var mspUsage int64 = 1
+	mspUsage, err := getMspUsage()
+	if err != nil || mspUsage != 0 {
+		logf.Log.Info("Waiting for pool usage to be 0")
 		const sleepTime = 10
 		t0 := time.Now()
 		// Wait for pool usage reported by CRS to drop to 0
 		for ix := 0; ix < (60*sleepTime) && mspUsage != 0; ix += sleepTime {
 			time.Sleep(sleepTime * time.Second)
-			msPools, err := custom_resources.ListMsPools()
+			mspUsage, err = getMspUsage()
 			if err != nil {
 				errorMsg += fmt.Sprintf("%s %v", errorMsg, err)
 				logf.Log.Info("ResourceCheck: unable to list msps")
-			} else {
-				mspUsage = 0
-				for _, pool := range msPools {
-					mspUsage += pool.Status.Used
-				}
 			}
 		}
 		logf.Log.Info("ResourceCheck:", "mspool Usage", mspUsage, "waiting time", time.Since(t0))

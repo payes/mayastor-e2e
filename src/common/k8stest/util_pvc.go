@@ -29,7 +29,7 @@ var defTimeoutSecs = "90s"
 func IsPVCDeleted(volName string, nameSpace string) bool {
 	pvc, err := gTestEnv.KubeInt.CoreV1().PersistentVolumeClaims(nameSpace).Get(context.TODO(), volName, metaV1.GetOptions{})
 	if err != nil {
-		// Unfortunately there is no associated error code so we resort to string comparison
+		// Unfortunately there is no associated error code, so we resort to string comparison
 		if strings.HasPrefix(err.Error(), "persistentvolumeclaims") &&
 			strings.HasSuffix(err.Error(), " not found") {
 			return true
@@ -64,6 +64,7 @@ func IsPVDeleted(volName string) bool {
 	// After the PV has been deleted it may still accessible, but status phase will be invalid
 	Expect(err).To(BeNil())
 	Expect(pv).ToNot(BeNil())
+	logf.Log.Info("IsPVDeleted", "volume", volName, "status.Phase", pv.Status.Phase)
 	switch pv.Status.Phase {
 	case
 		coreV1.VolumeBound,
@@ -290,14 +291,16 @@ func RmPVC(volName string, scName string, nameSpace string) {
 	deleteErr := PVCApi(nameSpace).Delete(context.TODO(), volName, metaV1.DeleteOptions{})
 	Expect(deleteErr).To(BeNil())
 
+	logf.Log.Info("Waiting for PVC to be deleted", "volume", volName, "storageClass", scName)
 	// Wait for the PVC to be deleted.
 	Eventually(func() bool {
 		return IsPVCDeleted(volName, nameSpace)
 	},
 		defTimeoutSecs, // timeout
 		"1s",           // polling interval
-	).Should(Equal(true))
+	).Should(Equal(true), "pvc not deleted %s", volName)
 	// Wait for the PV to be deleted.
+	logf.Log.Info("Waiting for PV to be deleted", "volume", volName, "storageClass", scName)
 	Eventually(func() bool {
 		// This check is required here because it will check for pv name
 		// when pvc is in pending state at that time we will not
@@ -309,7 +312,7 @@ func RmPVC(volName string, scName string, nameSpace string) {
 	},
 		"360s", // timeout
 		"1s",   // polling interval
-	).Should(Equal(true))
+	).Should(Equal(true), "PV (%s) for %s not deleted", pvc.Spec.VolumeName, volName)
 
 	// Wait for the MSV to be deleted.
 	Eventually(func() bool {

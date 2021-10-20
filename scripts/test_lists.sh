@@ -24,7 +24,7 @@ dynamic_provisioning
 expand_msp_disk
 mayastorpool_schema
 MQ-1783-fsx_ext4_stress
-ms_pod_disruption_rm_msv
+MQ-2330-ms_pod_disruption_rm_vol
 ms_pod_restart
 ms_pool_delete
 msv_rebuild
@@ -112,8 +112,9 @@ io_soak
 mayastorpool_schema
 MQ-1498-primitive_device_retirement
 MQ-1783-fsx_ext4_stress
+MQ-2219-rc-reconciliation
+MQ-2330-ms_pod_disruption_rm_vol
 maximum_vols_io
-ms_pod_disruption_rm_msv
 ms_pod_restart
 ms_pod_disruption
 ms_pod_disruption_no_io
@@ -140,7 +141,6 @@ single_msn_shutdown
 stale_msp_after_node_power_failure
 synchronous_replication
 volume_filesystem
-MQ-2219-rc-reconciliation
 "
 #stale_msp_after_node_power_failure is moac specific
 
