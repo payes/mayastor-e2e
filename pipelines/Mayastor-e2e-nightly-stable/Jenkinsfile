@@ -41,7 +41,7 @@ pipeline {
         script {
           common = load "./pipelines/common/common.groovy"
           test_tag = common.GetTestTag()
-          common.BuildImages('develop', 'develop', test_tag)
+          common.BuildImages('release/1.0', 'master', test_tag)
         }
       }
       post {
