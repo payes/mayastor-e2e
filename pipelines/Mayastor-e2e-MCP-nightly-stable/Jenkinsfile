@@ -69,8 +69,8 @@ pipeline {
           // as the test tag
           e2e_params['e2e_image_tag'] = 'hc1-' + common.GetTestTag()
           parms = [
-            mayastorBranch : 'develop',
-            mcpBranch : 'develop',
+            mayastorBranch : 'release/1.0',
+            mcpBranch : 'release/1.0',
             test_tag : e2e_params['e2e_image_tag']
             ]
           common.BuildMCPImages(parms)
