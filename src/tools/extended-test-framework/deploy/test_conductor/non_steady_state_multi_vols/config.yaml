@@ -1,9 +1,6 @@
 testName: "non-steady-state-multi-vols"
-registry: ci-registry.mayastor-ci.mayadata.io
-imageTag: "nightly-stable"
 poolDevice: "/dev/sdb"
 test: "MQ-2395"
-install: false
 e2eFioImage: mayadata/e2e-fio
 msnodes: 3
 duration: 336

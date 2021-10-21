@@ -1,9 +1,6 @@
 testName: "steady-state"
-registry: ci-registry.mayastor-ci.mayadata.io
-imageTag: "nightly-stable"
 poolDevice: "/dev/sdb"
 test: "MQ-1806"
-install: false
 e2eFioImage: mayadata/e2e-fio
 msnodes: 3
 duration: 336h

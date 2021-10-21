@@ -69,7 +69,7 @@ pipeline {
                 }
             }
         }
-        stage('prepare the etfw node') {
+        stage('label the etfw node, install Loki') {
             environment {
                 KUBECONFIG = "${env.WORKSPACE}/${e2e_environment}/modules/k8s/secrets/admin.conf"
             }

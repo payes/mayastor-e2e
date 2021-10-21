@@ -27,9 +27,10 @@ pipeline {
             description: 'Selects cluster to use.'
         )
         booleanParam(name: 'node_correct', defaultValue: false,  description: 'Is the above cluster correct ? It must have mayastor installed and a node labelled openebs.io/role=mayastor-e2e. See README.md.')
-        choice(choices: ['steady_state', 'non_steady_state', 'non_steady_state_multi_vols'], name: 'test', description: 'select which test to run')
-        choice(choices: ['ET-435'], name: 'plan', description: 'test plan')
-        string(defaultValue: '10m', name: 'duration', trim: true, description: 'run duration, use units h, m and s')
+        choice(choices: ['steady_state', 'non_steady_state', 'non_steady_state_multi_vols'], name: 'test', description: 'Select which test to run')
+        string(defaultValue: 'MQ-2352', name: 'plan', description: 'Test plan to receive test runs')
+        string(defaultValue: '10m', name: 'duration', trim: true, description: 'Run duration, use units h, m and s')
+        booleanParam(name: 'cluster_dump', defaultValue: false,  description: 'Obtain and archive the cluster logs')
     }
 
     stages {
@@ -61,12 +62,21 @@ pipeline {
             post {
                 always {
                     script {
-                        sh "mkdir -p ./artifacts"
-                        sh "kubectl logs -n mayastor-e2e test-conductor > ./artifacts/test_conductor.log"
-                        sh "kubectl logs -n mayastor-e2e test-director > ./artifacts/test_director.log"
-                        sh "kubectl logs -n mayastor-e2e workload-monitor > ./artifacts/workload_monitor.log"
+                        sh 'mkdir -p ./artifacts/logs/etfw'
+                        sh 'mkdir -p ./artifacts/logs/cluster'
+
+                        sh 'kubectl logs -n mayastor-e2e test-conductor > ./artifacts/logs/etfw/test_conductor.log'
+                        sh 'kubectl logs -n mayastor-e2e test-director > ./artifacts/logs/etfw/test_director.log'
+                        sh 'kubectl logs -n mayastor-e2e workload-monitor > ./artifacts/logs/etfw/workload_monitor.log'
+
+                        if (params.cluster_dump == true) {
+                            sh './scripts/e2e-cluster-dump.sh --destdir ./artifacts/logs/cluster'
+                        }
                         archiveArtifacts 'artifacts/**/*.*'
 
+                        sh 'rm -rf ./artifacts'
+
+                        // remove the ETFW pods
                         sh "nix-shell --run 'cd src/tools/extended-test-framework/scripts && ./deploy.sh -r' "
                     }
                 }

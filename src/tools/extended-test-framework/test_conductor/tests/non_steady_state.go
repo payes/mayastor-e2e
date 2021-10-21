@@ -25,20 +25,35 @@ func testVolume(
 	var i int
 	var endTime = time.Now().Add(duration)
 	var finalerr error
+	var suffix string
+
+	noOfSpecs := len(vol_spec.vol_types)
+	noOfSCs := len(vol_spec.sc_names)
+	if noOfSpecs == 0 || noOfSCs == 0 {
+		return fmt.Errorf("Invalid volume spec")
+	}
 
 	for {
 		i = i + 1
 		if time.Now().After(endTime) {
 			break
 		}
-		pvc_name := fmt.Sprintf("%s-pvc-%d-%d", testName, id, i)
-		fio_name := fmt.Sprintf("%s-fio-%d-%d", testName, id, i)
+		vol_type := vol_spec.vol_types[(i+id)%noOfSpecs]
+		sc_name := vol_spec.sc_names[((i+id)/2)%noOfSCs]
+
+		if vol_type == k8sclient.VolFileSystem {
+			suffix = "fs"
+		} else {
+			suffix = "block"
+		}
+		pvc_name := fmt.Sprintf("%s-pvc-%d-%d-%s-%s", testName, id, i, suffix, sc_name)
+		fio_name := fmt.Sprintf("%s-fio-%d-%d-%s-%s", testName, id, i, suffix, sc_name)
 		// create PV
 		msv_uid, err := k8sclient.MkPVC(
 			vol_spec.vol_size_mb,
 			pvc_name,
-			vol_spec.sc_name,
-			vol_spec.vol_type,
+			sc_name,
+			vol_type,
 			k8sclient.NSDefault,
 			false)
 		if err != nil {
@@ -51,7 +66,7 @@ func testVolume(
 		if err = k8sclient.DeployFio(
 			fio_name,
 			pvc_name,
-			vol_spec.vol_type,
+			vol_type,
 			vol_spec.vol_size_mb,
 			1,
 			testConductor.Config.NonSteadyState.ThinkTime,
@@ -166,9 +181,8 @@ func NonSteadyStateTest(testConductor *tc.TestConductor) error {
 	}
 
 	var protocol k8sclient.ShareProto = k8sclient.ShareProtoNvmf
-	var mode storageV1.VolumeBindingMode = storageV1.VolumeBindingImmediate
-	var sc_name = testName + "-sc"
-	var vol_type = k8sclient.VolRawBlock
+	var sc_name = "sc-immed"
+	var sc_name_local = "sc-local-wait"
 
 	duration, err := time.ParseDuration(testConductor.Config.Duration)
 	if err != nil {
@@ -190,13 +204,14 @@ func NonSteadyStateTest(testConductor *tc.TestConductor) error {
 		return fmt.Errorf("failed add common workloads, error: %v", err)
 	}
 
-	// create storage class
+	// create storage classes
 	if err = k8sclient.NewScBuilder().
 		WithName(sc_name).
 		WithReplicas(testConductor.Config.NonSteadyState.Replicas).
 		WithProtocol(protocol).
 		WithNamespace(k8sclient.NSDefault).
-		WithVolumeBindingMode(mode).
+		WithVolumeBindingMode(storageV1.VolumeBindingImmediate).
+		WithLocal(false).
 		BuildAndCreate(); err != nil {
 
 		logf.Log.Info("Created storage class failed", "error", err.Error())
@@ -205,9 +220,24 @@ func NonSteadyStateTest(testConductor *tc.TestConductor) error {
 	}
 	logf.Log.Info("Created storage class", "sc", sc_name)
 
+	if err = k8sclient.NewScBuilder().
+		WithName(sc_name_local).
+		WithReplicas(testConductor.Config.NonSteadyState.Replicas).
+		WithProtocol(protocol).
+		WithNamespace(k8sclient.NSDefault).
+		WithVolumeBindingMode(storageV1.VolumeBindingWaitForFirstConsumer).
+		WithLocal(true).
+		BuildAndCreate(); err != nil {
+
+		logf.Log.Info("Created storage class failed", "error", err.Error())
+
+		return fmt.Errorf("failed to create sc %v", err)
+	}
+	logf.Log.Info("Created storage class", "sc", sc_name_local)
+
 	var vol_spec VolSpec
-	vol_spec.sc_name = sc_name
-	vol_spec.vol_type = vol_type
+	vol_spec.sc_names = []string{sc_name_local, sc_name}
+	vol_spec.vol_types = []k8sclient.VolumeType{k8sclient.VolFileSystem, k8sclient.VolRawBlock}
 	vol_spec.vol_size_mb = testConductor.Config.NonSteadyState.VolumeSizeMb
 
 	if err = testVolumes(
@@ -229,5 +259,11 @@ func NonSteadyStateTest(testConductor *tc.TestConductor) error {
 		combinederr = fmt.Errorf("%v: failed to delete SC %s, error = %v", combinederr, sc_name, err)
 		logf.Log.Info("failed to delete SC", "error", err)
 	}
+
+	if err = k8sclient.DeleteSc(sc_name_local); err != nil {
+		combinederr = fmt.Errorf("%v: failed to delete SC %s, error = %v", combinederr, sc_name, err)
+		logf.Log.Info("failed to delete SC", "error", err)
+	}
+
 	return combinederr
 }

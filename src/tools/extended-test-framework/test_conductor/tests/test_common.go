@@ -18,8 +18,8 @@ import (
 )
 
 type VolSpec struct {
-	sc_name     string
-	vol_type    k8sclient.VolumeType
+	sc_names    []string
+	vol_types   []k8sclient.VolumeType
 	vol_size_mb int
 }
 

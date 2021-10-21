@@ -153,7 +153,7 @@ func DeployFio(
 	}
 
 	// Wait for the fio Pod to transition to running
-	const timoSecs = 120
+	const timoSecs = 1000
 	const timoSleepSecs = 10
 	for ix := 0; ; ix++ {
 		if IsPodRunning(fioPodName, NSDefault) {

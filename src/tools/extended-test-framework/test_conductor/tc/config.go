@@ -18,19 +18,10 @@ const gConfigFile = "/config.yaml"
 type ExtendedTestConfig struct {
 	TestName string `yaml:"testName" env-default:"default"`
 
-	// Operational parameters
-	Cores int `yaml:"cores,omitempty"`
-	// Registry from where mayastor images are retrieved
-	Registry string `yaml:"registry" env:"e2e_docker_registry" env-default:"ci-registry.mayastor-ci.mayadata.io"`
-	//	// Registry from where CI testing images are retrieved
-	//	CIRegistry string `yaml:"ciRegistry" env:"e2e_ci_docker_registry" env-default:"ci-registry.mayastor-ci.mayadata.io"`
-	ImageTag string `yaml:"imageTag" env:"e2e_image_tag"`
-
 	// FIXME: handle empty poolDevice
 	PoolDevice  string `yaml:"poolDevice" env:"e2e_pool_device"`
 	E2eFioImage string `yaml:"e2eFioImage" env-default:"mayadata/e2e-fio" env:"e2e_fio_image"`
 	Test        string `yaml:"test" env:"e2e_test"`
-	Install     bool   `yaml:"install" env-default:"false" env:"e2e_install"`
 	Msnodes     int    `yaml:"msnodes" env-default:"3" env:"e2e_msnodes"`
 	Duration    string `yaml:"duration" env-default:"60m" env:"DURATION"`
 
