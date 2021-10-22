@@ -30,6 +30,7 @@ func SteadyStateTest(testConductor *tc.TestConductor) error {
 	var pvc_name = testName + "-pvc"
 	var fio_name = testName + "-fio"
 	var vol_type = k8sclient.VolRawBlock
+	const podDeletionTimeoutSecs = 120
 
 	duration, err := time.ParseDuration(testConductor.Config.Duration)
 	if err != nil {
@@ -105,7 +106,7 @@ func SteadyStateTest(testConductor *tc.TestConductor) error {
 		combinederr = fmt.Errorf("%v: failed to delete all registered workloads, error: %v", combinederr, err)
 	}
 
-	if err = k8sclient.DeletePod(fio_name, k8sclient.NSDefault); err != nil {
+	if err = k8sclient.DeletePod(fio_name, k8sclient.NSDefault, podDeletionTimeoutSecs); err != nil {
 		logf.Log.Info("failed to delete pod", "pod", fio_name, "error", err)
 		combinederr = fmt.Errorf("%v: failed to delete pod %s, error: %v", combinederr, fio_name, err)
 	}

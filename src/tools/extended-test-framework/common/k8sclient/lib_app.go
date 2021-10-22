@@ -9,6 +9,8 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+const fio_app_label = "fio"
+
 // MakeFioContainer returns a container object setup to use e2e-fio and run fio with appropriate permissions.
 // Privileged: True, AllowPrivilegeEscalation: True, RunAsUser root,
 // parameters:
@@ -129,7 +131,7 @@ func DeployFio(
 		WithRestartPolicy(coreV1.RestartPolicyNever).
 		WithContainer(container).
 		WithVolumes(volumes).
-		WithAppLabel("fio")
+		WithAppLabel(fio_app_label)
 
 	if len(volDevices) != 0 {
 		podBuilder.WithVolumeDevices(volDevices)

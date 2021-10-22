@@ -22,10 +22,12 @@ func testVolume(
 	vol_spec VolSpec,
 	duration time.Duration,
 	timeout time.Duration) error {
+
 	var i int
 	var endTime = time.Now().Add(duration)
 	var finalerr error
 	var suffix string
+	const podDeletionTimeoutSecs = 120
 
 	noOfSpecs := len(vol_spec.vol_types)
 	noOfSCs := len(vol_spec.sc_names)
@@ -97,7 +99,7 @@ func testVolume(
 			finalerr = fmt.Errorf("failed to delete application workload %s, error = %v", fio_name, err)
 			break
 		}
-		if err = k8sclient.DeletePodIfCompleted(fio_name, k8sclient.NSDefault); err != nil {
+		if err = k8sclient.DeletePodIfCompleted(fio_name, k8sclient.NSDefault, podDeletionTimeoutSecs); err != nil {
 			finalerr = fmt.Errorf("failed to delete application %s, error = %v", fio_name, err)
 			break
 		}

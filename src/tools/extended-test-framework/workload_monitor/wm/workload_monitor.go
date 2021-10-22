@@ -36,6 +36,8 @@ type WorkloadMonitor struct {
 	channel             chan int
 }
 
+const testDirectorPort = 8080
+
 var current_registrant *strfmt.UUID = nil
 
 func (workloadMonitor *WorkloadMonitor) InstallSignalHandler() {
@@ -70,7 +72,7 @@ func (workloadMonitor *WorkloadMonitor) WaitSignal() {
 			*current_registrant,
 			"workload monitor terminated",
 			tdmodels.EventSourceClassEnumWorkloadDashMonitor); err != nil {
-			logf.Log.Info("failed to send", "error", err)
+			logf.Log.Info("failed to notify, abnormal termination of workload monitor", "error", err)
 		}
 	}
 }
@@ -92,7 +94,7 @@ func NewWorkloadMonitor() (*WorkloadMonitor, error) {
 	}
 
 	logf.Log.Info("test-director", "pod IP", testDirectorPod.Status.PodIP)
-	testDirectorLoc := testDirectorPod.Status.PodIP + ":8080"
+	testDirectorLoc := fmt.Sprintf("%s:%d", testDirectorPod.Status.PodIP, testDirectorPort)
 
 	transportConfig := td.DefaultTransportConfig().WithHost(testDirectorLoc)
 	workloadMonitor.pTestDirectorClient = td.NewHTTPClientWithConfig(nil, transportConfig)
@@ -172,7 +174,7 @@ func (workloadMonitor *WorkloadMonitor) StartMonitor() {
 						}
 					}
 				case models.WorkloadViolationEnumNOTPRESENT:
-					present, err := k8sclient.GetPodExists(string(wli.Wl.ID))
+					present, err := k8sclient.GetPodExistsByUuid(string(wli.Wl.ID))
 					if err != nil {
 						fmt.Printf("failed to get pod status %s\n", wli.Wl.Name)
 					}

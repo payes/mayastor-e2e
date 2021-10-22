@@ -276,13 +276,31 @@ func CreatePod(podDef *coreV1.Pod, nameSpace string) (*coreV1.Pod, error) {
 }
 
 // DeletePod Delete a Pod in the specified namespace, no options and no context
-func DeletePod(name string, nameSpace string) error {
+func DeletePod(name string, nameSpace string, timeoutSecs int) error {
 	logf.Log.Info("Deleting", "pod", name)
-	return gKubeInt.CoreV1().Pods(nameSpace).Delete(context.TODO(), name, metaV1.DeleteOptions{})
+	const timoSleepSecs = 10
+	err := gKubeInt.CoreV1().Pods(nameSpace).Delete(context.TODO(), name, metaV1.DeleteOptions{})
+	if err != nil {
+		return fmt.Errorf("Failed to delete pod, error: %+v", err)
+	}
+	for i := 0; ; i += timoSleepSecs {
+		exists, err := GetPodExistsByName(name, nameSpace)
+		if err != nil {
+			return fmt.Errorf("Error determining if pod %s exists, error: %v", name, err)
+		}
+		if !exists {
+			logf.Log.Info("Deleted", "pod", name)
+			return nil
+		}
+		if i >= timeoutSecs {
+			return fmt.Errorf("Timed out waiting for pod %s to be deleted", name)
+		}
+		time.Sleep(timoSleepSecs * time.Second)
+	}
 }
 
 // DeletePodIfCompleted Delete a Pod if it completed with no container errors
-func DeletePodIfCompleted(podName string, nameSpace string) error {
+func DeletePodIfCompleted(podName string, nameSpace string, timeoutSecs int) error {
 	pod, err := gKubeInt.CoreV1().Pods(nameSpace).Get(context.TODO(), podName, metaV1.GetOptions{})
 	if err != nil {
 		return err
@@ -290,8 +308,7 @@ func DeletePodIfCompleted(podName string, nameSpace string) error {
 	if pod.Status.Phase != v1.PodSucceeded {
 		return fmt.Errorf("Not deleting non-completed pod, status %s", pod.Status.Phase)
 	}
-	logf.Log.Info("Deleting", "pod", podName)
-	return gKubeInt.CoreV1().Pods(nameSpace).Delete(context.TODO(), podName, metaV1.DeleteOptions{})
+	return DeletePod(podName, nameSpace, timeoutSecs)
 }
 
 // ListPod return lis of pods in the given namespace
@@ -314,6 +331,19 @@ func GetPod(podName string, namespace string) (*v1.Pod, error) {
 		}
 	}
 	return nil, fmt.Errorf("pod %s not found", podName)
+}
+
+func GetPodIfPresent(podName string, namespace string) (*v1.Pod, bool, error) {
+	pods, err := gKubeInt.CoreV1().Pods(namespace).List(context.TODO(), metaV1.ListOptions{})
+	if err != nil {
+		return nil, false, fmt.Errorf("pod list failed, error: %v", err)
+	}
+	for _, pod := range pods.Items {
+		if pod.Name == podName {
+			return &pod, true, nil
+		}
+	}
+	return nil, false, nil
 }
 
 func GetPodByUuid(uuid string) (*v1.Pod, bool, error) {
@@ -340,8 +370,16 @@ func GetPodStatus(uuid string) (v1.PodPhase, bool, error) {
 	return pod.Status.Phase, present, err
 }
 
-func GetPodExists(uuid string) (bool, error) {
+func GetPodExistsByUuid(uuid string) (bool, error) {
 	_, present, err := GetPodByUuid(uuid)
+	if err != nil {
+		return present, fmt.Errorf("get pod failed, error: %v", err)
+	}
+	return present, err
+}
+
+func GetPodExistsByName(name string, namespace string) (bool, error) {
+	_, present, err := GetPodIfPresent(name, namespace)
 	if err != nil {
 		return present, fmt.Errorf("get pod failed, error: %v", err)
 	}

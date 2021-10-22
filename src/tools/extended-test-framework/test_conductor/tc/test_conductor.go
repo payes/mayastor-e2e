@@ -2,6 +2,7 @@ package tc
 
 import (
 	"fmt"
+
 	"github.com/go-openapi/strfmt"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -59,6 +60,7 @@ func NewTestConductor() (*TestConductor, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tc pod uid, error: %v", err)
 	}
+
 	testConductor.TestRunId = strfmt.UUID(tcpod.ObjectMeta.UID)
 
 	return &testConductor, nil
