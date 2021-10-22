@@ -108,6 +108,9 @@ if [ -n "$MOAC_DIR" ]; then
         && popd
 fi
 
+# Note we ensure that $workdir/mcp/bin/kubectl-mayastor is writable,
+# to avoid failure in jenkins archiving where we overwrite
+# artifacts/install-bundle returned by each parallel run
 if [ -n "$MCP_DIR" ]; then
     pushd "${MCP_DIR}" \
         && mkdir -p "$workdir/mcp/scripts" \
@@ -116,6 +119,7 @@ if [ -n "$MCP_DIR" ]; then
         && nix-build -A utils.release.kubectl-plugin \
         && mkdir -p "$workdir/mcp/bin" \
         && cp "$(nix-build -A utils.release.kubectl-plugin --no-out-link)/bin/kubectl-mayastor" "$workdir/mcp/bin" \
+        && chmod a+w "$workdir/mcp/bin/kubectl-mayastor" \
         && mkdir -p "$workdir/mcp/control-plane/rest/openapi-specs" \
         && cp control-plane/rest/openapi-specs/* "$workdir/mcp/control-plane/rest/openapi-specs" \
         && git rev-parse HEAD > "$workdir/git-revision.mcp" \

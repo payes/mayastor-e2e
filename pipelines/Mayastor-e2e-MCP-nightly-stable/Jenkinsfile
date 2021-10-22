@@ -211,19 +211,19 @@ pipeline {
             }//stage 'run e2e part6'
         }//parallel
     }//stage 'test'
-    stage('archive artifacts'){
-        agent { label 'nixos' }
-        steps {
-            script{
-                Common().ParallelArchiveArtefacts(e2e_params)
-            }
-        }
-    }
     stage('handle junit results'){
         agent { label 'nixos' }
         steps {
             script{
                 Common().ParallelJunit(e2e_params)
+            }
+        }
+    }
+    stage('archive artifacts'){
+        agent { label 'nixos' }
+        steps {
+            script{
+                Common().ParallelArchiveArtefacts(e2e_params)
             }
         }
     }
