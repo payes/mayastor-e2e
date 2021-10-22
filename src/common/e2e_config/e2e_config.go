@@ -42,7 +42,7 @@ type E2EConfig struct {
 	MayastorRootDir  string `yaml:"mayastorRootDir" env:"e2e_mayastor_root_dir"`
 	E2eRootDir       string `yaml:"e2eRootDir"`
 	SessionDir       string `yaml:"sessionDir" env:"e2e_session_dir"`
-	ControlPlane     string `yaml:"controlPlane" env:"e2e_control_plane"`
+	MayastorVersion  string `yaml:"mayastorVersion" env:"e2e_mayastor_version"`
 	KubectlPluginDir string `yaml:"kubectlPluginDir" env:"e2e_kubectl_plugin_dir"`
 
 	// Operational parameters
@@ -421,13 +421,13 @@ func saveConfig() {
 // Returns true it the config control plane value matches the input value
 func SetControlPlane(controlPlane string) bool {
 	_ = GetConfig()
-	if e2eConfig.ControlPlane == "" || e2eConfig.ControlPlane == controlPlane {
-		e2eConfig.ControlPlane = controlPlane
+	if e2eConfig.MayastorVersion == "" || e2eConfig.MayastorVersion == controlPlane {
+		e2eConfig.MayastorVersion = controlPlane
 		saveConfig()
 		return true
 	} else {
-		fmt.Printf("Unable to override config control plane=%s to %s",
-			e2eConfig.ControlPlane, controlPlane)
+		fmt.Printf("Unable to override config control plane from '%s' to '%s'",
+			e2eConfig.MayastorVersion, controlPlane)
 	}
 	return false
 }

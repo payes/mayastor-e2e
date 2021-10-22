@@ -119,7 +119,7 @@ func verifyMayastorComponentStates(numMayastorInstances int) {
 	ready, err := k8stest.MayastorInstancesReady(numMayastorInstances, 3, 540)
 	Expect(err).ToNot(HaveOccurred())
 	Expect(ready).To(Equal(true))
-	// FIXME: MCP is this correct?
+	// FIXME: is this correct for control plane versions > 0 ?
 	ready = k8stest.ControlPlaneReady(3, 60)
 	Expect(ready).To(Equal(true), "control plane is not ready")
 }

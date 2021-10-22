@@ -3,6 +3,7 @@ package stale_msp_after_node_power_failure
 import (
 	"fmt"
 	"mayastor-e2e/common"
+	"mayastor-e2e/common/controlplane"
 	"mayastor-e2e/common/custom_resources"
 	"mayastor-e2e/common/k8stest"
 	"mayastor-e2e/common/platform"
@@ -48,7 +49,7 @@ var _ = Describe("Stale MSP after node power failure test", func() {
 			platform := platform.Create()
 			_ = platform.PowerOnNode(poweredOffNode)
 		}
-		if common.IsControlPlaneMcp() {
+		if controlplane.MajorVersion() == 1 {
 			k8stest.RemoveAllNodeSelectorsFromDeployment("msp-operator", common.NSMayastor())
 			k8stest.RemoveAllNodeSelectorsFromDeployment("rest", common.NSMayastor())
 		}
@@ -82,7 +83,7 @@ func (c *nodepowerfailureConfig) staleMspAfterNodePowerFailureTest() {
 	var poolName, nodeName string
 	var diskName []string
 
-	if common.IsControlPlaneMoac() {
+	if controlplane.MajorVersion() == 0 {
 
 		//Get node name on which moac pod is scheduled
 		moacNodeName, err := k8stest.GetMoacNodeName()
@@ -101,7 +102,7 @@ func (c *nodepowerfailureConfig) staleMspAfterNodePowerFailureTest() {
 		}
 	}
 
-	if common.IsControlPlaneMcp() {
+	if controlplane.MajorVersion() == 1 {
 		coreAgentNodeName, err := k8stest.GetCoreAgentNodeName()
 		Expect(err).ToNot(HaveOccurred())
 		Expect(coreAgentNodeName).ToNot(BeEmpty(), fmt.Sprintf("core agent pod not found in running state, %v", err))

@@ -12,6 +12,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"mayastor-e2e/common"
+	"mayastor-e2e/common/controlplane"
 	"mayastor-e2e/common/e2e_config"
 	"mayastor-e2e/common/k8stest"
 
@@ -74,7 +75,7 @@ func controlPlaneReschedulingTest(protocol common.ShareProto, volumeType common.
 		).Should(Equal(true))
 	}
 
-	if common.IsControlPlaneMcp() {
+	if controlplane.MajorVersion() == 1 {
 		replicas = 0
 		// Scale down control plane components to 0 replica
 		for _, deploymentName := range deploymentNameList {
@@ -90,7 +91,7 @@ func controlPlaneReschedulingTest(protocol common.ShareProto, volumeType common.
 
 	}
 
-	if !common.IsControlPlaneMcp() {
+	if controlplane.MajorVersion() == 0 {
 		replicas = 0
 		// Scale down moac deployment to 0 replicas
 		k8stest.SetDeploymentReplication(moacDeploymentName, e2e_config.GetConfig().Platform.MayastorNamespace, &replicas)
@@ -122,7 +123,7 @@ func controlPlaneReschedulingTest(protocol common.ShareProto, volumeType common.
 		).Should(Equal(true))
 	}
 
-	if common.IsControlPlaneMcp() {
+	if controlplane.MajorVersion() == 1 {
 		replicas = 1
 		// Scale up control plane components to 1 replica
 		for _, deploymentName := range deploymentNameList {
@@ -134,7 +135,7 @@ func controlPlaneReschedulingTest(protocol common.ShareProto, volumeType common.
 		}
 	}
 
-	if !common.IsControlPlaneMcp() {
+	if controlplane.MajorVersion() == 0 {
 		replicas = 1
 		// Scale up moac deployment to 1 replicas
 		k8stest.SetDeploymentReplication(moacDeploymentName, e2e_config.GetConfig().Platform.MayastorNamespace, &replicas)

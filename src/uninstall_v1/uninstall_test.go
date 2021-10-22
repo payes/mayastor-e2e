@@ -1,9 +1,9 @@
-package uninstall_mcp
+package uninstall_v1
 
 import (
 	"testing"
 
-	"mayastor-e2e/common"
+	"mayastor-e2e/common/controlplane"
 	"mayastor-e2e/common/k8sinstall"
 	"mayastor-e2e/common/k8stest"
 
@@ -13,12 +13,12 @@ import (
 
 func TestTeardownSuite(t *testing.T) {
 	// Initialise test and set class and file names for reports
-	k8stest.InitTesting(t, k8sinstall.MCPUninstallSuiteName, "uninstall")
+	k8stest.InitTesting(t, k8sinstall.UninstallSuiteNameV1, "uninstall")
 }
 
 var _ = Describe("Mayastor setup", func() {
 	It("should teardown using yamls", func() {
-		Expect(common.IsControlPlaneMcp()).To(BeTrue(), "Control plane should be MCP")
+		Expect(controlplane.MajorVersion()).To(Equal(1), "Mayastor version should be 1")
 		Expect(k8sinstall.TeardownMayastor()).ToNot(HaveOccurred(), "uninstall failed")
 	})
 })

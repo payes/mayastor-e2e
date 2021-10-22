@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"mayastor-e2e/common/controlplane"
 	"mayastor-e2e/common/custom_resources"
 	"mayastor-e2e/common/e2e_config"
 	"mayastor-e2e/common/mayastorclient"
@@ -152,9 +153,9 @@ func AfterSuiteCleanup() {
 //  2) that finalizers DO NOT EXIST for pools with no replicas (used size == 0)
 //  with timeout to allow MOAC state sync.
 func CheckMsPoolFinalizers() error {
-	if common.IsControlPlaneMcp() {
-		// Finalizers do not need to be checked with MCP deployments as finalizers
-		// are not added and removed when volumes/replicas are created or removed
+	if controlplane.MajorVersion() != 0 {
+		// Finalizers do not need to be checked with deployments of control plane versions
+		// > 0 as finalizers are not added and removed when volumes/replicas are created or removed
 		return nil
 	}
 	err := custom_resources.CheckAllMsPoolFinalizers()
@@ -225,8 +226,8 @@ func ResourceCheck() error {
 		errorMsg += " found PersistentVolumes"
 	}
 
-	//FIXME: MCP temporary do not check MSVs
-	if !common.IsControlPlaneMcp() {
+	//FIXME: control plane 1 temporary do not check MSVs
+	if controlplane.MajorVersion() == 0 {
 		// Mayastor volumes
 		msvs, err := ListMsvs()
 		if err != nil {

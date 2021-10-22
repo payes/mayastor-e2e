@@ -4,6 +4,7 @@ package k8stest
 import (
 	"context"
 	"fmt"
+	"mayastor-e2e/common/controlplane"
 	"os/exec"
 	"strings"
 	"time"
@@ -195,8 +196,8 @@ func DeleteAllPvs() (int, error) {
 
 // DeleteAllMsvs Make best attempt to delete MayastorVolumes
 func DeleteAllMsvs() (int, error) {
-	// For now on control plane 2 we cannot/should not delete MSVs
-	if common.IsControlPlaneMcp() {
+	// FIXME: For now on control plane version 1 we cannot/should not delete MSVs
+	if controlplane.MajorVersion() == 1 {
 		return 0, nil
 	}
 
@@ -311,7 +312,7 @@ func DeleteAllPools() bool {
 		logf.Log.Info("DeleteAllPools: deleting MayastorPools")
 		for _, pool := range pools {
 			logf.Log.Info("DeleteAllPools: deleting", "pool", pool.GetName())
-			if !common.IsControlPlaneMcp() {
+			if controlplane.MajorVersion() == 0 {
 				finalizers := pool.GetFinalizers()
 				if finalizers != nil {
 					logf.Log.Info("DeleteAllPools: found finalizers on pool ", "pool", pool.GetName(), "finalizers", finalizers)

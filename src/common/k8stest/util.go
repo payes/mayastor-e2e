@@ -3,6 +3,7 @@ package k8stest
 import (
 	"context"
 	"fmt"
+	"mayastor-e2e/common/controlplane"
 	"mayastor-e2e/common/custom_resources"
 	"mayastor-e2e/common/e2e_config"
 	"os/exec"
@@ -270,9 +271,9 @@ func mayastorReadyPodCount() int {
 	return int(mayastorDaemonSet.Status.NumberAvailable)
 }
 
-// FIXME MCP check callers in tests - what should be the state with MCP
+// FIXME check callers in tests - what should be the state with control plane versions > 0
 // FIXME Doh! overloaded semantics :-(
-// Checks if ControlPlane is available and if the requisite number of mayastor instances are
+// Checks if MayastorVersion is available and if the requisite number of mayastor instances are
 // up and running.
 func MayastorInstancesReady(numMayastorInstances int, sleepTime int, duration int) (bool, error) {
 
@@ -280,10 +281,13 @@ func MayastorInstancesReady(numMayastorInstances int, sleepTime int, duration in
 	ready := false
 	for ix := 0; ix < count && !ready; ix++ {
 		time.Sleep(time.Duration(sleepTime) * time.Second)
-		if common.IsControlPlaneMcp() {
-			ready = mayastorReadyPodCount() == numMayastorInstances && mayastorCSIReadyPodCount() >= numMayastorInstances
-		} else {
+		switch controlplane.MajorVersion() {
+		case 0:
 			ready = mayastorReadyPodCount() == numMayastorInstances && mayastorCSIReadyPodCount() >= numMayastorInstances && msnOnlineCount() == numMayastorInstances
+		case 1:
+			ready = mayastorReadyPodCount() == numMayastorInstances && mayastorCSIReadyPodCount() >= numMayastorInstances
+		default:
+			panic("unexpected control plane version")
 		}
 	}
 
@@ -400,7 +404,7 @@ func ControlPlaneReady(sleepTime int, duration int) bool {
 	ready := false
 	count := (duration + sleepTime - 1) / sleepTime
 
-	if common.IsControlPlaneMcp() {
+	if controlplane.MajorVersion() == 1 {
 
 		for ix := 0; ix < count && !ready; ix++ {
 			time.Sleep(time.Duration(sleepTime) * time.Second)
@@ -671,37 +675,38 @@ func CheckAndSetControlPlane() error {
 	var deployment appsV1.Deployment
 	var statefulSet appsV1.StatefulSet
 	var err error
-	var cpIsMoac = false
-	var cpIsMcp2 = false
-	var cpValue string
+	var foundMoac = false
+	var foundCoreAgents = false
+	var version string
 
 	if err = gTestEnv.K8sClient.Get(context.TODO(), types.NamespacedName{Name: "moac", Namespace: common.NSMayastor()}, &deployment); err == nil {
-		cpIsMoac = true
+		foundMoac = true
 	}
 	// Check for core-agents either as deployment or statefulset to correctly handle older builds of control plane
 	// which use core-agents deployment and newer builds which use core-agents statefulset
 	if err = gTestEnv.K8sClient.Get(context.TODO(), types.NamespacedName{Name: "core-agents", Namespace: common.NSMayastor()}, &deployment); err == nil {
-		cpIsMcp2 = true
+		foundCoreAgents = true
 	}
 	if err = gTestEnv.K8sClient.Get(context.TODO(), types.NamespacedName{Name: "core-agents", Namespace: common.NSMayastor()}, &statefulSet); err == nil {
-		cpIsMcp2 = true
+		foundCoreAgents = true
 	}
-	if cpIsMoac {
-		if cpIsMcp2 {
-			return fmt.Errorf("MOAC and MCP2 both present")
-		} else {
-			cpValue = common.CpMoac
-		}
-	} else {
-		if !cpIsMcp2 {
-			return fmt.Errorf("MOAC and MCP2 both absent")
-		} else {
-			cpValue = common.CpMcp2
-		}
+
+	if foundMoac && foundCoreAgents {
+		return fmt.Errorf("MOAC and Restful Control plane components are present")
 	}
-	logf.Log.Info("CheckAndSetControlPlane", "cpValue", cpValue)
-	if !e2e_config.SetControlPlane(cpValue) {
-		return fmt.Errorf("failed to setup config control plane to %s", cpValue)
+	if !foundMoac && !foundCoreAgents {
+		return fmt.Errorf("MOAC and Restful Control plane components are absent")
+	}
+	if foundMoac {
+		version = "0.8.2"
+	}
+	if foundCoreAgents {
+		version = "1.0.0"
+	}
+
+	logf.Log.Info("CheckAndSetControlPlane", "version", version)
+	if !e2e_config.SetControlPlane(version) {
+		return fmt.Errorf("failed to setup config control plane to %s", version)
 	}
 	return nil
 }

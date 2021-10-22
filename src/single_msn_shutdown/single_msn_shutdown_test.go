@@ -3,7 +3,7 @@ package single_msn_shutdown
 import (
 	"testing"
 
-	"mayastor-e2e/common"
+	"mayastor-e2e/common/controlplane"
 	"mayastor-e2e/common/k8stest"
 	"mayastor-e2e/common/platform"
 
@@ -45,7 +45,8 @@ var _ = Describe("Mayastor single msn shutdown test", func() {
 		err := k8stest.AfterEachCheck()
 		Expect(err).ToNot(HaveOccurred())
 	})
-	if !common.IsControlPlaneMcp() {
+	switch controlplane.MajorVersion() {
+	case 0:
 		It("should verify single non moac msn shutdown test", func() {
 			c := generateConfig("single-non-moac-msn-shutdown")
 			c.nonMoacNodeShutdownTest()
@@ -54,7 +55,7 @@ var _ = Describe("Mayastor single msn shutdown test", func() {
 			c := generateConfig("single-moac-msn-shutdown")
 			c.moacNodeShutdownTest()
 		})
-	} else {
+	case 1:
 		It("should verify single non core-agent msn shutdown test", func() {
 			c := generateConfig("single-non-core-agent-msn-shutdown")
 			c.nonCoreAgentNodeShutdownTest()
@@ -63,5 +64,7 @@ var _ = Describe("Mayastor single msn shutdown test", func() {
 			c := generateConfig("single-core-agent-msn-shutdown")
 			c.coreAgentNodeShutdownTest()
 		})
+	default:
+		Expect(false).To(BeTrue(), "unsupported version of mayastor")
 	}
 })

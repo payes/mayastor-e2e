@@ -129,7 +129,8 @@ func MakeAccumulatedError(accErr error, err error) error {
 // CheckAllMsPoolFinalizers check
 //	1) that finalizers exist for pools with replicas (used size != 0)
 //  2) that finalizers DO NOT EXIST for pools with no replicas (used size == 0)
-// Note this function should not be call if mayastor is deployed with MCP
+// Note this function should not be call if mayastor is deployed with control plane
+// versions > 0
 func CheckAllMsPoolFinalizers() error {
 	var accErr error
 	pools, err := ListMsPools()

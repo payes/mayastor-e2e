@@ -22,7 +22,7 @@ func GetMayastorScriptsDir() string {
 	return locationExists(path.Clean(e2e_config.GetConfig().MayastorRootDir + "/scripts"))
 }
 
-func GetMCPScriptsDir() string {
+func GetControlPlaneScriptsDir() string {
 	return locationExists(path.Clean(e2e_config.GetConfig().MayastorRootDir + "/mcp/scripts"))
 }
 
