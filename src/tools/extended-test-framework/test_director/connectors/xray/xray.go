@@ -67,6 +67,7 @@ func authorize() *string {
 	})
 	req, err := http.NewRequest(http.MethodPost, authUrl, bytes.NewBuffer(b))
 	if err != nil {
+		log.Error(err.Error())
 		return nil
 	}
 	req.Header.Add("Content-Type", "application/json")
@@ -100,6 +101,7 @@ func sendRequest(s string) string {
 	request, err := http.NewRequest(http.MethodPost, graphqlUrl, bytes.NewBuffer(jsonValue))
 	if err != nil {
 		log.Errorf("The HTTP request failed with error %s", err)
+		return ""
 	}
 	request.Header.Add("Authorization", "Bearer "+*authorize())
 	request.Header.Add("Content-Type", "application/json")
@@ -110,7 +112,11 @@ func sendRequest(s string) string {
 		log.Errorf("The HTTP request failed with error %s\n", err)
 		return ""
 	}
-	data, _ := ioutil.ReadAll(response.Body)
+	data, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		log.Error(err.Error())
+		return ""
+	}
 	if response.StatusCode >= 300 {
 		log.Warn(string(data))
 		return ""

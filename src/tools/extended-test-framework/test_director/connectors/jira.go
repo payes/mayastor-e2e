@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	apiToken = "bWlsYW4uaGFqZWtAbWF5YWRhdGEuaW86YUZmZFlaWjN4b2dqRzBLM1pqYkE4NDY4"
+	apiToken = "ZTJlK3Rlc3QtZGlyZWN0b3JAbWF5YWRhdGEuaW86RXRFS0UyQUZSU21DWXFwd0dkbUkzRkZG"
 	issueURL = "https://mayadata.atlassian.net/rest/api/3/issue/"
 )
 
