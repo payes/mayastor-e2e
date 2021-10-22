@@ -16,7 +16,7 @@ func UpdateTestRun(testRun models.TestRun) {
 		testRunId,
 		testRun.TestRunSpec.Status,
 	)
-	sendQuery(s)
+	sendXrayQuery(s)
 	s = fmt.Sprintf(
 		`mutation{updateTestRun( id: "%s", comment: "%s", startedOn: "%s", finishedOn: "%s") {warnings}}`,
 		testRunId,
@@ -24,7 +24,7 @@ func UpdateTestRun(testRun models.TestRun) {
 		getRFC3339Format(testRun.StartDateTime),
 		getRFC3339Format(testRun.EndDateTime),
 	)
-	sendQuery(s)
+	sendXrayQuery(s)
 }
 
 func getTestRun(testId, testExecutionId string) string {
@@ -33,7 +33,7 @@ func getTestRun(testId, testExecutionId string) string {
 		testId,
 		testExecutionId,
 	)
-	json := sendQuery(s)
+	json := sendXrayQuery(s)
 	return gjson.Get(json, "data.getTestRun.id").Str
 }
 

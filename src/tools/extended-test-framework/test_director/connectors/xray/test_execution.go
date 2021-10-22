@@ -14,7 +14,7 @@ func CreateTestExecution(testPlanId, testId, testJiraKey string) string {
 		testJiraKey,
 		strings.Split(testJiraKey, "-")[0],
 	)
-	json := sendQuery(s)
+	json := sendXrayQuery(s)
 	testExecId := gjson.Get(json, "data.createTestExecution.testExecution.issueId").Str
 	addTestExecutionToTestPlan(testPlanId, testExecId)
 	return testExecId
@@ -22,10 +22,10 @@ func CreateTestExecution(testPlanId, testId, testJiraKey string) string {
 
 func DeleteTestExecution(run models.TestRun) {
 	s := fmt.Sprintf(`mutation{deleteTestExecution(issueId: "%s")}`, run.TestExecIssueID)
-	sendQuery(s)
+	sendXrayQuery(s)
 }
 
 func addTestExecutionToTestPlan(testPlanId, testExecutionId string) {
 	s := fmt.Sprintf(`mutation{addTestExecutionsToTestPlan(issueId: "%s", testExecIssueIds: ["%s"]) {addedTestExecutions warning}}`, testPlanId, testExecutionId)
-	sendQuery(s)
+	sendXrayQuery(s)
 }

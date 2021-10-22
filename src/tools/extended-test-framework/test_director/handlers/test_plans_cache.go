@@ -119,11 +119,15 @@ func InitTestPlanCache(dtp *config.ServerConfig) {
 	}
 	jt, err := connectors.GetJiraTaskDetails(dtp.DefaultTestPlan)
 	if err != nil {
-		log.Error("Default test plan is invalid.")
+		log.Error("default test plan is invalid.")
 		return
 	}
 	b := true
-	tests := xray.GetTestPlan(*jt.Id)
+	tests, err := xray.GetTestPlan(*jt.Id)
+	if err != nil {
+		log.Errorf("the default test plan cannot be initialized: %s", err)
+		return
+	}
 	plan := &models.TestPlan{
 		IsActive: &b,
 		Key:      models.JiraKey(dtp.DefaultTestPlan),
