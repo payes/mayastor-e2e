@@ -105,7 +105,7 @@ pipeline {
                 script {
                     Common().GetClusterAdminConf(e2e_environment, k8s_job)
                     def e2e_reports_dir = 'artifacts/reports/'
-                    String loki_run_id = Common().GetLokiRunId()
+                    String loki_run_id = Common().GetJobBaseName() + '-' + env.BUILD_NUMBER
                     def cmd = "./scripts/e2e-test.sh --device /dev/sdb --tag \"${params.image_tag}\" --logs --onfail stop --tests install --loki_run_id \"${loki_run_id}\" --loki_test_label install --reportsdir \"${env.WORKSPACE}/${e2e_reports_dir}\" --registry \"${env.REGISTRY}\" "
                     withCredentials([
                         usernamePassword(credentialsId: 'GRAFANA_API', usernameVariable: 'grafana_api_user', passwordVariable: 'grafana_api_pw'),
