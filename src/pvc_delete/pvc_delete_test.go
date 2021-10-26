@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"mayastor-e2e/common"
+	"mayastor-e2e/common/controlplane"
 	"mayastor-e2e/common/e2e_config"
 	"mayastor-e2e/common/k8stest"
 	"mayastor-e2e/common/mayastorclient"
@@ -126,9 +127,15 @@ func testPvcDeleteTest(
 	Expect(status).Should(Equal(true))
 
 	// verify old replica status
-	status, err = verifyOldReplicas(uid)
-	Expect(err).ToNot(HaveOccurred(), "failed to verify old replica status")
-	Expect(status).Should(Equal(true))
+	if controlplane.MajorVersion() == 1 {
+		replicas, err := k8stest.ListReplicasInCluster()
+		Expect(err).ToNot(HaveOccurred(), "failed to list replicas in cluster")
+		Expect(len(replicas)).Should(Equal(BeZero()))
+	} else if controlplane.MajorVersion() == 0 {
+		status, err = verifyOldReplicas(uid)
+		Expect(err).ToNot(HaveOccurred(), "failed to verify old replica status")
+		Expect(status).Should(Equal(true))
+	}
 
 	// Create the volume to check orphaned replica behavior
 	uidSec := k8stest.MkPVC(
@@ -145,10 +152,12 @@ func testPvcDeleteTest(
 	Expect(err).ToNot(HaveOccurred(), "%v", err)
 	Expect(msv).ToNot(BeNil(), "failed to get msv")
 
-	// verify orphaned replica status, it should not be part of any msv
-	status, err = verifyOrphanedReplicas(uidSec, replica)
-	Expect(err).ToNot(HaveOccurred(), "failed to verify orphaned replica status")
-	Expect(status).Should(Equal(true))
+	// verify orphaned replica status, it should not be part of any msv in case of MOAC
+	if controlplane.MajorVersion() == 0 {
+		status, err = verifyOrphanedReplicas(uidSec, replica)
+		Expect(err).ToNot(HaveOccurred(), "failed to verify orphaned replica status")
+		Expect(status).Should(Equal(true))
+	}
 
 	// Delete the volume
 	k8stest.RmPVC(volName, scName, common.NSDefault)
