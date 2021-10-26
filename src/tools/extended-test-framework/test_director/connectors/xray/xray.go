@@ -16,8 +16,6 @@ const (
 	graphqlUrl   = "https://xray.cloud.xpand-it.com/api/v2/graphql"
 )
 
-var token *string
-
 type Info struct {
 	Summary          string    `json:"summary,omitempty"`
 	Description      string    `json:"description,omitempty"`
