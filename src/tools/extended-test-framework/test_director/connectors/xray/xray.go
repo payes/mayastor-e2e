@@ -17,7 +17,6 @@ const (
 )
 
 var token *string
-var tries = 0
 
 type Info struct {
 	Summary          string    `json:"summary,omitempty"`
@@ -68,6 +67,7 @@ func authorize() *string {
 	})
 	req, err := http.NewRequest(http.MethodPost, authUrl, bytes.NewBuffer(b))
 	if err != nil {
+		log.Error(err.Error())
 		return nil
 	}
 	req.Header.Add("Content-Type", "application/json")
@@ -93,14 +93,15 @@ func authorize() *string {
 	return &s
 }
 
-func sendQuery(s string) string {
+func sendRequest(s string) string {
 	jsonData := map[string]string{
 		"query": s,
 	}
 	jsonValue, _ := json.Marshal(jsonData)
 	request, err := http.NewRequest(http.MethodPost, graphqlUrl, bytes.NewBuffer(jsonValue))
 	if err != nil {
-		log.Errorf("The HTTP request failed with error %s\n", err)
+		log.Errorf("The HTTP request failed with error %s", err)
+		return ""
 	}
 	request.Header.Add("Authorization", "Bearer "+*authorize())
 	request.Header.Add("Content-Type", "application/json")
@@ -109,8 +110,27 @@ func sendQuery(s string) string {
 	defer response.Body.Close()
 	if err != nil {
 		log.Errorf("The HTTP request failed with error %s\n", err)
+		return ""
 	}
-
-	data, _ := ioutil.ReadAll(response.Body)
+	data, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		log.Error(err.Error())
+		return ""
+	}
+	if response.StatusCode >= 300 {
+		log.Warn(string(data))
+		return ""
+	}
 	return string(data)
+}
+
+func sendXrayQuery(query string) string {
+	r := 5
+	response := ""
+	for response == "" && r > 0 {
+		response = sendRequest(query)
+		time.Sleep(time.Duration(5/r) * time.Second)
+		r--
+	}
+	return response
 }

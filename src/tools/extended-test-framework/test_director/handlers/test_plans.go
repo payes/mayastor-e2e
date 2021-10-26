@@ -85,7 +85,7 @@ func (impl *putTestPlanImpl) Handle(params test_director.PutTestPlanByIDParams) 
 	} else {
 		jt, err := connectors.GetJiraTaskDetails(id)
 		if err != nil {
-			log.Error(err)
+			log.Errorf("can't fetch jira task detail id: %s err: %s", id, err)
 			return testPlanBadRequest(err)
 		}
 		if jt.Fields.IssueType.Name != "Test Plan" {

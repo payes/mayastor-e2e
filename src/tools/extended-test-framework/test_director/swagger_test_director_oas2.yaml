@@ -89,7 +89,7 @@ paths:
     delete:
       tags:
         - test-director
-      summary: searches for a specific Test Plan by its id
+      summary: deletes a Test Plan by its id
       operationId: DeleteTestPlanById
       parameters:
         - $ref: '#/parameters/JiraKeyPathParam'
@@ -168,7 +168,7 @@ paths:
     delete:
       tags:
         - test-director
-      summary: returns a Test Run with the corresponding id
+      summary: deletes a Test Run with the corresponding id
       operationId: DeleteTestRunById
       parameters:
         - $ref: '#/parameters/JiraKeyPathParam'

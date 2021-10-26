@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/go-openapi/errors"
 	"github.com/patrickmn/go-cache"
 	log "github.com/sirupsen/logrus"
@@ -32,7 +33,7 @@ func (r *TestPlanCache) Delete(key models.JiraKey) error {
 		r.client.Delete(string(key))
 		return nil
 	}
-	return errors.NotFound("Not found")
+	return errors.NotFound(fmt.Sprintf("test palan key: %s not found", key))
 }
 
 func (r *TestPlanCache) DeleteAll() *models.RequestOutcome {
@@ -119,11 +120,15 @@ func InitTestPlanCache(dtp *config.ServerConfig) {
 	}
 	jt, err := connectors.GetJiraTaskDetails(dtp.DefaultTestPlan)
 	if err != nil {
-		log.Error("Default test plan is invalid.")
+		log.Errorf("default test plan key: %s is invalid.", dtp.DefaultTestPlan)
 		return
 	}
 	b := true
-	tests := xray.GetTestPlan(*jt.Id)
+	tests, err := xray.GetTestPlan(*jt.Id)
+	if err != nil {
+		log.Errorf("the default test plan key: %s cannot be initialized: %s", dtp.DefaultTestPlan, err)
+		return
+	}
 	plan := &models.TestPlan{
 		IsActive: &b,
 		Key:      models.JiraKey(dtp.DefaultTestPlan),
