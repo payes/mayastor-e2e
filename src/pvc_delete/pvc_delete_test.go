@@ -23,7 +23,7 @@ import (
 
 const (
 	mayastorRegexp = "^mayastor-.....$"
-	defTimeoutSecs = "90s"
+	defTimeoutSecs = "120s"
 )
 
 func TestPvcDelete(t *testing.T) {
@@ -128,9 +128,15 @@ func testPvcDeleteTest(
 
 	// verify old replica status
 	if controlplane.MajorVersion() == 1 {
-		replicas, err := k8stest.ListReplicasInCluster()
-		Expect(err).ToNot(HaveOccurred(), "failed to list replicas in cluster")
-		Expect(len(replicas)).Should(Equal(BeZero()))
+		// Expect orphaned replica to be garbage collected
+		Eventually(func() int {
+			replicas, err := k8stest.ListReplicasInCluster()
+			Expect(err).ToNot(HaveOccurred(), "failed to list replicas in cluster")
+			return len(replicas)
+		},
+			defTimeoutSecs,
+			"6s",
+		).Should(Equal(BeZero()))
 	} else if controlplane.MajorVersion() == 0 {
 		status, err = verifyOldReplicas(uid)
 		Expect(err).ToNot(HaveOccurred(), "failed to verify old replica status")
