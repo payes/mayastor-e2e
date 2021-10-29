@@ -139,3 +139,9 @@ volume_filesystem
 
 profiles[hc1-staging]="
 "
+
+profiles[experiment]="
+volume_filesystem
+dynamic_provisioning
+"
+

@@ -6,17 +6,18 @@ set -euo pipefail
 
 REGISTRY="ci-registry.mayastor-ci.mayadata.io"
 OUTPUT_TAG="nightly-stable"
-SCRIPTDIR=$(dirname "$(realpath "$0")")
-E2EROOT=$(realpath "$SCRIPTDIR/..")
+#SCRIPTDIR=$(dirname "$(realpath "$0")")
+#E2EROOT=$(realpath "$SCRIPTDIR/..")
 MAYASTOR_DIR=""
 MOAC_DIR=""
 MCP_DIR=""
+VARIANT=""
 
 help() {
   cat <<EOF
 Create a mayastor install image, this contains all templates and files required for E2E to install mayastor
 
-Usage: $(basename $0) [OPTIONS]
+Usage: $(basename "$0") [OPTIONS]
 
 Options:
   -h, --help                 Display this text.
@@ -27,8 +28,9 @@ Options:
   --mayastor                 Path to root Mayastor directory
   --moac                     Path to root MOAC directory
   --mcp                      Path to root Mayastor control plane directory
+  --coverage                 Patch yaml files for coverage
 Examples:
-  $(basename $0) --registry 127.0.0.1:5000 --alias-tag customized-tag
+  $(basename "$0") --registry 127.0.0.1:5000 --alias-tag customized-tag
 EOF
 }
 
@@ -64,6 +66,14 @@ while [ "$#" -gt 0 ]; do
       shift
       MCP_DIR=$1
       shift
+      ;;
+    --coverage)
+      shift
+      VARIANT="cov"
+      ;;
+    --debug)
+      shift
+      VARIANT="dev"
       ;;
     *)
       echo "Unknown option: $1"
@@ -133,6 +143,27 @@ if [ -n "$MCP_DIR" ]; then
     pushd "$workdir" \
         && find chart/ -name moac\*.yaml -print | xargs rm -f \
         && popd
+fi
+
+# FIXME: do this using helm charts?
+# The downside of that approach is that we will have to percolate the coverage flag
+# all the way down to the install test :-(
+if [ -n "$VARIANT" ]; then
+    files=$(find "$workdir/chart" -name \*daemonset.yaml -print) ;
+    for f in $files ;
+    do
+        echo "Patching $f"
+        sed -n -e "s#mayadata/mayastor:#mayadata/mayastor-${VARIANT}:#p" "$f"
+        sed -i -e "s#mayadata/mayastor:#mayadata/mayastor-${VARIANT}:#" "$f"
+    done
+    files=$(find "$workdir/mcp/chart" -name \*.yaml -print | xargs grep -l -e '^\s*image:.*mayadata/mcp')
+    echo "$files"
+    for f in $files ;
+    do
+        echo "Patching $f"
+        sed -n -re "s#(^\s*image:\s\{\{\s.Values.mayastorCP.registry\s\}\}mayadata/mcp.*):#\1-${VARIANT}:#p" "$f"
+        sed -i -re "s#(^\s*image:\s\{\{\s.Values.mayastorCP.registry\s\}\}mayadata/mcp.*):#\1-${VARIANT}:#" "$f"
+    done
 fi
 
 pushd "$workdir" \

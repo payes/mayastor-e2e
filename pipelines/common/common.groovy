@@ -108,6 +108,10 @@ def BuildMCPImages(Map parms) {
   def mayastorBranch = parms['mayastorBranch']
   def mcpBranch = parms['mcpBranch']
   def test_tag = parms['test_tag']
+  def build_flags = ""
+  if (parms.containsKey('build_flags')) {
+        build_flags = parms['build_flags']
+  }
 
   GetMayastor(mayastorBranch)
 
@@ -122,15 +126,15 @@ def BuildMCPImages(Map parms) {
   // Note: We might want to build and test dev images that have more
   // assertions instead but that complicates e2e tests a bit.
   // Build mayastor and mayastor-csi
-  sh "cd Mayastor && ./scripts/release.sh --registry \"${env.REGISTRY}\" --alias-tag \"$test_tag\" "
+  sh "cd Mayastor && ./scripts/release.sh $build_flags --registry \"${env.REGISTRY}\" --alias-tag \"$test_tag\" "
 
   // Build mayastor control plane
   GetMCP(mcpBranch)
   sh "cd mayastor-control-plane && git submodule update --init"
-  sh "cd mayastor-control-plane && ./scripts/release.sh --registry \"${env.REGISTRY}\" --alias-tag \"$test_tag\" "
+  sh "cd mayastor-control-plane && ./scripts/release.sh $build_flags --registry \"${env.REGISTRY}\" --alias-tag \"$test_tag\" "
 
   // Build the install image
-  sh "./scripts/create-install-image.sh --alias-tag \"$test_tag\" --mayastor Mayastor --mcp mayastor-control-plane --registry \"${env.REGISTRY}\""
+  sh "./scripts/create-install-image.sh $build_flags --alias-tag \"$test_tag\" --mayastor Mayastor --mcp mayastor-control-plane --registry \"${env.REGISTRY}\""
 
   // Limit any side-effects
   sh "rm -Rf Mayastor/"
@@ -577,5 +581,15 @@ def PopulateTestQueue(Map params) {
   }
 }
 
+def StashMayastorBinaries(Map params) {
+    def artefacts_stash_queue = params['artefacts_stash_queue']
+    def test_tag = params['e2e_image_tag']
+    def bin_dir = "./artifacts/binaries/${test_tag}"
+
+    sh "./scripts/getMayastorBinaries.py --tag ${test_tag} --registry ${env.REGISTRY} --outputdir ${bin_dir}"
+    stash_name = 'arts-bin'
+    stash includes: 'artifacts/**/**', name: stash_name
+    artefacts_stash_queue.add(stash_name)
+}
 
 return this
