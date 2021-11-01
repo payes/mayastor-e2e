@@ -136,7 +136,7 @@ func testPvcDeleteTest(
 		},
 			defTimeoutSecs,
 			"6s",
-		).Should(Equal(BeZero()))
+		).Should(Equal(0))
 	} else if controlplane.MajorVersion() == 0 {
 		status, err = verifyOldReplicas(uid)
 		Expect(err).ToNot(HaveOccurred(), "failed to verify old replica status")
