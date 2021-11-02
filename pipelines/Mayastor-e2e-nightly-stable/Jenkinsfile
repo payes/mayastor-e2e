@@ -21,7 +21,7 @@ e2e_image_tag='nightly-stable'
 e2e_reports_dir='artifacts/reports/'
 e2e_test_profile = 'nightly-stable'
 
-String cron_schedule = "H 0 * * *"
+String cron_schedule = "H 4 * * *"
 xray_send_report=true
 xray_test_plan='MQ-2209'
 
