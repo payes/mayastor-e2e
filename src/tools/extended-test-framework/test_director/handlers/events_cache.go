@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	SlackWebhookUrl = "https://hooks.slack.com/services/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"
+	SlackWebhookUrl = ""
 )
 const SlackChannel = "#test_director"
 

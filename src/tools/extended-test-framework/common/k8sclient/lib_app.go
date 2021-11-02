@@ -16,7 +16,7 @@ const fio_app_label = "fio"
 // parameters:
 //		name - name of the container (usually the pod name)
 //		args - container arguments, if empty the defaults to "sleep", "1000000"
-func MakeFioContainer(name string, args []string) coreV1.Container {
+func MakeFioContainer(fioImage string, name string, args []string) coreV1.Container {
 	containerArgs := args
 	if len(containerArgs) == 0 {
 		containerArgs = []string{"sleep", "1000000"}
@@ -31,7 +31,7 @@ func MakeFioContainer(name string, args []string) coreV1.Container {
 	}
 	return coreV1.Container{
 		Name:            name,
-		Image:           GetFioImage(),
+		Image:           fioImage,
 		ImagePullPolicy: coreV1.PullIfNotPresent,
 		Args:            containerArgs,
 		SecurityContext: &sc,
@@ -39,6 +39,7 @@ func MakeFioContainer(name string, args []string) coreV1.Container {
 }
 
 func DeployFio(
+	fioImage string,
 	fioPodName string,
 	pvcName string,
 	volumeType VolumeType,
@@ -124,7 +125,7 @@ func DeployFio(
 	podArgs = append(podArgs, "&")
 	logf.Log.Info("pod", "args", podArgs)
 
-	container := MakeFioContainer(fioPodName, podArgs)
+	container := MakeFioContainer(fioImage, fioPodName, podArgs)
 	podBuilder := NewPodBuilder().
 		WithName(fioPodName).
 		WithNamespace(NSDefault).

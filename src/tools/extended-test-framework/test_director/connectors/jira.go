@@ -3,14 +3,15 @@ package connectors
 import (
 	"encoding/json"
 	"errors"
-	log "github.com/sirupsen/logrus"
 	"io/ioutil"
 	"net/http"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 const (
-	apiToken = "ZTJlK3Rlc3QtZGlyZWN0b3JAbWF5YWRhdGEuaW86RXRFS0UyQUZSU21DWXFwd0dkbUkzRkZG"
+	apiToken = ""
 	issueURL = "https://mayadata.atlassian.net/rest/api/3/issue/"
 )
 

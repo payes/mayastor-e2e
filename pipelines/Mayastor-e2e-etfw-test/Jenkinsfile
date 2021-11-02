@@ -1,0 +1,89 @@
+
+def e2e_environment="hcloud-kubeadm"
+def e2e_build_cluster_job='k8s-build-cluster' // Jenkins job to build cluster
+
+def GetClusterAdminConf(e2e_build_cluster_job, e2e_environment, k8s_job_number) {
+  // FIXME(arne-rusek): move hcloud's config to top-level dir in TF scripts
+  sh """
+    mkdir -p "${e2e_environment}/modules/k8s/secrets"
+  """
+
+  copyArtifacts(
+    projectName: "${e2e_build_cluster_job}",
+    selector: specific("${k8s_job_number}"),
+    filter: "${e2e_environment}/modules/k8s/secrets/admin.conf",
+    target: "",
+    fingerprintArtifacts: true
+  )
+  sh 'kubectl get nodes -o wide'
+}
+
+pipeline {
+    agent { label 'nixos-mayastor' }
+    parameters {
+        run(
+            name:'BUILD',
+            projectName: 'k8s-build-cluster',
+            description: 'Selects cluster to use.'
+        )
+        booleanParam(name: 'node_correct', defaultValue: false,  description: 'Is the above cluster correct ? It must have mayastor installed and a node labelled openebs.io/role=mayastor-e2e. See README.md.')
+        choice(choices: ['steady_state', 'non_steady_state', 'non_steady_state_multi_vols'], name: 'test', description: 'select which test to run')
+        choice(choices: ['ET-435'], name: 'plan', description: 'test plan')
+        string(defaultValue: '10m', name: 'duration', trim: true, description: 'run duration, use units h, m and s')
+    }
+
+    stages {
+        stage('confirm') {
+            steps {
+                script {
+                    if (params.node_correct != true) {
+                        error 'cluster not confirmed as correct'
+                    }
+                }
+            }
+        }
+        stage('checkout') {
+            steps {
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: "*/extended-test-framework"]],
+                    doGenerateSubmoduleConfigurations: false,
+                    extensions: [],
+                    submoduleCfg: [],
+                    userRemoteConfigs:
+                    [[url: "https://github.com/mayadata-io/mayastor-e2e", credentialsId: "github-checkout"]]])
+            }
+        }
+        stage('run the test') {
+            environment {
+                KUBECONFIG = "${env.WORKSPACE}/${e2e_environment}/modules/k8s/secrets/admin.conf"
+            }
+            steps {
+                script {
+                    GetClusterAdminConf("${BUILD_JOBNAME}", e2e_environment, "${BUILD_NUMBER}")
+                    // cluster should have one node dedicated to etfw pods
+                    def rc = sh(script: 'kubectl get nodes --show-labels | grep openebs.io/role=mayastor-e2e', returnStatus: true)
+                    if (rc != 0) {
+                        error "Failed, cluster not labelled for extended-test-framework"
+                    }
+                    cmd = "cd src/tools/extended-test-framework/scripts && ./deploy.sh -t \"${params.test}\" -p \"${params.plan}\" -d \"${params.duration}\" && ./wait.sh"
+                    sh "nix-shell --run '${cmd}'"
+                }
+            }
+            post {
+                always {
+                    script {
+                        sh "mkdir -p ./artifacts"
+                        sh "kubectl logs -n mayastor-e2e test-conductor > ./artifacts/test_conductor.log"
+                        sh "kubectl logs -n mayastor-e2e test-director > ./artifacts/test_director.log"
+                        sh "kubectl logs -n mayastor-e2e workload-monitor > ./artifacts/workload_monitor.log"
+                        archiveArtifacts 'artifacts/**/*.*'
+
+                        sh "nix-shell --run 'cd src/tools/extended-test-framework/scripts && ./deploy.sh -r' "
+                    }
+                }
+            }
+        }
+    }
+}
+

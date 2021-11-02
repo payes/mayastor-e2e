@@ -3,15 +3,16 @@ package xray
 import (
 	"bytes"
 	"encoding/json"
-	log "github.com/sirupsen/logrus"
 	"io/ioutil"
 	"net/http"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 const (
-	clientId     = "2471F500C6154736A3566E24F621A98E"
-	clientSecret = "adbb5a7fa5d2c6a47db1c283f6366480d1321fc1a64ac00d5c2add14e4728700"
+	clientId     = ""
+	clientSecret = ""
 	authUrl      = "https://xray.cloud.xpand-it.com/api/v2/authenticate"
 	graphqlUrl   = "https://xray.cloud.xpand-it.com/api/v2/graphql"
 )
