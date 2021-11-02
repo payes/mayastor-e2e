@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"mayastor-e2e/common/custom_resources"
+	"mayastor-e2e/common/controlplane"
 	agent "mayastor-e2e/common/e2e-agent"
 	"mayastor-e2e/common/mayastorclient"
 
@@ -114,7 +114,7 @@ func ChecksumReplica(initiatorIP string, targetIP string, uri string) (string, e
 // ExcludeNexusReplica - ensure the volume has no nexus-local replica
 // This depends on there being an unused mayastor instance available so
 // e.g. a 2-replica volume needs at least a 3-node cluster
-func ExcludeNexusReplica(nexusIP string, uuid string) (bool, error) {
+func ExcludeNexusReplica(nexusIP string, nexusUuid string, volUuid string) (bool, error) {
 	// get the nexus local device
 	var nxlist []string
 	nxlist = append(nxlist, nexusIP)
@@ -131,7 +131,7 @@ func ExcludeNexusReplica(nexusIP string, uuid string) (bool, error) {
 
 	nxChild := ""
 	for _, nx := range nexusList {
-		if nx.Uuid == uuid {
+		if nx.Uuid == nexusUuid {
 			for _, ch := range nx.Children {
 				if strings.HasPrefix(ch.Uri, "bdev:///") {
 					if nxChild != "" {
@@ -152,7 +152,7 @@ func ExcludeNexusReplica(nexusIP string, uuid string) (bool, error) {
 
 	// fault the replica
 	logf.Log.Info("Faulting local replica", "replica", nxChild)
-	err = mayastorclient.FaultNexusChild(nexusIP, uuid, nxChild)
+	err = mayastorclient.FaultNexusChild(nexusIP, nexusUuid, nxChild)
 	if err != nil {
 		return false, fmt.Errorf("Failed to fault child, err=%v", err)
 	}
@@ -163,7 +163,7 @@ func ExcludeNexusReplica(nexusIP string, uuid string) (bool, error) {
 	var found bool
 	for ix := 0; ix < (timeOut-1)/sleepTime; ix++ {
 		found = false
-		replicas, err := custom_resources.GetMsVolReplicas(uuid)
+		replicas, err := GetMsvReplicas(volUuid)
 		if err != nil {
 			return false, fmt.Errorf("Failed to get replicas, err=%v", err)
 		}
@@ -184,16 +184,16 @@ func ExcludeNexusReplica(nexusIP string, uuid string) (bool, error) {
 	// wait for the msv to become healthy - now rebuilt with a non-nexus replica
 	state := ""
 	for ix := 0; ix < (timeOut-1)/sleepTime; ix++ {
-		state, err = custom_resources.GetMsVolState(uuid)
+		state, err = GetMsvState(volUuid)
 		if err != nil {
 			return false, fmt.Errorf("Failed to get state, err=%v", err)
 		}
-		if state == "healthy" {
+		if state == controlplane.VolStateHealthy() {
 			break
 		}
 		time.Sleep(sleepTime * time.Second)
 	}
-	if state != "healthy" {
+	if state != controlplane.VolStateHealthy() {
 		return true, fmt.Errorf("timed out waiting for volume to become healthy")
 	}
 	return true, nil

@@ -47,3 +47,7 @@ const MayastorEngineLabelValue = "mayastor"
 //  These variables match the settings used in fsx pod definition
 
 const FsxBlockFileName = "/dev/sdm"
+
+// Mayastor kubectl-plugin plugin details
+const KubectlMayastorPlugin = "kubectl-mayastor"
+const PluginPort = "30011"

@@ -2,13 +2,13 @@ package ms_pod_disruption_no_io
 
 import (
 	"fmt"
-	"mayastor-e2e/common/custom_resources"
 	"os/exec"
 	"strings"
 	"testing"
 	"time"
 
 	"mayastor-e2e/common"
+	"mayastor-e2e/common/controlplane"
 	"mayastor-e2e/common/e2e_config"
 	"mayastor-e2e/common/k8stest"
 	"mayastor-e2e/common/mayastorclient"
@@ -38,12 +38,13 @@ type DisruptionEnv struct {
 	podRescheduleTimeoutSecs int
 	rebuildTimeoutSecs       int
 	fioTimeoutSecs           int
+	nexusUuid                string
 }
 
 var env DisruptionEnv
 
 func getMsvState(uuid string) string {
-	volState, err := custom_resources.GetMsVolState(uuid)
+	volState, err := k8stest.GetMsvState(uuid)
 	Expect(err).To(BeNil(), "failed to access volume state %s, error=%v", uuid, err)
 	return volState
 }
@@ -98,6 +99,12 @@ func (env *DisruptionEnv) getNodes() {
 	}
 	Expect(toRemove).NotTo(Equal(""), "Could not find a replica to remove")
 	env.replicaToRemove = toRemove
+
+	// get nexus uuid
+	msv, err := k8stest.GetMSV(env.uuid)
+	Expect(err).ToNot(HaveOccurred(), "failed to retrieve MSV for volume %s", env.uuid)
+	env.nexusUuid = msv.Status.Nexus.Uuid
+
 	logf.Log.Info("identified", "nexus IP", env.nexusIP, "local replica", env.nexusLocalRep, "node of replica to remove", env.replicaToRemove)
 }
 
@@ -213,7 +220,7 @@ func (env *DisruptionEnv) unsuppressMayastorPodOn(nodeName string, delay int) {
 func (env *DisruptionEnv) faultNexusChild(delay int) {
 	time.Sleep(time.Duration(delay) * time.Second)
 	logf.Log.Info("faulting the nexus replica")
-	err := mayastorclient.FaultNexusChild(env.nexusIP, env.uuid, env.nexusLocalRep)
+	err := mayastorclient.FaultNexusChild(env.nexusIP, env.nexusUuid, env.nexusLocalRep)
 	Expect(err).ToNot(HaveOccurred(), "%v", err)
 }
 
@@ -343,7 +350,7 @@ func (env *DisruptionEnv) PodLossTestDataCopy() {
 	},
 		defTimeoutSecs, // timeout
 		"1s",           // polling interval
-	).Should(Equal("degraded"))
+	).Should(Equal(controlplane.VolStateDegraded()))
 	logf.Log.Info("volume condition", "state", getMsvState(env.uuid))
 
 	logf.Log.Info("verifying the degraded volume")
@@ -360,7 +367,7 @@ func (env *DisruptionEnv) PodLossTestDataCopy() {
 	},
 		env.rebuildTimeoutSecs, // timeout
 		"1s",                   // polling interval
-	).Should(Equal("healthy"))
+	).Should(Equal(controlplane.VolStateHealthy()))
 	logf.Log.Info("volume condition", "state", getMsvState(env.uuid))
 
 	logf.Log.Info("verifying the repaired volume")
@@ -376,7 +383,7 @@ func (env *DisruptionEnv) PodLossTestDataCopy() {
 	},
 		defTimeoutSecs, // timeout
 		"1s",           // polling interval
-	).Should(Equal("degraded"))
+	).Should(Equal(controlplane.VolStateDegraded()))
 	logf.Log.Info("volume condition", "state", getMsvState(env.uuid))
 
 	logf.Log.Info("verifying the degraded volume")
@@ -392,7 +399,7 @@ func (env *DisruptionEnv) PodLossTestDataCopy() {
 	},
 		env.rebuildTimeoutSecs, // timeout
 		"1s",                   // polling interval
-	).Should(Equal("healthy"))
+	).Should(Equal(controlplane.VolStateHealthy()))
 	logf.Log.Info("volume condition", "state", getMsvState(env.uuid))
 }
 

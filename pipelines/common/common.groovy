@@ -51,6 +51,21 @@ def GetMoac(branch) {
     ])
 }
 
+def GetMCP(branch) {
+  checkout([
+    $class: 'GitSCM',
+    branches: [[name: "*/${branch}"]],
+    doGenerateSubmoduleConfigurations: false,
+      extensions: [[
+        $class: 'RelativeTargetDirectory',
+        relativeTargetDir: "mayastor-control-plane"
+      ]],
+      submoduleCfg: [],
+        userRemoteConfigs:
+        [[url: "https://github.com/mayadata-io/mayastor-control-plane", credentialsId: "github-checkout"]]
+    ])
+}
+
 def GetTestTag() {
   def tag = sh(
     script: 'printf $(date +"%Y-%m-%d-%H-%M-%S")',
@@ -86,6 +101,43 @@ def BuildImages(mayastorBranch, moacBranch, test_tag) {
   sh "rm -Rf Mayastor/"
   sh "rm -Rf moac/"
 }
+
+def BuildMCPImages(Map parms) {
+  println parms
+
+  def mayastorBranch = parms['mayastorBranch']
+  def mcpBranch = parms['mcpBranch']
+  def moacBranch = parms['moacBranch']
+  def test_tag = parms['test_tag']
+
+  GetMayastor(mayastorBranch)
+
+  // e2e tests are the most demanding step for space on the disk so we
+  // test the free space here rather than repeating the same code in all
+  // stages.
+  sh "cd Mayastor && ./scripts/reclaim-space.sh 10"
+
+  sh "cd Mayastor && git submodule update --init"
+
+  // Build images (REGISTRY is set in jenkin's global configuration).
+  // Note: We might want to build and test dev images that have more
+  // assertions instead but that complicates e2e tests a bit.
+  // Build mayastor and mayastor-csi
+  sh "cd Mayastor && ./scripts/release.sh --registry \"${env.REGISTRY}\" --alias-tag \"$test_tag\" "
+
+  // Build mayastor control plane
+  GetMCP(mcpBranch)
+  sh "cd mayastor-control-plane && git submodule update --init"
+  sh "cd mayastor-control-plane && ./scripts/release.sh --registry \"${env.REGISTRY}\" --alias-tag \"$test_tag\" "
+
+  // Build the install image
+  sh "./scripts/create-install-image.sh --alias-tag \"$test_tag\" --mayastor Mayastor --mcp mayastor-control-plane --registry \"${env.REGISTRY}\""
+
+  // Limit any side-effects
+  sh "rm -Rf Mayastor/"
+  sh "rm -Rf mayastor-control-plane/"
+}
+
 
 def BuildCluster(e2e_build_cluster_job, e2e_environment) {
   def uuid = UUID.randomUUID()
@@ -245,8 +297,7 @@ def RunTestsOnePerCluster(e2e_test_profile,
         }
       }
     }
-    // associate uninstall test results with this test
-    AlterUninstallReports(e2e_reports_dir, tests[i])
+    HandleUninstallReports(e2e_reports_dir, tests[i])
 
     DestroyCluster(e2e_destroy_cluster_job, k8s_job)
   } //loop
@@ -282,8 +333,7 @@ def RunOneTestPerCluster(e2e_test,
           failed_tests = e2e_test
       }
     }
-    // associate uninstall test results with this test
-    AlterUninstallReports(e2e_reports_dir, e2e_test)
+    HandleUninstallReports(e2e_reports_dir, e2e_test)
 
     DestroyCluster(e2e_destroy_cluster_job, k8s_job)
     return failed_tests
@@ -349,6 +399,14 @@ def SendXrayReport(xray_testplan, test_tag, e2e_reports_dir) {
   }
 }
 
+// See below, for now we delete all uninstall reports.
+// When fixed, this function should call the correct behaviour,
+// e.g. AlterUninstallReports()
+def HandleUninstallReports(e2e_reports_dir, e2e_test) {
+    DeleteUninstallReports(e2e_reports_dir)
+}
+
+// deprecated until we decide how to keep the number of test results predictable
 def AlterUninstallReports(e2e_reports_dir, e2e_test) {
     def junit_name = "e2e.uninstall-junit.xml"
     def junit_find_path = "${e2e_reports_dir}/*"
@@ -364,6 +422,13 @@ def AlterUninstallReports(e2e_reports_dir, e2e_test) {
     } else {
         println("no uninstall junit files found")
     }
+}
+
+def DeleteUninstallReports(e2e_reports_dir) {
+    def junit_name = "e2e.uninstall-junit.xml"
+    def junit_find_path = "${e2e_reports_dir}/*"
+    def junit_full_find_path = " ${junit_find_path}/${junit_name}"
+    sh "rm -f ${junit_full_find_path}"
 }
 
 def DeDupeInstallReports(e2e_reports_dir) {

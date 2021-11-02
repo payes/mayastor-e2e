@@ -1,0 +1,85 @@
+package tc
+
+import (
+	"fmt"
+	"os"
+	"sync"
+
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	"gopkg.in/yaml.v2"
+
+	"github.com/ilyakaznacheev/cleanenv"
+)
+
+const gConfigFile = "/config.yaml"
+
+// E2EConfig is a application configuration structure
+type ExtendedTestConfig struct {
+	TestName string `yaml:"testName" env-default:"default"`
+
+	// FIXME: handle empty poolDevice
+	PoolDevice  string `yaml:"poolDevice" env:"e2e_pool_device"`
+	E2eFioImage string `yaml:"e2eFioImage" env-default:"mayadata/e2e-fio" env:"e2e_fio_image"`
+	Test        string `yaml:"test" env:"e2e_test"`
+	Msnodes     int    `yaml:"msnodes" env-default:"3" env:"e2e_msnodes"`
+	Duration    string `yaml:"duration" env-default:"60m" env:"DURATION"`
+
+	// Individual Test parameters
+	SteadyState struct {
+		Replicas        int `yaml:"replicas" env-default:"2"`
+		VolumeSizeMb    int `yaml:"volumeSizeMb" env-default:"64"`
+		ThinkTime       int `yaml:"ThinkTime" env-default:"500000"`
+		ThinkTimeBlocks int `yaml:"ThinkTimeBlocks" env-default:"1000"`
+	} `yaml:"steadyState"`
+
+	NonSteadyState struct {
+		Replicas        int    `yaml:"replicas" env-default:"2"`
+		VolumeSizeMb    int    `yaml:"volumeSizeMb" env-default:"64"`
+		Timeout         string `yaml:"timeout" env-default:"5m"`
+		ConcurrentVols  int    `yaml:"concurrentvols" env-default:"1"`
+		ThinkTime       int    `yaml:"ThinkTime" env-default:"500000"`
+		ThinkTimeBlocks int    `yaml:"ThinkTimeBlocks" env-default:"1000"`
+	} `yaml:"nonSteadyState"`
+}
+
+var once sync.Once
+var gConfig ExtendedTestConfig
+
+// This function is called early from junit and various bits have not been initialised yet
+// so we cannot use logf or Expect instead we use fmt.Print... and panic.
+func GetConfig() (ExtendedTestConfig, error) {
+	var err error
+
+	once.Do(func() {
+		var info os.FileInfo
+
+		// Initialise the configuration
+		_ = cleanenv.ReadEnv(&gConfig)
+
+		// We absorb the complexity of locating the configuration file here
+		// so that scripts invoking the tests can be simpler
+		// - if OS envvar e2e_config is defined
+		//		- if it is a path to a file then that file is used as the config file
+		//		- else try to use a file of the same name in the configuration directory
+		info, err = os.Stat(gConfigFile)
+		if os.IsNotExist(err) {
+			err = fmt.Errorf("Unable to access configuration file %v", gConfigFile)
+			return
+		} else {
+			if info.IsDir() {
+				err = fmt.Errorf("%v is not a file", gConfigFile)
+				return
+			}
+		}
+		logf.Log.Info("Config", "Using file", gConfigFile)
+		err = cleanenv.ReadConfig(gConfigFile, &gConfig)
+		if err != nil {
+			err = fmt.Errorf("could not read config file, error %v", err)
+			return
+		}
+		cfgBytes, _ := yaml.Marshal(gConfig)
+		fmt.Printf("%s\n", string(cfgBytes))
+	})
+	return gConfig, err
+}

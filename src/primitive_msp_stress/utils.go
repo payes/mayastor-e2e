@@ -7,6 +7,8 @@ import (
 	"mayastor-e2e/common/mayastorclient"
 	"mayastor-e2e/common/mayastorclient/grpc"
 	"strconv"
+	"strings"
+	"time"
 
 	. "github.com/onsi/gomega"
 
@@ -56,6 +58,9 @@ func CreateDeletePools(nodeList map[string]k8stest.NodeLocation, poolSuffix stri
 				"5s",           // polling interval
 			).Should(Equal(true))
 		}
+		// Sleep is being added so that the pool creation process starts
+		// even for fuzz pools
+		time.Sleep(10 * time.Second)
 
 		// Delete mayastorpools
 		logf.Log.Info("Deleting msps")
@@ -73,6 +78,20 @@ func CreateDeletePools(nodeList map[string]k8stest.NodeLocation, poolSuffix stri
 			logf.Log.Info("Verifying msps deletion")
 			Eventually(func() bool {
 				return verifyPoolDeleted(node.IPAddress, poolName)
+			},
+				defTimeoutSecs, // timeout
+				"5s",           // polling interval
+			).Should(Equal(true))
+
+			Eventually(func() bool {
+				return verifyPoolDeleted(node.IPAddress, poolName+"-fusspool-wrong-node")
+			},
+				defTimeoutSecs, // timeout
+				"5s",           // polling interval
+			).Should(Equal(true))
+
+			Eventually(func() bool {
+				return verifyPoolDeleted(node.IPAddress, poolName+"-fusspool-wrong-disk")
 			},
 				defTimeoutSecs, // timeout
 				"5s",           // polling interval
@@ -95,7 +114,7 @@ func verifyPoolCreated(nodeAddr, poolName string, capacity int64) bool {
 		return false
 	}
 
-	if ok := (grpcPool.State == grpc.PoolState_POOL_ONLINE && crdPool.Status.State == "online"); !ok {
+	if ok := (grpcPool.State == grpc.PoolState_POOL_ONLINE && strings.ToLower(crdPool.Status.State) == "online"); !ok {
 		logf.Log.Info("Failed to verify state", "Expected State", "PoolState_POOL_ONLINE", "grpcPool.State", grpcPool.State, "crdPool.Status.State", crdPool.Status.State)
 		return false
 	}

@@ -39,9 +39,11 @@ type E2EConfig struct {
 	// With few exceptions, all CI configurations MUST set this to true
 	GrpcMandated bool `yaml:"grpcMandated" env-default:"false"`
 	// Generic configuration files used for CI and automation should not define MayastorRootDir and E2eRootDir
-	MayastorRootDir string `yaml:"mayastorRootDir" env:"e2e_mayastor_root_dir"`
-	E2eRootDir      string `yaml:"e2eRootDir"`
-	SessionDir      string `yaml:"sessionDir" env:"e2e_session_dir"`
+	MayastorRootDir  string `yaml:"mayastorRootDir" env:"e2e_mayastor_root_dir"`
+	E2eRootDir       string `yaml:"e2eRootDir"`
+	SessionDir       string `yaml:"sessionDir" env:"e2e_session_dir"`
+	MayastorVersion  string `yaml:"mayastorVersion" env:"e2e_mayastor_version"`
+	KubectlPluginDir string `yaml:"kubectlPluginDir" env:"e2e_kubectl_plugin_dir"`
 
 	// Operational parameters
 	Cores int `yaml:"cores,omitempty"`
@@ -397,16 +399,35 @@ func GetConfig() E2EConfig {
 		} else {
 			fmt.Printf("reports directory is %s\n", e2eConfig.ReportsDir)
 		}
-
-		cfgBytes, _ := yaml.Marshal(e2eConfig)
-		cfgUsedFile := path.Clean(e2eConfig.SessionDir + "/resolved-configuration-" + e2eConfig.ConfigName + "-" + e2eConfig.Platform.Name + ".yaml")
-		err = ioutil.WriteFile(cfgUsedFile, cfgBytes, 0644)
-		if err == nil {
-			fmt.Printf("Resolved config written to %s\n", cfgUsedFile)
-		} else {
-			fmt.Printf("Resolved config not written to %s\n%v\n", cfgUsedFile, err)
-		}
+		saveConfig()
 	})
 
 	return e2eConfig
+}
+
+func saveConfig() {
+	cfgBytes, _ := yaml.Marshal(e2eConfig)
+	cfgUsedFile := path.Clean(e2eConfig.SessionDir + "/resolved-configuration-" + e2eConfig.ConfigName + "-" + e2eConfig.Platform.Name + ".yaml")
+	err := ioutil.WriteFile(cfgUsedFile, cfgBytes, 0644)
+	if err == nil {
+		fmt.Printf("Resolved config written to %s\n", cfgUsedFile)
+	} else {
+		fmt.Printf("Resolved config not written to %s\n%v\n", cfgUsedFile, err)
+	}
+}
+
+// SetControlPlane sets the control plane configuration if it is unset (i.e. empty) and writes it out if changed.
+// If config setting matches  the existing value no action.
+// Returns true it the config control plane value matches the input value
+func SetControlPlane(controlPlane string) bool {
+	_ = GetConfig()
+	if e2eConfig.MayastorVersion == "" || e2eConfig.MayastorVersion == controlPlane {
+		e2eConfig.MayastorVersion = controlPlane
+		saveConfig()
+		return true
+	} else {
+		fmt.Printf("Unable to override config control plane from '%s' to '%s'",
+			e2eConfig.MayastorVersion, controlPlane)
+	}
+	return false
 }

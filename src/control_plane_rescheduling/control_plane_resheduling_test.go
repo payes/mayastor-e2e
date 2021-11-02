@@ -12,6 +12,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"mayastor-e2e/common"
+	"mayastor-e2e/common/controlplane"
 	"mayastor-e2e/common/e2e_config"
 	"mayastor-e2e/common/k8stest"
 
@@ -31,7 +32,9 @@ func controlPlaneReschedulingTest(protocol common.ShareProto, volumeType common.
 	scName := fmt.Sprintf("reshedule-sc-%s", protocol)
 	var volNames []string
 	var fioPodNames []string
-	deploymentName := "moac"
+	var deploymentNameList = []string{"csi-controller", "msp-operator", "rest"}
+	var statefulsetNameList = []string{"core-agents"}
+	moacDeploymentName := "moac"
 	var replicas int32
 
 	// Create storage class
@@ -72,23 +75,42 @@ func controlPlaneReschedulingTest(protocol common.ShareProto, volumeType common.
 		).Should(Equal(true))
 	}
 
-	replicas = 0
-	// Scale down moac deployment to 0 replicas
-	k8stest.SetDeploymentReplication(deploymentName, e2e_config.GetConfig().Platform.MayastorNamespace, &replicas)
+	if controlplane.MajorVersion() == 1 {
+		replicas = 0
+		// Scale down control plane components to 0 replica
+		for _, deploymentName := range deploymentNameList {
+			k8stest.SetDeploymentReplication(deploymentName, e2e_config.GetConfig().Platform.MayastorNamespace, &replicas)
+		}
 
-	var moacPodName []string
-	// Check presence of moac pod
-	Eventually(func() bool {
-		moacPodName, _ = k8stest.GetMoacPodName()
-		return len(moacPodName) == 0
-	},
-		defTimeoutSecs,
-		"1s",
-	).Should(Equal(true))
-	logf.Log.Info("Moac pod is removed")
+		for _, statefulsetName := range statefulsetNameList {
+			k8stest.SetStatefulsetReplication(statefulsetName, e2e_config.GetConfig().Platform.MayastorNamespace, &replicas)
+		}
 
-	// After scaling down moac deployment sleep for 10 sec.
-	time.Sleep(10 * time.Second)
+		// After scaling down control plane components wait for 10 Sec.
+		time.Sleep(10 * time.Second)
+
+	}
+
+	if controlplane.MajorVersion() == 0 {
+		replicas = 0
+		// Scale down moac deployment to 0 replicas
+		k8stest.SetDeploymentReplication(moacDeploymentName, e2e_config.GetConfig().Platform.MayastorNamespace, &replicas)
+
+		var moacPodName []string
+		// Check presence of moac pod
+		Eventually(func() bool {
+			moacPodName, _ = k8stest.GetMoacPodName()
+			return len(moacPodName) == 0
+		},
+			defTimeoutSecs,
+			"1s",
+		).Should(Equal(true))
+		logf.Log.Info("Moac pod is removed")
+
+		// After scaling down moac deployment sleep for 10 sec.
+		time.Sleep(10 * time.Second)
+
+	}
 
 	// Check if all fio pods are in running state or not
 	for _, fioPodName := range fioPodNames {
@@ -101,28 +123,44 @@ func controlPlaneReschedulingTest(protocol common.ShareProto, volumeType common.
 		).Should(Equal(true))
 	}
 
-	replicas = 1
-	// Scale up moac deployment to 1 replicas
-	k8stest.SetDeploymentReplication(deploymentName, e2e_config.GetConfig().Platform.MayastorNamespace, &replicas)
+	if controlplane.MajorVersion() == 1 {
+		replicas = 1
+		// Scale up control plane components to 1 replica
+		for _, deploymentName := range deploymentNameList {
+			k8stest.SetDeploymentReplication(deploymentName, e2e_config.GetConfig().Platform.MayastorNamespace, &replicas)
+		}
 
-	// Check presence of moac pod
-	Eventually(func() bool {
-		moacPodName, _ = k8stest.GetMoacPodName()
-		return len(moacPodName) == 1
-	},
-		defTimeoutSecs,
-		"1s",
-	).Should(Equal(true))
-	logf.Log.Info("Moac pod is now present")
+		for _, statefulsetName := range statefulsetNameList {
+			k8stest.SetStatefulsetReplication(statefulsetName, e2e_config.GetConfig().Platform.MayastorNamespace, &replicas)
+		}
+	}
 
-	Eventually(func() bool {
-		podName := moacPodName[0]
-		return k8stest.IsPodRunning(podName, common.NSMayastor())
-	},
-		defTimeoutSecs,
-		"1s",
-	).Should(Equal(true))
-	logf.Log.Info("Moac pod is in running state")
+	if controlplane.MajorVersion() == 0 {
+		replicas = 1
+		// Scale up moac deployment to 1 replicas
+		k8stest.SetDeploymentReplication(moacDeploymentName, e2e_config.GetConfig().Platform.MayastorNamespace, &replicas)
+
+		var moacPodName []string
+
+		// Check presence of moac pod
+		Eventually(func() bool {
+			moacPodName, _ = k8stest.GetMoacPodName()
+			return len(moacPodName) == 1
+		},
+			defTimeoutSecs,
+			"1s",
+		).Should(Equal(true))
+		logf.Log.Info("Moac pod is now present")
+
+		Eventually(func() bool {
+			podName := moacPodName[0]
+			return k8stest.IsPodRunning(podName, common.NSMayastor())
+		},
+			defTimeoutSecs,
+			"1s",
+		).Should(Equal(true))
+		logf.Log.Info("Moac pod is in running state")
+	}
 
 	// Wait for fio pods to get into completed state
 	for _, fioPodName := range fioPodNames {

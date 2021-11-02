@@ -2,7 +2,6 @@ package ms_pod_restart
 
 import (
 	"fmt"
-	"mayastor-e2e/common/custom_resources"
 	"strings"
 	"testing"
 
@@ -116,8 +115,13 @@ func testMsPodRestartTest(
 	Expect(node).NotTo(Equal(""), "Nexus not found")
 
 	//verify one replica is local to the nexus
-	localRepl := verifyLocalReplica(uid, node, replica)
-	Expect(localRepl).Should(Equal(true))
+	Eventually(func() bool {
+		return verifyLocalReplica(uid, node, replica)
+	},
+		defTimeoutSecs,
+		"1s",
+	).Should(Equal(true))
+
 	// get mayastor pod name which needs to be restarted
 	msPodName := getMayastorPodName(common.NSMayastor(), node)
 	Expect(msPodName).ToNot(BeNil(), "failed to get mayastor pod name hosting nexus")
@@ -132,8 +136,12 @@ func testMsPodRestartTest(
 	Expect(ready).To(BeTrue())
 
 	//verify one replica is local to the nexus
-	localRepl = verifyLocalReplica(uid, node, replica)
-	Expect(localRepl).Should(Equal(true))
+	Eventually(func() bool {
+		return verifyLocalReplica(uid, node, replica)
+	},
+		defTimeoutSecs,
+		"1s",
+	).Should(Equal(true))
 
 	//verify the remote replicas are children of the newly (re) created nexus
 	children := verifyRemoteReplica(uid, node, replica)
@@ -169,9 +177,8 @@ func getMayastorPodName(ns string, nodeName string) string {
 // verifyLocalReplica return the true when one replica is local to the nexus
 func verifyLocalReplica(uuid string, nexusNode string, replCount int) bool {
 	logf.Log.Info("VerifyLocalReplica")
-	replicas, err := custom_resources.GetMsVolReplicas(uuid)
+	replicas, err := k8stest.GetMsvReplicas(uuid)
 	Expect(err).ToNot(HaveOccurred())
-	Expect(len(replicas) == replCount).To(BeTrue(), "number of listed replicas does not match")
 	var status bool
 	for _, replica := range replicas {
 		if replica.Node == nexusNode &&
@@ -184,7 +191,7 @@ func verifyLocalReplica(uuid string, nexusNode string, replCount int) bool {
 
 // verifyRemoteReplica the remote replicas are children of the newly (re) created nexus
 func verifyRemoteReplica(uuid string, nexusNode string, replCount int) bool {
-	replicas, err := custom_resources.GetMsVolReplicas(uuid)
+	replicas, err := k8stest.GetMsvReplicas(uuid)
 	Expect(err).ToNot(HaveOccurred())
 	Expect(len(replicas) == replCount).To(BeTrue(), "number of listed replicas does not match")
 	var status bool

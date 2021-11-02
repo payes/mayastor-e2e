@@ -1,0 +1,10 @@
+testName: "non-steady-state-multi-vols"
+test: "MQ-2395"
+e2eFioImage: ci-registry.mayastor-ci.mayadata.io/mayadata/e2e-fio
+msnodes: 3
+duration: 336
+nonSteadyState:
+  replicas: 2
+  volumeSizeMb: 512
+  timeout: 20m
+  concurrentvols: 4

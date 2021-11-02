@@ -3,6 +3,7 @@ package node_shutdown
 import (
 	"fmt"
 	"mayastor-e2e/common"
+	"mayastor-e2e/common/controlplane"
 	"mayastor-e2e/common/custom_resources"
 	"mayastor-e2e/common/k8stest"
 
@@ -117,6 +118,9 @@ func (c *shutdownConfig) verifyMayastorComponentStates(numMayastorInstances int)
 	ready, err := k8stest.MayastorInstancesReady(numMayastorInstances, 3, 540)
 	Expect(err).ToNot(HaveOccurred())
 	Expect(ready).To(Equal(true))
+	// FIXME: is this correct for control plane versions > 0 ?
+	ready = k8stest.ControlPlaneReady(3, 60)
+	Expect(ready).To(Equal(true), "control is not ready")
 }
 
 func (c *shutdownConfig) verifyApplicationPodRunning(state bool) {
@@ -152,11 +156,11 @@ func (c *shutdownConfig) verifyNodeNotReady(nodeName string) {
 	).Should(Equal(false))
 
 	Eventually(func() string {
-		msn, err := custom_resources.GetMsNode(nodeName)
-		Expect(err).ToNot(HaveOccurred(), "GetMsNode")
-		return msn.Status
+		status, err := k8stest.GetMsNodeStatus(nodeName)
+		Expect(err).ToNot(HaveOccurred(), "GetMsNodeStatus")
+		return status
 	},
 		defTimeoutSecs, // timeout
 		"5s",           // polling interval
-	).Should(Equal("offline"))
+	).Should(Equal(controlplane.NodeStateOffline()))
 }

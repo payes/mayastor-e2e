@@ -2,9 +2,13 @@ package stale_msp_after_node_power_failure
 
 import (
 	"fmt"
+	"mayastor-e2e/common"
+	"mayastor-e2e/common/controlplane"
 	"mayastor-e2e/common/custom_resources"
 	"mayastor-e2e/common/k8stest"
 	"mayastor-e2e/common/platform"
+
+	"strings"
 	"testing"
 	"time"
 
@@ -45,6 +49,10 @@ var _ = Describe("Stale MSP after node power failure test", func() {
 			platform := platform.Create()
 			_ = platform.PowerOnNode(poweredOffNode)
 		}
+		if controlplane.MajorVersion() == 1 {
+			k8stest.RemoveAllNodeSelectorsFromDeployment("msp-operator", common.NSMayastor())
+			k8stest.RemoveAllNodeSelectorsFromDeployment("rest", common.NSMayastor())
+		}
 
 		err := k8stest.RestartMayastor(240, 240, 240)
 		Expect(err).ToNot(HaveOccurred(), "Restart Mayastor pods")
@@ -68,11 +76,6 @@ var _ = Describe("Stale MSP after node power failure test", func() {
 
 func (c *nodepowerfailureConfig) staleMspAfterNodePowerFailureTest() {
 
-	//Get node name on which moac pod is scheduled
-	moacNodeName, err := k8stest.GetMoacNodeName()
-	Expect(err).ToNot(HaveOccurred())
-	Expect(moacNodeName).ToNot(BeEmpty(), fmt.Sprintf("moac pod not found in running state, %v", err))
-
 	//List mayastor pools in the cluster
 	pools, err := custom_resources.ListMsPools()
 	Expect(err).ToNot(HaveOccurred(), fmt.Sprintf("failed to list msp's in cluster, %v", err))
@@ -80,14 +83,40 @@ func (c *nodepowerfailureConfig) staleMspAfterNodePowerFailureTest() {
 	var poolName, nodeName string
 	var diskName []string
 
-	//Select a test MSP from the cluster, which is not present on the
-	//same node on which moac pod is scheduled
-	for _, pool := range pools {
-		if pool.Spec.Node != moacNodeName {
-			poolName = pool.GetName()
-			nodeName = pool.Spec.Node
-			diskName = pool.Spec.Disks
-			break
+	if controlplane.MajorVersion() == 0 {
+
+		//Get node name on which moac pod is scheduled
+		moacNodeName, err := k8stest.GetMoacNodeName()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(moacNodeName).ToNot(BeEmpty(), fmt.Sprintf("moac pod not found in running state, %v", err))
+
+		//Select a test MSP from the cluster, which is not present on the
+		//same node on which moac pod is scheduled
+		for _, pool := range pools {
+			if pool.Spec.Node != moacNodeName {
+				poolName = pool.GetName()
+				nodeName = pool.Spec.Node
+				diskName = pool.Spec.Disks
+				break
+			}
+		}
+	}
+
+	if controlplane.MajorVersion() == 1 {
+		coreAgentNodeName, err := k8stest.GetCoreAgentNodeName()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(coreAgentNodeName).ToNot(BeEmpty(), fmt.Sprintf("core agent pod not found in running state, %v", err))
+
+		k8stest.ApplyNodeSelectorToDeployment("msp-operator", common.NSMayastor(), "kubernetes.io/hostname", coreAgentNodeName)
+		k8stest.ApplyNodeSelectorToDeployment("rest", common.NSMayastor(), "kubernetes.io/hostname", coreAgentNodeName)
+		//Select a test MSP from the cluster
+		for _, pool := range pools {
+			if pool.Spec.Node != coreAgentNodeName {
+				poolName = pool.GetName()
+				nodeName = pool.Spec.Node
+				diskName = pool.Spec.Disks
+				break
+			}
 		}
 	}
 
@@ -124,9 +153,11 @@ func (c *nodepowerfailureConfig) staleMspAfterNodePowerFailureTest() {
 	for ix := 0; ix < timeSecs/timeSleepSecs; ix++ {
 		time.Sleep(timeSleepSecs * time.Second)
 		err = IsMsPoolOnline(newPoolName)
+		if err == nil {
+			break
+		}
 	}
 	Expect(err).To(BeNil(), "Unexpected: All pools should be online, but "+newPoolName+" is not in online state")
-
 }
 
 // Check if a MSP is in online state
@@ -135,7 +166,7 @@ func IsMsPoolOnline(poolName string) error {
 	pool, err := custom_resources.GetMsPool(poolName)
 	Expect(err).ToNot(HaveOccurred(), fmt.Sprintf("failed to get mayastor pool %s %v", poolName, err))
 
-	if pool.Status.State != "online" {
+	if strings.ToLower(pool.Status.State) != "online" {
 		log.Log.Info("IsMsPoolOnline", "pool", poolName, "state", pool.Status.State)
 		poolHealthy = false
 	}

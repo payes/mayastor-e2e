@@ -20,7 +20,11 @@ func Setup() error {
 	)
 
 	e2eHostAddr := os.Getenv("E2E_HOST_ADDR")
-	ports := []string{os.Getenv("REST_PORT"), os.Getenv("MAYASTOR_PORT")}
+	ports := []string{
+		os.Getenv("REST_PORT"),
+		os.Getenv("MAYASTOR_PORT"),
+		os.Getenv("MCP_REST_PORT"),
+	}
 	for _, port := range ports {
 		if e2eHostAddr != "" {
 			cmd = exec.Command(

@@ -3,7 +3,6 @@ package single_msn_shutdown
 import (
 	"fmt"
 	"mayastor-e2e/common"
-	"mayastor-e2e/common/custom_resources"
 	"mayastor-e2e/common/k8stest"
 	"os/exec"
 	"time"
@@ -120,6 +119,9 @@ func verifyMayastorComponentStates(numMayastorInstances int) {
 	ready, err := k8stest.MayastorInstancesReady(numMayastorInstances, 3, 540)
 	Expect(err).ToNot(HaveOccurred())
 	Expect(ready).To(Equal(true))
+	// FIXME: is this correct for control plane versions > 0 ?
+	ready = k8stest.ControlPlaneReady(3, 60)
+	Expect(ready).To(Equal(true), "control plane is not ready")
 }
 
 func (c *appConfig) verifyApplicationPodRunning(state bool) {
@@ -274,7 +276,7 @@ func (c *appConfig) verifyTaskCompletionStatus(status string) {
 }
 
 func getMsvState(uuid string) string {
-	volState, err := custom_resources.GetMsVolState(uuid)
+	volState, err := k8stest.GetMsvState(uuid)
 	Expect(err).To(BeNil(), "failed to access volume state %s, error=%v", uuid, err)
 	return volState
 }

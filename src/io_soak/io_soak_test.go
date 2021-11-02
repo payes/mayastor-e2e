@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"mayastor-e2e/common"
+	"mayastor-e2e/common/controlplane"
 	"mayastor-e2e/common/e2e_config"
 	"mayastor-e2e/common/k8stest"
 
@@ -55,10 +56,15 @@ func monitor() error {
 			break
 		}
 
-		err = custom_resources.CheckAllMsVolsAreHealthy()
+		err = k8stest.CheckAllMsvsAreHealthy()
 		if err != nil {
-			logf.Log.Info("IOSoakTest monitor Mayastor volumes check", "error", err)
-			break
+			// See MQ-2305
+			if controlplane.IsTimeoutError(err) {
+				logf.Log.Info("IOSoakTest monitor Mayastor volumes check: Ignoring", "error", err)
+			} else {
+				logf.Log.Info("IOSoakTest monitor Mayastor volumes check", "error", err)
+				break
+			}
 		}
 
 		err = custom_resources.CheckAllMsPoolsAreOnline()

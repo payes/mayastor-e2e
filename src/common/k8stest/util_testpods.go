@@ -266,16 +266,10 @@ func CheckForTestPods() (bool, error) {
 	return foundPods, err
 }
 
-// isPodHealthCheckCandidate checks config setting and namespace settings to workout if a health check on pdd is required,
-// essentially this is a filter function.
-// For now this is a very simple filter function, to  handle the case where, mayastor pods share the namespace with other
-// pods whose health status has no bearing mayastor functionality.
+// isPodHealthCheckCandidate is a filter function for health check on pod,
 func isPodHealthCheckCandidate(podName string, namespace string) bool {
 	if namespace == common.NSMayastor() {
-		if (strings.HasPrefix(podName, "moac") || strings.HasPrefix(podName, "mayastor")) && !strings.HasPrefix(podName, "mayastor-etcd") {
-			return true
-		}
-		return false
+		return !strings.HasPrefix(podName, "mayastor-etcd")
 	}
 	return true
 }
@@ -616,6 +610,20 @@ func GetMoacNodeName() (string, error) {
 	}
 	for _, pod := range pods.Items {
 		if strings.HasPrefix(pod.Name, "moac") && pod.Status.Phase == "Running" {
+			return pod.Spec.NodeName, nil
+		}
+	}
+	return "", nil
+}
+
+func GetCoreAgentNodeName() (string, error) {
+	podApi := gTestEnv.KubeInt.CoreV1().Pods
+	pods, err := podApi(common.NSMayastor()).List(context.TODO(), metaV1.ListOptions{})
+	if err != nil {
+		return "", err
+	}
+	for _, pod := range pods.Items {
+		if strings.HasPrefix(pod.Name, "core-agent") && pod.Status.Phase == "Running" {
 			return pod.Spec.NodeName, nil
 		}
 	}

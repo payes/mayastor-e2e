@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"mayastor-e2e/common"
 	"mayastor-e2e/common/custom_resources"
-	"mayastor-e2e/common/custom_resources/api/types/v1alpha1"
 	"mayastor-e2e/common/k8stest"
 	"sync"
 	"time"
@@ -112,7 +111,7 @@ func (c *pvcConcurrentConfig) verifyVolumesCreation() {
 			"1s",           // polling interval
 		).Should(Equal(coreV1.VolumeBound))
 
-		Eventually(func() *v1alpha1.MayastorVolume {
+		Eventually(func() *common.MayastorVolume {
 			msv, err := k8stest.GetMSV(string(pvc.ObjectMeta.UID))
 			Expect(err).ToNot(HaveOccurred(), "%v", err)
 			return msv
@@ -139,7 +138,7 @@ func (c *pvcConcurrentConfig) verifyVolumesDeletion() {
 		).Should(Equal(true))
 		// Wait for the MSV to be deleted.
 		Eventually(func() bool {
-			return custom_resources.IsMsVolDeleted(c.uuid[ix])
+			return k8stest.IsMsvDeleted(c.uuid[ix])
 		},
 			defTimeoutSecs, // timeout
 			"1s",           // polling interval

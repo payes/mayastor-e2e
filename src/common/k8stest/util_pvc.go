@@ -4,8 +4,7 @@ package k8stest
 import (
 	"context"
 	"fmt"
-	"mayastor-e2e/common/custom_resources"
-	"mayastor-e2e/common/custom_resources/api/types/v1alpha1"
+	"mayastor-e2e/common/controlplane"
 	"mayastor-e2e/common/mayastorclient"
 	"strings"
 	"sync"
@@ -31,7 +30,7 @@ var defTimeoutSecs = "90s"
 func IsPVCDeleted(volName string, nameSpace string) bool {
 	pvc, err := gTestEnv.KubeInt.CoreV1().PersistentVolumeClaims(nameSpace).Get(context.TODO(), volName, metaV1.GetOptions{})
 	if err != nil {
-		// Unfortunately there is no associated error code so we resort to string comparison
+		// Unfortunately there is no associated error code, so we resort to string comparison
 		if strings.HasPrefix(err.Error(), "persistentvolumeclaims") &&
 			strings.HasSuffix(err.Error(), " not found") {
 			return true
@@ -66,6 +65,7 @@ func IsPVDeleted(volName string) bool {
 	// After the PV has been deleted it may still accessible, but status phase will be invalid
 	Expect(err).To(BeNil())
 	Expect(pv).ToNot(BeNil())
+	logf.Log.Info("IsPVDeleted", "volume", volName, "status.Phase", pv.Status.Phase)
 	switch pv.Status.Phase {
 	case
 		coreV1.VolumeBound,
@@ -184,7 +184,7 @@ func MkPVC(volSizeMb int, volName string, scName string, volType common.VolumeTy
 		"1s",           // polling interval
 	).Should(Equal(coreV1.VolumeBound))
 
-	Eventually(func() *v1alpha1.MayastorVolume {
+	Eventually(func() *common.MayastorVolume {
 		msv, _ := GetMSV(string(pvc.ObjectMeta.UID))
 		return msv
 	},
@@ -201,6 +201,10 @@ func MkPVC(volSizeMb int, volName string, scName string, volType common.VolumeTy
 
 // MsvConsistencyCheck check consistency of  MSV Spec, Status, and associated objects returned by gRPC
 func MsvConsistencyCheck(uuid string) error {
+	//FIXME: implement new MsvConsistencyCheck inline with mayastor control plane
+	if controlplane.MajorVersion() != 0 {
+		return nil
+	}
 	msv, err := GetMSV(uuid)
 	if msv == nil {
 		return fmt.Errorf("MsvConsistencyCheck: GetMsv: %v, got nil pointer to msv", uuid)
@@ -288,14 +292,16 @@ func RmPVC(volName string, scName string, nameSpace string) {
 	deleteErr := PVCApi(nameSpace).Delete(context.TODO(), volName, metaV1.DeleteOptions{})
 	Expect(deleteErr).To(BeNil())
 
+	logf.Log.Info("Waiting for PVC to be deleted", "volume", volName, "storageClass", scName)
 	// Wait for the PVC to be deleted.
 	Eventually(func() bool {
 		return IsPVCDeleted(volName, nameSpace)
 	},
 		defTimeoutSecs, // timeout
 		"1s",           // polling interval
-	).Should(Equal(true))
+	).Should(Equal(true), "pvc not deleted %s", volName)
 	// Wait for the PV to be deleted.
+	logf.Log.Info("Waiting for PV to be deleted", "volume", volName, "storageClass", scName)
 	Eventually(func() bool {
 		// This check is required here because it will check for pv name
 		// when pvc is in pending state at that time we will not
@@ -307,11 +313,11 @@ func RmPVC(volName string, scName string, nameSpace string) {
 	},
 		"360s", // timeout
 		"1s",   // polling interval
-	).Should(Equal(true))
+	).Should(Equal(true), "PV (%s) for %s not deleted", pvc.Spec.VolumeName, volName)
 
 	// Wait for the MSV to be deleted.
 	Eventually(func() bool {
-		return custom_resources.IsMsVolDeleted(string(pvc.ObjectMeta.UID))
+		return IsMsvDeleted(string(pvc.ObjectMeta.UID))
 	},
 		"360s", // timeout
 		"1s",   // polling interval

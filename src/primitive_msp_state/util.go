@@ -2,6 +2,7 @@ package primitive_msp_state
 
 import (
 	"fmt"
+	"mayastor-e2e/common/controlplane"
 	"mayastor-e2e/common/custom_resources"
 	"mayastor-e2e/common/custom_resources/api/types/v1alpha1"
 	"mayastor-e2e/common/k8stest"
@@ -69,7 +70,7 @@ func verifyMspCrdAndGrpcState() {
 func verifyMspState(crPool v1alpha1.MayastorPool,
 	grpcPool mayastorclient.MayastorPool) bool {
 	var status bool
-	if crPool.Status.State == k8stest.MspGrpcStateToCrdstate(grpcPool.State) {
+	if crPool.Status.State == controlplane.MspGrpcStateToCrdState(int(grpcPool.State)) {
 		status = true
 	}
 	return status

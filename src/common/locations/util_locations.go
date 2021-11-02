@@ -22,9 +22,18 @@ func GetMayastorScriptsDir() string {
 	return locationExists(path.Clean(e2e_config.GetConfig().MayastorRootDir + "/scripts"))
 }
 
+func GetControlPlaneScriptsDir() string {
+	return locationExists(path.Clean(e2e_config.GetConfig().MayastorRootDir + "/mcp/scripts"))
+}
+
 // GetGeneratedYamlsDir return the path to where Mayastor yaml files are generated this is a generated directory, so may not exist yet.
 func GetGeneratedYamlsDir() string {
 	return path.Clean(e2e_config.GetConfig().SessionDir + "/install-yamls")
+}
+
+// GetGeneratedYamlsDir return the path to where Mayastor yaml files are generated this is a generated directory, so may not exist yet.
+func GetControlPlaneGeneratedYamlsDir() string {
+	return path.Clean(e2e_config.GetConfig().SessionDir + "/install-yamls-control-plane")
 }
 
 // GetE2EAgentPath return the path e2e-agent yaml file

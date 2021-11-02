@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"mayastor-e2e/common/controlplane"
 	"mayastor-e2e/common/custom_resources"
 	"mayastor-e2e/common/e2e_config"
 	"mayastor-e2e/common/mayastorclient"
@@ -118,6 +119,9 @@ func SetupTestEnvBasic() {
 func SetupTestEnv() {
 	SetupTestEnvBasic()
 
+	err := CheckAndSetControlPlane()
+	Expect(err).To(BeNil())
+
 	// Fail the test setup if gRPC calls are mandated and
 	// gRPC calls are not supported.
 	if e2e_config.GetConfig().GrpcMandated {
@@ -149,6 +153,11 @@ func AfterSuiteCleanup() {
 //  2) that finalizers DO NOT EXIST for pools with no replicas (used size == 0)
 //  with timeout to allow MOAC state sync.
 func CheckMsPoolFinalizers() error {
+	if controlplane.MajorVersion() != 0 {
+		// Finalizers do not need to be checked with deployments of control plane versions
+		// > 0 as finalizers are not added and removed when volumes/replicas are created or removed
+		return nil
+	}
 	err := custom_resources.CheckAllMsPoolFinalizers()
 	logf.Log.Info("Checking pool finalizers", "timeout seconds", e2e_config.GetConfig().MoacSyncTimeoutSeconds)
 	const sleepTime = 5
@@ -163,6 +172,20 @@ func CheckMsPoolFinalizers() error {
 		logf.Log.Info("Checking pool finalizers, done.", "waiting time", time.Since(t0))
 	}
 	return err
+}
+
+func getMspUsage() (int64, error) {
+	var mspUsage int64
+	msPools, err := custom_resources.ListMsPools()
+	if err != nil {
+		logf.Log.Info("unable to list mayastor pools")
+	} else {
+		mspUsage = 0
+		for _, pool := range msPools {
+			mspUsage += pool.Status.Used
+		}
+	}
+	return mspUsage, err
 }
 
 // ResourceCheck  Fit for purpose checks
@@ -203,17 +226,20 @@ func ResourceCheck() error {
 		errorMsg += " found PersistentVolumes"
 	}
 
-	// Mayastor volumes
-	msvs, err := custom_resources.ListMsVols()
-	if err != nil {
-		errorMsg += fmt.Sprintf("%s %v", errorMsg, err)
-	} else {
-		if msvs != nil {
-			if len(msvs) != 0 {
-				errorMsg += " found MayastorVolumes"
-			}
+	//FIXME: control plane 1 temporary do not check MSVs
+	if controlplane.MajorVersion() == 0 {
+		// Mayastor volumes
+		msvs, err := ListMsvs()
+		if err != nil {
+			errorMsg += fmt.Sprintf("%s %v", errorMsg, err)
 		} else {
-			logf.Log.Info("Listing MSVs returned nil array")
+			if msvs != nil {
+				if len(msvs) != 0 {
+					errorMsg += " found MayastorVolumes"
+				}
+			} else {
+				logf.Log.Info("Listing MSVs returned nil array")
+			}
 		}
 	}
 
@@ -241,22 +267,18 @@ func ResourceCheck() error {
 		logf.Log.Info("ResourceCheck: not all pools are online")
 	}
 
-	{
-		var mspUsage int64 = 1
+	mspUsage, err := getMspUsage()
+	if err != nil || mspUsage != 0 {
+		logf.Log.Info("Waiting for pool usage to be 0")
 		const sleepTime = 10
 		t0 := time.Now()
 		// Wait for pool usage reported by CRS to drop to 0
 		for ix := 0; ix < (60*sleepTime) && mspUsage != 0; ix += sleepTime {
 			time.Sleep(sleepTime * time.Second)
-			msPools, err := custom_resources.ListMsPools()
+			mspUsage, err = getMspUsage()
 			if err != nil {
 				errorMsg += fmt.Sprintf("%s %v", errorMsg, err)
 				logf.Log.Info("ResourceCheck: unable to list msps")
-			} else {
-				mspUsage = 0
-				for _, pool := range msPools {
-					mspUsage += pool.Status.Used
-				}
 			}
 		}
 		logf.Log.Info("ResourceCheck:", "mspool Usage", mspUsage, "waiting time", time.Since(t0))

@@ -1,0 +1,13 @@
+server:
+  AppVersion: 1.0.0
+  Mode: Development
+  DefaultTestPlan: ET-435
+
+logger:
+  ReportCaller: false
+  # text | json
+  Formatter: json
+  # debug | info | warn | error
+  Level: info
+  # file | stdout
+  Output: stdout
