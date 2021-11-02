@@ -6,13 +6,15 @@ import (
 	log "github.com/sirupsen/logrus"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"time"
 )
 
 const (
-	apiToken = "ZTJlK3Rlc3QtZGlyZWN0b3JAbWF5YWRhdGEuaW86RXRFS0UyQUZSU21DWXFwd0dkbUkzRkZG"
 	issueURL = "https://mayadata.atlassian.net/rest/api/3/issue/"
 )
+
+var apiToken = os.Getenv("JIRA_API_TOKEN")
 
 type JiraTask struct {
 	Key    string  `json:"key"`

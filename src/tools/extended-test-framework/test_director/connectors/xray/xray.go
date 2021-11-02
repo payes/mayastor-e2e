@@ -6,17 +6,17 @@ import (
 	log "github.com/sirupsen/logrus"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"time"
 )
 
 const (
-	clientId     = "2471F500C6154736A3566E24F621A98E"
-	clientSecret = "adbb5a7fa5d2c6a47db1c283f6366480d1321fc1a64ac00d5c2add14e4728700"
-	authUrl      = "https://xray.cloud.xpand-it.com/api/v2/authenticate"
-	graphqlUrl   = "https://xray.cloud.xpand-it.com/api/v2/graphql"
+	authUrl    = "https://xray.cloud.xpand-it.com/api/v2/authenticate"
+	graphqlUrl = "https://xray.cloud.xpand-it.com/api/v2/graphql"
 )
 
-var token *string
+var clientId = os.Getenv("XRAY_CLIENT_ID")
+var clientSecret = os.Getenv("XRAY_CLIENT_SECRET")
 
 type Info struct {
 	Summary          string    `json:"summary,omitempty"`
