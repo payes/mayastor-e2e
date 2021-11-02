@@ -31,6 +31,26 @@ spec:
         valueFrom:
           fieldRef:
             fieldPath: status.podIP
+      - name: XRAY_CLIENT_ID
+        valueFrom:
+          secretKeyRef:
+            name: test-director-secret
+            key: xray_client_id
+      - name: XRAY_CLIENT_SECRET
+        valueFrom:
+          secretKeyRef:
+            name: test-director-secret
+            key: xray_client_secret
+      - name: JIRA_API_TOKEN
+        valueFrom:
+          secretKeyRef:
+            name: test-director-secret
+            key: jira_api_token
+      - name: SLACK_WEB_HOOK
+        valueFrom:
+          secretKeyRef:
+            name: test-director-secret
+            key: slack_web_hook
       ports:
       - containerPort: 8080
         protocol: "TCP"
