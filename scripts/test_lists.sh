@@ -64,11 +64,10 @@ resource_check
 "
 
 # removed synchronous_replication, pvc_delete, maximum_vols_io, multiple_vols_pod_io, nexus_location, mayastorpool_schema
-# control_plane_rescheduling, pvc_stress_fio tests becuase tests are not stable in restul control plane
+# control_plane_rescheduling, pvc_stress_fio, io_soak tests becuase tests are not stable in restul control plane
 # removed check_mayastornode test as it's no longer valid in restful control plane
 profiles[self_ci]="
 basic_volume_io
-io_soak
 csi
 resource_check
 ms_pod_restart
