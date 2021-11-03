@@ -88,14 +88,6 @@ pipeline {
         }
       }
     }//stage build docker images
-    stage('archive binaries') {
-        agent { label 'nixos' }
-        steps {
-            script{
-                Common().StashMayastorBinaries(e2e_params)
-            }
-        }
-    } // archive binaries
     stage('build tests queue')  {
         agent { label 'nixos' }
         steps {
@@ -222,7 +214,15 @@ pipeline {
             }//stage 'run e2e part6'
         }//parallel
     }//stage 'test'
-    stage('archive artifacts'){
+    stage('coverage report') {
+        agent { label 'nixos' }
+        steps {
+            script{
+                Common().CoverageReport(e2e_params)
+            }
+        }
+    }//coverage report
+    stage('archive artifacts') {
         agent { label 'nixos' }
         steps {
             script{

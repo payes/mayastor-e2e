@@ -592,4 +592,34 @@ def StashMayastorBinaries(Map params) {
     artefacts_stash_queue.add(stash_name)
 }
 
+def CoverageReport(Map params) {
+    def artefacts_stash_queue = params['artefacts_stash_queue']
+    def test_tag = params['e2e_image_tag']
+    def mayastorBranch = params['mayastorBranch']
+    def mcpBranch = params['mcpBranch']
+
+    GetMayastor(mayastorBranch)
+    GetMCP(mcpBranch)
+
+    while (artefacts_stash_queue.size() > 0) {
+        def stash_name = artefacts_stash_queue.poll()
+        unstash name: stash_name
+    }
+
+    def mayastor_dir = "${env.WORKSPACE}/Mayastor"
+    def mcp_dir = "${env.WORKSPACE}/mayastor-control-plane"
+    def data_dir = "${env.WORKSPACE}/artifacts/coverage/data"
+    def bin_dir = "${env.WORKSPACE}/artifacts/binaries/${test_tag}"
+    def report_dir = "${env.WORKSPACE}/artifacts/coverage/report"
+
+    sh "./scripts/getMayastorBinaries.py --tag ${test_tag} --registry ${env.REGISTRY} --outputdir ${bin_dir}"
+
+    sh "./scripts/coverage-report.sh -d ${data_dir} -b ${bin_dir} -M ${mayastor_dir} -C ${mcp_dir} -r ${report_dir}"
+
+    stash_name = 'artefcats-with-coverage-report'
+    stash includes: 'artifacts/**/**', name: stash_name
+    artefacts_stash_queue.add(stash_name)
+}
+
+
 return this
