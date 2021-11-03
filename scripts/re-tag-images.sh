@@ -2,7 +2,9 @@
 
 set -euo pipefail
 
-IMAGES="mayastor mayastor-csi mayastor-client moac install-images"
+RESTFUL_IMAGES="mayastor mayastor-csi mayastor-client install-images mcp-core mcp-rest mcp-csi-controller mcp-msp-operator mcp-jsonrpc"
+MOAC_IMAGES="mayastor mayastor-csi mayastor-client moac install-images"
+USE_MOAC="false"
 
 REGISTRY="ci-registry.mayastor-ci.mayadata.io"
 DESTINATION_REGISTRY="$REGISTRY"
@@ -19,6 +21,7 @@ Options:
                              default is ${REGISTRY}
   --src-tag                  Tag to retag
   --alias-tag                Tag to give CI image
+  --moac-control-plane       Process moac control plane images (default is RESTful control plane)
 
 Examples:
   $(basename $0) --registry 127.0.0.1:5000 --src-tag 755c435fdb0a --alias-tag customized-tag
@@ -48,6 +51,10 @@ while [ "$#" -gt 0 ]; do
       ALIAS_TAG=$1
       shift
       ;;
+    --moac-control-plane)
+      shift
+      USE_MOAC="true"
+      ;;
     *)
       echo "Unknown option: $1"
       exit 1
@@ -65,6 +72,12 @@ if [ -z "$ALIAS_TAG" ] ; then
     echo "alias tag not specified"
     help
     exit 1
+fi
+
+if [[ "$USE_MOAC" == "true"]] ; then
+    IMAGES = $MOAC_IMAGES
+else
+    IMAGES = $RESTFUL_IMAGES
 fi
 
 for name in $IMAGES; do
