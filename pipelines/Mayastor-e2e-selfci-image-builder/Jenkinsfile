@@ -35,7 +35,12 @@ pipeline {
             script {
               common = load "./pipelines/common/common.groovy"
               test_tag = common.GetTestTag()
-              common.BuildImages('develop', 'develop', test_tag)
+              parms = [
+                  mayastorBranch : 'release/1.0',
+                  mcpBranch : 'release/1.0',
+                  test_tag : test_tag
+                ]
+              common.BuildMCPImages(parms)
             }
           }
           post {

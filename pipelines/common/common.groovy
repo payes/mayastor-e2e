@@ -107,7 +107,6 @@ def BuildMCPImages(Map parms) {
 
   def mayastorBranch = parms['mayastorBranch']
   def mcpBranch = parms['mcpBranch']
-  def moacBranch = parms['moacBranch']
   def test_tag = parms['test_tag']
 
   GetMayastor(mayastorBranch)
