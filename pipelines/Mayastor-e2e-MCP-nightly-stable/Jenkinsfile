@@ -36,7 +36,7 @@ def e2e_params = [
     // Xray: test plan
     xray_test_plan : 'MQ-2184',
 
-    publish_tag: 'hc1-nightly',
+    publish_tag: 'e2e-nightly',
 ]
 
 // Environment to run e2e test in (job param of $e2e_build_cluster_job)
@@ -85,6 +85,25 @@ pipeline {
         }
       }
     }//stage build docker images
+    stage('push images to Docker Hub') {
+      agent { label 'nixos-mayastor' }
+      steps {
+        script{
+            def test_tag = e2e_params['e2e_image_tag']
+            def publish_tag = e2e_params['publish_tag']
+            withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
+                sh 'echo $PASSWORD | docker login -u $USERNAME --password-stdin'
+            }
+            sh "./scripts/re-tag-images.sh --src-tag ${test_tag} --alias-tag ${publish_tag} --registry dockerhub"
+        }
+      }
+      post {
+          always {
+              sh 'docker logout'
+              sh 'docker image prune -all --force'
+          }
+      }
+    }//stage 'push images'
     stage('build tests queue')  {
         agent { label 'nixos' }
         steps {
@@ -237,17 +256,5 @@ pipeline {
             }
         }
     }
-    stage('push images') {
-      agent { label 'nixos-mayastor' }
-      steps {
-        script{
-            def test_tag = e2e_params['e2e_image_tag']
-            def publish_tag = e2e_params['publish_tag']
-            // on success re-tag images and push to CI registry and DockerHub
-            sh "./scripts/re-tag-images.sh --src-tag ${test_tag} --alias-tag ${publish_tag}"
-        }
-// For now do not push images to dockerhub
-      }
-    }//stage push images
   }//stages
-}
+}//pipeline

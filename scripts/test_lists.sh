@@ -63,29 +63,22 @@ csi
 resource_check
 "
 
-# removed synchronous_replication doesn't  with mayastor build 755c435fdb0a.
-# add pvc_delete and control_plane_rescheduling passes with mayastor build 755c435fdb0a
-# remove pvc_delete, fails because MOAC does not remove finalizer
+# removed synchronous_replication, pvc_delete, maximum_vols_io, multiple_vols_pod_io, nexus_location, mayastorpool_schema
+# control_plane_rescheduling, pvc_stress_fio, io_soak tests becuase tests are not stable in restul control plane
+# removed check_mayastornode test as it's no longer valid in restful control plane
 profiles[self_ci]="
 basic_volume_io
-io_soak
-maximum_vols_io
-multiple_vols_pod_io
 csi
 resource_check
-pvc_stress_fio
 ms_pod_restart
-check_mayastornode
 ms_pool_delete
 volume_filesystem
 dynamic_provisioning
-mayastorpool_schema
 expand_msp_disk
 pvc_waitforfirstconsumer
-nexus_location
 pvc_readwriteonce
-control_plane_rescheduling
 "
+
 
 profiles[validation]="
 validate_integrity_test
