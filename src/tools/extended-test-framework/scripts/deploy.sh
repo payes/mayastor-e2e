@@ -96,7 +96,6 @@ if [ "${OPERATION}" == "delete" ]; then
   kubectl delete configmap tc-config -n mayastor-e2e
   kubectl delete -f ${DEPLOYDIR}/workload_monitor/workload_monitor.yaml
   kubectl delete configmap td-config -n mayastor-e2e
-  kubectl delete -f ${DEPLOYDIR}/test_director/test_director_secret.yaml
   kubectl delete -f ${DEPLOYDIR}/test_director/test_director.yaml
   kubectl delete pod -n mayastor-e2e test-conductor
   kubectl delete -f ${DEPLOYDIR}/test_conductor/test_conductor.yaml
@@ -108,7 +107,7 @@ else
   PLAN=${PLANARG} envsubst < ${DEPLOYDIR}/test_director/config.yaml.template > $tmpfile
   kubectl create configmap td-config -n mayastor-e2e --from-file=config-local.yaml=${tmpfile}
   rm ${tmpfile}
-  kubectl create -f ${DEPLOYDIR}/test_director/test_director_secret.yaml
+
   kubectl create -f ${DEPLOYDIR}/test_director/test_director.yaml
 
   kubectl create configmap tc-config -n mayastor-e2e --from-file=${DEPLOYDIR}/test_conductor/${TESTARG}/config.yaml
