@@ -88,19 +88,23 @@ pipeline {
     stage('push images to Docker Hub') {
       agent { label 'nixos-mayastor' }
       steps {
-        script{
-            def test_tag = e2e_params['e2e_image_tag']
-            def publish_tag = e2e_params['publish_tag']
-            withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
-                sh 'echo $PASSWORD | docker login -u $USERNAME --password-stdin'
+        catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+            script{
+                def test_tag = e2e_params['e2e_image_tag']
+                def publish_tag = e2e_params['publish_tag']
+                withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
+                    sh 'echo $PASSWORD | docker login -u $USERNAME --password-stdin'
+                }
+                sh "./scripts/re-tag-images.sh --src-tag ${test_tag} --alias-tag ${publish_tag} --registry dockerhub"
             }
-            sh "./scripts/re-tag-images.sh --src-tag ${test_tag} --alias-tag ${publish_tag} --registry dockerhub"
         }
       }
       post {
           always {
-              sh 'docker logout'
-              sh 'docker image prune --all --force'
+              catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                sh 'docker logout'
+                sh 'docker image prune --all --force'
+              }
           }
       }
     }//stage 'push images'

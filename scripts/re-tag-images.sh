@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-RESTFUL_IMAGES="mayastor mayastor-csi mayastor-client install-images mcp-core mcp-rest mcp-csi-controller mcp-msp-operator mcp-jsonrpc"
+RESTFUL_IMAGES="mayastor mayastor-csi mayastor-client install-images mcp-core mcp-rest mcp-csi-controller mcp-msp-operator"
 MOAC_IMAGES="mayastor mayastor-csi mayastor-client moac install-images"
 USE_MOAC="false"
 
@@ -74,13 +74,13 @@ if [ -z "$ALIAS_TAG" ] ; then
     exit 1
 fi
 
-if [[ "$USE_MOAC" == "true"]] ; then
-    IMAGES = $MOAC_IMAGES
+if [ "$USE_MOAC" == "true" ]; then
+    images=$MOAC_IMAGES
 else
-    IMAGES = $RESTFUL_IMAGES
+    images=$RESTFUL_IMAGES
 fi
 
-for name in $IMAGES; do
+for name in $images; do
   input_image="${REGISTRY}/mayadata/${name}:${SRC_TAG}"
 
   docker pull "${input_image}"
