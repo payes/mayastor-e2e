@@ -100,7 +100,7 @@ pipeline {
       post {
           always {
               sh 'docker logout'
-              sh 'docker image prune -all --force'
+              sh 'docker image prune --all --force'
           }
       }
     }//stage 'push images'
