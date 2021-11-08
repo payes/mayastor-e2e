@@ -79,7 +79,7 @@ if __name__ == '__main__':
                         help='location to copy binaries'
                         )
     parser.add_argument('--registry', dest='registry',
-                        default="",
+                        default="ci-registry.mayastor-ci.mayadata.io",
                         help='registry'
                         )
     parser.add_argument('images', nargs='*')

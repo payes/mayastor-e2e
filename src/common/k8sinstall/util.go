@@ -24,6 +24,35 @@ const InstallSuiteNameV1 = "Basic Install Suite (mayastor control plane)"
 const UninstallSuiteName = "Basic Teardown Suite"
 const UninstallSuiteNameV1 = "Basic Teardown Suite (mayastor control plane)"
 
+// postFixInstallation post fix installation yaml files for coverage and debug if required
+func postFixInstallation(yamlsDir string) error {
+
+	buildInfoFile, err := locations.GetBuildInfoFile()
+	if err != nil {
+		logf.Log.Info("no postfix: failed to find build information")
+		// didn't find the build flags files then there is nothing to do
+		return nil
+	}
+
+	// Post process installation yaml files for coverage and debug builds.
+	bashCmd := fmt.Sprintf("%s/postfix-install.py %s -b %s",
+		locations.GetE2EScriptsPath(),
+		yamlsDir,
+		buildInfoFile,
+	)
+
+	logf.Log.Info("About to execute", "command", bashCmd)
+	cmd := exec.Command("bash", "-c", bashCmd)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		logf.Log.Info("Error", "output", string(out))
+		return err
+	} else {
+		logf.Log.Info(string(out))
+	}
+	return nil
+}
+
 func GenerateMayastorYamlFiles() error {
 	e2eCfg := e2e_config.GetConfig()
 
@@ -73,8 +102,11 @@ func GenerateMayastorYamlFiles() error {
 	cmd := exec.Command("bash", "-c", bashCmd)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		logf.Log.Info("Error", "output", out)
+		logf.Log.Info("Error", "output", string(out))
+		return err
 	}
+
+	err = postFixInstallation(locations.GetGeneratedYamlsDir())
 	return err
 }
 
@@ -103,6 +135,10 @@ func WaitForPoolCrd() bool {
 func GenerateControlPlaneYamlFiles() error {
 	e2eCfg := e2e_config.GetConfig()
 
+	if controlplane.MajorVersion() == 0 {
+		return nil
+	}
+
 	if controlplane.MajorVersion() == 1 {
 		registryDirective := ""
 		if len(e2eCfg.Registry) != 0 {
@@ -121,12 +157,15 @@ func GenerateControlPlaneYamlFiles() error {
 		cmd := exec.Command("bash", "-c", bashCmd)
 		out, err := cmd.CombinedOutput()
 		if err != nil {
-			logf.Log.Info("Error", "output", out)
+			logf.Log.Info("Error", "output", string(out))
 			return err
 		}
+
+		err = postFixInstallation(locations.GetControlPlaneGeneratedYamlsDir())
+		return err
 	}
-	// nothing to do for MOAC
-	return nil
+
+	return fmt.Errorf("unsupported control plane version %d\n", controlplane.MajorVersion())
 }
 
 type cpYamlFiles []string

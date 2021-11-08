@@ -586,8 +586,8 @@ def StashMayastorBinaries(Map params) {
     def test_tag = params['e2e_image_tag']
     def bin_dir = "./artifacts/binaries/${test_tag}"
 
-    sh "./scripts/getMayastorBinaries.py --tag ${test_tag} --registry ${env.REGISTRY} --outputdir ${bin_dir}"
-    stash_name = 'arts-bin'
+    sh "./scripts/get-mayastor-binaries.py --tag ${test_tag} --registry ${env.REGISTRY} --outputdir ${bin_dir}"
+    def stash_name = 'arts-bin'
     stash includes: 'artifacts/**/**', name: stash_name
     artefacts_stash_queue.add(stash_name)
 }
@@ -612,7 +612,7 @@ def CoverageReport(Map params) {
     def bin_dir = "${env.WORKSPACE}/artifacts/binaries/${test_tag}"
     def report_dir = "${env.WORKSPACE}/artifacts/coverage/report"
 
-    sh "./scripts/getMayastorBinaries.py --tag ${test_tag} --registry ${env.REGISTRY} --outputdir ${bin_dir}"
+    sh "./scripts/get-mayastor-binaries.py --tag ${test_tag} --registry ${env.REGISTRY} --outputdir ${bin_dir}"
 
     sh "./scripts/coverage-report.sh -d ${data_dir} -b ${bin_dir} -M ${mayastor_dir} -C ${mcp_dir} -r ${report_dir}"
 

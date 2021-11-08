@@ -481,7 +481,7 @@ echo ""
 echo "list of tests: $tests"
 
 if contains "$tests" "install" ; then
-    if ! "$SCRIPTDIR/remoteCoverageFiles.py" --clear --identity_file "$ssh_identity" ; then
+    if ! "$SCRIPTDIR/remote-coverage-files.py" --clear --identity_file "$ssh_identity" ; then
         echo "***************************** failed to clear coverage files"
     fi
 fi
@@ -535,7 +535,7 @@ if contains "$tests" "uninstall" ; then
         test_failed=1
         emitLogs "uninstall"
     else
-        if ! "$SCRIPTDIR/remoteCoverageFiles.py" --get --path "$coveragedir" --identity_file "$ssh_identity" ; then
+        if ! "$SCRIPTDIR/remote-coverage-files.py" --get --path "$coveragedir" --identity_file "$ssh_identity" ; then
             echo "Failed to retrieve coverage files"
         fi
         if  [ "$test_failed" -ne 0 ] ; then
