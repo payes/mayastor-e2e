@@ -131,6 +131,23 @@ func RemoveAllNodeSelectorsFromDeployment(deploymentName string, namespace strin
 	Expect(err).ToNot(HaveOccurred())
 }
 
+func SetReplication(appName string, namespace string, replicas *int32) {
+	depAPI := gTestEnv.KubeInt.AppsV1().Deployments
+	stsAPI := gTestEnv.KubeInt.AppsV1().StatefulSets
+	labels := "app=" + appName
+	deployments, err := depAPI(namespace).List(context.TODO(), metaV1.ListOptions{LabelSelector: labels})
+	Expect(err).ToNot(HaveOccurred())
+	sts, err := stsAPI(namespace).List(context.TODO(), metaV1.ListOptions{LabelSelector: labels})
+	Expect(err).ToNot(HaveOccurred())
+	if len(deployments.Items) == 1 {
+		SetDeploymentReplication(deployments.Items[0].Name, namespace, replicas)
+	} else if len(sts.Items) == 1 {
+		SetStatefulsetReplication(sts.Items[0].Name, namespace, replicas)
+	} else {
+		Expect(false).To(BeTrue(), "app %s is not deployed as a deployment or sts", appName)
+	}
+}
+
 // Adjust the number of replicas in the deployment
 func SetDeploymentReplication(deploymentName string, namespace string, replicas *int32) {
 	depAPI := gTestEnv.KubeInt.AppsV1().Deployments

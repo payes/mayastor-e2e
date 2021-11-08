@@ -32,8 +32,7 @@ func controlPlaneReschedulingTest(protocol common.ShareProto, volumeType common.
 	scName := fmt.Sprintf("reshedule-sc-%s", protocol)
 	var volNames []string
 	var fioPodNames []string
-	var deploymentNameList = []string{"csi-controller", "msp-operator", "rest"}
-	var statefulsetNameList = []string{"core-agents"}
+	var appNameList = []string{"csi-controller", "msp-operator", "rest", "core-agents"}
 	moacDeploymentName := "moac"
 	var replicas int32
 
@@ -78,12 +77,8 @@ func controlPlaneReschedulingTest(protocol common.ShareProto, volumeType common.
 	if controlplane.MajorVersion() == 1 {
 		replicas = 0
 		// Scale down control plane components to 0 replica
-		for _, deploymentName := range deploymentNameList {
-			k8stest.SetDeploymentReplication(deploymentName, e2e_config.GetConfig().Platform.MayastorNamespace, &replicas)
-		}
-
-		for _, statefulsetName := range statefulsetNameList {
-			k8stest.SetStatefulsetReplication(statefulsetName, e2e_config.GetConfig().Platform.MayastorNamespace, &replicas)
+		for _, appName := range appNameList {
+			k8stest.SetReplication(appName, e2e_config.GetConfig().Platform.MayastorNamespace, &replicas)
 		}
 
 		// After scaling down control plane components wait for 10 Sec.
@@ -126,12 +121,8 @@ func controlPlaneReschedulingTest(protocol common.ShareProto, volumeType common.
 	if controlplane.MajorVersion() == 1 {
 		replicas = 1
 		// Scale up control plane components to 1 replica
-		for _, deploymentName := range deploymentNameList {
-			k8stest.SetDeploymentReplication(deploymentName, e2e_config.GetConfig().Platform.MayastorNamespace, &replicas)
-		}
-
-		for _, statefulsetName := range statefulsetNameList {
-			k8stest.SetStatefulsetReplication(statefulsetName, e2e_config.GetConfig().Platform.MayastorNamespace, &replicas)
+		for _, appName := range appNameList {
+			k8stest.SetReplication(appName, e2e_config.GetConfig().Platform.MayastorNamespace, &replicas)
 		}
 	}
 
