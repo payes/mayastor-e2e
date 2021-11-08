@@ -7,6 +7,7 @@ import (
 	"mayastor-e2e/common"
 	"mayastor-e2e/common/e2e_config"
 	"os/exec"
+	"strings"
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -41,6 +42,9 @@ func GetMayastorCpNode(nodeName string, address []string) (*MayastorCpNode, erro
 		url := fmt.Sprintf("http://%s:%s", addr, common.PluginPort)
 		cmd := exec.Command(pluginpath, "-r", url, "-ojson", "get", "node", nodeName)
 		jsonInput, err = cmd.CombinedOutput()
+		if strings.Contains(string(jsonInput), RestReqTimeoutErr) && err == nil {
+			err = fmt.Errorf("%s", string(jsonInput))
+		}
 		if err == nil {
 			break
 		} else {
@@ -76,6 +80,9 @@ func ListMayastorCpNodes(address []string) ([]MayastorCpNode, error) {
 		url := fmt.Sprintf("http://%s:%s", addr, common.PluginPort)
 		cmd := exec.Command(pluginpath, "-r", url, "-ojson", "get", "nodes")
 		jsonInput, err = cmd.CombinedOutput()
+		if strings.Contains(string(jsonInput), RestReqTimeoutErr) && err == nil {
+			err = fmt.Errorf("%s", string(jsonInput))
+		}
 		if err == nil {
 			break
 		} else {
