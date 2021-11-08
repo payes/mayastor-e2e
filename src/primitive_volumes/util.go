@@ -3,7 +3,6 @@ package primitive_volumes
 import (
 	"fmt"
 	"mayastor-e2e/common"
-	"mayastor-e2e/common/custom_resources"
 	"mayastor-e2e/common/k8stest"
 	"sync"
 	"time"
@@ -189,7 +188,7 @@ func msnList() int {
 // verify msp used size
 func (c *pvcConcurrentConfig) waitForMspUsedSize(size int64) {
 	// List Pools by CRDs
-	crdPools, err := custom_resources.ListMsPools()
+	crdPools, err := k8stest.ListMsPools()
 	Expect(err).ToNot(HaveOccurred(), "List pools via CRD failed")
 	for _, crdPool := range crdPools {
 		err := checkPoolUsedSize(crdPool.Name, size)
@@ -202,7 +201,7 @@ func checkPoolUsedSize(poolName string, usedSize int64) error {
 	logf.Log.Info("Waiting for pool used size", "name", poolName)
 	for ix := 0; ix < (timeoutSec+sleepTimeSec-1)/sleepTimeSec; ix++ {
 		time.Sleep(time.Duration(sleepTimeSec) * time.Second)
-		pool, err := custom_resources.GetMsPool(poolName)
+		pool, err := k8stest.GetMsPool(poolName)
 		Expect(err).ToNot(HaveOccurred(), fmt.Sprintf("failed to get mayastor pool %s %v", poolName, err))
 		if pool.Status.Used == usedSize {
 			return nil

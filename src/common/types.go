@@ -111,3 +111,29 @@ type MayastorNodeState struct {
 	ID           string `json:"id"`
 	Status       string `json:"status"`
 }
+
+type MayastorPool struct {
+	Name   string             `json:"name"`
+	Spec   MayastorPoolSpec   `json:"spec"`
+	Status MayastorPoolStatus `json:"status"`
+}
+
+type MayastorPoolSpec struct {
+	Disks []string `json:"disks"`
+	Node  string   `json:"node"`
+}
+
+type MayastorPoolStatus struct {
+	Avail    int64            `json:"avail"`
+	Capacity int64            `json:"capacity"`
+	Disks    []string         `json:"disks"`
+	Reason   string           `json:"reason"`
+	Spec     MayastorPoolSpec `json:"spec"`
+	State    string           `json:"state"`
+	Used     int64            `json:"used"`
+}
+
+type MayastorPoolInterface interface {
+	GetMsPool(poolName string) (*MayastorPool, error)
+	ListMsPools() ([]MayastorPool, error)
+}

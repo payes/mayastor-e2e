@@ -176,7 +176,7 @@ func CheckMsPoolFinalizers() error {
 
 func getMspUsage() (int64, error) {
 	var mspUsage int64
-	msPools, err := custom_resources.ListMsPools()
+	msPools, err := ListMsPools()
 	if err != nil {
 		logf.Log.Info("unable to list mayastor pools")
 	} else {

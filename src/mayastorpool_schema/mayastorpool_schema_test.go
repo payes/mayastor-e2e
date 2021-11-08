@@ -22,10 +22,11 @@ func TestMayastorPoolSchema(t *testing.T) {
 func mayastorPoolSchemaTest(schema string) {
 	const timoSecs = 60
 	const timoSleepSecs = 5
-	pools, err := custom_resources.ListMsPools()
+	pools, err := k8stest.ListMsPools()
 	Expect(err).ToNot(HaveOccurred())
 	logf.Log.Info("Creating Mayastor Pool")
 	for _, pool := range pools {
+		logf.Log.Info("cp", "pool", pool)
 		err := custom_resources.DeleteMsPool(pool.Name)
 		Expect(err).ToNot(HaveOccurred())
 	}
@@ -50,7 +51,7 @@ func mayastorPoolSchemaTest(schema string) {
 	}
 	Expect(err).To(BeNil(), "One or more pools are offline")
 	logf.Log.Info("Verifying Mayastor Pool device schema")
-	pools, err = custom_resources.ListMsPools()
+	pools, err = k8stest.ListMsPools()
 	Expect(err).ToNot(HaveOccurred())
 
 	for _, pool := range pools {

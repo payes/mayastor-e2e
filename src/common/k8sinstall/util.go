@@ -83,7 +83,7 @@ func WaitForPoolCrd() bool {
 	const timoSecs = 60
 	for ix := 0; ix < timoSecs; ix += timoSleepSecs {
 		time.Sleep(time.Second * timoSleepSecs)
-		_, err := custom_resources.ListMsPools()
+		_, err := k8stest.ListMsPools()
 		if err != nil {
 			logf.Log.Info("WaitForPoolCrd", "error", err)
 			if k8serrors.IsNotFound(err) {

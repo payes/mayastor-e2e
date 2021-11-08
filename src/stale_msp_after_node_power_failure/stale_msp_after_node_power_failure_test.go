@@ -77,7 +77,7 @@ var _ = Describe("Stale MSP after node power failure test", func() {
 func (c *nodepowerfailureConfig) staleMspAfterNodePowerFailureTest() {
 
 	//List mayastor pools in the cluster
-	pools, err := custom_resources.ListMsPools()
+	pools, err := k8stest.ListMsPools()
 	Expect(err).ToNot(HaveOccurred(), fmt.Sprintf("failed to list msp's in cluster, %v", err))
 
 	var poolName, nodeName string
@@ -94,7 +94,7 @@ func (c *nodepowerfailureConfig) staleMspAfterNodePowerFailureTest() {
 		//same node on which moac pod is scheduled
 		for _, pool := range pools {
 			if pool.Spec.Node != moacNodeName {
-				poolName = pool.GetName()
+				poolName = pool.Name
 				nodeName = pool.Spec.Node
 				diskName = pool.Spec.Disks
 				break
@@ -112,7 +112,7 @@ func (c *nodepowerfailureConfig) staleMspAfterNodePowerFailureTest() {
 		//Select a test MSP from the cluster
 		for _, pool := range pools {
 			if pool.Spec.Node != coreAgentNodeName {
-				poolName = pool.GetName()
+				poolName = pool.Name
 				nodeName = pool.Spec.Node
 				diskName = pool.Spec.Disks
 				break
@@ -163,7 +163,7 @@ func (c *nodepowerfailureConfig) staleMspAfterNodePowerFailureTest() {
 // Check if a MSP is in online state
 func IsMsPoolOnline(poolName string) error {
 	poolHealthy := true
-	pool, err := custom_resources.GetMsPool(poolName)
+	pool, err := k8stest.GetMsPool(poolName)
 	Expect(err).ToNot(HaveOccurred(), fmt.Sprintf("failed to get mayastor pool %s %v", poolName, err))
 
 	if strings.ToLower(pool.Status.State) != "online" {

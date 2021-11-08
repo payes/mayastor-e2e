@@ -71,6 +71,11 @@ type ControlPlaneInterface interface {
 
 	NodeStateOffline() string
 	NodeStateOnline() string
+
+	// Mayastor Pool abstraction
+
+	GetMsPool(poolName string) (*common.MayastorPool, error)
+	ListMsPools() ([]common.MayastorPool, error)
 }
 
 var ifc ControlPlaneInterface
@@ -250,4 +255,12 @@ func MajorVersion() int {
 
 func IsTimeoutError(err error) bool {
 	return getControlPlane().IsTimeoutError(err)
+}
+
+func GetMsPool(poolName string) (*common.MayastorPool, error) {
+	return getControlPlane().GetMsPool(poolName)
+}
+
+func ListMsPools() ([]common.MayastorPool, error) {
+	return getControlPlane().ListMsPools()
 }

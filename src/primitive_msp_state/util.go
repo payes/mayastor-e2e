@@ -18,7 +18,7 @@ import (
 // verifyMspUsedSize will verify msp used size
 func (c *mspStateConfig) verifyMspUsedSize(size int64) {
 	// List Pools by CRDs
-	crdPools, err := custom_resources.ListMsPools()
+	crdPools, err := k8stest.ListMsPools()
 	Expect(err).ToNot(HaveOccurred(), "List pools via CRD failed")
 	for _, crdPool := range crdPools {
 		err := c.checkPoolUsedSize(crdPool.Name, size)
@@ -138,7 +138,7 @@ func (c *mspStateConfig) checkPoolUsedSize(poolName string, replicaSize int64) e
 	logf.Log.Info("Waiting for pool used size", "name", poolName, "Expected Used size", replicaSize)
 	for ix := 0; ix < (timeoutSecs+sleepTimeSecs-1)/sleepTimeSecs; ix++ {
 		time.Sleep(time.Duration(sleepTimeSecs) * time.Second)
-		pool, err := custom_resources.GetMsPool(poolName)
+		pool, err := k8stest.GetMsPool(poolName)
 		Expect(err).ToNot(HaveOccurred(), fmt.Sprintf("failed to get mayastor pool %s %v", poolName, err))
 		if pool.Status.Used == replicaSize {
 			return nil

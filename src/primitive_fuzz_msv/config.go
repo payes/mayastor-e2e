@@ -3,8 +3,8 @@ package primitive_fuzz_msv
 import (
 	"fmt"
 	"mayastor-e2e/common"
-	"mayastor-e2e/common/custom_resources"
 	"mayastor-e2e/common/e2e_config"
+	"mayastor-e2e/common/k8stest"
 
 	. "github.com/onsi/gomega"
 	coreV1 "k8s.io/api/core/v1"
@@ -54,7 +54,7 @@ func GeneratePrimitiveMsvFuzzConfig(testName string) *PrimitiveMsvFuzzConfig {
 }
 func (c *PrimitiveMsvFuzzConfig) GeneratePVCSpec() *PrimitiveMsvFuzzConfig {
 	// List Pools by CRDs
-	pools, err := custom_resources.ListMsPools()
+	pools, err := k8stest.ListMsPools()
 	Expect(err).ToNot(HaveOccurred(), "List pools via CRD failed")
 	for _, pool := range pools {
 		nodeName := pool.Spec.Node

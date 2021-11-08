@@ -75,7 +75,7 @@ func pooldeletionTest(protocol common.ShareProto, volumeType common.VolumeType, 
 	Expect(err).ToNot(HaveOccurred())
 
 	// Get pool
-	pool, err := custom_resources.GetMsPool(poolName)
+	pool, err := k8stest.GetMsPool(poolName)
 	Expect(err).ToNot(HaveOccurred())
 	Expect(pool).ToNot(BeNil())
 

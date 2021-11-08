@@ -37,7 +37,7 @@ func diskPartitioningTest(protocol common.ShareProto, volumeType common.VolumeTy
 	scName := fmt.Sprintf("expand-msp-disk-sc-%d", replica)
 	volName := fmt.Sprintf("expand-msp-disk-vol-%d", replica)
 	// List Pools
-	pools, err := custom_resources.ListMsPools()
+	pools, err := k8stest.ListMsPools()
 	Expect(err).ToNot(HaveOccurred(), "List pools failed")
 
 	logf.Log.Info("Deleting Mayastor Pool")
@@ -79,7 +79,7 @@ func diskPartitioningTest(protocol common.ShareProto, volumeType common.VolumeTy
 	Expect(err).To(BeNil(), "One or more pools are offline")
 
 	// Storage capacity of pool before resizing the disk
-	pools, err = custom_resources.ListMsPools()
+	pools, err = k8stest.ListMsPools()
 	Expect(err).ToNot(HaveOccurred(), "List pools failed")
 	capacityBeforeDiskResize := map[string]int64{}
 	for _, pool := range pools {
@@ -126,7 +126,7 @@ func diskPartitioningTest(protocol common.ShareProto, volumeType common.VolumeTy
 
 	// Store capacity of pools after
 	// resizing the partitioned disk
-	pools, err = custom_resources.ListMsPools()
+	pools, err = k8stest.ListMsPools()
 	Expect(err).ToNot(HaveOccurred(), "List pools failed")
 	for _, pool := range pools {
 		capacityAfterDiskResize[pool.Name] = pool.Status.Capacity

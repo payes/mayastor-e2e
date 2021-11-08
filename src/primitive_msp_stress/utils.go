@@ -108,7 +108,7 @@ func verifyPoolCreated(nodeAddr, poolName string, capacity int64) bool {
 		return false
 	}
 
-	crdPool, err := custom_resources.GetMsPool(poolName)
+	crdPool, err := k8stest.GetMsPool(poolName)
 	if err != nil {
 		logf.Log.Info("failed to get pool via crd")
 		return false
@@ -141,7 +141,7 @@ func verifyPoolDeleted(nodeAddr, poolName string) bool {
 	if !k8serrors.IsNotFound(err) {
 		return false
 	}
-	_, err = custom_resources.GetMsPool(poolName)
+	_, err = k8stest.GetMsPool(poolName)
 	return k8serrors.IsNotFound(err)
 }
 

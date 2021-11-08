@@ -23,7 +23,7 @@ var _ = BeforeSuite(func(done Done) {
 	// List pools in the cluster
 	err := k8stest.RestoreConfiguredPools()
 	Expect(err).To(BeNil(), "Not all pools are online after restoration")
-	pools, err := custom_resources.ListMsPools()
+	pools, err := k8stest.ListMsPools()
 	Expect(err).To(BeNil(), "Failed to list pools")
 
 	// Delete mayastorpool
@@ -44,7 +44,7 @@ var _ = BeforeSuite(func(done Done) {
 		Expect(err).To(BeNil(), "Failed to delete pool")
 	}
 	Eventually(func() int {
-		pools, err := custom_resources.ListMsPools()
+		pools, err := k8stest.ListMsPools()
 		Expect(err).To(BeNil(), "Failed to list pools")
 		return len(pools)
 	},

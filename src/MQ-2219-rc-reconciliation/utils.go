@@ -124,7 +124,7 @@ func (c *Config) GetReplicaAddressesForNonNexusNodes(uuid, nexusNode string) []s
 }
 
 func (c *Config) DeletePoolOnNode(nodeName string) {
-	pools, err := custom_resources.ListMsPools()
+	pools, err := k8stest.ListMsPools()
 	if err != nil {
 		// This function may be called by AfterSuite by uninstall test so listing MSVs may fail correctly
 		logf.Log.Info("DeletePoolOnNode: list MSPs failed.", "Error", err)
@@ -134,10 +134,10 @@ func (c *Config) DeletePoolOnNode(nodeName string) {
 			if pool.Spec.Node != nodeName {
 				continue
 			}
-			logf.Log.Info("DeletePoolOnNode:", "pool", pool.GetName())
-			err = custom_resources.DeleteMsPool(pool.GetName())
+			logf.Log.Info("DeletePoolOnNode:", "pool", pool.Name)
+			err = custom_resources.DeleteMsPool(pool.Name)
 			if err != nil {
-				logf.Log.Info("DeletePoolOnNode: failed to delete pool", "pool", pool.GetName(), "error", err)
+				logf.Log.Info("DeletePoolOnNode: failed to delete pool", "pool", pool.Name, "error", err)
 			}
 			break
 		}

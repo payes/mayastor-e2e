@@ -9,7 +9,6 @@ import (
 	coreV1 "k8s.io/api/core/v1"
 
 	"mayastor-e2e/common"
-	"mayastor-e2e/common/custom_resources"
 	"mayastor-e2e/common/e2e_config"
 	"mayastor-e2e/common/k8stest"
 	"mayastor-e2e/common/mayastorclient"
@@ -270,7 +269,7 @@ func ReplicaLossVolumeDelete(pvcName string, storageClassName string, fioPodName
 
 	Eventually(func() bool {
 		// the nexus pool should be online, the others offline
-		msps, err := custom_resources.ListMsPools()
+		msps, err := k8stest.ListMsPools()
 		logf.Log.Info("pools", "count", len(msps))
 		Expect(err).ToNot(HaveOccurred(), "%v", err)
 		for _, msp := range msps {
