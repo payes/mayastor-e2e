@@ -39,9 +39,9 @@ To regenerate the swagger code, call the corresponding gen_*_code.sh script in t
 
 The cluster should have at least 4 worker nodes.
 
-One node should be reserved for the ETFW actors, by applying the node label:
+One node should be reserved for the ETFW actors, by applying the node taint:
 
-	openebs.io/role=mayastor-e2e
+	openebs.io/role=mayastor-e2e:NoExecute
 
 and by removing the label
 

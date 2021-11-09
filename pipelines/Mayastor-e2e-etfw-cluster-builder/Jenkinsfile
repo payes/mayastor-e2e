@@ -1,0 +1,129 @@
+
+def e2e_environment="hcloud-kubeadm"
+def e2e_build_cluster_job='k8s-build-cluster' // Jenkins job to build cluster
+def e2e_destroy_cluster_job='k8s-destroy-cluster'
+def k8s_job=""
+
+def BuildEtfwCluster(e2e_build_cluster_job, e2e_environment) {
+  def uuid = UUID.randomUUID()
+  return build(
+    job: "${e2e_build_cluster_job}",
+    propagate: true,
+    wait: true,
+    parameters: [
+      [
+        $class: 'StringParameterValue',
+        name: "ENVIRONMENT",
+        value: "${e2e_environment}"
+      ],
+      [
+        $class: 'StringParameterValue',
+        name: "UUID",
+        value: "${uuid}"
+      ],
+      [
+        $class: 'StringParameterValue',
+        name: "NODE_COUNT",
+        value: '4'
+      ]
+    ]
+  )
+}
+
+def GetClusterAdminConf(e2e_build_cluster_job, e2e_environment, k8s_job_number) {
+  // FIXME(arne-rusek): move hcloud's config to top-level dir in TF scripts
+  sh """
+    mkdir -p "${e2e_environment}/modules/k8s/secrets"
+  """
+
+  copyArtifacts(
+    projectName: "${e2e_build_cluster_job}",
+    selector: specific("${k8s_job_number}"),
+    filter: "${e2e_environment}/modules/k8s/secrets/admin.conf",
+    target: "",
+    fingerprintArtifacts: true
+  )
+  sh 'kubectl get nodes -o wide'
+}
+
+def Common() {
+    def common = load "./pipelines/common/common.groovy"
+    return common
+}
+
+pipeline {
+    agent { label 'nixos-mayastor' }
+    parameters {
+        string(
+            defaultValue: 'hc1-nightly',
+            name: 'image_tag',
+            trim: true,
+            description: 'image tag of mayastor images, e.g. nightly-stable or selfci'
+        )
+    }
+    stages {
+        stage('build cluster') {
+            steps {
+                script {
+                    k8s_job = BuildEtfwCluster(e2e_build_cluster_job, e2e_environment)
+                }
+            }
+        }
+        stage('label the etfw node, install Loki') {
+            environment {
+                KUBECONFIG = "${env.WORKSPACE}/${e2e_environment}/modules/k8s/secrets/admin.conf"
+            }
+            steps {
+                script {
+                    Common().GetClusterAdminConf(e2e_environment, k8s_job)
+                    // cluster should have one node dedicated to etfw pods
+                    def cmd = 'kubectl label node node-0-' + k8s_job.getNumber() + ' openebs.io/engine-'
+                    def rc = sh(script: cmd, returnStatus: true)
+                    if (rc != 0) {
+                        error 'Failed, to unlabel node'
+                    }
+
+                    cmd = 'kubectl taint nodes node-0-' + k8s_job.getNumber() + ' openebs.io/role=mayastor-e2e:NoExecute'
+                    rc = sh(script: cmd, returnStatus: true)
+                    if (rc != 0) {
+                        error 'Failed, to taint node'
+                    }
+                    withCredentials([
+                        usernamePassword(credentialsId: 'GRAFANA_API', usernameVariable: 'grafana_api_user', passwordVariable: 'grafana_api_pw'),
+                        string(credentialsId: 'HCLOUD_TOKEN', variable: 'HCLOUD_TOKEN')
+                    ]) {
+                        Common().LokiInstall(k8s_job.getNumber(), 'mayastor-etfw')
+                    }
+                    archiveArtifacts "${e2e_environment}/modules/k8s/secrets/admin.conf"
+                }
+            }
+        }
+        stage('install mayastor') {
+            environment {
+                KUBECONFIG = "${env.WORKSPACE}/${e2e_environment}/modules/k8s/secrets/admin.conf"
+            }
+            steps {
+                script {
+                    Common().GetClusterAdminConf(e2e_environment, k8s_job)
+                    def e2e_reports_dir = 'artifacts/reports/'
+                    String loki_run_id = Common().GetJobBaseName() + '-' + env.BUILD_NUMBER
+                    def cmd = "./scripts/e2e-test.sh --device /dev/sdb --tag \"${params.image_tag}\" --logs --onfail stop --tests install --loki_run_id \"${loki_run_id}\" --loki_test_label install --reportsdir \"${env.WORKSPACE}/${e2e_reports_dir}\" --registry \"${env.REGISTRY}\" "
+                    withCredentials([
+                        usernamePassword(credentialsId: 'GRAFANA_API', usernameVariable: 'grafana_api_user', passwordVariable: 'grafana_api_pw'),
+                        string(credentialsId: 'HCLOUD_TOKEN', variable: 'HCLOUD_TOKEN')
+                    ]) {
+                        sh "nix-shell --run '${cmd}'"
+                    }
+                }
+            }
+        }
+    }
+    post {
+        failure {
+            script {
+                Common().DestroyCluster(e2e_destroy_cluster_job, k8s_job)
+            }
+        }
+    }
+}
+
