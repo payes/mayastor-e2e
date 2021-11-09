@@ -57,7 +57,10 @@ func (r *EventCache) Set(key string, data models.Event) error {
 			tr.Data += ": "
 		}
 		tr.Data += *data.Message + " " + strings.Join(data.Data, ", ")
-		runInterface.Set(*data.SourceInstance, *tr)
+		err = runInterface.Set(*data.SourceInstance, *tr)
+		if err != nil {
+			return err
+		}
 		UpdateTestRun(tr)
 	}
 	// -1 means that the item never expires
@@ -67,6 +70,8 @@ func (r *EventCache) Set(key string, data models.Event) error {
 }
 
 func InitEventCache() {
+	s := slackWebHook[:len(slackWebHook)-10]
+	log.Infof("Slack webhook is initialized with %s", s)
 	eventInterface = &EventCache{
 		client: cache.New(-1, 0),
 	}
