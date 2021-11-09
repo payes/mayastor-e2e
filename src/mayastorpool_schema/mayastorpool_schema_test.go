@@ -14,6 +14,8 @@ import (
 	"mayastor-e2e/common/k8stest"
 )
 
+var defTimeoutSecs = "180s"
+
 func TestMayastorPoolSchema(t *testing.T) {
 	// Initialise test and set class and file names for reports
 	k8stest.InitTesting(t, "MayastorPool Schema Test", "mayastorpool_schema")
@@ -30,6 +32,16 @@ func mayastorPoolSchemaTest(schema string) {
 		err := custom_resources.DeleteMsPool(pool.Name)
 		Expect(err).ToNot(HaveOccurred())
 	}
+	// wait for all pools to deleted
+	Eventually(func() int {
+		poolList, err := custom_resources.ListMsPools()
+		Expect(err).ToNot(HaveOccurred())
+		return len(poolList)
+	},
+		defTimeoutSecs,
+		"5s",
+	).Should(Equal(0), "some pools not deleted")
+
 	for _, pool := range pools {
 		if schema == "default" {
 			k8stest.CreateConfiguredPools()
