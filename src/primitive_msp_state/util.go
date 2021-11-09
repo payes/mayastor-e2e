@@ -26,15 +26,7 @@ func (c *mspStateConfig) verifyMspUsedSize(size int64) {
 	}
 }
 
-// verifyMspCrdAndGrpcState verifies the msp details from grpc and crd
-func verifyMspCrdAndGrpcState() {
-
-	nodes, err := k8stest.GetNodeLocs()
-	if err != nil {
-		logf.Log.Info("list nodes failed", "error", err)
-		return
-	}
-
+func getPoolCrs() map[string]v1alpha1.MayastorPool {
 	// List Pools by CRDs
 	crdPools, err := custom_resources.ListMsPools()
 	Expect(err).ToNot(HaveOccurred(), "List pools via CRD failed")
@@ -42,56 +34,84 @@ func verifyMspCrdAndGrpcState() {
 	for _, crdPool := range crdPools {
 		crPools[crdPool.Name] = crdPool
 	}
+	return crPools
+}
 
-	for _, node := range nodes {
-		if !node.MayastorNode {
-			continue
-		}
-		addrs := []string{node.IPAddress}
-		grpcPools, err := mayastorclient.ListPools(addrs)
-		Expect(err).ToNot(HaveOccurred(), "failed to list pools via grpc")
+func getPoolsGrpc() []mayastorclient.MayastorPool {
+	addrs := k8stest.GetMayastorNodeIPAddresses()
+	pools, err := mayastorclient.ListPools(addrs)
+	Expect(err).ToNot(HaveOccurred(), "failed to list pools via grpc")
+	return pools
+}
 
-		if len(grpcPools) != 0 {
-			for _, gPool := range grpcPools {
-				Expect(verifyMspState(crPools[gPool.Name], gPool)).Should(Equal(true))
-				Expect(verifyMspCapacity(crPools[gPool.Name], gPool)).Should(Equal(true))
-				Expect(verifyMspUsedSpace(crPools[gPool.Name], gPool)).Should(Equal(true))
-			}
-		} else {
-			logf.Log.Info("pools", "count", len(grpcPools), "error", err)
+// verifyMspCrdAndGrpcState verifies the msp details from grpc and crd
+func verifyMspCrdAndGrpcState() {
+	grpcPools := getPoolsGrpc()
+	crPools := getPoolCrs()
+
+	Expect(len(grpcPools)).To(Equal(len(crPools)))
+	logf.Log.Info("verifyMspCrdAndGrpcState", "pool count", len(grpcPools))
+	Eventually(func() bool {
+		grpcPools = getPoolsGrpc()
+		crPools = getPoolCrs()
+
+		res := true
+		for _, gPool := range grpcPools {
+			res = res && verifyMspState(gPool.Name, crPools[gPool.Name], gPool)
+			res = res && verifyMspCapacity(gPool.Name, crPools[gPool.Name], gPool)
+			res = res && verifyMspUsedSpace(gPool.Name, crPools[gPool.Name], gPool)
 		}
-	}
+		return res
+	},
+		"180s", // timeout
+		"5s",   // polling interval
+	).Should(BeTrue())
 }
 
 // verifyMspState will verify msp state via crd  and grpc
 // gRPC report msp status as "POOL_UNKNOWN","POOL_ONLINE","POOL_DEGRADED","POOL_FAULTED"
 // CRD report msp status as "pending", "online", "degraded", "faulted" and "offline"
 //pool state can be offline in CRDs but there is no such state in gRPC
-func verifyMspState(crPool v1alpha1.MayastorPool,
+func verifyMspState(poolName string, crPool v1alpha1.MayastorPool,
 	grpcPool mayastorclient.MayastorPool) bool {
 	var status bool
 	if crPool.Status.State == controlplane.MspGrpcStateToCrdState(int(grpcPool.State)) {
 		status = true
+	} else {
+		logf.Log.Info("verifyMspState",
+			"pool", poolName,
+			"CR", crPool.Status.State,
+			"gRPC (int)", controlplane.MspGrpcStateToCrdState(int(grpcPool.State)),
+			"gRPC", grpcPool.State,
+		)
 	}
 	return status
 }
 
 // verifyMspCapacity will verify msp capacity via crd  and grpc
-func verifyMspCapacity(crPool v1alpha1.MayastorPool,
+func verifyMspCapacity(poolName string, crPool v1alpha1.MayastorPool,
 	grpcPool mayastorclient.MayastorPool) bool {
 	var status bool
 	if crPool.Status.Capacity == int64(grpcPool.Capacity) {
 		status = true
+	} else {
+		logf.Log.Info("verifyMspState",
+			"pool", poolName,
+			"CR", crPool.Status.Capacity,
+			"gRPC", grpcPool.Capacity,
+		)
 	}
 	return status
 }
 
 // verifyMspUsedSpace will verify msp used size via crd  and grpc
-func verifyMspUsedSpace(crPool v1alpha1.MayastorPool,
+func verifyMspUsedSpace(poolName string, crPool v1alpha1.MayastorPool,
 	grpcPool mayastorclient.MayastorPool) bool {
 	var status bool
 	if crPool.Status.Used == int64(grpcPool.Used) {
 		status = true
+	} else {
+		logf.Log.Info("verifyMspUsedSpace", "pool", poolName, "CR", crPool.Status.Used, "gRPC", grpcPool.Used)
 	}
 	return status
 }
