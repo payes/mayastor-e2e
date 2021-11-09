@@ -11,31 +11,3 @@ logger:
   Level: info
   # file | stdout
   Output: stdout
-
-xray:
-  ClientId: 2471F500C6154736A3566E24F621A98E
-  ClientSecret: adbb5a7fa5d2c6a47db1c283f6366480d1321fc1a64ac00d5c2add14e4728700
-
-redis:
-  RedisAddr: localhost:6379
-  RedisPassword:
-  RedisDb: 0
-  RedisDefaultdb: 0
-  MinIdleConns: 200
-  PoolSize: 12000
-  PoolTimeout: 240
-  Password: ""
-  DB: 0
-
-metrics:
-  Url: 0.0.0.0:7070
-  ServiceName: api
-
-
-mongodb:
-  MongoURI: uristring
-
-jaeger:
-  Host: localhost:6831
-  ServiceName: REST_API
-  LogSpans: false

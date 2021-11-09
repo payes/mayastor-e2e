@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"os"
 	"strings"
 	"test-director/connectors"
 	"test-director/models"
@@ -12,11 +13,9 @@ import (
 	"github.com/patrickmn/go-cache"
 )
 
-const (
-	SlackWebhookUrl = ""
-)
 const SlackChannel = "#test_director"
 
+var slackWebHook = os.Getenv("SLACK_WEB_HOOK")
 var eventInterface EventInterface
 
 type EventInterface interface {
@@ -75,7 +74,7 @@ func InitEventCache() {
 
 func sendSlackNotification(data *models.EventSpec) {
 	sc := connectors.SlackClient{
-		WebHookUrl: SlackWebhookUrl,
+		WebHookUrl: slackWebHook,
 		UserName:   string(*data.SourceClass),
 		Channel:    SlackChannel,
 		TimeOut:    10 * time.Second,

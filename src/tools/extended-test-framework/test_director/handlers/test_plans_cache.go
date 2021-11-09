@@ -120,7 +120,7 @@ func InitTestPlanCache(dtp *config.ServerConfig) {
 	}
 	jt, err := connectors.GetJiraTaskDetails(dtp.DefaultTestPlan)
 	if err != nil {
-		log.Errorf("default test plan key: %s is invalid.", dtp.DefaultTestPlan)
+		log.Errorf("default test plan key: %s is invalid. %s", dtp.DefaultTestPlan, err)
 		return
 	}
 	b := true

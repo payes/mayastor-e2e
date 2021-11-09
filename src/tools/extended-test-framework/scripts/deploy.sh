@@ -6,6 +6,7 @@ TESTARG=""
 OPERATION=""
 PLANARG=""
 DURATIONARG=""
+PATHARG=""
 
 help() {
   cat <<EOF
@@ -16,6 +17,7 @@ Options:
   --test <name>          test_conductor test to run, steady_state, non_steady_state or non_steady_state_multi_vols
   --plan <test plan ID>  specify the test plan to receive the test runs
   --duration <duration>  set the overal run time for the test with units, e.g. 12d, 34h, 56m27s etc
+  --secure-file-path	 file path for k8s sealed secrets
 or
   --remove               remove instead of deploy
 Examples:
@@ -48,6 +50,10 @@ while [ "$#" -gt 0 ]; do
     -p|--plan)
       shift
       PLANARG=$1
+      ;;
+    -s|--secure-file-path)
+      shift
+      PATHARG=$1
       ;;
     -r|--remove)
       OPERATION="delete"
@@ -82,6 +88,11 @@ if [ -z ${OPERATION} ]; then
     help
     exit 1
   fi
+  if [ -z ${PATHARG} ]; then
+    echo "undefined secure file path"
+    help
+    exit 1
+  fi
 fi
 
 if [ "${TESTARG}" == "non_steady_state_multi_vols" ]; then
@@ -96,6 +107,10 @@ if [ "${OPERATION}" == "delete" ]; then
   kubectl delete configmap tc-config -n mayastor-e2e
   kubectl delete -f ${DEPLOYDIR}/workload_monitor/workload_monitor.yaml
   kubectl delete configmap td-config -n mayastor-e2e
+  kubectl delete secret test-director-secret -n mayastor-e2e
+  kubectl delete sealedsecret test-director-secret -n mayastor-e2e
+  kubectl delete secret -n kube-system -l sealedsecrets.bitnami.com/sealed-secrets-key
+  kubectl delete -f ${DEPLOYDIR}/test_director/controller.yaml
   kubectl delete -f ${DEPLOYDIR}/test_director/test_director.yaml
   kubectl delete pod -n mayastor-e2e test-conductor
   kubectl delete -f ${DEPLOYDIR}/test_conductor/test_conductor.yaml
@@ -107,7 +122,9 @@ else
   PLAN=${PLANARG} envsubst < ${DEPLOYDIR}/test_director/config.yaml.template > $tmpfile
   kubectl create configmap td-config -n mayastor-e2e --from-file=config-local.yaml=${tmpfile}
   rm ${tmpfile}
-
+  kubectl create -f ${PATHARG}
+  kubectl create -f ${DEPLOYDIR}/test_director/controller.yaml
+  kubectl create -f ${DEPLOYDIR}/test_director/test_director_sealed_secret.yaml
   kubectl create -f ${DEPLOYDIR}/test_director/test_director.yaml
 
   kubectl create configmap tc-config -n mayastor-e2e --from-file=${DEPLOYDIR}/test_conductor/${TESTARG}/config.yaml
