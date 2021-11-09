@@ -227,6 +227,12 @@ def handle_testplan(testRuns, opts):
         tableResults(results, testRuns['tests'], index)
         return
 
+    if opts.lastfails:
+        # for jk, runz in results.items():
+        #    print(runz[-1]['status']['name'])
+        results = {jk: runz for jk, runz in results.items()
+                   if runz[-1]['status']['name'] == 'FAILED'}
+
     if opts.group:
         for e2ename, tl in index.items():
             tmp = [x for x in tl if x in results]
@@ -353,6 +359,10 @@ if __name__ == '__main__':
     parser.add_argument('--newfails', dest='newfails',
                         action='store_true', default=False,
                         help='list new failures'
+                        )
+    parser.add_argument('--lastfails', dest='lastfails',
+                        action='store_true', default=False,
+                        help='list tests with last result as failed'
                         )
 
     _args = parser.parse_args()
