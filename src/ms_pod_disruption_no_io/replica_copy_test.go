@@ -153,6 +153,10 @@ func setup(pvcName string, storageClassName string, fioPodName string) Disruptio
 	env.uuid = k8stest.MkPVC(volMb, pvcName, storageClassName, common.VolRawBlock, common.NSDefault)
 
 	podObj := k8stest.CreateFioPodDef(fioPodName, pvcName, common.VolRawBlock, common.NSDefault)
+	// add node selector to fio pod
+	podObj.Spec.NodeSelector = map[string]string{
+		common.MayastorEngineLabel: common.MayastorEngineLabelValue,
+	}
 	_, err := k8stest.CreatePod(podObj, common.NSDefault)
 	Expect(err).ToNot(HaveOccurred(), "%v", err)
 
