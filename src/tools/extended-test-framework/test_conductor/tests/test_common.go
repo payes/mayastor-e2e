@@ -172,13 +172,15 @@ func WaitPodNotRunning(pod_to_check string, timeout time.Duration) error {
 }
 
 func SendTestRunToDo(testConductor *tc.TestConductor) error {
-	if err := common.SendTestRunToDo(
-		testConductor.TestDirectorClient,
-		testConductor.TestRunId,
-		"",
-		testConductor.Config.Test); err != nil {
+	if testConductor.Config.SendXrayTest == 1 {
+		if err := common.SendTestRunToDo(
+			testConductor.TestDirectorClient,
+			testConductor.TestRunId,
+			"",
+			testConductor.Config.Test); err != nil {
 
-		return fmt.Errorf("failed to create test run, error: %v", err)
+			return fmt.Errorf("failed to create test run, error: %v", err)
+		}
 	}
 	if err := SendEventTestPreparing(testConductor); err != nil {
 		return fmt.Errorf("failed to inform test director of preparation event, error: %v", err)
@@ -187,13 +189,15 @@ func SendTestRunToDo(testConductor *tc.TestConductor) error {
 }
 
 func SendTestRunStarted(testConductor *tc.TestConductor) error {
-	if err := common.SendTestRunStarted(
-		testConductor.TestDirectorClient,
-		testConductor.TestRunId,
-		"",
-		testConductor.Config.Test); err != nil {
+	if testConductor.Config.SendXrayTest == 1 {
+		if err := common.SendTestRunStarted(
+			testConductor.TestDirectorClient,
+			testConductor.TestRunId,
+			"",
+			testConductor.Config.Test); err != nil {
 
-		return fmt.Errorf("failed to set test run to executing, error: %v", err)
+			return fmt.Errorf("failed to set test run to executing, error: %v", err)
+		}
 	}
 	if err := SendEventTestStarted(testConductor); err != nil {
 		return fmt.Errorf("failed to inform test director of start event, error: %v", err)
@@ -202,25 +206,30 @@ func SendTestRunStarted(testConductor *tc.TestConductor) error {
 }
 
 func SendTestRunFinished(testConductor *tc.TestConductor, err error) error {
-	if err == nil {
-		if err := common.SendTestRunCompletedOk(
-			testConductor.TestDirectorClient,
-			testConductor.TestRunId,
-			"",
-			testConductor.Config.Test); err != nil {
-			return fmt.Errorf("failed to set test run to completed, error: %v", err)
+	if testConductor.Config.SendXrayTest == 1 {
+		if err == nil {
+			if err := common.SendTestRunCompletedOk(
+				testConductor.TestDirectorClient,
+				testConductor.TestRunId,
+				"",
+				testConductor.Config.Test); err != nil {
+				return fmt.Errorf("failed to set test run to completed, error: %v", err)
+			}
+		} else {
+			if err := common.SendTestRunCompletedFail(
+				testConductor.TestDirectorClient,
+				testConductor.TestRunId,
+				err.Error(),
+				testConductor.Config.Test); err != nil {
+				return fmt.Errorf("failed to set test run to failed, error: %v", err)
+			}
 		}
+	}
+	if err == nil {
 		if err := SendEventTestCompletedOk(testConductor); err != nil {
 			return fmt.Errorf("failed to inform test director of completion event, error: %v", err)
 		}
 	} else {
-		if err := common.SendTestRunCompletedFail(
-			testConductor.TestDirectorClient,
-			testConductor.TestRunId,
-			err.Error(),
-			testConductor.Config.Test); err != nil {
-			return fmt.Errorf("failed to set test run to failed, error: %v", err)
-		}
 		if err := SendEventTestCompletedFail(testConductor, err.Error()); err != nil {
 			return fmt.Errorf("failed to inform test director of completion event, error: %v", err)
 		}
@@ -229,49 +238,31 @@ func SendTestRunFinished(testConductor *tc.TestConductor, err error) error {
 }
 
 func SendEventTestPreparing(testConductor *tc.TestConductor) error {
-	message := "Test preparing, " + testConductor.Config.Test
-	if err := common.SendEventInfo(
-		testConductor.TestDirectorClient,
-		testConductor.TestRunId,
-		message,
-		td.EventSourceClassEnumTestDashConductor); err != nil {
-		return fmt.Errorf("failed to inform test director of event, error: %v", err)
-	}
-	return nil
+	return SendEvent(testConductor, td.EventClassEnumINFO, "Test preparing, "+testConductor.Config.Test)
 }
 
 func SendEventTestStarted(testConductor *tc.TestConductor) error {
-	message := "Test started, " + testConductor.Config.Test
-	if err := common.SendEventInfo(
-		testConductor.TestDirectorClient,
-		testConductor.TestRunId,
-		message,
-		td.EventSourceClassEnumTestDashConductor); err != nil {
-		return fmt.Errorf("failed to inform test director of event, error: %v", err)
-	}
-	return nil
+	return SendEvent(testConductor, td.EventClassEnumINFO, "Test started, "+testConductor.Config.Test)
 }
 
 func SendEventTestCompletedOk(testConductor *tc.TestConductor) error {
-	message := "Test completed, " + testConductor.Config.Test
-	if err := common.SendEventInfo(
-		testConductor.TestDirectorClient,
-		testConductor.TestRunId,
-		message,
-		td.EventSourceClassEnumTestDashConductor); err != nil {
-		return fmt.Errorf("failed to inform test director of event, error: %v", err)
-	}
-	return nil
+	return SendEvent(testConductor, td.EventClassEnumINFO, "Test completed, "+testConductor.Config.Test)
 }
 
 func SendEventTestCompletedFail(testConductor *tc.TestConductor, text string) error {
-	message := "Test failed:, " + text
-	if err := common.SendEventFail(
-		testConductor.TestDirectorClient,
-		testConductor.TestRunId,
-		message,
-		td.EventSourceClassEnumTestDashConductor); err != nil {
-		return fmt.Errorf("failed to inform test director of event, error: %v", err)
+	return SendEvent(testConductor, td.EventClassEnumFAIL, "Test failed:, "+text)
+}
+
+func SendEvent(testConductor *tc.TestConductor, eventClass td.EventClassEnum, message string) error {
+	if testConductor.Config.SendEvent == 1 {
+		if err := common.SendEvent(
+			testConductor.TestDirectorClient,
+			testConductor.TestRunId,
+			message,
+			eventClass,
+			td.EventSourceClassEnumTestDashConductor); err != nil {
+			return fmt.Errorf("failed to inform test director of event, error: %v", err)
+		}
 	}
 	return nil
 }

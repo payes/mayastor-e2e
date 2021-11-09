@@ -2,7 +2,6 @@ package tests
 
 import (
 	"fmt"
-	"mayastor-e2e/tools/extended-test-framework/common"
 	"mayastor-e2e/tools/extended-test-framework/common/k8sclient"
 	tc "mayastor-e2e/tools/extended-test-framework/test_conductor/tc"
 	"sync"
@@ -176,8 +175,6 @@ func NonSteadyStateTest(testConductor *tc.TestConductor) error {
 	var testName = testConductor.Config.TestName
 	var combinederr error
 	var err error
-
-	common.WaitTestDirector(testConductor.TestDirectorClient)
 
 	if err = SendTestRunToDo(testConductor); err != nil {
 		return fmt.Errorf("failed to inform test director of test start, error: %v", err)

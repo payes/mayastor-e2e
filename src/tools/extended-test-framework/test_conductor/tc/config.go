@@ -19,11 +19,13 @@ type ExtendedTestConfig struct {
 	TestName string `yaml:"testName" env-default:"default"`
 
 	// FIXME: handle empty poolDevice
-	PoolDevice  string `yaml:"poolDevice" env:"e2e_pool_device"`
-	E2eFioImage string `yaml:"e2eFioImage" env-default:"mayadata/e2e-fio" env:"e2e_fio_image"`
-	Test        string `yaml:"test" env:"e2e_test"`
-	Msnodes     int    `yaml:"msnodes" env-default:"3" env:"e2e_msnodes"`
-	Duration    string `yaml:"duration" env-default:"60m" env:"DURATION"`
+	PoolDevice   string `yaml:"poolDevice" env:"e2e_pool_device"`
+	E2eFioImage  string `yaml:"e2eFioImage" env-default:"mayadata/e2e-fio" env:"e2e_fio_image"`
+	Test         string `yaml:"test" env:"e2e_test"`
+	Msnodes      int    `yaml:"msnodes" env-default:"3" env:"e2e_msnodes"`
+	Duration     string `yaml:"duration" env-default:"60m" env:"DURATION"`
+	SendXrayTest int    `yaml:"sendXrayTest" env-default:"1" env:"SENDXRAYTEST"`
+	SendEvent    int    `yaml:"sendEvent" env-default:"1" env:"SENDEVENT"`
 
 	// Individual Test parameters
 	SteadyState struct {

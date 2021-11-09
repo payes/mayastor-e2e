@@ -3,6 +3,8 @@ test: "MQ-1806"
 e2eFioImage: ci-registry.mayastor-ci.mayadata.io/mayadata/e2e-fio
 msnodes: 3
 duration: 336h
+sendEvent: 1
+sendXrayTest: 1
 steadyState:
   replicas: 2
   volumeSizeMb: 9000

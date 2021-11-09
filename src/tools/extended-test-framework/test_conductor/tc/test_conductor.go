@@ -63,5 +63,8 @@ func NewTestConductor() (*TestConductor, error) {
 
 	testConductor.TestRunId = strfmt.UUID(tcpod.ObjectMeta.UID)
 
+	if testConductor.Config.SendXrayTest == 1 || testConductor.Config.SendEvent == 1 {
+		common.WaitTestDirector(testConductor.TestDirectorClient)
+	}
 	return &testConductor, nil
 }

@@ -15,6 +15,10 @@ spec:
       env:
       - name: DURATION
         value: ${DURATION}
+      - name: SENDXRAYTEST
+        value: "${SENDXRAYTEST}"
+      - name: SENDEVENT
+        value: "${SENDEVENT}"
       ports:
         - containerPort: 8080
           protocol: "TCP"

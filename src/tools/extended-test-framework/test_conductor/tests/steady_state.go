@@ -2,7 +2,6 @@ package tests
 
 import (
 	"fmt"
-	"mayastor-e2e/tools/extended-test-framework/common"
 	"mayastor-e2e/tools/extended-test-framework/common/k8sclient"
 	tc "mayastor-e2e/tools/extended-test-framework/test_conductor/tc"
 	"time"
@@ -16,9 +15,6 @@ func SteadyStateTest(testConductor *tc.TestConductor) error {
 	var testName = testConductor.Config.TestName
 	var err error
 	var combinederr error
-
-	// the test run ID is the same as the uuid of the test conductor pod
-	common.WaitTestDirector(testConductor.TestDirectorClient)
 
 	if err = SendTestRunToDo(testConductor); err != nil {
 		return fmt.Errorf("failed to inform test director of test creation, error: %v", err)

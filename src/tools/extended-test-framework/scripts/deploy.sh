@@ -6,6 +6,8 @@ TESTARG=""
 OPERATION=""
 PLANARG=""
 DURATIONARG=""
+SENDXRAYTESTARG="1"
+SENDEVENTARG="1"
 PATHARG=""
 
 help() {
@@ -57,7 +59,13 @@ while [ "$#" -gt 0 ]; do
       ;;
     -r|--remove)
       OPERATION="delete"
-      set +e # we can ignore errors when undeploying
+      #set +e # we can ignore errors when undeploying
+      ;;
+    --noevent)
+      SENDEVENTARG=0
+      ;;
+    --noxraytest)
+      SENDXRAYTESTARG=0
       ;;
     -h)
       help
@@ -130,7 +138,7 @@ else
   kubectl create configmap tc-config -n mayastor-e2e --from-file=${DEPLOYDIR}/test_conductor/${TESTARG}/config.yaml
 
   kubectl create -f ${DEPLOYDIR}/test_conductor/test_conductor.yaml
-  TEST=${IMAGEARG} DURATION=${DURATIONARG} envsubst -no-unset < ${DEPLOYDIR}/test_conductor/test_conductor_pod.yaml.template | kubectl apply -f -
+  TEST=${IMAGEARG} DURATION=${DURATIONARG} SENDXRAYTEST=${SENDXRAYTESTARG} SENDEVENT=${SENDEVENTARG} envsubst  < ${DEPLOYDIR}/test_conductor/test_conductor_pod.yaml.template | kubectl apply -f -
 
   kubectl create -f ${DEPLOYDIR}/workload_monitor/workload_monitor.yaml
 fi

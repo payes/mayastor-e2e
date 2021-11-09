@@ -69,7 +69,7 @@ func SendTestRunToDo(client *client.Etfw, uuid strfmt.UUID, message string, jira
 	return sendTestRunStatus(client, uuid, message, jira_key, models.TestRunStatusEnumTODO)
 }
 
-func sendEvent(
+func SendEvent(
 	client *client.Etfw,
 	sourceInstance strfmt.UUID,
 	message string,
@@ -107,17 +107,17 @@ func sendEvent(
 
 func SendEventFail(client *client.Etfw, source strfmt.UUID, message string, sourceClass models.EventSourceClassEnum) error {
 	logf.Log.Info("SendEventFail")
-	return sendEvent(client, source, message, models.EventClassEnumFAIL, sourceClass)
+	return SendEvent(client, source, message, models.EventClassEnumFAIL, sourceClass)
 }
 
 func SendEventInfo(client *client.Etfw, source strfmt.UUID, message string, sourceClass models.EventSourceClassEnum) error {
 	logf.Log.Info("SendEventInfo")
-	return sendEvent(client, source, message, models.EventClassEnumINFO, sourceClass)
+	return SendEvent(client, source, message, models.EventClassEnumINFO, sourceClass)
 }
 
 func SendEventWarn(client *client.Etfw, source strfmt.UUID, message string, sourceClass models.EventSourceClassEnum) error {
 	logf.Log.Info("SendEventWarn")
-	return sendEvent(client, source, message, models.EventClassEnumWARN, sourceClass)
+	return SendEvent(client, source, message, models.EventClassEnumWARN, sourceClass)
 }
 
 func WaitTestDirector(client *client.Etfw) {
