@@ -48,12 +48,18 @@ func getPoolsGrpc() []mayastorclient.MayastorPool {
 func verifyMspCrdAndGrpcState() {
 	grpcPools := getPoolsGrpc()
 	crPools := getPoolCrs()
-
 	Expect(len(grpcPools)).To(Equal(len(crPools)))
+
 	logf.Log.Info("verifyMspCrdAndGrpcState", "pool count", len(grpcPools))
 	Eventually(func() bool {
 		grpcPools = getPoolsGrpc()
 		crPools = getPoolCrs()
+		Expect(len(grpcPools)).To(Equal(len(crPools)))
+
+		for _, gPool := range grpcPools {
+			_, ok := crPools[gPool.Name]
+			Expect(ok).To(BeTrue(), "pool %s not found in custom resource pools", gPool.Name)
+		}
 
 		res := true
 		for _, gPool := range grpcPools {
