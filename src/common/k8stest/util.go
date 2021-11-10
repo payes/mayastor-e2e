@@ -727,3 +727,34 @@ func CheckAndSetControlPlane() error {
 	}
 	return nil
 }
+
+// Checks if the requisite number of mayastor node are online.
+func MayastorNodeReady(sleepTime int, duration int) (bool, error) {
+	ready := false
+	readyCount := 0
+	msReadyPodCount := mayastorReadyPodCount()
+	count := (duration + sleepTime - 1) / sleepTime
+	for ix := 0; ix < count && !ready; ix++ {
+		time.Sleep(time.Duration(sleepTime) * time.Second)
+		// list mayastor node
+		nodeList, err := ListMsns()
+		if err != nil {
+			logf.Log.Info("MayastorNodeReady: failed to list mayastor node", "error", err)
+			return ready, err
+		}
+		for _, node := range nodeList {
+			if node.State.Status == controlplane.NodeStateOnline() {
+				readyCount++
+			} else {
+				logf.Log.Info("Not ready node", "node", node.Name, "status", node.State.Status)
+			}
+		}
+		ready = msReadyPodCount == len(nodeList) && readyCount == msReadyPodCount
+		logf.Log.Info("mayastor node status",
+			"MayastorReadyPodCount", msReadyPodCount,
+			"MayastorNodes", len(nodeList),
+			"MaystorNodeReadyCount", readyCount,
+		)
+	}
+	return ready, nil
+}
