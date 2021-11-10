@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"mayastor-e2e/common"
 	"mayastor-e2e/common/controlplane"
-	"mayastor-e2e/common/custom_resources"
 	"mayastor-e2e/common/k8stest"
 
 	. "github.com/onsi/gomega"
@@ -106,11 +105,13 @@ func (c *shutdownConfig) deleteDeployment() {
 }
 
 func (c *shutdownConfig) verifyMayastorComponentStates(numMayastorInstances int) {
-	nodeList, err := custom_resources.ListMsNodes()
+	nodeList, err := k8stest.ListMsns()
 	Expect(err).ToNot(HaveOccurred(), "ListMsNodes")
 	count := 0
 	for _, node := range nodeList {
-		if node.Status == "online" {
+		status, err := k8stest.GetMsNodeStatus(node.Name)
+		Expect(err).ToNot(HaveOccurred(), "GetMsNodeStatus")
+		if status == controlplane.NodeStateOnline() {
 			count++
 		}
 	}
@@ -118,7 +119,6 @@ func (c *shutdownConfig) verifyMayastorComponentStates(numMayastorInstances int)
 	ready, err := k8stest.MayastorInstancesReady(numMayastorInstances, 3, 540)
 	Expect(err).ToNot(HaveOccurred())
 	Expect(ready).To(Equal(true))
-	// FIXME: is this correct for control plane versions > 0 ?
 	ready = k8stest.ControlPlaneReady(3, 60)
 	Expect(ready).To(Equal(true), "control is not ready")
 }
@@ -155,12 +155,12 @@ func (c *shutdownConfig) verifyNodeNotReady(nodeName string) {
 		5,              // polling interval
 	).Should(Equal(false))
 
-	Eventually(func() string {
+	Eventually(func() bool {
 		status, err := k8stest.GetMsNodeStatus(nodeName)
 		Expect(err).ToNot(HaveOccurred(), "GetMsNodeStatus")
-		return status
+		return (status == controlplane.NodeStateOffline() || status == controlplane.NodeStateUnknown() || status == controlplane.NodeStateEmpty())
 	},
 		defTimeoutSecs, // timeout
 		"5s",           // polling interval
-	).Should(Equal(controlplane.NodeStateOffline()))
+	).Should(Equal(true))
 }

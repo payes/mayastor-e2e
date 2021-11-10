@@ -3,6 +3,7 @@ package single_msn_shutdown
 import (
 	"fmt"
 	"mayastor-e2e/common"
+	"mayastor-e2e/common/controlplane"
 	"mayastor-e2e/common/k8stest"
 	"os/exec"
 	"time"
@@ -162,17 +163,14 @@ func verifyNodeNotReady(nodeName string) {
 		5,              // polling interval
 	).Should(Equal(false))
 
-	// TODO Enable it once fixed in Mayastor
-	/*
-		Eventually(func() string {
-			msn, err := crds.GetNode(nodeName)
-			Expect(err).ToNot(HaveOccurred(), "GetNode")
-			return msn.Status
-		},
-			defTimeoutSecs, // timeout
-			"5s",           // polling interval
-		).Should(Equal("offline"))
-	*/
+	Eventually(func() bool {
+		status, err := k8stest.GetMsNodeStatus(nodeName)
+		Expect(err).ToNot(HaveOccurred(), "GetMsNodeStatus")
+		return (status == controlplane.NodeStateOffline() || status == controlplane.NodeStateUnknown() || status == controlplane.NodeStateEmpty())
+	},
+		defTimeoutSecs, // timeout
+		"5s",           // polling interval
+	).Should(Equal(true))
 }
 
 func verifyNodesReady() {

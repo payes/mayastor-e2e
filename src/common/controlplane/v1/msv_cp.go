@@ -14,7 +14,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-const RestReqTimeoutErr = "error in request: request timed out"
+const ErrOutput = "Error error"
 
 func HasNotFoundRestJsonError(str string) bool {
 	re := regexp.MustCompile(`Error error in response.*RestJsonError.*kind:\s*(\w+)`)
@@ -109,7 +109,7 @@ func GetMayastorCpVolume(uuid string, address []string) (*MayastorCpVolume, erro
 		url := fmt.Sprintf("http://%s:%s", addr, common.PluginPort)
 		cmd := exec.Command(pluginpath, "-r", url, "-ojson", "get", "volume", uuid)
 		jsonInput, err = cmd.CombinedOutput()
-		if strings.Contains(string(jsonInput), RestReqTimeoutErr) && err == nil {
+		if strings.Contains(string(jsonInput), ErrOutput) && err == nil {
 			err = fmt.Errorf("%s", string(jsonInput))
 		}
 		if err == nil {
@@ -147,7 +147,7 @@ func ListMayastorCpVolumes(address []string) ([]MayastorCpVolume, error) {
 		url := fmt.Sprintf("http://%s:%s", addr, common.PluginPort)
 		cmd := exec.Command(pluginpath, "-r", url, "-ojson", "get", "volumes")
 		jsonInput, err = cmd.CombinedOutput()
-		if strings.Contains(string(jsonInput), RestReqTimeoutErr) && err == nil {
+		if strings.Contains(string(jsonInput), ErrOutput) && err == nil {
 			err = fmt.Errorf("%s", string(jsonInput))
 		}
 		if err == nil {
@@ -183,7 +183,7 @@ func scaleMayastorVolume(uuid string, replicaCount int, address []string) error 
 		url := fmt.Sprintf("http://%s:%s", addr, common.PluginPort)
 		cmd := exec.Command(pluginpath, "-r", url, "scale", "volume", uuid, strconv.Itoa(replicaCount))
 		jsonInput, err = cmd.CombinedOutput()
-		if strings.Contains(string(jsonInput), RestReqTimeoutErr) && err == nil {
+		if strings.Contains(string(jsonInput), ErrOutput) && err == nil {
 			err = fmt.Errorf("%s", string(jsonInput))
 		}
 		if err == nil {

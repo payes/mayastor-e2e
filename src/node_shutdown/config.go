@@ -41,7 +41,7 @@ func generateShutdownConfig(testName string) *shutdownConfig {
 		fsType:               common.Ext4FsType,
 		volBindingMode:       storageV1.VolumeBindingImmediate,
 		replicas:             3,
-		pvcSize:              5120, // In Mb
+		pvcSize:              2048, // In Mb
 		scName:               testName + "-sc",
 		pvcName:              testName + "-pvc",
 		deployName:           testName + "-deploy",

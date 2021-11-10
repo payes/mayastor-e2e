@@ -3,6 +3,7 @@ package single_msn_shutdown
 import (
 	"time"
 
+	"mayastor-e2e/common"
 	"mayastor-e2e/common/controlplane"
 	"mayastor-e2e/common/k8stest"
 
@@ -17,6 +18,10 @@ func (c *shutdownConfig) nonCoreAgentNodeShutdownTest() {
 	coreAgentNodeName, err := k8stest.GetCoreAgentNodeName()
 	Expect(err).ToNot(HaveOccurred())
 	Expect(coreAgentNodeName).ToNot(BeEmpty(), "core agent pod not found in running state")
+	k8stest.ApplyNodeSelectorToDeployment("msp-operator", common.NSMayastor(), "kubernetes.io/hostname", coreAgentNodeName)
+	k8stest.ApplyNodeSelectorToDeployment("rest", common.NSMayastor(), "kubernetes.io/hostname", coreAgentNodeName)
+	k8stest.ApplyNodeSelectorToDeployment("csi-controller", common.NSMayastor(), "kubernetes.io/hostname", coreAgentNodeName)
+	verifyMayastorComponentStates(c.numMayastorInstances)
 
 	// Create SC, PVC and Application Deployment
 	for _, config := range c.config {
@@ -59,6 +64,9 @@ func (c *shutdownConfig) nonCoreAgentNodeShutdownTest() {
 		config.deletePVC()
 		config.deleteSC()
 	}
+	k8stest.RemoveAllNodeSelectorsFromDeployment("msp-operator", common.NSMayastor())
+	k8stest.RemoveAllNodeSelectorsFromDeployment("rest", common.NSMayastor())
+	k8stest.RemoveAllNodeSelectorsFromDeployment("csi-controller", common.NSMayastor())
 
 	verifyMayastorComponentStates(c.numMayastorInstances)
 	err = k8stest.RestartMayastor(240, 240, 240)
@@ -72,6 +80,13 @@ func (c *shutdownConfig) coreAgentNodeShutdownTest() {
 	coreAgentNodeName, err := k8stest.GetCoreAgentNodeName()
 	Expect(err).ToNot(HaveOccurred())
 	Expect(coreAgentNodeName).ToNot(BeEmpty(), "core agent pod not found in running state")
+	k8stest.ApplyNodeSelectorToDeployment("msp-operator", common.NSMayastor(), "kubernetes.io/hostname", coreAgentNodeName)
+	k8stest.ApplyNodeSelectorToDeployment("rest", common.NSMayastor(), "kubernetes.io/hostname", coreAgentNodeName)
+	k8stest.ApplyNodeSelectorToDeployment("csi-controller", common.NSMayastor(), "kubernetes.io/hostname", coreAgentNodeName)
+	verifyMayastorComponentStates(c.numMayastorInstances)
+	k8stest.RemoveAllNodeSelectorsFromDeployment("msp-operator", common.NSMayastor())
+	k8stest.RemoveAllNodeSelectorsFromDeployment("rest", common.NSMayastor())
+	k8stest.RemoveAllNodeSelectorsFromDeployment("csi-controller", common.NSMayastor())
 
 	// Create SC, PVC and Application Deployment
 	for _, config := range c.config {

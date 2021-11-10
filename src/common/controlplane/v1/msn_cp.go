@@ -42,13 +42,13 @@ func GetMayastorCpNode(nodeName string, address []string) (*MayastorCpNode, erro
 		url := fmt.Sprintf("http://%s:%s", addr, common.PluginPort)
 		cmd := exec.Command(pluginpath, "-r", url, "-ojson", "get", "node", nodeName)
 		jsonInput, err = cmd.CombinedOutput()
-		if strings.Contains(string(jsonInput), RestReqTimeoutErr) && err == nil {
+		if strings.Contains(string(jsonInput), ErrOutput) && err == nil {
 			err = fmt.Errorf("%s", string(jsonInput))
 		}
 		if err == nil {
 			break
 		} else {
-			logf.Log.Info("Error while executing kubectl mayastor command", "node IP", addr, "error", err)
+			logf.Log.Info("Error while executing kubectl mayastor command", "node IP", addr, "error", err, "node", nodeName)
 		}
 	}
 	if err != nil {
@@ -59,7 +59,7 @@ func GetMayastorCpNode(nodeName string, address []string) (*MayastorCpNode, erro
 	if err != nil {
 		msg := string(jsonInput)
 		if !HasNotFoundRestJsonError(msg) {
-			logf.Log.Info("Failed to unmarshal (get node)", "string", msg)
+			logf.Log.Info("Failed to unmarshal (get node)", "string", msg, "node", nodeName)
 		}
 		return nil, fmt.Errorf("%s", msg)
 	}
@@ -80,7 +80,7 @@ func ListMayastorCpNodes(address []string) ([]MayastorCpNode, error) {
 		url := fmt.Sprintf("http://%s:%s", addr, common.PluginPort)
 		cmd := exec.Command(pluginpath, "-r", url, "-ojson", "get", "nodes")
 		jsonInput, err = cmd.CombinedOutput()
-		if strings.Contains(string(jsonInput), RestReqTimeoutErr) && err == nil {
+		if strings.Contains(string(jsonInput), ErrOutput) && err == nil {
 			err = fmt.Errorf("%s", string(jsonInput))
 		}
 		if err == nil {
@@ -112,6 +112,7 @@ func GetMayastorNodeStatus(nodeName string, address []string) (string, error) {
 
 func cpNodeToMsn(cpMsn *MayastorCpNode, address []string) common.MayastorNode {
 	return common.MayastorNode{
+		Name: cpMsn.Spec.ID,
 		Spec: common.MayastorNodeSpec{
 			ID:           cpMsn.Spec.ID,
 			GrpcEndpoint: cpMsn.Spec.GrpcEndpoint,

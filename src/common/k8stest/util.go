@@ -422,6 +422,7 @@ func ControlPlaneReady(sleepTime int, duration int) bool {
 	count := (duration + sleepTime - 1) / sleepTime
 
 	if controlplane.MajorVersion() == 1 {
+		nonControlPlaneComponents := []string{"mayastor", "mayastor-csi", "nats"}
 
 		for ix := 0; ix < count && !ready; ix++ {
 			time.Sleep(time.Duration(sleepTime) * time.Second)
@@ -442,16 +443,25 @@ func ControlPlaneReady(sleepTime int, duration int) bool {
 			}
 			ready = true
 			for _, deployment := range deployments.Items {
+				if contains(nonControlPlaneComponents, deployment.Name) {
+					continue
+				}
 				tmp := DeploymentReady(deployment.Name, common.NSMayastor())
 				logf.Log.Info("mayastor control plane", "deployment", deployment.Name, "ready", tmp)
 				ready = ready && tmp
 			}
 			for _, daemon := range daemonsets.Items {
+				if contains(nonControlPlaneComponents, daemon.Name) {
+					continue
+				}
 				tmp := DaemonSetReady(daemon.Name, common.NSMayastor())
 				logf.Log.Info("mayastor control plane", "daemonset", daemon.Name, "ready", tmp)
 				ready = ready && tmp
 			}
 			for _, statefulSet := range statefulsets.Items {
+				if contains(nonControlPlaneComponents, statefulSet.Name) {
+					continue
+				}
 				tmp := StatefulSetReady(statefulSet.Name, common.NSMayastor())
 				logf.Log.Info("mayastor control plane", "statefulset", statefulSet.Name, "ready", tmp)
 				ready = ready && tmp
@@ -464,6 +474,15 @@ func ControlPlaneReady(sleepTime int, duration int) bool {
 		}
 	}
 	return ready
+}
+
+func contains(list []string, str string) bool {
+	for _, elem := range list {
+		if elem == str {
+			return true
+		}
+	}
+	return false
 }
 
 // Checks if the requisite number of mayastor instances are up and running.

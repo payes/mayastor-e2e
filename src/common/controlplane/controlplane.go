@@ -71,6 +71,8 @@ type ControlPlaneInterface interface {
 
 	NodeStateOffline() string
 	NodeStateOnline() string
+	NodeStateUnknown() string
+	NodeStateEmpty() string
 
 	// Mayastor Pool abstraction
 
@@ -241,8 +243,20 @@ func NodeStateOnline() string {
 	return getControlPlane().NodeStateOnline()
 }
 
+// NodeStateOffline is set when the node misses its watchdog deadline
 func NodeStateOffline() string {
 	return getControlPlane().NodeStateOffline()
+}
+
+// NodeStateUnknown is set if the mayastor instance deregisters itself (when the pod goes down gracefully),
+// or if there's an error when we're issuing issuing "list" requests
+func NodeStateUnknown() string {
+	return getControlPlane().NodeStateUnknown()
+}
+
+// NodeStateEmpty i.e. no state at all if the control plane restarts and the node is not available at that time
+func NodeStateEmpty() string {
+	return getControlPlane().NodeStateEmpty()
 }
 
 func Version() string {

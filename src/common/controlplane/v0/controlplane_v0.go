@@ -84,3 +84,11 @@ func (cp CPv0p8) NodeStateOnline() string {
 func (cp CPv0p8) NodeStateOffline() string {
 	return "offline"
 }
+
+func (cp CPv0p8) NodeStateUnknown() string {
+	return "unknown"
+}
+
+func (cp CPv0p8) NodeStateEmpty() string {
+	return ""
+}

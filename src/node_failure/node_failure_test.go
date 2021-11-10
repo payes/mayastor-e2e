@@ -8,11 +8,10 @@ import (
 	"time"
 
 	"mayastor-e2e/common"
+	"mayastor-e2e/common/controlplane"
 	"mayastor-e2e/common/k8stest"
 	"mayastor-e2e/common/platform"
 	"mayastor-e2e/common/platform/types"
-
-	"mayastor-e2e/common/custom_resources"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -184,20 +183,23 @@ func (c *failureConfig) RebootDesiredNodes(uuid string) {
 	}
 }
 
-func (c *failureConfig) verifyMayastorComponentStates() {
-	Eventually(func() bool {
-		nodeList, err := custom_resources.ListMsNodes()
-		Expect(err).ToNot(HaveOccurred(), "ListMsNodes")
-		for _, node := range nodeList {
-			if node.Status != "online" {
-				return false
-			}
+func (c *failureConfig) verifyMayastorComponentStates(numMayastorInstances int) {
+	nodeList, err := k8stest.ListMsns()
+	Expect(err).ToNot(HaveOccurred(), "ListMsNodes")
+	count := 0
+	for _, node := range nodeList {
+		status, err := k8stest.GetMsNodeStatus(node.Name)
+		Expect(err).ToNot(HaveOccurred(), "GetMsNodeStatus")
+		if status == controlplane.NodeStateOnline() {
+			count++
 		}
-		ready, err := k8stest.MayastorReady(3, 540)
-		Expect(err).ToNot(HaveOccurred())
-		return ready
-	}, defTimeoutSecs, 5,
-	).Should(Equal(true))
+	}
+	Expect(count).To(Equal(numMayastorInstances))
+	ready, err := k8stest.MayastorInstancesReady(numMayastorInstances, 3, 540)
+	Expect(err).ToNot(HaveOccurred())
+	Expect(ready).To(Equal(true))
+	ready = k8stest.ControlPlaneReady(3, 60)
+	Expect(ready).To(Equal(true), "control is not ready")
 }
 
 func (c *failureConfig) verifyApplicationPodRunning(state bool) {
@@ -326,7 +328,7 @@ func (c *failureConfig) nodeRebootTests() {
 	c.RebootDesiredNodes(uuid)
 	c.verifyNodesReady()
 
-	c.verifyMayastorComponentStates()
+	c.verifyMayastorComponentStates(3)
 	c.verifyApplicationPodRunning(true)
 
 	c.deleteDeployment()
@@ -334,7 +336,7 @@ func (c *failureConfig) nodeRebootTests() {
 	c.deleteSC()
 	err := k8stest.RestartMayastor(240, 240, 240)
 	Expect(err).ToNot(HaveOccurred(), "Restart Mayastor pods")
-	c.verifyMayastorComponentStates()
+	c.verifyMayastorComponentStates(3)
 }
 
 var _ = Describe("Mayastor node failure tests", func() {
