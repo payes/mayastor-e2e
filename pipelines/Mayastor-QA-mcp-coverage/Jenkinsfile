@@ -1,0 +1,244 @@
+#!/usr/bin/env groovy
+
+import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.TimeUnit
+
+// On-demand E2E infra configuration
+// https://mayadata.atlassian.net/wiki/spaces/MS/pages/247332965/Test+infrastructure#On-Demand-E2E-K8S-Clusters
+
+def e2e_params = [
+    // Tests Queue
+    tests_queue : [] as LinkedBlockingQueue,
+    // Failed Tests Queue
+    failed_tests_queue : [] as LinkedBlockingQueue,
+    // Artifacts stash name queue
+    artefacts_stash_queue : [] as LinkedBlockingQueue,
+    // Junit stash name queue
+    junit_stash_queue : [] as LinkedBlockingQueue,
+
+    // Jenkins job to build cluster
+    e2e_build_cluster_job : 'k8s-build-cluster',
+    // Jenkins job to destroy cluster
+    e2e_destroy_cluster_job : 'k8s-destroy-cluster',
+    // Environment to run e2e test in (job param of e2e_build_cluster_job)
+    e2e_environment : "hcloud-kubeadm",
+
+    // Mayastor image tag - image tag for testing.
+    e2e_image_tag : '',
+
+    // reports directory
+    e2e_reports_dir : 'artifacts/reports/',
+    // Test profile
+
+    e2e_test_profile : 'hc1-nightly',
+
+    // Xray: send report
+    xray_send_report : false,
+    // Xray: test plan
+    xray_test_plan : 'ET-388',
+
+//FIXME
+//  mayastorBranch : 'release/1.0',
+//  mcpBranch : 'release/1.0',
+    mayastorBranch : 'coverage2',
+    mcpBranch : 'mcp-coverage',
+
+    build_flags: '--coverage',
+]
+
+// Environment to run e2e test in (job param of $e2e_build_cluster_job)
+def e2e_environment = e2e_params['e2e_environment']
+
+//String cron_schedule = "H 0 * * *"
+
+def Common() {
+    def common = load "./pipelines/common/common.groovy"
+    return common
+}
+
+
+pipeline {
+  agent none
+  options {
+    timeout(time: 23, unit: 'HOURS')
+    buildDiscarder(logRotator(numToKeepStr: '365', artifactNumToKeepStr: '365'))
+  }
+//  triggers {
+//    cron(cron_schedule)
+//  }
+  stages {
+    stage('build docker images') {
+      agent { label 'nixos-mayastor' }
+      steps {
+        script {
+          common = load "./pipelines/common/common.groovy"
+          // Common functions use e2e_image-tag so set that up
+          // as the test tag
+          e2e_params['e2e_image_tag'] = 'hc1-cov-' + common.GetTestTag()
+          e2e_params['test_tag'] = e2e_params['e2e_image_tag']
+          common.BuildMCPImages(e2e_params)
+        }
+      }
+      post {
+        // Always remove all docker images because they are usually used just once
+        // and underlaying pkgs are already cached by nix so they can be easily
+        // recreated.
+        always {
+          sh 'docker image prune --all --force'
+        }
+      }
+    }//stage build docker images
+    stage('build tests queue')  {
+        agent { label 'nixos' }
+        steps {
+            script {
+                Common().PopulateTestQueue(e2e_params)
+            }
+        }
+    }
+    stage('test') {
+        parallel {
+            stage('run e2e part1') {
+                agent { label 'nixos' }
+                environment {
+                    KUBECONFIG = "${env.WORKSPACE}/${e2e_environment}/modules/k8s/secrets/admin.conf"
+                    RUN_UUID = UUID.randomUUID().toString()
+                }
+                steps {
+                    script {
+                            Common().RunParallelStage(e2e_params)
+                    }
+                }
+                post {
+                    always {
+                        script {
+                            Common().PostParallelStage(e2e_params, "${RUN_UUID}")
+                        }
+                    }
+                }//post
+            }//stage 'run e2e part1'
+            stage('run e2e part2') {
+                agent { label 'nixos' }
+                environment {
+                    KUBECONFIG = "${env.WORKSPACE}/${e2e_environment}/modules/k8s/secrets/admin.conf"
+                    RUN_UUID = UUID.randomUUID().toString()
+                }
+                steps {
+                    script {
+                            Common().RunParallelStage(e2e_params)
+                    }
+                }
+                post {
+                    always {
+                        script {
+                            Common().PostParallelStage(e2e_params, "${RUN_UUID}")
+                        }
+                    }
+                }//post
+            }//stage 'run e2e part2'
+            stage('run e2e part3') {
+                agent { label 'nixos' }
+                environment {
+                    KUBECONFIG = "${env.WORKSPACE}/${e2e_environment}/modules/k8s/secrets/admin.conf"
+                    RUN_UUID = UUID.randomUUID().toString()
+                }
+                steps {
+                    script {
+                            Common().RunParallelStage(e2e_params)
+                    }
+                }
+                post {
+                    always {
+                        script {
+                            Common().PostParallelStage(e2e_params, "${RUN_UUID}")
+                        }
+                    }
+                }//post
+            }//stage 'run e2e part3'
+            stage('run e2e part4') {
+                agent { label 'nixos' }
+                environment {
+                    KUBECONFIG = "${env.WORKSPACE}/${e2e_environment}/modules/k8s/secrets/admin.conf"
+                    RUN_UUID = UUID.randomUUID().toString()
+                }
+                steps {
+                    script {
+                            Common().RunParallelStage(e2e_params)
+                    }
+                }
+                post {
+                    always {
+                        script {
+                            Common().PostParallelStage(e2e_params, "${RUN_UUID}")
+                        }
+                    }
+                }//post
+            }//stage 'run e2e part4'
+            stage('run e2e part5') {
+                agent { label 'nixos' }
+                environment {
+                    KUBECONFIG = "${env.WORKSPACE}/${e2e_environment}/modules/k8s/secrets/admin.conf"
+                    RUN_UUID = UUID.randomUUID().toString()
+                }
+                steps {
+                    script {
+                            Common().RunParallelStage(e2e_params)
+                    }
+                }
+                post {
+                    always {
+                        script {
+                            Common().PostParallelStage(e2e_params, "${RUN_UUID}")
+                        }
+                    }
+                }//post
+            }//stage 'run e2e part5'
+            stage('run e2e part6') {
+                agent { label 'nixos' }
+                environment {
+                    KUBECONFIG = "${env.WORKSPACE}/${e2e_environment}/modules/k8s/secrets/admin.conf"
+                    RUN_UUID = UUID.randomUUID().toString()
+                }
+                steps {
+                    script {
+                            Common().RunParallelStage(e2e_params)
+                    }
+                }
+                post {
+                    always {
+                        script {
+                            Common().PostParallelStage(e2e_params, "${RUN_UUID}")
+                        }
+                    }
+                }//post
+            }//stage 'run e2e part6'
+        }//parallel
+    }//stage 'test'
+    stage('coverage report') {
+        agent { label 'nixos' }
+        steps {
+            script{
+                Common().CoverageReport(e2e_params)
+            }
+        }
+    }//coverage report
+    stage('archive artifacts') {
+        agent { label 'nixos' }
+        steps {
+            script{
+                Common().ParallelArchiveArtefacts(e2e_params)
+            }
+        }
+    }
+    stage('check failed tests'){
+        steps {
+            script{
+                def failed_tests_queue = e2e_params['failed_tests_queue']
+                if (failed_tests_queue.size() > 0) {
+                    error("The following tests failed: " + failed_tests_queue)
+                }
+            }
+        }
+    }
+  }//stages
+}

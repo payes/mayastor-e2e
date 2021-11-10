@@ -108,6 +108,10 @@ def BuildMCPImages(Map parms) {
   def mayastorBranch = parms['mayastorBranch']
   def mcpBranch = parms['mcpBranch']
   def test_tag = parms['test_tag']
+  def build_flags = ""
+  if (parms.containsKey('build_flags')) {
+        build_flags = parms['build_flags']
+  }
 
   GetMayastor(mayastorBranch)
 
@@ -122,15 +126,15 @@ def BuildMCPImages(Map parms) {
   // Note: We might want to build and test dev images that have more
   // assertions instead but that complicates e2e tests a bit.
   // Build mayastor and mayastor-csi
-  sh "cd Mayastor && ./scripts/release.sh --registry \"${env.REGISTRY}\" --alias-tag \"$test_tag\" "
+  sh "cd Mayastor && ./scripts/release.sh $build_flags --registry \"${env.REGISTRY}\" --alias-tag \"$test_tag\" "
 
   // Build mayastor control plane
   GetMCP(mcpBranch)
   sh "cd mayastor-control-plane && git submodule update --init"
-  sh "cd mayastor-control-plane && ./scripts/release.sh --registry \"${env.REGISTRY}\" --alias-tag \"$test_tag\" "
+  sh "cd mayastor-control-plane && ./scripts/release.sh $build_flags --registry \"${env.REGISTRY}\" --alias-tag \"$test_tag\" "
 
   // Build the install image
-  sh "./scripts/create-install-image.sh --alias-tag \"$test_tag\" --mayastor Mayastor --mcp mayastor-control-plane --registry \"${env.REGISTRY}\""
+  sh "./scripts/create-install-image.sh $build_flags --alias-tag \"$test_tag\" --mayastor Mayastor --mcp mayastor-control-plane --registry \"${env.REGISTRY}\""
 
   // Limit any side-effects
   sh "rm -Rf Mayastor/"
@@ -575,6 +579,46 @@ def PopulateTestQueue(Map params) {
   for (int i = 0; i < tests.size(); i++) {
     tests_queue.add(tests[i])
   }
+}
+
+def StashMayastorBinaries(Map params) {
+    def artefacts_stash_queue = params['artefacts_stash_queue']
+    def test_tag = params['e2e_image_tag']
+    def bin_dir = "./artifacts/binaries/${test_tag}"
+
+    sh "./scripts/get-mayastor-binaries.py --tag ${test_tag} --registry ${env.REGISTRY} --outputdir ${bin_dir}"
+    def stash_name = 'arts-bin'
+    stash includes: 'artifacts/**/**', name: stash_name
+    artefacts_stash_queue.add(stash_name)
+}
+
+def CoverageReport(Map params) {
+    def artefacts_stash_queue = params['artefacts_stash_queue']
+    def test_tag = params['e2e_image_tag']
+    def mayastorBranch = params['mayastorBranch']
+    def mcpBranch = params['mcpBranch']
+
+    GetMayastor(mayastorBranch)
+    GetMCP(mcpBranch)
+
+    while (artefacts_stash_queue.size() > 0) {
+        def stash_name = artefacts_stash_queue.poll()
+        unstash name: stash_name
+    }
+
+    def mayastor_dir = "${env.WORKSPACE}/Mayastor"
+    def mcp_dir = "${env.WORKSPACE}/mayastor-control-plane"
+    def data_dir = "${env.WORKSPACE}/artifacts/coverage/data"
+    def bin_dir = "${env.WORKSPACE}/artifacts/binaries/${test_tag}"
+    def report_dir = "${env.WORKSPACE}/artifacts/coverage/report"
+
+    sh "./scripts/get-mayastor-binaries.py --tag ${test_tag} --registry ${env.REGISTRY} --outputdir ${bin_dir}"
+
+    sh "./scripts/coverage-report.sh -d ${data_dir} -b ${bin_dir} -M ${mayastor_dir} -C ${mcp_dir} -r ${report_dir}"
+
+    stash_name = 'artefcats-with-coverage-report'
+    stash includes: 'artifacts/**/**', name: stash_name
+    artefacts_stash_queue.add(stash_name)
 }
 
 

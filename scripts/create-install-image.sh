@@ -6,17 +6,34 @@ set -euo pipefail
 
 REGISTRY="ci-registry.mayastor-ci.mayadata.io"
 OUTPUT_TAG="nightly-stable"
-SCRIPTDIR=$(dirname "$(realpath "$0")")
-E2EROOT=$(realpath "$SCRIPTDIR/..")
+#SCRIPTDIR=$(dirname "$(realpath "$0")")
+#E2EROOT=$(realpath "$SCRIPTDIR/..")
 MAYASTOR_DIR=""
 MOAC_DIR=""
 MCP_DIR=""
+declare -a build_info
+
+# render build_info as a json file
+function build_info_to_json {
+    printf "{\n"
+    alen=$(( ${#build_info[*]}-1 ))
+
+    for (( c=0; c <= alen; c++ ))
+    do
+        if (( c < alen )) ; then
+            printf "    %s,\n" "${build_info[$c]}"
+        else
+            printf "    %s\n" "${build_info[$c]}"
+        fi
+    done
+    printf "}\n"
+}
 
 help() {
   cat <<EOF
 Create a mayastor install image, this contains all templates and files required for E2E to install mayastor
 
-Usage: $(basename $0) [OPTIONS]
+Usage: $(basename "$0") [OPTIONS]
 
 Options:
   -h, --help                 Display this text.
@@ -27,8 +44,10 @@ Options:
   --mayastor                 Path to root Mayastor directory
   --moac                     Path to root MOAC directory
   --mcp                      Path to root Mayastor control plane directory
+  --coverage                 Build is a coverage build
+  --debug                    Build is debug build
 Examples:
-  $(basename $0) --registry 127.0.0.1:5000 --alias-tag customized-tag
+  $(basename "$0") --registry 127.0.0.1:5000 --alias-tag customized-tag
 EOF
 }
 
@@ -65,6 +84,14 @@ while [ "$#" -gt 0 ]; do
       MCP_DIR=$1
       shift
       ;;
+    --coverage)
+      shift
+      build_info+=('"coverage": true')
+      ;;
+    --debug)
+      shift
+      build_info+=('"debug": true')
+      ;;
     *)
       echo "Unknown option: $1"
       exit 1
@@ -93,9 +120,9 @@ tmpdir=$(mktemp -d)
 workdir=$tmpdir/work
 mkdir -p "$workdir"
 pushd "${MAYASTOR_DIR}" \
-    && tar cf "$tmpdir/install.tar" scripts/generate-deploy-yamls.sh rpc/mayastor-api/protobuf/mayastor.proto deploy \
-    && git rev-parse HEAD > "$workdir/git-revision.mayastor" \
-    && git rev-parse --short=12 HEAD >> "$workdir/git-revision.mayastor" \
+    && tar cf "$tmpdir/install.tar" scripts/generate-deploy-yamls.sh rpc/mayastor-api/protobuf/mayastor.proto \
+    && build_info+=("\"mayastor-revision\": \"$(git rev-parse HEAD)\"") \
+    && build_info+=("\"mayastor-short-revision\": \"$(git rev-parse --short=12 HEAD)\"") \
     && cp -R chart/ "$workdir" \
     && popd
 
@@ -103,8 +130,8 @@ if [ -n "$MOAC_DIR" ]; then
     pushd "${MOAC_DIR}" \
         && mkdir -p "$workdir/csi/moac/crds" \
         && cp crds/* "$workdir/csi/moac/crds/" \
-        && git rev-parse HEAD > "$workdir/git-revision.moac" \
-        && git rev-parse --short=12 HEAD >> "$workdir/git-revision.moac" \
+        && build_info+=("\"moac-revision\": \"$(git rev-parse HEAD)\"") \
+        && build_info+=("\"moac-short-revision\": \"$(git rev-parse --short=12 HEAD)\"") \
         && popd
 fi
 
@@ -116,14 +143,13 @@ if [ -n "$MCP_DIR" ]; then
         && mkdir -p "$workdir/mcp/scripts" \
         && cp scripts/generate-deploy-yamls.sh "$workdir/mcp/scripts" \
         && cp -R chart "$workdir/mcp" \
-        && nix-build -A utils.release.kubectl-plugin \
         && mkdir -p "$workdir/mcp/bin" \
         && cp "$(nix-build -A utils.release.kubectl-plugin --no-out-link)/bin/kubectl-mayastor" "$workdir/mcp/bin" \
         && chmod a+w "$workdir/mcp/bin/kubectl-mayastor" \
         && mkdir -p "$workdir/mcp/control-plane/rest/openapi-specs" \
         && cp control-plane/rest/openapi-specs/* "$workdir/mcp/control-plane/rest/openapi-specs" \
-        && git rev-parse HEAD > "$workdir/git-revision.mcp" \
-        && git rev-parse --short=12 HEAD >> "$workdir/git-revision.mcp" \
+        && build_info+=("\"mayastor-control-plane-revision\": \"$(git rev-parse HEAD)\"") \
+        && build_info+=("\"mayastor-control-plane-short-revision\": \"$(git rev-parse --short=12 HEAD)\"") \
         && popd
     # FIXME: dangling CRD yaml files break deployment using helm
     pushd "$workdir" \
@@ -131,9 +157,11 @@ if [ -n "$MCP_DIR" ]; then
         && popd
     # FIXME: remove moac yaml files which are pulled in from mayastor
     pushd "$workdir" \
-        && find chart/ -name moac\*.yaml -print | xargs rm -f \
+        && find chart/ -name moac\*.yaml -print0 | xargs -0 rm -f \
         && popd
 fi
+
+build_info_to_json > "$workdir/build_info.json"
 
 pushd "$workdir" \
     && tar -rf "$tmpdir/install.tar" . \

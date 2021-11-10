@@ -41,7 +41,7 @@ uninstall_cleanup="n"
 generate_logs=0
 logsdir="$ARTIFACTSDIR/logs"
 reportsdir="$ARTIFACTSDIR/reports"
-coveragedir="$ARTIFACTSDIR/coverage"
+coveragedir="$ARTIFACTSDIR/coverage/data"
 mayastor_root_dir=""
 policy_cleanup_before="${e2e_policy_cleanup_before:-false}"
 profile_test_list=""
@@ -480,6 +480,12 @@ echo "    logsdir=$logsdir"
 echo ""
 echo "list of tests: $tests"
 
+if contains "$tests" "install" ; then
+    if ! "$SCRIPTDIR/remote-coverage-files.py" --clear --identity_file "$ssh_identity" ; then
+        echo "***************************** failed to clear coverage files"
+    fi
+fi
+
 for testname in $tests; do
   # defer uninstall till after other tests have been run.
   if [ "$testname" != "uninstall" ] ;  then
@@ -529,7 +535,7 @@ if contains "$tests" "uninstall" ; then
         test_failed=1
         emitLogs "uninstall"
     else
-        if ! "$SCRIPTDIR/getCoverageFiles.py" --path "$coveragedir" --identity_file "$ssh_identity" ; then
+        if ! "$SCRIPTDIR/remote-coverage-files.py" --get --path "$coveragedir" --identity_file "$ssh_identity" ; then
             echo "Failed to retrieve coverage files"
         fi
         if  [ "$test_failed" -ne 0 ] ; then
