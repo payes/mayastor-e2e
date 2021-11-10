@@ -280,6 +280,15 @@ func InstallMayastor() error {
 		return fmt.Errorf("mayastor control plane/MOAC installation is not ready")
 	}
 
+	// wait for mayastor node to be ready
+	nodeReady, err := k8stest.MayastorNodeReady(5, 180)
+	if err != nil {
+		return err
+	}
+	if !nodeReady {
+		return fmt.Errorf("all mayastor node are not ready")
+	}
+
 	crdReady := WaitForPoolCrd()
 	if !crdReady {
 		return fmt.Errorf("mayastor pool CRD not defined?")
