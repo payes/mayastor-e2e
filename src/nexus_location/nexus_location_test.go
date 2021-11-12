@@ -104,14 +104,17 @@ func nexusLocality(replicas int, local bool) {
 func remotelyProvisionedVolume(replicas int, local bool) {
 	deferredAssert := e2e_config.GetConfig().DeferredAssert
 
-	logf.Log.Info("remote volume")
-	nodes, err := k8stest.GetMayastorNodeNames()
-	Expect(err).To(BeNil(), "failed to retrieve list of nodes")
-	Expect(len(nodes)).ToNot(BeZero(), "no nodes found")
-	nodeName := nodes[0]
+	nodeName := ""
+	nodes, err := k8stest.GetNodeLocs()
+	Expect(err).ToNot(HaveOccurred())
 
-	logf.Log.Info("De-scheduling mayastor on", "node", nodeName)
-	k8stest.UnlabelNode(nodeName, common.MayastorEngineLabel)
+	for _, node := range nodes {
+		if node.MasterNode {
+			nodeName = node.NodeName
+			break
+		}
+	}
+
 	logf.Log.Info("Scheduling consumer pod on", "node", nodeName)
 	k8stest.LabelNode(nodeName, NlNodeSelectorKey, NlNodeSelectorAppValue)
 
@@ -138,7 +141,11 @@ func remotelyProvisionedVolume(replicas int, local bool) {
 	}
 	logf.Log.Info("FioPod", "name", fioPodName, "PodScheduledStatus", podScheduledStatus, "reason", podScheduledReason)
 	if !deferredAssert {
-		Expect(podScheduledStatus == coreV1.ConditionFalse).To(BeTrue(), "remotely provisioned pod was scheduled")
+		if local {
+			Expect(podScheduledStatus == coreV1.ConditionFalse).To(BeTrue(), "remotely provisioned pod was scheduled")
+		} else {
+			Expect(podScheduledStatus == coreV1.ConditionTrue).To(BeTrue(), "remotely provisioned pod was not scheduled")
+		}
 	}
 
 	nexuses, err := k8stest.ListNexusesInCluster()
@@ -154,12 +161,15 @@ func remotelyProvisionedVolume(replicas int, local bool) {
 
 	destroyTestVolume(volName, scName)
 	k8stest.UnlabelNode(nodeName, NlNodeSelectorKey)
-	err = k8stest.EnsureNodeLabels()
 	Expect(err).To(BeNil(), "Restoring node labels failed.")
 
 	if deferredAssert {
 		// Deferred check so that we clean up and can meaningfully run the next test, this renders postmortem analysis following this test next to useless
-		Expect(podScheduledStatus == coreV1.ConditionFalse).To(BeTrue(), "remotely provisioned pod was scheduled")
+		if local {
+			Expect(podScheduledStatus == coreV1.ConditionFalse).To(BeTrue(), "remotely provisioned pod was scheduled")
+		} else {
+			Expect(podScheduledStatus == coreV1.ConditionTrue).To(BeTrue(), "remotely provisioned pod was not scheduled")
+		}
 	}
 }
 
@@ -293,16 +303,22 @@ var _ = Describe("Nexus location tests", func() {
 		// Check ready to run
 		err := k8stest.BeforeEachCheck()
 		Expect(err).ToNot(HaveOccurred())
+		k8stest.AllowMasterScheduling()
 	})
 
 	AfterEach(func() {
 		//Restore node labels, wait for all pools to transition to online.
 		_ = k8stest.EnsureNodeLabels()
+		k8stest.RemoveMasterScheduling()
 		err := k8stest.RestoreConfiguredPools()
 		Expect(err).ToNot(HaveOccurred(), "Not all pools are online")
 		// Check resource leakage.
 		err = k8stest.AfterEachCheck()
 		Expect(err).ToNot(HaveOccurred())
+	})
+
+	It("should verify volume is published if consumer pod is scheduled on a node not running Mayastor, 1 replica, local=false ", func() {
+		remotelyProvisionedVolume(1, false)
 	})
 
 	It("should verify volume is not published if consumer pod is scheduled on a node not running Mayastor, 1 replica, local=true ", func() {

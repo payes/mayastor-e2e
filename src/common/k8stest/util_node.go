@@ -147,6 +147,44 @@ func UnlabelNode(nodename string, label string) {
 	Expect(err).ToNot(HaveOccurred())
 }
 
+// AllowMasterScheduling removed NoSchedule toleration from master node
+func AllowMasterScheduling() {
+	var masterNode string
+	nodes, err := GetNodeLocs()
+	Expect(err).ToNot(HaveOccurred())
+
+	for _, node := range nodes {
+		if node.MasterNode {
+			masterNode = node.NodeName
+			break
+		}
+	}
+	// TODO remove dependency on kubectl
+	cmd := exec.Command("kubectl", "taint", "node", masterNode, "node-role.kubernetes.io/master:NoSchedule"+"-")
+	cmd.Dir = ""
+	_, err = cmd.CombinedOutput()
+	Expect(err).ToNot(HaveOccurred())
+}
+
+// RemoveMasterScheduling adds NoSchedule taint to master node
+func RemoveMasterScheduling() {
+	var masterNode string
+	nodes, err := GetNodeLocs()
+	Expect(err).ToNot(HaveOccurred())
+
+	for _, node := range nodes {
+		if node.MasterNode {
+			masterNode = node.NodeName
+			break
+		}
+	}
+	// TODO remove dependency on kubectl
+	cmd := exec.Command("kubectl", "taint", "node", masterNode, "node-role.kubernetes.io/master:NoSchedule")
+	cmd.Dir = ""
+	_, err = cmd.CombinedOutput()
+	Expect(err).ToNot(HaveOccurred())
+}
+
 // EnsureNodeLabels  add the label openebs.io/engine=mayastor to  all worker nodes so that K8s runs mayastor on them
 // returns error is accessing the list of nodes fails.
 func EnsureNodeLabels() error {
