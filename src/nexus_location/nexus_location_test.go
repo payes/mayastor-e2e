@@ -59,6 +59,8 @@ func destroyTestVolume(volName, scName string) {
 }
 
 func nexusLocality(replicas int, local bool) {
+	deferredAssert := e2e_config.GetConfig().DeferredAssert
+
 	logf.Log.Info("nexus locality")
 
 	volName, uid, scName := makeTestVolume("nexus-local", replicas, local)
@@ -82,23 +84,35 @@ func nexusLocality(replicas int, local bool) {
 
 	msv, err := k8stest.GetMSV(uid)
 	Expect(err).ToNot(HaveOccurred(), "failed to retrieve MSV for volume %s", uid)
+	logf.Log.Info("nexus locality", "msv", msv)
 	ips := []string{podHostIP}
 	nexuses, err := mayastorclient.ListNexuses(ips)
 	Expect(err).To(BeNil(), "failed to list nexuses")
 	foundLocalNexus := false
+	logf.Log.Info("nexus locality", "msv.Status.Nexus.Uuid", msv.Status.Nexus.Uuid)
 	for _, nexus := range nexuses {
+		logf.Log.Info("nexus locality", "nexus.Uuid", nexus.Uuid)
 		if nexus.Uuid == msv.Status.Nexus.Uuid {
 			foundLocalNexus = true
 			logf.Log.Info("found matching nexus local to consumer pod", "nexus uuid", nexus.Uuid, "nexus", nexus)
 		}
 	}
-	Expect(foundLocalNexus).To(BeTrue(), "nexus is not local to consumer pod")
+	logf.Log.Info("nexus locality", "foundLocalNexus", foundLocalNexus)
+
+	if !deferredAssert {
+		Expect(foundLocalNexus).To(BeTrue(), "nexus is not local to consumer pod")
+	}
 
 	// Delete the fio pod
 	err = k8stest.DeletePod(fioPodName, ns)
 	Expect(err).ToNot(HaveOccurred(), "deleting test pod")
 
 	destroyTestVolume(volName, scName)
+
+	if deferredAssert {
+		Expect(foundLocalNexus).To(BeTrue(), "nexus is not local to consumer pod")
+	}
+
 }
 
 func remotelyProvisionedVolume(replicas int, local bool) {
