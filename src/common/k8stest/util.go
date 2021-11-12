@@ -750,11 +750,11 @@ func CheckAndSetControlPlane() error {
 // Checks if the requisite number of mayastor node are online.
 func MayastorNodeReady(sleepTime int, duration int) (bool, error) {
 	ready := false
-	readyCount := 0
 	msReadyPodCount := mayastorReadyPodCount()
 	count := (duration + sleepTime - 1) / sleepTime
 	for ix := 0; ix < count && !ready; ix++ {
 		time.Sleep(time.Duration(sleepTime) * time.Second)
+		readyCount := 0
 		// list mayastor node
 		nodeList, err := ListMsns()
 		if err != nil {
