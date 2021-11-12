@@ -12,6 +12,7 @@ import (
 
 // MayastorNexus Mayastor Nexus data
 type MayastorNexus struct {
+	Name      string                  `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	Uuid      string                  `protobuf:"bytes,1,opt,name=uuid,proto3" json:"uuid,omitempty"`
 	Size      uint64                  `protobuf:"varint,2,opt,name=size,proto3" json:"size,omitempty"`
 	State     mayastorGrpc.NexusState `protobuf:"varint,3,opt,name=state,proto3,enum=mayastor.NexusState" json:"state,omitempty"`
@@ -51,9 +52,9 @@ func listNexuses(address string) ([]MayastorNexus, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), ctxTimeout)
 	defer cancel()
 
-	var response *mayastorGrpc.ListNexusReply
+	var response *mayastorGrpc.ListNexusV2Reply
 	retryBackoff(func() error {
-		response, err = c.ListNexus(ctx, &null)
+		response, err = c.ListNexusV2(ctx, &null)
 		return err
 	})
 
@@ -61,6 +62,7 @@ func listNexuses(address string) ([]MayastorNexus, error) {
 		if response != nil {
 			for _, nexus := range response.NexusList {
 				ni := MayastorNexus{
+					Name:      nexus.Name,
 					Uuid:      nexus.Uuid,
 					Size:      nexus.Size,
 					State:     nexus.State,

@@ -22,8 +22,10 @@ type MayastorClient interface {
 	DestroyPool(ctx context.Context, in *DestroyPoolRequest, opts ...grpc.CallOption) (*Null, error)
 	ListPools(ctx context.Context, in *Null, opts ...grpc.CallOption) (*ListPoolsReply, error)
 	CreateReplica(ctx context.Context, in *CreateReplicaRequest, opts ...grpc.CallOption) (*Replica, error)
+	CreateReplicaV2(ctx context.Context, in *CreateReplicaRequestV2, opts ...grpc.CallOption) (*ReplicaV2, error)
 	DestroyReplica(ctx context.Context, in *DestroyReplicaRequest, opts ...grpc.CallOption) (*Null, error)
 	ListReplicas(ctx context.Context, in *Null, opts ...grpc.CallOption) (*ListReplicasReply, error)
+	ListReplicasV2(ctx context.Context, in *Null, opts ...grpc.CallOption) (*ListReplicasReplyV2, error)
 	StatReplicas(ctx context.Context, in *Null, opts ...grpc.CallOption) (*StatReplicasReply, error)
 	ShareReplica(ctx context.Context, in *ShareReplicaRequest, opts ...grpc.CallOption) (*ShareReplicaReply, error)
 	CreateNexus(ctx context.Context, in *CreateNexusRequest, opts ...grpc.CallOption) (*Nexus, error)
@@ -108,6 +110,15 @@ func (c *mayastorClient) CreateReplica(ctx context.Context, in *CreateReplicaReq
 	return out, nil
 }
 
+func (c *mayastorClient) CreateReplicaV2(ctx context.Context, in *CreateReplicaRequestV2, opts ...grpc.CallOption) (*ReplicaV2, error) {
+	out := new(ReplicaV2)
+	err := c.cc.Invoke(ctx, "/mayastor.Mayastor/CreateReplicaV2", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *mayastorClient) DestroyReplica(ctx context.Context, in *DestroyReplicaRequest, opts ...grpc.CallOption) (*Null, error) {
 	out := new(Null)
 	err := c.cc.Invoke(ctx, "/mayastor.Mayastor/DestroyReplica", in, out, opts...)
@@ -120,6 +131,15 @@ func (c *mayastorClient) DestroyReplica(ctx context.Context, in *DestroyReplicaR
 func (c *mayastorClient) ListReplicas(ctx context.Context, in *Null, opts ...grpc.CallOption) (*ListReplicasReply, error) {
 	out := new(ListReplicasReply)
 	err := c.cc.Invoke(ctx, "/mayastor.Mayastor/ListReplicas", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *mayastorClient) ListReplicasV2(ctx context.Context, in *Null, opts ...grpc.CallOption) (*ListReplicasReplyV2, error) {
+	out := new(ListReplicasReplyV2)
+	err := c.cc.Invoke(ctx, "/mayastor.Mayastor/ListReplicasV2", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -386,8 +406,10 @@ type MayastorServer interface {
 	DestroyPool(context.Context, *DestroyPoolRequest) (*Null, error)
 	ListPools(context.Context, *Null) (*ListPoolsReply, error)
 	CreateReplica(context.Context, *CreateReplicaRequest) (*Replica, error)
+	CreateReplicaV2(context.Context, *CreateReplicaRequestV2) (*ReplicaV2, error)
 	DestroyReplica(context.Context, *DestroyReplicaRequest) (*Null, error)
 	ListReplicas(context.Context, *Null) (*ListReplicasReply, error)
+	ListReplicasV2(context.Context, *Null) (*ListReplicasReplyV2, error)
 	StatReplicas(context.Context, *Null) (*StatReplicasReply, error)
 	ShareReplica(context.Context, *ShareReplicaRequest) (*ShareReplicaReply, error)
 	CreateNexus(context.Context, *CreateNexusRequest) (*Nexus, error)
@@ -445,11 +467,17 @@ func (UnimplementedMayastorServer) ListPools(context.Context, *Null) (*ListPools
 func (UnimplementedMayastorServer) CreateReplica(context.Context, *CreateReplicaRequest) (*Replica, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateReplica not implemented")
 }
+func (UnimplementedMayastorServer) CreateReplicaV2(context.Context, *CreateReplicaRequestV2) (*ReplicaV2, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateReplicaV2 not implemented")
+}
 func (UnimplementedMayastorServer) DestroyReplica(context.Context, *DestroyReplicaRequest) (*Null, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DestroyReplica not implemented")
 }
 func (UnimplementedMayastorServer) ListReplicas(context.Context, *Null) (*ListReplicasReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListReplicas not implemented")
+}
+func (UnimplementedMayastorServer) ListReplicasV2(context.Context, *Null) (*ListReplicasReplyV2, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListReplicasV2 not implemented")
 }
 func (UnimplementedMayastorServer) StatReplicas(context.Context, *Null) (*StatReplicasReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method StatReplicas not implemented")
@@ -620,6 +648,24 @@ func _Mayastor_CreateReplica_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Mayastor_CreateReplicaV2_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateReplicaRequestV2)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MayastorServer).CreateReplicaV2(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/mayastor.Mayastor/CreateReplicaV2",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MayastorServer).CreateReplicaV2(ctx, req.(*CreateReplicaRequestV2))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Mayastor_DestroyReplica_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(DestroyReplicaRequest)
 	if err := dec(in); err != nil {
@@ -652,6 +698,24 @@ func _Mayastor_ListReplicas_Handler(srv interface{}, ctx context.Context, dec fu
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MayastorServer).ListReplicas(ctx, req.(*Null))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Mayastor_ListReplicasV2_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Null)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MayastorServer).ListReplicasV2(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/mayastor.Mayastor/ListReplicasV2",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MayastorServer).ListReplicasV2(ctx, req.(*Null))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1184,12 +1248,20 @@ var Mayastor_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Mayastor_CreateReplica_Handler,
 		},
 		{
+			MethodName: "CreateReplicaV2",
+			Handler:    _Mayastor_CreateReplicaV2_Handler,
+		},
+		{
 			MethodName: "DestroyReplica",
 			Handler:    _Mayastor_DestroyReplica_Handler,
 		},
 		{
 			MethodName: "ListReplicas",
 			Handler:    _Mayastor_ListReplicas_Handler,
+		},
+		{
+			MethodName: "ListReplicasV2",
+			Handler:    _Mayastor_ListReplicasV2_Handler,
 		},
 		{
 			MethodName: "StatReplicas",
