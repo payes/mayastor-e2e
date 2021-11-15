@@ -58,7 +58,7 @@ terraform (in terraform/ in this repo).
 If you'd like to run the tests as a whole (as they are run in our CI/CD
 pipeline) then use the script `./scripts/e2e-test.sh`.
 
-To run particular test, `cd` to the directory with tests and type `go test .  -ginkgo.v -ginkgo.progress -timeout 0`
+To run particular test, `cd` to the directory with tests and type `go test -v . -ginkgo.v -ginkgo.progress -timeout 0`
 Most of the tests assume that mayastor is already installed. `install` test
 can be run to do that.
 Note some tests require deletion of pools and reconfiguration of pools, these tests will only work if
