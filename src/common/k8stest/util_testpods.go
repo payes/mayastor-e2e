@@ -428,7 +428,7 @@ func RestartMayastorPods(timeoutSecs int) error {
 		newPodNames, err = listMayastorPods(&now)
 		if err == nil {
 			logf.Log.Info("Restarted", "pods", newPodNames)
-			if len(podNames) <= len(newPodNames) {
+			if len(newPodNames) <= len(podNames) {
 				logf.Log.Info("Restart complete.")
 				return nil
 			}
@@ -564,7 +564,7 @@ func RestartMayastor(restartTOSecs int, readyTOSecs int, poolsTOSecs int) error 
 	for retryCount := 3; retryCount > 0; retryCount-- {
 		msg := "Restarting failed, failed to restart pods"
 		err = restartMayastor(restartTOSecs, restartTOSecs, poolsTOSecs)
-		if err == nil {
+		if err != nil {
 			msg = "Restarting failed, pods are not healthy"
 			err = CheckTestPodsHealth(common.NSMayastor())
 			if err == nil {
