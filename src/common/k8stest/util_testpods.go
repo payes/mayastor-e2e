@@ -352,7 +352,10 @@ func CheckPodContainerCompleted(podName string, nameSpace string) (coreV1.PodPha
 	return pod.Status.Phase, err
 }
 
-func collectMayastorPodNames() ([]string, error) {
+// List mayastor pod names, conditionally
+//  1) No timestamp - all mayastor pods
+//	2) With timestamp - all mayastor pods created after the timestamp which are Running.
+func listMayastorPods(timestamp *time.Time) ([]string, error) {
 	var podNames []string
 	podApi := gTestEnv.KubeInt.CoreV1().Pods
 	pods, err := podApi(common.NSMayastor()).List(context.TODO(), metaV1.ListOptions{})
@@ -360,12 +363,23 @@ func collectMayastorPodNames() ([]string, error) {
 		return podNames, err
 	}
 	for _, pod := range pods.Items {
-		if strings.HasPrefix(pod.Name, "mayastor") && !strings.HasPrefix(pod.Name, "mayastor-etcd") {
-			podNames = append(podNames, pod.Name)
+		if strings.HasPrefix(pod.Name, "mayastor-etcd") {
+			continue
 		}
-		if strings.HasPrefix(pod.Name, "moac") {
-			podNames = append(podNames, pod.Name)
+		// If timestamp != nil, then we return the list of pods which are both
+		//	1. running
+		//  2. created after the timestamp
+
+		if timestamp != nil {
+			if pod.Status.Phase != v1.PodRunning {
+				continue
+			}
+			cs := pod.GetCreationTimestamp()
+			if !cs.After(*timestamp) {
+				continue
+			}
 		}
+		podNames = append(podNames, pod.Name)
 	}
 	return podNames, nil
 }
@@ -374,21 +388,24 @@ func collectMayastorPodNames() ([]string, error) {
 // like volterra, for example calling this function after patching the installation to
 // use different mayastor images, should allow us to have reasonable confidence that
 // mayastor has been restarted with those images.
-// Deletes all mayastor, mayastor-csi and moac pods,
-// then waits upto 2 minutes for new pods to be provisioned
+// Deletes all mayastor pods except for mayastor etcd pods,
+// then waits upto specified time for new pods to be provisioned
 // Simply deleting the pods and then waiting for daemonset ready checks do not work due to k8s latencies,
 // for example it has been observed the mayastor-csi pods are deemed ready
 // because they enter terminating state after we've checked for readiness
-// Caller must perform daemonset readiness checks after calling this function.
+// Caller must perform readiness checks after calling this function.
 func RestartMayastorPods(timeoutSecs int) error {
 	var err error
 	podApi := gTestEnv.KubeInt.CoreV1().Pods
 
-	podNames, err := collectMayastorPodNames()
+	podNames, err := listMayastorPods(nil)
 	if err != nil {
 		return err
 	}
 
+	logf.Log.Info("Restarting", "pods", podNames)
+	now := time.Now()
+	time.Sleep(1 * time.Second)
 	for _, podName := range podNames {
 		delErr := podApi(common.NSMayastor()).Delete(context.TODO(), podName, metaV1.DeleteOptions{})
 		if delErr != nil {
@@ -405,36 +422,15 @@ func RestartMayastorPods(timeoutSecs int) error {
 	var newPodNames []string
 	const sleepTime = 10
 	// Wait (with timeout) for all pods to have restarted
-	// For this to work we rely on the fact that for daemonsets and deployments,
-	// when a pod is deleted, k8s spins up a new pod with a different name.
-	// So the check is comparison between
-	//	1) the list of mayastor pods deleted
-	//	2) a freshly generated list of mayastor pods
-	// - the size of the fresh list >= size of the deleted list
-	// - the names of the pods deleted do not occur in the fresh list
 	logf.Log.Info("Waiting for all pods to restart", "timeoutSecs", timeoutSecs)
 	for ix := 1; ix < (timeoutSecs+sleepTime-1)/sleepTime; ix++ {
 		time.Sleep(sleepTime * time.Second)
-		newPodNames, err = collectMayastorPodNames()
+		newPodNames, err = listMayastorPods(&now)
 		if err == nil {
-			logf.Log.Info("Checking restarted pods")
-			if len(podNames) <= len(newPodNames) {
-				found := false
-				for _, prevPodName := range podNames {
-					// names of mayastor-etcd do not change so ignore.
-					if strings.HasPrefix(prevPodName, "mayastor-etcd") {
-						continue
-					}
-					for _, newPodName := range newPodNames {
-						found = found || prevPodName == newPodName
-						if prevPodName == newPodName {
-							logf.Log.Info("not restarted", "pod", prevPodName)
-						}
-					}
-				}
-				if !found {
-					return nil
-				}
+			logf.Log.Info("Restarted", "pods", newPodNames)
+			if len(newPodNames) >= len(podNames) {
+				logf.Log.Info("All pods have been restarted.")
+				return nil
 			}
 		}
 	}
@@ -507,6 +503,8 @@ func restartMayastor(restartTOSecs int, readyTOSecs int, poolsTOSecs int) error 
 
 	// note: CleanUp removes replicas
 	CleanUp()
+	_, _ = DeleteAllPoolFinalizers()
+	_ = DeleteAllPools()
 
 	err = RestartMayastorPods(restartTOSecs)
 	if err != nil {
@@ -561,27 +559,34 @@ func restartMayastor(restartTOSecs int, readyTOSecs int, poolsTOSecs int) error 
 //  - deleting all mayastor pods
 func RestartMayastor(restartTOSecs int, readyTOSecs int, poolsTOSecs int) error {
 	var err error
-	// try to restart upto 3 times
+	const restartRetries = 3
+	// try to restart upto N times
 	// chiefly this is a fudge to get restart to work on the volterra platform
-	for retryCount := 3; retryCount > 0; retryCount-- {
-		err = restartMayastor(restartTOSecs, restartTOSecs, poolsTOSecs)
-		if err != nil {
+	for ix := 1; ix <= restartRetries; ix++ {
+
+		logf.Log.Info("Restarting mayastor", "try", fmt.Sprintf("%d/%d", ix, restartRetries))
+
+		if err = restartMayastor(restartTOSecs, restartTOSecs, poolsTOSecs); err != nil {
+			logf.Log.Info("Restarting failed, failed to restart pods", "error", err)
 			time.Sleep(10 * time.Second)
-			logf.Log.Info("Restart failed", "retries", retryCount, "error", err)
 			continue
 		}
-		err = CheckTestPodsHealth(common.NSMayastor())
-		if err != nil {
+
+		if err = CheckTestPodsHealth(common.NSMayastor()); err != nil {
+			logf.Log.Info("Restarting failed, pods are not healthy", "error", err)
 			time.Sleep(10 * time.Second)
-			logf.Log.Info("Restarting failed, pods are not healthy", "retries", retryCount, "error", err)
+			continue
 		}
-		err = ResourceCheck()
-		if err == nil {
-			break
-		} else {
+
+		if err = ResourceCheck(); err != nil {
+			logf.Log.Info("Restarting failed, resource check failed", "error", err)
 			time.Sleep(10 * time.Second)
-			logf.Log.Info("Restarting failed, resource check failed", "retries", retryCount, "error", err)
+			continue
 		}
+
+		// @here all restarts and checks passed
+		logf.Log.Info("Restarted mayastor successfully")
+		break
 	}
 
 	return err
