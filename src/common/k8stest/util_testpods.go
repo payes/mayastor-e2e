@@ -559,24 +559,34 @@ func restartMayastor(restartTOSecs int, readyTOSecs int, poolsTOSecs int) error 
 //  - deleting all mayastor pods
 func RestartMayastor(restartTOSecs int, readyTOSecs int, poolsTOSecs int) error {
 	var err error
-	// try to restart upto 3 times
+	const restartRetries = 3
+	// try to restart upto N times
 	// chiefly this is a fudge to get restart to work on the volterra platform
-	for retryCount := 3; retryCount > 0; retryCount-- {
-		msg := "Restarting failed, failed to restart pods"
-		err = restartMayastor(restartTOSecs, restartTOSecs, poolsTOSecs)
-		if err == nil {
-			msg = "Restarting failed, pods are not healthy"
-			err = CheckTestPodsHealth(common.NSMayastor())
-			if err == nil {
-				msg = "Restarting failed, resource check failed"
-				err = ResourceCheck()
-				if err == nil {
-					break
-				}
-			}
+	for ix := 1; ix <= restartRetries; ix++ {
+
+		logf.Log.Info("Restarting mayastor", "try", fmt.Sprintf("%d/%d", ix, restartRetries))
+
+		if err = restartMayastor(restartTOSecs, restartTOSecs, poolsTOSecs); err != nil {
+			logf.Log.Info("Restarting failed, failed to restart pods", "error", err)
+			time.Sleep(10 * time.Second)
+			continue
 		}
-		logf.Log.Info(msg, "retries", retryCount, "error", err)
-		time.Sleep(10 * time.Second)
+
+		if err = CheckTestPodsHealth(common.NSMayastor()); err != nil {
+			logf.Log.Info("Restarting failed, pods are not healthy", "error", err)
+			time.Sleep(10 * time.Second)
+			continue
+		}
+
+		if err = ResourceCheck(); err != nil {
+			logf.Log.Info("Restarting failed, resource check failed", "error", err)
+			time.Sleep(10 * time.Second)
+			continue
+		}
+
+		// @here all restarts and checks passed
+		logf.Log.Info("Restarted mayastor successfully")
+		break
 	}
 
 	return err
