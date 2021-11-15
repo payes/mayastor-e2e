@@ -428,7 +428,7 @@ func RestartMayastorPods(timeoutSecs int) error {
 		newPodNames, err = listMayastorPods(&now)
 		if err == nil {
 			logf.Log.Info("Restarted", "pods", newPodNames)
-			if len(newPodNames) <= len(podNames) {
+			if len(newPodNames) >= len(podNames) {
 				logf.Log.Info("All pods have been restarted.")
 				return nil
 			}
