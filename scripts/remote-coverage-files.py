@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 '''
 Simple script to retrieve coverage files
 To reduce dependencies it uses subprocess to run

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 '''
 Simple dumb script to retrieve primary binaries from docker image files.
 

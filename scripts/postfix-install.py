@@ -1,21 +1,17 @@
-#!/usr/bin/env python
-
+#!/usr/bin/env python3
 import re
 import yaml
-
 reimg = re.compile(r'(?P<preceding>.*mayadata)/(?P<imagename>.*):(?P<tag>.*)')
-
-
 def addDebug(comp_name, template_spec, container):
     '''
         - add -dev suffix to images
     '''
     gd = reimg.match(container['image']).groupdict()
+    if gd is None:
+        raise Exception(f'addDebug: {container["image"]}')
     container['image'] = f'{gd["preceding"]}/{gd["imagename"]}-dev:{gd["tag"]}'
     print(f'Modifying {container["name"]} for debug')
     print(f'image: {container["image"]}')
-
-
 def addCoverage(comp_name, template_spec, container):
     '''
         - add -cov suffix to images
@@ -26,7 +22,6 @@ def addCoverage(comp_name, template_spec, container):
     # FIXME: derive a name not present in volumeMounts and volumes
     cov_vol_name = 'coverage'
     cov_location = '/var/local/mayastor-coverage/'
-
     profraw = f'{comp_name}.profraw'
     env = {
         'name': 'LLVM_PROFILE_FILE',
@@ -43,44 +38,37 @@ def addCoverage(comp_name, template_spec, container):
             'type': 'DirectoryOrCreate',
         }
     }
-
     # FIXME: all sections below should check that the desired entries do not
     # exist before modification
     gd = reimg.match(container['image']).groupdict()
+    if gd is None:
+        raise Exception(f'addDebug: {container["image"]}')
     imagename = f'{gd["preceding"]}/{gd["imagename"]}-cov:{gd["tag"]}'
     if imagename == container['image']:
         return False
-
     print(f'Modifying container "{container["name"]}" for coverage')
-
     print('change:\n'
           f'    image: {container["image"]}\n'
           'to:\n'
           f'    image: {imagename}'
           )
     container['image'] = imagename
-
     print(f'add:\n    env: {env}')
     try:
         container['env'].append(env)
     except KeyError:
         container['env'] = [env]
-
     print(f'add:\n    volumeMounts: {volumeMount}')
     try:
         container['volumeMounts'].append(volumeMount)
     except KeyError:
         container['volumeMounts'] = [volumeMount]
-
     print(f'add:\n    volumes: {volume}')
     try:
         template_spec['volumes'].append(volume)
     except KeyError:
         template_spec['volumes'] = [volume]
-
     return True
-
-
 def process_yaml_file(yamlfile, **kwargs):
     '''
     process mayastor installation yaml file to meet requirements for one of
@@ -89,15 +77,13 @@ def process_yaml_file(yamlfile, **kwargs):
     '''
     coverage = kwargs.get('coverage')
     debug = kwargs.get('debug')
-
     if not debug and not coverage:
         # release build, no post processing required
         return
-
     if debug and coverage:
-        raise(Exception('Unsupported combination of debug and coverage'))
-
+        raise (Exception('Unsupported combination of debug and coverage'))
     changed = False
+    print(f'Checking {yamlfile} - {kwargs}')
     with open(yamlfile, mode='r') as fp:
         contents = fp.read()
         ymls = list(yaml.safe_load_all(contents))
@@ -115,14 +101,11 @@ def process_yaml_file(yamlfile, **kwargs):
                         if debug:
                             if addDebug(comp_name, template_spec, container):
                                 changed = True
-
     if changed:
         # Only rewrite if contents changed
         with open(yamlfile, mode='w') as fp:
             _ = yaml.dump_all(ymls, fp)
         print(f'Updated {yamlfile}\n')
-
-
 if __name__ == '__main__':
     from argparse import ArgumentParser
     description = r"""
@@ -150,31 +133,26 @@ if __name__ == '__main__':
                         )
     parser.add_argument('paths', nargs='*')
     _args = parser.parse_args()
-
     if _args.build_flags is not None:
         print(f'parsing build_flags: {_args.build_flags}')
         import json
         with open(_args.build_flags, 'r') as fp:
             bf = json.load(fp)
-            for k,v in bf.items():
+            for k, v in bf.items():
                 if k in 'coverage':
                     _args.coverage = v
                 if k in 'debug':
                     _args.debug = v
             _kwargs = bf
-
     if not _args.coverage and not _args.debug:
         print("nothing to do")
         exit(0)
-
     _kwargs = {
         k: v for k, v in vars(_args).items()
         if k not in ['paths', 'build_flags']
     }
-
     import os
     import traceback
-
     for spath in _args.paths:
         for (path, _, files) in os.walk(spath):
             files.sort()
