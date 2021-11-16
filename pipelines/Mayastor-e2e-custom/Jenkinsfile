@@ -3,6 +3,12 @@
 // On-demand E2E infra configuration
 // https://mayadata.atlassian.net/wiki/spaces/MS/pages/247332965/Test+infrastructure#On-Demand-E2E-K8S-Clusters
 
+
+def Common() {
+    def common = load "./pipelines/common/common.groovy"
+    return common
+}
+
 // Jenkins jobs to build and destroy clusters
 if (params.platform == 'volterra') {
   e2e_build_cluster_job = 'k8s-build-cluster-volterra'
@@ -42,6 +48,7 @@ pipeline {
     string(defaultValue: 'install,uninstall', name: 'tests', trim: true, description: 'comma or space separated list of tests to run, always should start with install and (optionally) end with uninstall')
     choice(choices: ['', 'self_ci', 'c1', 'nightly-stable', 'staging'], name: 'profile', description: 'profile, overrides tests')
     booleanParam(defaultValue: true, name: 'delete_cluster_on_failure', description: 'if false, failed tests will leave the cluster running')
+    booleanParam(defaultValue: true, name: 'delete_cluster_on_success', description: 'if false, successful tests will leave the cluster running')
     choice(choices: ['generic', 'volterra'], name: 'platform', description: 'server platform')
     booleanParam(defaultValue: true, name: 'use_ci_registry', description: 'true to use the CI registry, false to pull images from DockerHub')
     string(defaultValue: e2e_image_tag, name: 'image_tag', trim: true, description: 'image tag of mayastor images, e.g. nightly-stable or selfci')
@@ -55,8 +62,7 @@ pipeline {
           agent { label 'nixos' }
           steps {
             script {
-              common = load "./pipelines/common/common.groovy"
-              k8s_job = common.BuildCluster(e2e_build_cluster_job, e2e_environment)
+              k8s_job = Common().BuildCluster(e2e_build_cluster_job, e2e_environment)
             }
           }
         }
@@ -85,9 +91,8 @@ pipeline {
               }
             }
             script {
-              common = load "./pipelines/common/common.groovy"
-              common.GetClusterAdminConf(e2e_environment, k8s_job)
-              loki_run_id = common.GetLokiRunId()
+              Common().GetClusterAdminConf(e2e_environment, k8s_job)
+              loki_run_id = Common().GetLokiRunId()
               abs_e2e_reports_dir = "${env.WORKSPACE}/${e2e_reports_dir}"
               sh "mkdir -p ${abs_e2e_reports_dir}"
 
@@ -111,32 +116,35 @@ pipeline {
                 usernamePassword(credentialsId: 'GRAFANA_API', usernameVariable: 'grafana_api_user', passwordVariable: 'grafana_api_pw'),
                 string(credentialsId: 'HCLOUD_TOKEN', variable: 'HCLOUD_TOKEN')
               ]) {
-                common.LokiInstall(params.image_tag, "custom")
+                Common().LokiInstall(params.image_tag, "custom")
                 sh "nix-shell --run 'cd ${env.WORKSPACE}/${e2e_mayastor_dir} && ${cmd}'"
-                common.LokiUninstall(params.image_tag, "custom") // so that, if we keep the cluster, the next Loki instance can use different parameters
+                Common().LokiUninstall(params.image_tag, "custom") // so that, if we keep the cluster, the next Loki instance can use different parameters
               }
             }
           }
           post {
             failure {
               script {
-                common = load "./pipelines/common/common.groovy"
                 if (params.delete_cluster_on_failure) {
-                  common.DestroyCluster(e2e_destroy_cluster_job, k8s_job)
+                  Common().DestroyCluster(e2e_destroy_cluster_job, k8s_job)
                 } else {
-                  common.WarnOrphanCluster(k8s_job)
+                  Common().WarnOrphanCluster(k8s_job)
                 }
               }
             }//failure
 
             success {
               script {
-                common = load "./pipelines/common/common.groovy"
-                common.DestroyCluster(e2e_destroy_cluster_job, k8s_job)
+                if (params.delete_cluster_on_success) {
+                  Common().DestroyCluster(e2e_destroy_cluster_job, k8s_job)
+                } else {
+                  Common().WarnOrphanCluster(k8s_job)
+                }
               }
             }
             always {
               archiveArtifacts "${e2e_artifacts_dir}/**/*.*"
+              archiveArtifacts "${e2e_environment}/modules/k8s/secrets/admin.conf"
               // handle junit results on success or failure
               junit "${e2e_reports_dir}/**/*.xml"
             }// always
