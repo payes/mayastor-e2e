@@ -1,0 +1,25 @@
+#!/usr/bin/env groovy
+
+pipeline {
+    agent { label 'nixos-mayastor' }
+    stages {
+        stage('push tools image'){
+            steps {
+                script {
+                    withCredentials([string(credentialsId: 'XRAY_CLIENT_ID', variable: 'XRAY_CLIENT_ID')]) {
+                        withCredentials([string(credentialsId: 'XRAY_CLIENT_SECRET', variable: 'XRAY_CLIENT_SECRET')]) {
+                        sh = "./scripts/xray-report.py --collect MQ-2184"
+                    }
+                }//script
+            }//steps
+        }//stage
+        stage('archive artifacts'){
+          agent { label 'nixos' }
+          steps {
+            script{
+              archiveArtifacts 'artifacts/**/*.*'
+            }
+          }
+        }//stage archive artifacts
+    }//stages
+}
