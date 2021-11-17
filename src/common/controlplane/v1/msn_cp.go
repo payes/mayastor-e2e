@@ -28,28 +28,17 @@ type msnState struct {
 	Status       string `json:"status"`
 }
 
-func GetMayastorCpNode(nodeName string, address []string) (*MayastorCpNode, error) {
+func GetMayastorCpNode(nodeName string) (*MayastorCpNode, error) {
 	pluginpath := fmt.Sprintf("%s/%s",
 		e2e_config.GetConfig().KubectlPluginDir,
 		common.KubectlMayastorPlugin)
 
-	if len(address) == 0 {
-		return nil, fmt.Errorf("mayastor nodes not found")
-	}
 	var jsonInput []byte
 	var err error
-	for _, addr := range address {
-		url := fmt.Sprintf("http://%s:%s", addr, common.PluginPort)
-		cmd := exec.Command(pluginpath, "-r", url, "-ojson", "get", "node", nodeName)
-		jsonInput, err = cmd.CombinedOutput()
-		if strings.Contains(string(jsonInput), ErrOutput) && err == nil {
-			err = fmt.Errorf("%s", string(jsonInput))
-		}
-		if err == nil {
-			break
-		} else {
-			logf.Log.Info("Error while executing kubectl mayastor command", "node IP", addr, "error", err, "node", nodeName)
-		}
+	cmd := exec.Command(pluginpath, "-ojson", "get", "node", nodeName)
+	jsonInput, err = cmd.CombinedOutput()
+	if err == nil && strings.Contains(string(jsonInput), ErrOutput) {
+		err = fmt.Errorf("%s", string(jsonInput))
 	}
 	if err != nil {
 		return nil, err
@@ -66,28 +55,17 @@ func GetMayastorCpNode(nodeName string, address []string) (*MayastorCpNode, erro
 	return &response, nil
 }
 
-func ListMayastorCpNodes(address []string) ([]MayastorCpNode, error) {
+func ListMayastorCpNodes() ([]MayastorCpNode, error) {
 	pluginpath := fmt.Sprintf("%s/%s",
 		e2e_config.GetConfig().KubectlPluginDir,
 		common.KubectlMayastorPlugin)
 
-	if len(address) == 0 {
-		return nil, fmt.Errorf("mayastor nodes not found")
-	}
 	var jsonInput []byte
 	var err error
-	for _, addr := range address {
-		url := fmt.Sprintf("http://%s:%s", addr, common.PluginPort)
-		cmd := exec.Command(pluginpath, "-r", url, "-ojson", "get", "nodes")
-		jsonInput, err = cmd.CombinedOutput()
-		if strings.Contains(string(jsonInput), ErrOutput) && err == nil {
-			err = fmt.Errorf("%s", string(jsonInput))
-		}
-		if err == nil {
-			break
-		} else {
-			logf.Log.Info("Error while executing kubectl mayastor command", "node IP", addr, "error", err)
-		}
+	cmd := exec.Command(pluginpath, "-ojson", "get", "nodes")
+	jsonInput, err = cmd.CombinedOutput()
+	if err == nil && strings.Contains(string(jsonInput), ErrOutput) {
+		err = fmt.Errorf("%s", string(jsonInput))
 	}
 	if err != nil {
 		return nil, err
@@ -102,15 +80,15 @@ func ListMayastorCpNodes(address []string) ([]MayastorCpNode, error) {
 	return response, nil
 }
 
-func GetMayastorNodeStatus(nodeName string, address []string) (string, error) {
-	msn, err := GetMayastorCpNode(nodeName, address)
+func GetMayastorNodeStatus(nodeName string) (string, error) {
+	msn, err := GetMayastorCpNode(nodeName)
 	if err == nil {
 		return msn.State.Status, nil
 	}
 	return "", err
 }
 
-func cpNodeToMsn(cpMsn *MayastorCpNode, address []string) common.MayastorNode {
+func cpNodeToMsn(cpMsn *MayastorCpNode) common.MayastorNode {
 	return common.MayastorNode{
 		Name: cpMsn.Spec.ID,
 		Spec: common.MayastorNodeSpec{
@@ -128,7 +106,7 @@ func cpNodeToMsn(cpMsn *MayastorCpNode, address []string) common.MayastorNode {
 // GetMSN Get pointer to a mayastor control plane volume
 // returns nil and no error if the msn is in pending state.
 func (cp CPv1) GetMSN(nodeName string) (*common.MayastorNode, error) {
-	cpMsn, err := GetMayastorCpNode(nodeName, *cp.nodeIPAddresses)
+	cpMsn, err := GetMayastorCpNode(nodeName)
 	if err != nil {
 		return nil, fmt.Errorf("GetMSN: %v", err)
 	}
@@ -138,23 +116,23 @@ func (cp CPv1) GetMSN(nodeName string) (*common.MayastorNode, error) {
 		return nil, nil
 	}
 
-	msn := cpNodeToMsn(cpMsn, *cp.nodeIPAddresses)
+	msn := cpNodeToMsn(cpMsn)
 	return &msn, nil
 }
 
 func (cp CPv1) ListMsns() ([]common.MayastorNode, error) {
 	var msns []common.MayastorNode
-	list, err := ListMayastorCpNodes(*cp.nodeIPAddresses)
+	list, err := ListMayastorCpNodes()
 	if err == nil {
 		for _, item := range list {
-			msns = append(msns, cpNodeToMsn(&item, *cp.nodeIPAddresses))
+			msns = append(msns, cpNodeToMsn(&item))
 		}
 	}
 	return msns, err
 }
 
 func (cp CPv1) GetMsNodeStatus(nodeName string) (string, error) {
-	cpMsn, err := GetMayastorCpNode(nodeName, *cp.nodeIPAddresses)
+	cpMsn, err := GetMayastorCpNode(nodeName)
 	if err != nil {
 		return "", fmt.Errorf("GetMsNodeStatus: %v", err)
 	}

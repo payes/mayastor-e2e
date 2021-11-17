@@ -33,26 +33,15 @@ type mspState struct {
 	Used     int64    `json:"used"`
 }
 
-func GetMayastorCpPool(name string, address []string) (*MayastorCpPool, error) {
+func GetMayastorCpPool(name string) (*MayastorCpPool, error) {
 	pluginpath := fmt.Sprintf("%s/%s",
 		e2e_config.GetConfig().KubectlPluginDir,
 		common.KubectlMayastorPlugin)
 
-	if len(address) == 0 {
-		return nil, fmt.Errorf("mayastor nodes not found")
-	}
 	var jsonInput []byte
 	var err error
-	for _, addr := range address {
-		url := fmt.Sprintf("http://%s:%s", addr, common.PluginPort)
-		cmd := exec.Command(pluginpath, "-r", url, "-ojson", "get", "pool", name)
-		jsonInput, err = cmd.CombinedOutput()
-		if err == nil {
-			break
-		} else {
-			logf.Log.Info("Error while executing kubectl-plugin mayastor command", "node IP", addr, "error", err)
-		}
-	}
+	cmd := exec.Command(pluginpath, "-ojson", "get", "pool", name)
+	jsonInput, err = cmd.CombinedOutput()
 	if err != nil {
 		return nil, err
 	}
@@ -69,26 +58,15 @@ func GetMayastorCpPool(name string, address []string) (*MayastorCpPool, error) {
 	return &response, nil
 }
 
-func ListMayastorCpPools(address []string) ([]MayastorCpPool, error) {
+func ListMayastorCpPools() ([]MayastorCpPool, error) {
 	pluginpath := fmt.Sprintf("%s/%s",
 		e2e_config.GetConfig().KubectlPluginDir,
 		common.KubectlMayastorPlugin)
 
-	if len(address) == 0 {
-		return nil, fmt.Errorf("mayastor nodes not found")
-	}
 	var jsonInput []byte
 	var err error
-	for _, addr := range address {
-		url := fmt.Sprintf("http://%s:%s", addr, common.PluginPort)
-		cmd := exec.Command(pluginpath, "-r", url, "-ojson", "get", "pools")
-		jsonInput, err = cmd.CombinedOutput()
-		if err == nil {
-			break
-		} else {
-			logf.Log.Info("Error while executing kubectl mayastor command", "node IP", addr, "error", err)
-		}
-	}
+	cmd := exec.Command(pluginpath, "-ojson", "get", "pools")
+	jsonInput, err = cmd.CombinedOutput()
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +80,7 @@ func ListMayastorCpPools(address []string) ([]MayastorCpPool, error) {
 	return response, nil
 }
 
-func cpMspToMsp(cpMsp *MayastorCpPool, address []string) common.MayastorPool {
+func cpMspToMsp(cpMsp *MayastorCpPool) common.MayastorPool {
 	return common.MayastorPool{
 		Name: cpMsp.Id,
 		Spec: common.MayastorPoolSpec{
@@ -126,7 +104,7 @@ func cpMspToMsp(cpMsp *MayastorCpPool, address []string) common.MayastorPool {
 
 // GetMsPool Get pointer to a mayastor control plane pool
 func (cp CPv1) GetMsPool(poolName string) (*common.MayastorPool, error) {
-	cpMsp, err := GetMayastorCpPool(poolName, *cp.nodeIPAddresses)
+	cpMsp, err := GetMayastorCpPool(poolName)
 	if err != nil {
 		return nil, fmt.Errorf("GetMsPool: %v", err)
 	}
@@ -136,16 +114,16 @@ func (cp CPv1) GetMsPool(poolName string) (*common.MayastorPool, error) {
 		return nil, nil
 	}
 
-	msp := cpMspToMsp(cpMsp, *cp.nodeIPAddresses)
+	msp := cpMspToMsp(cpMsp)
 	return &msp, nil
 }
 
 func (cp CPv1) ListMsPools() ([]common.MayastorPool, error) {
 	var msps []common.MayastorPool
-	list, err := ListMayastorCpPools(*cp.nodeIPAddresses)
+	list, err := ListMayastorCpPools()
 	if err == nil {
 		for _, item := range list {
-			msps = append(msps, cpMspToMsp(&item, *cp.nodeIPAddresses))
+			msps = append(msps, cpMspToMsp(&item))
 		}
 	}
 	return msps, err

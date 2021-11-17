@@ -3,19 +3,32 @@ package k8stest
 import (
 	"mayastor-e2e/common"
 	"mayastor-e2e/common/controlplane"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sync"
 )
 
 var once sync.Once
 
 // FIXME: MSV
-// This two-step initialisation of the control plane interface
+
+// EnsureNodeAddressesAreSet This two-step initialisation of the control plane interface
 // ensures that the node IP addresses are set for control plane
 // before any MSV related call is made.
 // Facilitates abstraction without introducing a dependency on k8stest
 func EnsureNodeAddressesAreSet() {
 	once.Do(func() {
-		controlplane.SetIpNodeAddresses(GetMayastorNodeIPAddresses())
+		var masterNodeIPAddrs []string
+		// FIXME: for now ignore the error and emit a warning an imminent change rids us of this function
+		nodes, err := GetNodeLocs()
+		if err != nil {
+			logf.Log.Info("EnsureNodeAddressesAreSet: Warning:", "error", err)
+		}
+		for _, node := range nodes {
+			if node.MasterNode {
+				masterNodeIPAddrs = append(masterNodeIPAddrs, node.IPAddress)
+			}
+		}
+		controlplane.SetIpNodeAddresses(masterNodeIPAddrs)
 	})
 }
 
