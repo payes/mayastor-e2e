@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	defTimeoutSecs    = "60s"
+	defTimeoutSecs    = "300s"
 	GiB               = int64(1024 * 1024 * 1024)
 	MiB               = int64(1024 * 1024)
 	EstimatedMetaSize = 100 * MiB
@@ -27,8 +27,9 @@ var (
 
 func CreateDeletePools(nodeList map[string]k8stest.NodeLocation, poolSuffix string, iter int, diskPath string, capacity int64) {
 	var err error
+	invalidNodePoolExt := "-fuzz-pool-wrong-node"
+	invalidDiskPoolExt := "-fuzz-pool-wrong-disk"
 	for i := 0; i < iter; i++ {
-
 		// Create mayastorpools
 		for _, node := range nodeList {
 			poolName := node.NodeName + poolSuffix
@@ -42,12 +43,12 @@ func CreateDeletePools(nodeList map[string]k8stest.NodeLocation, poolSuffix stri
 			_, err = custom_resources.CreateMsPool(poolName, node.NodeName, []string{diskPath})
 			Expect(err).NotTo(BeNil(), "Duplicate pool created")
 
-			logf.Log.Info("Creating fuzz msp", "poolName", poolName+"-fusspool-wrong-node")
-			_, err = custom_resources.CreateMsPool(poolName+"-fusspool-wrong-node", "fuzzNode", []string{diskPath})
+			logf.Log.Info("Creating fuzz msp", "poolName", poolName+invalidNodePoolExt)
+			_, err = custom_resources.CreateMsPool(poolName+invalidNodePoolExt, "fuzzNode", []string{diskPath})
 			Expect(err).To(BeNil(), "Failed to create pool")
 
-			logf.Log.Info("Creating fuzz msp", "poolName", poolName+"-fusspool-wrong-disk")
-			_, err = custom_resources.CreateMsPool(poolName+"-fusspool-wrong-disk", node.NodeName, []string{"/dev" + "fuzzPath"})
+			logf.Log.Info("Creating fuzz msp", "poolName", poolName+invalidDiskPoolExt)
+			_, err = custom_resources.CreateMsPool(poolName+invalidDiskPoolExt, node.NodeName, []string{"/dev" + "fuzzPath"})
 			Expect(err).To(BeNil(), "Failed to create pool")
 
 			logf.Log.Info("Verifying msps creation")
@@ -60,22 +61,26 @@ func CreateDeletePools(nodeList map[string]k8stest.NodeLocation, poolSuffix stri
 		}
 		// Sleep is being added so that the pool creation process starts
 		// even for fuzz pools
-		time.Sleep(10 * time.Second)
+		time.Sleep(30 * time.Second)
 
 		// Delete mayastorpools
 		logf.Log.Info("Deleting msps")
 		for _, node := range nodeList {
 			poolName := node.NodeName + poolSuffix
 
+			logf.Log.Info("Deleting msp", "poolName", poolName)
 			err = custom_resources.DeleteMsPool(poolName)
 			Expect(err).To(BeNil(), "Failed to delete pool")
 
-			err = custom_resources.DeleteMsPool(poolName + "-fusspool-wrong-node")
-			Expect(err).To(BeNil(), "Failed to delete pool")
-			err = custom_resources.DeleteMsPool(poolName + "-fusspool-wrong-disk")
+			logf.Log.Info("Deleting fuzz msp", "poolName", poolName+invalidNodePoolExt)
+			err = custom_resources.DeleteMsPool(poolName + invalidNodePoolExt)
 			Expect(err).To(BeNil(), "Failed to delete pool")
 
-			logf.Log.Info("Verifying msps deletion")
+			logf.Log.Info("Deleting fuzz msp", "poolName", poolName+invalidDiskPoolExt)
+			err = custom_resources.DeleteMsPool(poolName + invalidDiskPoolExt)
+			Expect(err).To(BeNil(), "Failed to delete pool")
+
+			logf.Log.Info("Verify msp deletion", "poolName", poolName)
 			Eventually(func() bool {
 				return verifyPoolDeleted(node.IPAddress, poolName)
 			},
@@ -83,15 +88,17 @@ func CreateDeletePools(nodeList map[string]k8stest.NodeLocation, poolSuffix stri
 				"5s",           // polling interval
 			).Should(Equal(true))
 
+			logf.Log.Info("Verify fuzz msp deletion", "poolName", poolName+invalidNodePoolExt)
 			Eventually(func() bool {
-				return verifyPoolDeleted(node.IPAddress, poolName+"-fusspool-wrong-node")
+				return verifyPoolDeleted(node.IPAddress, poolName+invalidNodePoolExt)
 			},
 				defTimeoutSecs, // timeout
 				"5s",           // polling interval
 			).Should(Equal(true))
 
+			logf.Log.Info("Verify fuzz msp deletion", "poolName", poolName+invalidDiskPoolExt)
 			Eventually(func() bool {
-				return verifyPoolDeleted(node.IPAddress, poolName+"-fusspool-wrong-disk")
+				return verifyPoolDeleted(node.IPAddress, poolName+invalidDiskPoolExt)
 			},
 				defTimeoutSecs, // timeout
 				"5s",           // polling interval
@@ -141,7 +148,7 @@ func verifyPoolDeleted(nodeAddr, poolName string) bool {
 	if !k8serrors.IsNotFound(err) {
 		return false
 	}
-	_, err = k8stest.GetMsPool(poolName)
+	_, err = custom_resources.GetMsPool(poolName)
 	return k8serrors.IsNotFound(err)
 }
 
