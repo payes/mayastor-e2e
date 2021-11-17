@@ -57,7 +57,7 @@ def Common() {
 }
 
 pipeline {
-    agent { label 'nixos-mayastor' }
+    agent { label 'nixos' }
     parameters {
         string(
             defaultValue: 'hc1-nightly',

@@ -19,7 +19,7 @@ def GetClusterAdminConf(e2e_build_cluster_job, e2e_environment, k8s_job_number) 
 }
 
 pipeline {
-    agent { label 'nixos-mayastor' }
+    agent { label 'nixos' }
     parameters {
         run(
             name:'BUILD',
