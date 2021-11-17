@@ -2,7 +2,10 @@ package tests
 
 import (
 	"fmt"
+	"hash/fnv"
 	"mayastor-e2e/tools/extended-test-framework/common/custom_resources"
+	"mayastor-e2e/tools/extended-test-framework/common/mini_mcp_client"
+	"strconv"
 
 	"mayastor-e2e/tools/extended-test-framework/common"
 
@@ -11,6 +14,7 @@ import (
 	td "mayastor-e2e/tools/extended-test-framework/common/td/models"
 	"mayastor-e2e/tools/extended-test-framework/common/wm/models"
 	"mayastor-e2e/tools/extended-test-framework/test_conductor/tc"
+	"regexp"
 	"time"
 
 	v1 "k8s.io/api/core/v1"
@@ -24,8 +28,14 @@ type VolSpec struct {
 }
 
 const MCP_NEXUS_ONLINE = "NEXUS_ONLINE"
+const MCP_NEXUS_DEGRADED = "NEXUS_DEGRADED"
 const MCP_NEXUS_FAULTED = "NEXUS_FAULTED"
-const MSV_ONLINE = "healthy"
+const MCP_NEXUS_UNKNOWN = "NEXUS_UNKNOWN"
+
+const MCP_MSV_DEGRADED = "Degraded"
+const MCP_MSV_FAULTED = "Faulted"
+const MCP_MSV_ONLINE = "Online"
+const MCP_MSV_UNKNOWN = "Unknown"
 
 var violations = []models.WorkloadViolationEnum{
 	models.WorkloadViolationEnumRESTARTED,
@@ -33,28 +43,45 @@ var violations = []models.WorkloadViolationEnum{
 	models.WorkloadViolationEnumNOTPRESENT,
 }
 
-func CheckMSVmoac(msv_uid string) error {
-	msv, err := k8sclient.GetMSV(msv_uid)
+func CheckMSVwithCP(ms_ip string) error {
+	vols, err := mini_mcp_client.GetVolumes(ms_ip)
 	if err != nil {
-		return fmt.Errorf("failed to get the MSV, error: %v", err)
+		return fmt.Errorf("failed to get volume uuids, error: %v", err)
 	}
-	if msv == nil {
-		return fmt.Errorf("failed to get the MSV, MSV is nil")
-	}
-	if msv.Status.State != MSV_ONLINE {
-		return fmt.Errorf("MSV is not healthy, state is %s", msv.Status.State)
+	for _, vol := range vols {
+		switch vol.State.Status {
+
+		case MCP_MSV_FAULTED:
+			return fmt.Errorf("found faulted volume, uuid %s", vol.State.Uuid)
+
+		case MCP_MSV_ONLINE:
+		case MCP_MSV_DEGRADED:
+		case MCP_MSV_UNKNOWN:
+
+		default:
+			return fmt.Errorf("MSV unexpected state %s in volume %s", vol.State.Status, vol.State.Uuid)
+		}
 	}
 	return nil
 }
 
 func CheckMSVwithGrpc(ms_ips []string) error {
-	states, err := k8sclient.CheckVolumeStates(ms_ips)
+	states, err := k8sclient.GetNexusStates(ms_ips)
 	if err != nil {
-		return fmt.Errorf("MSV grpc check failed, err: %v", err)
+		return fmt.Errorf("Nexus grpc check failed, err: %v", err)
 	}
 	for _, state := range states {
-		if state == MCP_NEXUS_FAULTED {
-			return fmt.Errorf("MSV is not healthy, state is %s", state)
+		switch state {
+
+		case MCP_NEXUS_FAULTED:
+			return fmt.Errorf("Nexus is not healthy, state is %s", state)
+
+		case MCP_NEXUS_UNKNOWN:
+		case MCP_NEXUS_DEGRADED:
+		case MCP_NEXUS_ONLINE:
+
+		default:
+			return fmt.Errorf("Nexus unexpected state %s", state)
 		}
 	}
 	return nil
@@ -90,13 +117,77 @@ func CheckNodes(nodecount int) error {
 	return nil
 }
 
+func CombineErrors(first error, second error) error {
+	if first == nil {
+		return second
+	} else {
+		return fmt.Errorf("%s: %s", first.Error(), second.Error())
+	}
+}
+
+func ConvertTime(timestr string) (string, error) {
+	// convert days part of time string to hours
+	// e.g. converts "2d8h20m30s" to "56h20m30s"
+	//golang duration strings do not parse days
+	result := ""
+
+	r, _ := regexp.Compile("^[0-9]{1,3}d") // are days in the string ?
+	daystrarr := r.FindStringSubmatch(timestr)
+	hours := 0
+	switch len(daystrarr) {
+	case 0: // no day field
+	case 1:
+		daystr := daystrarr[0]
+		timestr = timestr[len(daystr):] // trim the days from the string
+		daystr = daystr[:len(daystr)-1] // lose the 'd'
+		days, err := strconv.Atoi(daystr)
+		if err != nil {
+			return "", fmt.Errorf("Internal error, failed to convert time, error %v", err)
+		}
+		rh, _ := regexp.Compile("^[0-9]{1,2}h") // are hours in the string?
+		hourstrarr := rh.FindStringSubmatch(timestr)
+
+		switch len(hourstrarr) {
+		case 0: // no hour field
+		case 1:
+			hourstr := hourstrarr[0]
+			timestr = timestr[len(hourstr):]   // trim the hours from the string
+			hourstr = hourstr[:len(hourstr)-1] // lose the 'h'
+			hours, err = strconv.Atoi(hourstr)
+			if err != nil {
+				return "", fmt.Errorf("Internal error, failed to convert time, error %v", err)
+			}
+		default: // more than 1 hour field
+			return "", fmt.Errorf("Internal error, failed to convert time")
+		}
+		hours += days * 24
+		if hours != 0 {
+			result = fmt.Sprintf("%dh", hours)
+		}
+	default:
+		return "", fmt.Errorf("Internal error, failed to convert time")
+	}
+	return result + timestr, nil
+}
+
+func GetDuration(durationstr string) (time.Duration, error) {
+	durationstr, err := ConvertTime(durationstr)
+	if err != nil {
+		return time.Duration(0), fmt.Errorf("failed to convert duration %v", err)
+	}
+	logf.Log.Info("Converted duration", "in hours", durationstr)
+	duration, err := time.ParseDuration(durationstr)
+	if err != nil {
+		return time.Duration(0), fmt.Errorf("failed to parse duration %v", err)
+	}
+	return duration, err
+}
+
 // if pod_to_check is given, the test wait for the pod to complete and duration is a timeout
 // otherwise run the check for the full length of duration.
 func MonitorCRs(
 	testConductor *tc.TestConductor,
-	msv_uids []string,
 	duration time.Duration,
-	moac bool,
 	pod_to_check string) error {
 
 	var endTime = time.Now().Add(duration)
@@ -105,28 +196,21 @@ func MonitorCRs(
 		if i%100 == 0 {
 			logf.Log.Info("Monitoring CRs", "seconds elapsed", i*waitSecs)
 		}
-		if moac {
-			for _, msv := range msv_uids {
-				if err := CheckMSVmoac(msv); err != nil {
-					return fmt.Errorf("MSV %s check failed, err: %s", msv, err.Error())
-				}
-			}
-		} else {
-			ms_ips, err := k8sclient.GetMayastorNodeIPs()
-			if err != nil {
-				return fmt.Errorf("MSV grpc check failed to get nodes, err: %s", err.Error())
-			}
-			if err := CheckMSVwithGrpc(ms_ips); err != nil {
-				return fmt.Errorf("MSV grpc check failed, err: %s", err.Error())
-			}
+		ms_ips, err := k8sclient.GetMayastorNodeIPs()
+		if err != nil {
+			return fmt.Errorf("MSV grpc check failed to get nodes, err: %s", err.Error())
+		}
+		if len(ms_ips) == 0 {
+			return fmt.Errorf("No MS nodes found")
+		}
+		if err := CheckMSVwithGrpc(ms_ips); err != nil {
+			return fmt.Errorf("MSV grpc check failed, err: %s", err.Error())
+		}
+		if err := CheckMSVwithCP(ms_ips[0]); err != nil {
+			return fmt.Errorf("MSV CP check failed, err: %s", err.Error())
 		}
 		if err := CheckPools(testConductor.Config.Msnodes); err != nil {
 			return fmt.Errorf("MSP check failed, err: %s", err.Error())
-		}
-		if moac {
-			if err := CheckNodes(testConductor.Config.Msnodes); err != nil {
-				return fmt.Errorf("MSN check failed, err: %s", err.Error())
-			}
 		}
 		if pod_to_check != "" {
 			pod, err := k8sclient.GetPod(pod_to_check, k8sclient.NSDefault)
@@ -148,6 +232,20 @@ func MonitorCRs(
 		time.Sleep(time.Duration(waitSecs) * time.Second)
 	}
 	return nil
+}
+
+// EtfwRandom - effective pseudo -random integer generator
+// range 0 -> valrange-1 inclusive
+// Doesn't need seeding
+// The rand library doesn't seem to work very well
+func EtfwRandom(valrange uint32) (int, error) {
+	tmstr := fmt.Sprintf("%x", time.Now().UTC().UnixNano())
+	h := fnv.New32a()
+	_, err := h.Write([]byte(tmstr))
+	if err != nil { // very unlikely
+		return 0, fmt.Errorf("Internal checksum error, error: %v", err)
+	}
+	return int(h.Sum32() % valrange), err
 }
 
 func WaitPodNotRunning(pod_to_check string, timeout time.Duration) error {

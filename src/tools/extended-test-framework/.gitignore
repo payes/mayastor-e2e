@@ -1,4 +1,5 @@
 test_conductor/cmd/test_conductor_non_steady_state/test_conductor_non_steady_state
 test_conductor/cmd/test_conductor_steady_state/test_conductor_steady_state
+test_conductor/cmd/test_conductor_replica_perturbation/test_conductor_replica_perturbation
 test_director/cmd/test-framework-server/test_director
 workload_monitor/cmd/workload_monitor/workload_monitor

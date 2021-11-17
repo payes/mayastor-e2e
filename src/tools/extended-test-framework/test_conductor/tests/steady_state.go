@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"mayastor-e2e/tools/extended-test-framework/common/k8sclient"
 	tc "mayastor-e2e/tools/extended-test-framework/test_conductor/tc"
-	"time"
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -28,7 +27,7 @@ func SteadyStateTest(testConductor *tc.TestConductor) error {
 	var vol_type = k8sclient.VolRawBlock
 	const podDeletionTimeoutSecs = 120
 
-	duration, err := time.ParseDuration(testConductor.Config.Duration)
+	duration, err := GetDuration(testConductor.Config.Duration)
 	if err != nil {
 		return fmt.Errorf("failed to parse duration %v", err)
 	}
@@ -96,7 +95,7 @@ func SteadyStateTest(testConductor *tc.TestConductor) error {
 
 	// allow the test to run
 	logf.Log.Info("Running test", "duration (s)", duration.Seconds())
-	combinederr = MonitorCRs(testConductor, []string{msv_uid}, duration, false, "")
+	combinederr = MonitorCRs(testConductor, duration, "")
 
 	if err = tc.DeleteWorkloads(testConductor.WorkloadMonitorClient); err != nil {
 		logf.Log.Info("failed to delete all registered workloads", "error", err)

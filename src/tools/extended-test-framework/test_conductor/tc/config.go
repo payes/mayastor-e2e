@@ -30,19 +30,30 @@ type ExtendedTestConfig struct {
 	// Individual Test parameters
 	SteadyState struct {
 		Replicas        int `yaml:"replicas" env-default:"2"`
+		ThinkTime       int `yaml:"thinkTime" env-default:"500000"`
+		ThinkTimeBlocks int `yaml:"thinkTimeBlocks" env-default:"1000"`
 		VolumeSizeMb    int `yaml:"volumeSizeMb" env-default:"64"`
-		ThinkTime       int `yaml:"ThinkTime" env-default:"500000"`
-		ThinkTimeBlocks int `yaml:"ThinkTimeBlocks" env-default:"1000"`
 	} `yaml:"steadyState"`
 
 	NonSteadyState struct {
-		Replicas        int    `yaml:"replicas" env-default:"2"`
-		VolumeSizeMb    int    `yaml:"volumeSizeMb" env-default:"64"`
-		Timeout         string `yaml:"timeout" env-default:"5m"`
 		ConcurrentVols  int    `yaml:"concurrentvols" env-default:"1"`
-		ThinkTime       int    `yaml:"ThinkTime" env-default:"500000"`
-		ThinkTimeBlocks int    `yaml:"ThinkTimeBlocks" env-default:"1000"`
+		Replicas        int    `yaml:"replicas" env-default:"2"`
+		Timeout         string `yaml:"timeout" env-default:"5m"`
+		ThinkTime       int    `yaml:"thinkTime" env-default:"500000"`
+		ThinkTimeBlocks int    `yaml:"thinkTimeBlocks" env-default:"1000"`
+		VolumeSizeMb    int    `yaml:"volumeSizeMb" env-default:"64"`
 	} `yaml:"nonSteadyState"`
+
+	ReplicaPerturbation struct {
+		Replicas                  int `yaml:"replicas" env-default:"3"`
+		ThinkTime                 int `yaml:"thinkTime" env-default:"500000"`
+		ThinkTimeBlocks           int `yaml:"thinkTimeBlocks" env-default:"1000"`
+		VolumeSizeMb              int `yaml:"volumeSizeMb" env-default:"512"`
+		FsVolume                  int `yaml:"fsvolume" env-default:"0"`
+		LocalVolume               int `yaml:"localvolume" env-default:"0"`
+		OfflineDeviceTest         int `yaml:"offlineDeviceTest" env-default:"0"`
+		OfflineDevAndReplicasTest int `yaml:"offlineDevAndReplicasTest" env-default:"0"`
+	} `yaml:"replicaPerturbation"`
 }
 
 var once sync.Once

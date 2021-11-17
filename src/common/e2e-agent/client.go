@@ -27,6 +27,11 @@ type Device struct {
 	Table  string `json:"table"`
 }
 
+type ControlledDevice struct {
+	Device string `json:"device"`
+	State  string `json:"state"`
+}
+
 func sendRequest(reqType, url string, data interface{}) error {
 	_, err := sendRequestGetResponse(reqType, url, data, true)
 	return err
@@ -126,6 +131,19 @@ func Exec(serverAddr string, command string) (string, error) {
 	url := "http://" + serverAddr + ":" + RestPort + "/exec"
 	data := CmdList{
 		Cmd: command,
+	}
+	return sendRequestGetResponse("POST", url, data, false)
+}
+
+// ControlDevice sets the specified to the specified state
+// by writing to /sys/block/<device e.g. sdb>/device/state
+// The only accepted states are "running" and "offline"
+func ControlDevice(serverAddr string, device string, state string) (string, error) {
+	logf.Log.Info("Controlling device", "device", device, "state", state, "addr", serverAddr)
+	url := "http://" + serverAddr + ":" + RestPort + "/devicecontrol"
+	data := ControlledDevice{
+		Device: device,
+		State:  state,
 	}
 	return sendRequestGetResponse("POST", url, data, false)
 }

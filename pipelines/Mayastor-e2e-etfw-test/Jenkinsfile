@@ -27,7 +27,7 @@ pipeline {
             description: 'Selects cluster to use.'
         )
         booleanParam(name: 'node_correct', defaultValue: false,  description: 'Is the above cluster correct ? It must have mayastor installed and a node reserved for ETFW. See README.md.')
-        choice(choices: ['steady_state', 'non_steady_state', 'non_steady_state_multi_vols'], name: 'test', description: 'Select which test to run')
+        choice(choices: ['steady_state', 'non_steady_state', 'non_steady_state_multi_vols', 'replica_perturbation'], name: 'test', description: 'Select which test to run')
         string(defaultValue: 'MQ-2352', name: 'plan', description: 'Test plan to receive test runs')
         string(defaultValue: '10m', name: 'duration', trim: true, description: 'Run duration, use units h, m and s')
         booleanParam(name: 'cluster_dump', defaultValue: false,  description: 'Obtain and archive the cluster logs')
