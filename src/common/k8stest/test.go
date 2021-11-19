@@ -2,7 +2,6 @@ package k8stest
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"mayastor-e2e/common/controlplane"
 	"mayastor-e2e/common/custom_resources"
@@ -40,6 +39,8 @@ type TestEnvironment struct {
 }
 
 var gTestEnv TestEnvironment
+
+var resourceCheckError error
 
 // InitTesting initialise testing and setup class name + report filename.
 func InitTesting(t *testing.T, classname string, reportname string) {
@@ -199,31 +200,31 @@ func getMspUsage() (int64, error) {
 // - mayastor pools usage is 0
 // - No nexuses
 // - No replicas
-func ResourceCheck() error {
-	var errorMsg = ""
+func resourceCheck(waitForPools bool) error {
+	var errs = common.ErrorAccumulator{}
 
 	pods, err := CheckForTestPods()
 	if err != nil {
-		errorMsg += fmt.Sprintf("%s %v", errorMsg, err)
+		errs.Add(err)
 	}
 	if pods {
-		errorMsg += " found Pods"
+		errs.Add(fmt.Errorf("found Pods"))
 	}
 
 	pvcs, err := CheckForPVCs()
 	if err != nil {
-		errorMsg += fmt.Sprintf("%s %v", errorMsg, err)
+		errs.Add(err)
 	}
 	if pvcs {
-		errorMsg += " found PersistentVolumeClaims"
+		errs.Add(fmt.Errorf("found PersistentVolumeClaims"))
 	}
 
 	pvs, err := CheckForPVs()
 	if err != nil {
-		errorMsg += fmt.Sprintf("%s %v", errorMsg, err)
+		errs.Add(err)
 	}
 	if pvs {
-		errorMsg += " found PersistentVolumes"
+		errs.Add(fmt.Errorf("found PersistentVolumes"))
 	}
 
 	//FIXME: control plane 1 temporary do not check MSVs
@@ -231,11 +232,11 @@ func ResourceCheck() error {
 		// Mayastor volumes
 		msvs, err := ListMsvs()
 		if err != nil {
-			errorMsg += fmt.Sprintf("%s %v", errorMsg, err)
+			errs.Add(err)
 		} else {
 			if msvs != nil {
 				if len(msvs) != 0 {
-					errorMsg += " found MayastorVolumes"
+					errs.Add(fmt.Errorf("found MayastorVolumes"))
 				}
 			} else {
 				logf.Log.Info("Listing MSVs returned nil array")
@@ -249,137 +250,194 @@ func ResourceCheck() error {
 		if e2e_config.GetConfig().SelfTest {
 			logf.Log.Info("SelfTesting, ignoring:", "", err)
 		} else {
-			errorMsg += fmt.Sprintf("%s %v", errorMsg, err)
+			errs.Add(err)
 		}
 	}
 
 	scs, err := CheckForStorageClasses()
 	if err != nil {
-		errorMsg += fmt.Sprintf("%s %v", errorMsg, err)
+		errs.Add(err)
 	}
 	if scs {
-		errorMsg += " found storage classes using mayastor "
+		errs.Add(fmt.Errorf("found storage classes using mayastor"))
 	}
 
 	err = custom_resources.CheckAllMsPoolsAreOnline()
 	if err != nil {
-		errorMsg += fmt.Sprintf("%s %v", errorMsg, err)
+		errs.Add(err)
 		logf.Log.Info("ResourceCheck: not all pools are online")
 	}
 
-	mspUsage, err := getMspUsage()
-	if err != nil || mspUsage != 0 {
-		logf.Log.Info("Waiting for pool usage to be 0")
-		const sleepTime = 10
-		t0 := time.Now()
-		// Wait for pool usage reported by CRS to drop to 0
-		for ix := 0; ix < (60*sleepTime) && mspUsage != 0; ix += sleepTime {
-			time.Sleep(sleepTime * time.Second)
-			mspUsage, err = getMspUsage()
+	{
+		mspUsage, err := getMspUsage()
+		// skip waiting if fail quick and errors already exist
+		skip := e2e_config.GetConfig().FailQuick && errs.GetError() != nil
+		if (err != nil || mspUsage != 0) && waitForPools && !skip {
+			logf.Log.Info("Waiting for pool usage to be 0")
+			const sleepTime = 10
+			t0 := time.Now()
+			// Wait for pool usage reported by CRS to drop to 0
+			for ix := 0; ix < (60*sleepTime) && mspUsage != 0; ix += sleepTime {
+				time.Sleep(sleepTime * time.Second)
+				mspUsage, err = getMspUsage()
+				if err != nil {
+					logf.Log.Info("ResourceCheck: unable to list msps")
+				}
+			}
+			logf.Log.Info("ResourceCheck:", "mspool Usage", mspUsage, "waiting time", time.Since(t0))
 			if err != nil {
-				errorMsg += fmt.Sprintf("%s %v", errorMsg, err)
-				logf.Log.Info("ResourceCheck: unable to list msps")
+				errs.Add(err)
 			}
 		}
-		logf.Log.Info("ResourceCheck:", "mspool Usage", mspUsage, "waiting time", time.Since(t0))
-		Expect(mspUsage).To(BeZero(), "pool usage reported via custom resources %d", mspUsage)
+		if mspUsage != 0 {
+			errs.Add(fmt.Errorf("pool usage reported via custom resources %d", mspUsage))
+		}
+		logf.Log.Info("ResourceCheck:", "mspool Usage", mspUsage)
 	}
 
 	// gRPC calls can only be executed successfully is the e2e-agent daemonSet has been deployed successfully.
 	if mayastorclient.CanConnect() {
 		// check pools
 		{
-			var poolUsage uint64 = 1
-			const sleepTime = 2
-			t0 := time.Now()
-			// Wait for pool usage to drop to 0
-			for ix := 0; ix < 120 && poolUsage != 0; ix += sleepTime {
-				time.Sleep(sleepTime * time.Second)
-				poolUsage, err = GetPoolUsageInCluster()
-				if err != nil {
-					errorMsg += fmt.Sprintf("%s %v", errorMsg, err)
-					logf.Log.Info("ResourceEachCheck: failed to retrieve pools usage")
+			poolUsage, err := GetPoolUsageInCluster()
+			// skip waiting if fail quick and errors already exist
+			skip := e2e_config.GetConfig().FailQuick && errs.GetError() != nil
+			if (err != nil || poolUsage != 0) && waitForPools && !skip {
+				logf.Log.Info("Waiting for pool usage to be 0 (gRPC)")
+				const sleepTime = 2
+				t0 := time.Now()
+				// Wait for pool usage to drop to 0
+				for ix := 0; ix < 120 && poolUsage != 0; ix += sleepTime {
+					time.Sleep(sleepTime * time.Second)
+					poolUsage, err = GetPoolUsageInCluster()
+					if err != nil {
+						logf.Log.Info("ResourceEachCheck: failed to retrieve pools usage")
+					}
 				}
+				logf.Log.Info("ResourceCheck:", "poolUsage", poolUsage, "waiting time", time.Since(t0))
 			}
-			logf.Log.Info("ResourceCheck:", "poolUsage", poolUsage, "waiting time", time.Since(t0))
-			Expect(poolUsage).To(BeZero(), "pool usage reported via mayastor client is %d", poolUsage)
+			if err != nil {
+				errs.Add(err)
+			}
+			if poolUsage != 0 {
+				errs.Add(fmt.Errorf("gRPC: pool usage reported via custom resources %d", poolUsage))
+			}
+			logf.Log.Info("ResourceCheck:", "poolUsage", poolUsage)
 		}
 		// check nexuses
 		{
 			nexuses, err := ListNexusesInCluster()
 			if err != nil {
-				errorMsg += fmt.Sprintf("%s %v", errorMsg, err)
+				errs.Add(err)
 				logf.Log.Info("ResourceEachCheck: failed to retrieve list of nexuses")
 			}
 			logf.Log.Info("ResourceCheck:", "num nexuses", len(nexuses))
-			Expect(len(nexuses)).To(BeZero(), "count of nexuses reported via mayastor client is %d", len(nexuses))
+			if len(nexuses) != 0 {
+				errs.Add(fmt.Errorf("gRPC: count of nexuses reported via mayastor client is %d", len(nexuses)))
+			}
 		}
 		// check replicas
 		{
 			replicas, err := ListReplicasInCluster()
 			if err != nil {
-				errorMsg += fmt.Sprintf("%s %v", errorMsg, err)
+				errs.Add(err)
 				logf.Log.Info("ResourceEachCheck: failed to retrieve list of replicas")
 			}
 			logf.Log.Info("ResourceCheck:", "num replicas", len(replicas))
-			Expect(len(replicas)).To(BeZero(), "count of replicas reported via mayastor client is %d", len(replicas))
+			if len(replicas) != 0 {
+				errs.Add(fmt.Errorf("gRPC: count of replicas reported via mayastor client is %d", len(replicas)))
+			}
 		}
 		// check nvmeControllers
 		{
 			nvmeControllers, err := ListNvmeControllersInCluster()
 			if err != nil {
-				errorMsg += fmt.Sprintf("%s %v", errorMsg, err)
+				errs.Add(err)
 				logf.Log.Info("ResourceEachCheck: failed to retrieve list of nvme controllers")
 			}
 			logf.Log.Info("ResourceCheck:", "num nvme controllers", len(nvmeControllers))
-			Expect(len(nvmeControllers)).To(BeZero(), "count of replicas reported via mayastor client is %d", len(nvmeControllers))
+			if len(nvmeControllers) != 0 {
+				errs.Add(fmt.Errorf("gRPC: count of replicas reported via mayastor client is %d", len(nvmeControllers)))
+			}
 		}
 	} else {
 		logf.Log.Info("WARNING: gRPC calls to mayastor are not enabled, all checks cannot be run")
 	}
 
-	if len(errorMsg) != 0 {
-		return errors.New(errorMsg)
-	}
-	return nil
+	return errs.GetError()
+}
+
+// ResourceCheck  Fit for purpose checks
+// - No pods
+// - No PVCs
+// - No PVs
+// - No MSVs
+// - Mayastor pods are all healthy
+// - All mayastor pools are online
+// and if e2e-agent is available
+// - mayastor pools usage is 0
+// - No nexuses
+// - No replicas
+func ResourceCheck() error {
+	return resourceCheck(true)
 }
 
 //BeforeEachCheck asserts that the state of mayastor resources is fit for the test to run
 func BeforeEachCheck() error {
-	logf.Log.Info("BeforeEachCheck")
+	logf.Log.Info("BeforeEachCheck",
+		"FailQuick", e2e_config.GetConfig().FailQuick,
+		"Restart", e2e_config.GetConfig().BeforeEachCheckAndRestart,
+		"resourceCheckError", resourceCheckError,
+	)
 
-	err := ResourceCheck()
-	if err != nil {
-		logf.Log.Info("ResourceCheck failed", "CleanupOnBeforeEach", e2e_config.GetConfig().CleanupOnBeforeEach)
-		if e2e_config.GetConfig().CleanupOnBeforeEach {
-			_ = CleanUp()
+	if e2e_config.GetConfig().FailQuick && resourceCheckError != nil {
+		return fmt.Errorf("prior ResourceCheck failed")
+	}
+
+	if e2e_config.GetConfig().BeforeEachCheckAndRestart {
+		if resourceCheckError == nil {
+			// no previous failure, check resources
+			resourceCheckError = resourceCheck(false)
+		}
+
+		if resourceCheckError != nil {
+			// previous failure or resource check failed, restart
+			logf.Log.Info("BeforeEachCheck: restarting Mayastor")
+			_ = RestartMayastor(120, 120, 120)
 			_ = RestoreConfiguredPools()
-			err = ResourceCheck()
+			logf.Log.Info("BeforeEachCheck: restart complete")
+		} else {
+			// resource check succeeded
+			return resourceCheckError
 		}
-		if err != nil {
-			logf.Log.Info("BeforeEachCheck failed", "error", err)
-		}
-	}
-	if err != nil {
-		err = fmt.Errorf("not running test case, k8s cluster is not \"clean\"!!!\n%v", err)
 	}
 
-	if err != nil {
-		logf.Log.Info("AfterEachCheck failed", "error", err)
+	if resourceCheckError = resourceCheck(false); resourceCheckError != nil {
+		logf.Log.Info("BeforeEachCheck failed", "error", resourceCheckError)
+		resourceCheckError = fmt.Errorf("%w; not running test case, k8s cluster is not \"clean\"!!! ", resourceCheckError)
 	}
-	return err
+	return resourceCheckError
 }
 
 // AfterEachCheck asserts that the state of mayastor resources has been restored.
 func AfterEachCheck() error {
 	logf.Log.Info("AfterEachCheck")
-	err := ResourceCheck()
-	if err == nil {
-		err = CheckMsPoolFinalizers()
-		if e2e_config.GetConfig().SelfTest {
-			logf.Log.Info("SelfTesting, ignoring:", "", err)
-			err = nil
+
+	if e2e_config.GetConfig().FailQuick && resourceCheckError != nil {
+		return fmt.Errorf("prior ResourceCheck failed")
+	}
+
+	resourceCheckError = ResourceCheck()
+	if resourceCheckError == nil {
+		if resourceCheckError = CheckMsPoolFinalizers(); resourceCheckError != nil {
+			if e2e_config.GetConfig().SelfTest {
+				logf.Log.Info("SelfTesting, ignoring:", "", resourceCheckError)
+				resourceCheckError = nil
+			}
 		}
 	}
-	return err
+
+	logf.Log.Info("AfterEachCheck", "error", resourceCheckError)
+
+	return resourceCheckError
 }

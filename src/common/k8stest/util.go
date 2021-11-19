@@ -678,13 +678,6 @@ func WorkaroundForMQ1536() {
 	Expect(err).ToNot(HaveOccurred(), "failed to delete all pool finalizers (WorkaroundForMQ1536)")
 }
 
-func MakeAccumulatedError(accErr error, err error) error {
-	if accErr == nil {
-		return err
-	}
-	return fmt.Errorf("%v; %v", accErr, err)
-}
-
 // DeleteVolumeAttachmets deletes volume attachments for a node
 func DeleteVolumeAttachments(nodeName string) error {
 	volumeAttachments, err := gTestEnv.KubeInt.StorageV1().VolumeAttachments().List(context.TODO(), metaV1.ListOptions{})
@@ -718,11 +711,13 @@ func CheckAndSetControlPlane() error {
 	if err = gTestEnv.K8sClient.Get(context.TODO(), types.NamespacedName{Name: "moac", Namespace: common.NSMayastor()}, &deployment); err == nil {
 		foundMoac = true
 	}
+
 	// Check for core-agents either as deployment or statefulset to correctly handle older builds of control plane
 	// which use core-agents deployment and newer builds which use core-agents statefulset
 	if err = gTestEnv.K8sClient.Get(context.TODO(), types.NamespacedName{Name: "core-agents", Namespace: common.NSMayastor()}, &deployment); err == nil {
 		foundCoreAgents = true
 	}
+
 	if err = gTestEnv.K8sClient.Get(context.TODO(), types.NamespacedName{Name: "core-agents", Namespace: common.NSMayastor()}, &statefulSet); err == nil {
 		foundCoreAgents = true
 	}

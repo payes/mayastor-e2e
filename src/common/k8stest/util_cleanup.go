@@ -283,7 +283,7 @@ func deletePoolFinalizer(poolName string) (bool, error) {
 
 func DeleteAllPoolFinalizers() (bool, error) {
 	deletedFinalizer := false
-	var deleteErr error
+	var errs common.ErrorAccumulator
 
 	pools, err := custom_resources.ListMsPools()
 	if err != nil {
@@ -294,12 +294,12 @@ func DeleteAllPoolFinalizers() (bool, error) {
 	for _, pool := range pools {
 		deleted, err := deletePoolFinalizer(pool.GetName())
 		if err != nil {
-			deleteErr = MakeAccumulatedError(deleteErr, err)
+			errs.Add(err)
 		}
 		deletedFinalizer = deletedFinalizer || deleted
 	}
 
-	return deletedFinalizer, deleteErr
+	return deletedFinalizer, errs.GetError()
 }
 
 func DeleteAllPools() bool {

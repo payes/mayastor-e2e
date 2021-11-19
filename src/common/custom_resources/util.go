@@ -119,20 +119,13 @@ func CheckAllMsPoolsAreOnline() error {
 	return err
 }
 
-func MakeAccumulatedError(accErr error, err error) error {
-	if accErr == nil {
-		return err
-	}
-	return fmt.Errorf("%v; %v", accErr, err)
-}
-
 // CheckAllMsPoolFinalizers check
 //	1) that finalizers exist for pools with replicas (used size != 0)
 //  2) that finalizers DO NOT EXIST for pools with no replicas (used size == 0)
 // Note this function should not be call if mayastor is deployed with control plane
 // versions > 0
 func CheckAllMsPoolFinalizers() error {
-	var accErr error
+	var errs common.ErrorAccumulator
 	pools, err := ListMsPools()
 	if err != nil {
 		return err
@@ -141,11 +134,11 @@ func CheckAllMsPoolFinalizers() error {
 	for _, pool := range pools {
 		finalizer := pool.Finalizers
 		if finalizer != nil {
-			accErr = MakeAccumulatedError(accErr, fmt.Errorf("finalizer set on pool: %s", pool.Name))
+			errs.Add(fmt.Errorf("finalizer set on pool: %s", pool.Name))
 		}
 	}
 
-	return accErr
+	return errs.GetError()
 }
 
 // == Mayastor Nodes ======================

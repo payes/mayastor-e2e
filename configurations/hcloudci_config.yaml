@@ -5,3 +5,4 @@
 configName: hcloudci
 grpcMandated: true
 deferredAssert: true
+beforeEachCheckAndRestart: true

@@ -1,5 +1,7 @@
 package common
 
+import "fmt"
+
 type ShareProto string
 
 const (
@@ -136,4 +138,24 @@ type MayastorPoolStatus struct {
 type MayastorPoolInterface interface {
 	GetMsPool(poolName string) (*MayastorPool, error)
 	ListMsPools() ([]MayastorPool, error)
+}
+
+type ErrorAccumulator struct {
+	errs []error
+}
+
+func (acc *ErrorAccumulator) Add(err error) {
+	acc.errs = append(acc.errs, err)
+}
+
+func (acc *ErrorAccumulator) GetError() error {
+	var err error
+	for _, e := range acc.errs {
+		if err != nil {
+			err = fmt.Errorf("%w; %v", err, e)
+		} else {
+			err = e
+		}
+	}
+	return err
 }
