@@ -28,7 +28,6 @@ type IntegrityEnv struct {
 	nexusIP        string
 	replicaIPs     []string
 	fioTimeoutSecs int
-	nexusUuid      string
 }
 
 var env IntegrityEnv
@@ -38,28 +37,7 @@ func (env *IntegrityEnv) setupReplicas() {
 	Expect(err).ToNot(HaveOccurred(), "%v", err)
 
 	nexus, replicaNodes := k8stest.GetMsvNodes(env.volUuid) // names of nodes in volume
-	Expect(nexus).NotTo(Equal(""), "Nexus not found")
 
-	// identify the nexus IP address
-	nexusIP := ""
-	for _, node := range nodeList {
-		if node.NodeName == nexus {
-			nexusIP = node.IPAddress
-			break
-		}
-	}
-	Expect(nexusIP).NotTo(Equal(""), "Nexus IP address not found")
-	env.nexusIP = nexusIP
-	msv, err := k8stest.GetMSV(env.volUuid)
-	Expect(err).ToNot(HaveOccurred(), "failed to retrieve MSV for volume %s", env.volUuid)
-	env.nexusUuid = msv.Status.Nexus.Uuid
-	// if necessary, reconfigure the volume not to include the nexus node as a replica
-	changed, err := k8stest.ExcludeNexusReplica(nexusIP, env.nexusUuid, env.volUuid)
-	Expect(err).ToNot(HaveOccurred(), "%v", err)
-
-	if changed {
-		nexus, replicaNodes = k8stest.GetMsvNodes(env.volUuid) // names of nodes in volume
-	}
 	var replicaIPs []string
 
 	for _, node := range nodeList {
@@ -249,7 +227,7 @@ var _ = Describe("Primitive data integrity:", func() {
 
 	It("should verify data is duplicated to replicas", func() {
 		sc := "sc-primitive-data-integrity"
-		err := k8stest.MkStorageClass(sc, 2, common.ShareProtoNvmf, common.NSDefault)
+		err := k8stest.MkStorageClass(sc, 3, common.ShareProtoNvmf, common.NSDefault)
 		Expect(err).ToNot(HaveOccurred(), "%v", err)
 		env = setup("pvc-primitive-data-integrity", sc, "fio-primiive-data-integrity")
 		env.PrimitiveDataIntegrity()

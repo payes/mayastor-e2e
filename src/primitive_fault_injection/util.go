@@ -181,7 +181,17 @@ func (c *primitiveFaultInjectionConfig) verifyVolumeStateOverGrpcAndCrd() {
 	Expect(msv).ToNot(BeNil(), "got nil msv for %v", c.uuid)
 	nexusChildren := msv.Status.Nexus.Children
 	for _, nxChild := range nexusChildren {
-		Expect(nxChild.State).Should(Equal(controlplane.ChildStateOnline()), "Nexus child  is not online")
+		if controlplane.MajorVersion() == 0 {
+			Expect(nxChild.State).Should(Equal(controlplane.ChildStateOnline()), "Nexus child  is not online")
+		} else if controlplane.MajorVersion() == 1 {
+			var status bool
+			if nxChild.State == controlplane.ChildStateOnline() ||
+				nxChild.State == controlplane.ChildStateDegraded() {
+				status = true
+			}
+			Expect(status).Should(Equal(true), "Nexus child  is not online or degraded")
+		}
+
 	}
 
 	nodeList, err := k8stest.GetNodeLocs()
@@ -229,12 +239,6 @@ func (c *primitiveFaultInjectionConfig) verifyUninterruptedIO() {
 	}
 }
 
-// patch msv with existing replication factor minus one
-func (c *primitiveFaultInjectionConfig) patchMsvReplica() {
-	err := k8stest.SetMsvReplicaCount(c.uuid, c.replicaCount-1)
-	Expect(err).ToNot(HaveOccurred(), "Failed to patch Mayastor volume %s", c.uuid)
-}
-
 // check volume status
 func (c *primitiveFaultInjectionConfig) verifyMsvStatus() {
 	logf.Log.Info("Verify msv", "uuid", c.uuid)
@@ -249,7 +253,7 @@ func (c *primitiveFaultInjectionConfig) verifyMsvStatus() {
 		return k8stest.GetPvcStatusPhase(volName, namespace)
 	},
 		defTimeoutSecs, // timeout
-		"1s",           // polling interval
+		"5s",           // polling interval
 	).Should(Equal(coreV1.ClaimBound))
 
 	// Refresh the PVC contents, so that we can get the PV name.
@@ -267,7 +271,7 @@ func (c *primitiveFaultInjectionConfig) verifyMsvStatus() {
 
 	},
 		defTimeoutSecs, // timeout
-		"1s",           // polling interval
+		"5s",           // polling interval
 	).Should(Not(BeNil()))
 
 	// Wait for the PV to be bound.
@@ -275,7 +279,7 @@ func (c *primitiveFaultInjectionConfig) verifyMsvStatus() {
 		return k8stest.GetPvStatusPhase(pvc.Spec.VolumeName)
 	},
 		defTimeoutSecs, // timeout
-		"1s",           // polling interval
+		"5s",           // polling interval
 	).Should(Equal(coreV1.VolumeBound))
 
 	Eventually(func() *common.MayastorVolume {
@@ -284,8 +288,17 @@ func (c *primitiveFaultInjectionConfig) verifyMsvStatus() {
 		return msv
 	},
 		defTimeoutSecs,
-		"1s",
+		"5s",
 	).Should(Not(BeNil()))
+
+	Eventually(func() string {
+		msv, err := k8stest.GetMSV(string(pvc.ObjectMeta.UID))
+		Expect(err).ToNot(HaveOccurred(), "%v", err)
+		return msv.Status.State
+	},
+		defTimeoutSecs,
+		"5s",
+	).Should(Equal(controlplane.VolStateDegraded()))
 
 }
 
@@ -328,7 +341,7 @@ func (c *primitiveFaultInjectionConfig) waitForFioPodCompletion() {
 
 // verify faulted replica
 func (c *primitiveFaultInjectionConfig) verifyFaultedReplica() {
-	var onlineCount, faultedCount, otherCount int
+	var onlineCount, faultedCount, degradedCount, otherCount int
 	t0 := time.Now()
 	for ix := 0; ix < patchTimeout; ix += patchSleepTime {
 		time.Sleep(time.Second * patchSleepTime)
@@ -337,54 +350,28 @@ func (c *primitiveFaultInjectionConfig) verifyFaultedReplica() {
 		Expect(msv).ToNot(BeNil(), "got nil msv for %v", c.uuid)
 		onlineCount = 0
 		faultedCount = 0
+		degradedCount = 0
 		otherCount = 0
+
 		for _, child := range msv.Status.Nexus.Children {
 			if child.State == controlplane.ChildStateFaulted() {
 				faultedCount++
 			} else if child.State == controlplane.ChildStateOnline() {
 				onlineCount++
+			} else if child.State == controlplane.ChildStateDegraded() {
+				degradedCount++
 			} else {
 				logf.Log.Info("Children state other then faulted and online", "child.State", child.State)
 				otherCount++
 			}
 		}
-		logf.Log.Info("Replica state", "faulted", faultedCount, "online", onlineCount, "other", otherCount)
+		logf.Log.Info("Replica state", "Faulted", faultedCount, "Online", onlineCount, "Degraded", degradedCount, "other", otherCount)
 		if faultedCount == 1 && otherCount == 0 && onlineCount != 0 {
 			break
-		}
-	}
-	Expect(otherCount).To(BeZero(), "Got at least one children state other then faulted or online")
-	logf.Log.Info("MSV sync waiting time", "seconds", time.Since(t0))
-}
-
-// verify updated replica state
-func (c *primitiveFaultInjectionConfig) verifyUpdatedReplica() {
-	var onlineCount, faultedCount, otherCount int
-	t0 := time.Now()
-	for ix := 0; ix < patchTimeout; ix += patchSleepTime {
-		time.Sleep(time.Second * patchSleepTime)
-		msv, err := k8stest.GetMSV(c.uuid)
-		Expect(err).ToNot(HaveOccurred(), "%v", err)
-		Expect(msv).ToNot(BeNil(), "got nil msv for %v", c.uuid)
-		onlineCount = 0
-		faultedCount = 0
-		otherCount = 0
-		for _, child := range msv.Status.Nexus.Children {
-			if child.State == controlplane.ChildStateFaulted() {
-				faultedCount++
-			} else if child.State == controlplane.ChildStateOnline() {
-				onlineCount++
-			} else {
-				logf.Log.Info("Children state other then faulted and online", "child.State", child.State)
-				otherCount++
-			}
-		}
-		logf.Log.Info("Replica state", "faulted", faultedCount, "online", onlineCount, "other", otherCount)
-		if faultedCount == 0 && otherCount == 0 && onlineCount == msv.Spec.ReplicaCount {
+		} else if degradedCount == 1 && otherCount == 0 && onlineCount != 0 {
 			break
 		}
 	}
 	Expect(otherCount).To(BeZero(), "Got at least one children state other then faulted or online")
-	Expect(faultedCount).To(BeZero(), "Got at least one children state as faulted")
 	logf.Log.Info("MSV sync waiting time", "seconds", time.Since(t0))
 }
