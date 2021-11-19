@@ -87,7 +87,6 @@ func (c *Config) RcReconciliationTest() {
 	c.createFioPod(nodeList[0])
 
 	// Remove mayastor label from node 2
-
 	suppressMayastorPodOn(nodeList[1], 0)
 
 	// Verify that the volume has become degraded
@@ -107,8 +106,16 @@ func (c *Config) RcReconciliationTest() {
 	// Add mayastor label back on node 2
 	unSuppressMayastorPodOn(nodeList[1], 0)
 
+	// FIXME We should not suppress the mayastor pod on node 3 to bring the replica
+	// up on node 2. Remove below line once CAS-1171 is fixed
+	// Remove mayastor label from node 3 so that replicas start coming up on node 2
+	suppressMayastorPodOn(nodeList[2], 0)
+
 	// Verify that replica on node 3 is removed from msv and is reinstated on node 2
 	Expect(verifyReplicaOnNodes(uuid, []string{nodeList[0], nodeList[1]})).To(BeTrue())
+
+	// Add mayastor label back on node 3
+	unSuppressMayastorPodOn(nodeList[2], 0)
 
 	Eventually(func() string {
 		volState, err := k8stest.GetMsvState(uuid)
