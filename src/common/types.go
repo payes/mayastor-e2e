@@ -144,8 +144,10 @@ type ErrorAccumulator struct {
 	errs []error
 }
 
-func (acc *ErrorAccumulator) Add(err error) {
-	acc.errs = append(acc.errs, err)
+func (acc *ErrorAccumulator) Accumulate(err error) {
+	if err != nil {
+		acc.errs = append(acc.errs, err)
+	}
 }
 
 func (acc *ErrorAccumulator) GetError() error {

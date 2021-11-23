@@ -134,7 +134,7 @@ func CheckAllMsPoolFinalizers() error {
 	for _, pool := range pools {
 		finalizer := pool.Finalizers
 		if finalizer != nil {
-			errs.Add(fmt.Errorf("finalizer set on pool: %s", pool.Name))
+			errs.Accumulate(fmt.Errorf("finalizer set on pool: %s", pool.Name))
 		}
 	}
 

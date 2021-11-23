@@ -293,9 +293,7 @@ func DeleteAllPoolFinalizers() (bool, error) {
 
 	for _, pool := range pools {
 		deleted, err := deletePoolFinalizer(pool.GetName())
-		if err != nil {
-			errs.Add(err)
-		}
+		errs.Accumulate(err)
 		deletedFinalizer = deletedFinalizer || deleted
 	}
 

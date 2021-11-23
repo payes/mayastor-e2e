@@ -204,27 +204,22 @@ func resourceCheck(waitForPools bool) error {
 	var errs = common.ErrorAccumulator{}
 
 	pods, err := CheckForTestPods()
-	if err != nil {
-		errs.Add(err)
-	}
+	errs.Accumulate(err)
 	if pods {
-		errs.Add(fmt.Errorf("found Pods"))
+		errs.Accumulate(fmt.Errorf("found Pods"))
 	}
 
 	pvcs, err := CheckForPVCs()
-	if err != nil {
-		errs.Add(err)
-	}
+	errs.Accumulate(err)
 	if pvcs {
-		errs.Add(fmt.Errorf("found PersistentVolumeClaims"))
+		errs.Accumulate(fmt.Errorf("found PersistentVolumeClaims"))
 	}
 
 	pvs, err := CheckForPVs()
-	if err != nil {
-		errs.Add(err)
-	}
+	errs.Accumulate(err)
+
 	if pvs {
-		errs.Add(fmt.Errorf("found PersistentVolumes"))
+		errs.Accumulate(fmt.Errorf("found PersistentVolumes"))
 	}
 
 	//FIXME: control plane 1 temporary do not check MSVs
@@ -232,11 +227,11 @@ func resourceCheck(waitForPools bool) error {
 		// Mayastor volumes
 		msvs, err := ListMsvs()
 		if err != nil {
-			errs.Add(err)
+			errs.Accumulate(err)
 		} else {
 			if msvs != nil {
 				if len(msvs) != 0 {
-					errs.Add(fmt.Errorf("found MayastorVolumes"))
+					errs.Accumulate(fmt.Errorf("found MayastorVolumes"))
 				}
 			} else {
 				logf.Log.Info("Listing MSVs returned nil array")
@@ -250,21 +245,19 @@ func resourceCheck(waitForPools bool) error {
 		if e2e_config.GetConfig().SelfTest {
 			logf.Log.Info("SelfTesting, ignoring:", "", err)
 		} else {
-			errs.Add(err)
+			errs.Accumulate(err)
 		}
 	}
 
 	scs, err := CheckForStorageClasses()
-	if err != nil {
-		errs.Add(err)
-	}
+	errs.Accumulate(err)
 	if scs {
-		errs.Add(fmt.Errorf("found storage classes using mayastor"))
+		errs.Accumulate(fmt.Errorf("found storage classes using mayastor"))
 	}
 
 	err = custom_resources.CheckAllMsPoolsAreOnline()
 	if err != nil {
-		errs.Add(err)
+		errs.Accumulate(err)
 		logf.Log.Info("ResourceCheck: not all pools are online")
 	}
 
@@ -285,12 +278,10 @@ func resourceCheck(waitForPools bool) error {
 				}
 			}
 			logf.Log.Info("ResourceCheck:", "mspool Usage", mspUsage, "waiting time", time.Since(t0))
-			if err != nil {
-				errs.Add(err)
-			}
+			errs.Accumulate(err)
 		}
 		if mspUsage != 0 {
-			errs.Add(fmt.Errorf("pool usage reported via custom resources %d", mspUsage))
+			errs.Accumulate(fmt.Errorf("pool usage reported via custom resources %d", mspUsage))
 		}
 		logf.Log.Info("ResourceCheck:", "mspool Usage", mspUsage)
 	}
@@ -316,11 +307,9 @@ func resourceCheck(waitForPools bool) error {
 				}
 				logf.Log.Info("ResourceCheck:", "poolUsage", poolUsage, "waiting time", time.Since(t0))
 			}
-			if err != nil {
-				errs.Add(err)
-			}
+			errs.Accumulate(err)
 			if poolUsage != 0 {
-				errs.Add(fmt.Errorf("gRPC: pool usage reported via custom resources %d", poolUsage))
+				errs.Accumulate(fmt.Errorf("gRPC: pool usage reported via custom resources %d", poolUsage))
 			}
 			logf.Log.Info("ResourceCheck:", "poolUsage", poolUsage)
 		}
@@ -328,36 +317,36 @@ func resourceCheck(waitForPools bool) error {
 		{
 			nexuses, err := ListNexusesInCluster()
 			if err != nil {
-				errs.Add(err)
+				errs.Accumulate(err)
 				logf.Log.Info("ResourceEachCheck: failed to retrieve list of nexuses")
 			}
 			logf.Log.Info("ResourceCheck:", "num nexuses", len(nexuses))
 			if len(nexuses) != 0 {
-				errs.Add(fmt.Errorf("gRPC: count of nexuses reported via mayastor client is %d", len(nexuses)))
+				errs.Accumulate(fmt.Errorf("gRPC: count of nexuses reported via mayastor client is %d", len(nexuses)))
 			}
 		}
 		// check replicas
 		{
 			replicas, err := ListReplicasInCluster()
 			if err != nil {
-				errs.Add(err)
+				errs.Accumulate(err)
 				logf.Log.Info("ResourceEachCheck: failed to retrieve list of replicas")
 			}
 			logf.Log.Info("ResourceCheck:", "num replicas", len(replicas))
 			if len(replicas) != 0 {
-				errs.Add(fmt.Errorf("gRPC: count of replicas reported via mayastor client is %d", len(replicas)))
+				errs.Accumulate(fmt.Errorf("gRPC: count of replicas reported via mayastor client is %d", len(replicas)))
 			}
 		}
 		// check nvmeControllers
 		{
 			nvmeControllers, err := ListNvmeControllersInCluster()
 			if err != nil {
-				errs.Add(err)
+				errs.Accumulate(err)
 				logf.Log.Info("ResourceEachCheck: failed to retrieve list of nvme controllers")
 			}
 			logf.Log.Info("ResourceCheck:", "num nvme controllers", len(nvmeControllers))
 			if len(nvmeControllers) != 0 {
-				errs.Add(fmt.Errorf("gRPC: count of replicas reported via mayastor client is %d", len(nvmeControllers)))
+				errs.Accumulate(fmt.Errorf("gRPC: count of replicas reported via mayastor client is %d", len(nvmeControllers)))
 			}
 		}
 	} else {
