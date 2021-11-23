@@ -34,7 +34,7 @@ func (c *shutdownConfig) nonMoacNodeShutdownTest() {
 	poweredOffNode = conf.nodeName
 	logf.Log.Info("Sleeping for 2 mins... for all the mayastor pods to be in running status")
 	time.Sleep(2 * time.Minute)
-	verifyNodeNotReady(conf.nodeName)
+	verifyNodeNotReady(conf.nodeName, true)
 
 	verifyMayastorComponentStates(c.numMayastorInstances - 1)
 
@@ -89,7 +89,7 @@ func (c *shutdownConfig) moacNodeShutdownTest() {
 	poweredOffNode = conf.nodeName
 	logf.Log.Info("Sleeping for 2 mins... for IO paths to error out")
 	time.Sleep(2 * time.Minute)
-	verifyNodeNotReady(conf.nodeName)
+	verifyNodeNotReady(conf.nodeName, false)
 
 	// moac will not be ready
 	//verifyMayastorComponentStates(c.numMayastorInstances - 1)

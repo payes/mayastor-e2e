@@ -153,7 +153,7 @@ func (c *appConfig) verifyApplicationPodRunning(state bool) {
 	c.podName = podName
 }
 
-func verifyNodeNotReady(nodeName string) {
+func verifyNodeNotReady(nodeName string, verifyMsnStatus bool) {
 	Eventually(func() bool {
 		readyStatus, err := k8stest.IsNodeReady(nodeName, nil)
 		Expect(err).ToNot(HaveOccurred())
@@ -163,14 +163,16 @@ func verifyNodeNotReady(nodeName string) {
 		5,              // polling interval
 	).Should(Equal(false))
 
-	Eventually(func() bool {
-		status, err := k8stest.GetMsNodeStatus(nodeName)
-		Expect(err).ToNot(HaveOccurred(), "GetMsNodeStatus")
-		return (status == controlplane.NodeStateOffline() || status == controlplane.NodeStateUnknown() || status == controlplane.NodeStateEmpty())
-	},
-		defTimeoutSecs, // timeout
-		"5s",           // polling interval
-	).Should(Equal(true))
+	if verifyMsnStatus {
+		Eventually(func() bool {
+			status, err := k8stest.GetMsNodeStatus(nodeName)
+			Expect(err).ToNot(HaveOccurred(), "GetMsNodeStatus")
+			return (status == controlplane.NodeStateOffline() || status == controlplane.NodeStateUnknown() || status == controlplane.NodeStateEmpty())
+		},
+			defTimeoutSecs, // timeout
+			"5s",           // polling interval
+		).Should(Equal(true))
+	}
 }
 
 func verifyNodesReady() {

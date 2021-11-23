@@ -38,7 +38,7 @@ func (c *shutdownConfig) nonCoreAgentNodeShutdownTest() {
 	poweredOffNode = conf.nodeName
 	logf.Log.Info("Sleeping for 2 mins... for all the mayastor pods to be in running status")
 	time.Sleep(2 * time.Minute)
-	verifyNodeNotReady(conf.nodeName)
+	verifyNodeNotReady(conf.nodeName, true)
 
 	verifyMayastorComponentStates(c.numMayastorInstances - 1)
 
@@ -103,7 +103,7 @@ func (c *shutdownConfig) coreAgentNodeShutdownTest() {
 	poweredOffNode = conf.nodeName
 	logf.Log.Info("Sleeping for 2 mins... for IO paths to error out")
 	time.Sleep(2 * time.Minute)
-	verifyNodeNotReady(conf.nodeName)
+	verifyNodeNotReady(conf.nodeName, false)
 
 	for _, config := range c.config {
 		if config.nodeName == conf.nodeName {

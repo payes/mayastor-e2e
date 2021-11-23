@@ -140,15 +140,28 @@ func (c *nodepowerfailureConfig) staleMspAfterNodePowerFailureTest() {
 	// Power on the node
 	Expect(c.platform.PowerOnNode(nodeName)).ToNot(HaveOccurred(), nodeName+" failed to powered on")
 	poweredOffNode = ""
-	time.Sleep(1 * time.Minute)
+	time.Sleep(5 * time.Minute)
+
+	Eventually(func() bool {
+		isPoolDeleted, err := IsMsPoolDeleted(poolName)
+		if err == nil && isPoolDeleted {
+			return true
+		}
+		log.Log.Info("IsMsPoolDeleted", "pool", poolName, "isPoolDeleted", isPoolDeleted)
+		return false
+	},
+		defTimeoutSecs, // timeout
+		"5s",           // polling interval
+	).Should(BeTrue(), "Test pool is still present "+poolName)
 
 	// Create MSP with new name on same node and same disk
 	var newPoolName = poolName + "-stale-msp"
 	_, err = custom_resources.CreateMsPool(newPoolName, nodeName, diskName)
 	Expect(err).ToNot(HaveOccurred())
 
+	log.Log.Info("Verify pool online", "pool", poolName)
 	// Check for the pool status
-	const timeSecs = 30
+	const timeSecs = 300
 	const timeSleepSecs = 10
 	for ix := 0; ix < timeSecs/timeSleepSecs; ix++ {
 		time.Sleep(timeSleepSecs * time.Second)
@@ -164,7 +177,10 @@ func (c *nodepowerfailureConfig) staleMspAfterNodePowerFailureTest() {
 func IsMsPoolOnline(poolName string) error {
 	poolHealthy := true
 	pool, err := k8stest.GetMsPool(poolName)
-	Expect(err).ToNot(HaveOccurred(), fmt.Sprintf("failed to get mayastor pool %s %v", poolName, err))
+	if err != nil {
+		log.Log.Info("failed to get mayastor pool", "poolName", poolName, "err", err)
+		return err
+	}
 
 	if strings.ToLower(pool.Status.State) != "online" {
 		log.Log.Info("IsMsPoolOnline", "pool", poolName, "state", pool.Status.State)
@@ -175,6 +191,22 @@ func IsMsPoolOnline(poolName string) error {
 		return fmt.Errorf(poolName + " is not online")
 	}
 	return err
+}
+
+// Check if a MSP is in online state
+func IsMsPoolDeleted(poolName string) (bool, error) {
+	pools, err := k8stest.ListMsPools()
+	if err != nil {
+		log.Log.Error(err, "failed to list mayastor pools")
+		return false, err
+	}
+	for _, pool := range pools {
+		if pool.Name == poolName {
+			return false, nil
+		}
+	}
+
+	return true, nil
 }
 
 // Verify that node is in not ready state
