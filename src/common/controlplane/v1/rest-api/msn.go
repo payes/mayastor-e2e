@@ -7,16 +7,18 @@ import (
 )
 
 func oaNodeToMsn(oaNode *openapi.Node) common.MayastorNode {
+	nodeSpec := oaNode.GetSpec()
+	nodeState := oaNode.GetState()
 	msn := common.MayastorNode{
 		Name: oaNode.GetId(),
 		Spec: common.MayastorNodeSpec{
-			GrpcEndpoint: oaNode.Spec.GrpcEndpoint,
-			ID:           oaNode.Spec.Id,
+			GrpcEndpoint: nodeSpec.GrpcEndpoint,
+			ID:           nodeSpec.Id,
 		},
 		State: common.MayastorNodeState{
-			GrpcEndpoint: oaNode.State.GrpcEndpoint,
-			ID:           oaNode.State.Id,
-			Status:       string(oaNode.State.GetStatus()),
+			GrpcEndpoint: nodeState.GrpcEndpoint,
+			ID:           nodeState.Id,
+			Status:       string(nodeState.GetStatus()),
 		},
 	}
 
