@@ -94,7 +94,14 @@ stale_msp_after_node_power_failure
 "
 
 #hc1-nightly version of nightly-stable for CP2
+# order is alphabetical, except for tests with long execution times
+#   : primitive_msp_deletion, primitive_msp_state, node_failure, ms_pod_disruption,
+#
 profiles[hc1-nightly]="
+primitive_msp_deletion
+primitive_msp_state
+node_failure
+ms_pod_disruption
 basic_volume_io
 control_plane_rescheduling
 csi
@@ -109,21 +116,17 @@ MQ-2219-rc-reconciliation
 MQ-2330-ms_pod_disruption_rm_vol
 maximum_vols_io
 ms_pod_restart
-ms_pod_disruption
 ms_pod_disruption_no_io
 ms_pool_delete
 msv_rebuild
 multiple_vols_pod_io
-node_failure
 node_shutdown
 nexus_location
 pool_modify
 primitive_data_integrity
 primitive_fault_injection
 primitive_fuzz_msv
-primitive_msp_state
 primitive_msp_stress
-primitive_msp_deletion
 primitive_replicas
 primitive_volumes
 pvc_delete
