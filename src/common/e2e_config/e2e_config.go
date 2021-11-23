@@ -57,21 +57,25 @@ type E2EConfig struct {
 	E2eFioImage string `yaml:"e2eFioImage" env-default:"mayadata/e2e-fio" env:"e2e_fio_image"`
 	E2eFsxImage string `yaml:"e2eFsxImage" env-default:"mayadata/e2e-fsx" env:"e2e_fsx_image"`
 	// This is an advisory setting for individual tests
-	// If set to true - typically during test development - tests with multiple It clauses should defer asserts till after
-	// resources have been cleaned up . This behaviour makes it possible to have useful runs for all It clauses.
-	// Typically set to false for CI test execution - no cleanup after first failure, as a result subsequent It clauses
+	// If set to true - typically during test development - tests with multiple 'It' clauses should defer asserts till after
+	// resources have been cleaned up . This behaviour makes it possible to have useful runs for all 'It' clauses.
+	// Typically, set to false for CI test execution - no cleanup after first failure, as a result subsequent 'It' clauses
 	// in the test will fail the BeforeEach check, rendering post-mortem checks on the cluster more useful.
 	// It may be set to true for when we want maximum test coverage, and post-mortem analysis is a secondary requirement.
 	// NOTE: Only some tests support this feature.
 	DeferredAssert bool `yaml:"deferredAssert" env-default:"false" env:"e2e_defer_asserts"`
 	// TODO: for now using a simple boolean for a specific behaviour suffices, a more sophisticated approach using a policy for test runs may be required.
-	CleanupOnBeforeEach bool `yaml:"cleanupOnBeforeEach" env-default:"false" env:"e2e_policy_cleanup_before"`
+
 	// Default replica count, used by tests which do not have a config section.
 	DefaultReplicaCount int `yaml:"defaultReplicaCount" env-default:"2" env:"e2e_default_replica_count"`
 	// Timeout for MOAC CR state reconciliation in seconds, some CR state is not update promptly for example pool usage
 	// and finalizers. On hcloud the time lag between synchronisation has been observed to be in the order of
 	// a minute.
 	MoacSyncTimeoutSeconds int `yaml:"moacSyncTimeoutSeconds" env-default:"600"`
+	// Restart Mayastor on failure in a prior AfterEach or ResourceCheck
+	BeforeEachCheckAndRestart bool `yaml:"beforeEachCheckAndRestart" env-default:"false"`
+	// Fail  quickly after failure of a prior AfterEach, overrides BeforeEachCheckAndRestart
+	FailQuick bool `yaml:"failQuick" env-default:"false" env:"e2e_fail_quick"`
 
 	// Run configuration
 	ReportsDir string `yaml:"reportsDir" env:"e2e_reports_dir"`
