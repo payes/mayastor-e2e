@@ -52,7 +52,7 @@ var _ = BeforeSuite(func(done Done) {
 		"5s",           // polling interval
 	).Should(Equal(0))
 	close(done)
-}, 60)
+}, 300)
 
 var _ = AfterSuite(func() {
 	// RestoreConfiguredPools (re)create pools as defined by the configuration.
