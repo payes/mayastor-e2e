@@ -277,10 +277,12 @@ func isPodHealthCheckCandidate(podName string, namespace string) bool {
 //CheckTestPodsHealth Check test pods in a namespace for restarts and failed/unknown state
 func CheckTestPodsHealth(namespace string) error {
 	podApi := gTestEnv.KubeInt.CoreV1().Pods
-	var errorStrings []string
+	var errs = common.ErrorAccumulator{}
 	podList, err := podApi(namespace).List(context.TODO(), metaV1.ListOptions{})
 	if err != nil {
-		return errors.New("failed to list pods")
+		errs.Accumulate(err)
+		errs.Accumulate(errors.New("failed to list pods"))
+		return errs.GetError()
 	}
 
 	for _, pod := range podList.Items {
@@ -291,19 +293,16 @@ func CheckTestPodsHealth(namespace string) error {
 		for _, containerStatus := range containerStatuses {
 			if containerStatus.RestartCount != 0 {
 				logf.Log.Info(pod.Name, "restarts", containerStatus.RestartCount)
-				errorStrings = append(errorStrings, fmt.Sprintf("%s restarted %d times", pod.Name, containerStatus.RestartCount))
+				errs.Accumulate(fmt.Errorf("%s restarted %d times", pod.Name, containerStatus.RestartCount))
 			}
 			if pod.Status.Phase == coreV1.PodFailed || pod.Status.Phase == coreV1.PodUnknown {
 				logf.Log.Info(pod.Name, "phase", pod.Status.Phase)
-				errorStrings = append(errorStrings, fmt.Sprintf("%s phase is %v", pod.Name, pod.Status.Phase))
+				errs.Accumulate(fmt.Errorf("%s phase is %v", pod.Name, pod.Status.Phase))
 			}
 		}
 	}
 
-	if len(errorStrings) != 0 {
-		return errors.New(strings.Join(errorStrings[:], "; "))
-	}
-	return nil
+	return errs.GetError()
 }
 
 func CheckPodCompleted(podName string, nameSpace string) (coreV1.PodPhase, error) {
@@ -339,7 +338,8 @@ func CheckPodContainerCompleted(podName string, nameSpace string) (coreV1.PodPha
 	for _, containerStatus := range containerStatuses {
 		if containerStatus.Name == podName {
 			if !containerStatus.Ready {
-				if containerStatus.State.Terminated.Reason == "Completed" {
+				if containerStatus.State.Terminated != nil &&
+					containerStatus.State.Terminated.Reason == "Completed" {
 					if containerStatus.State.Terminated.ExitCode == 0 {
 						return coreV1.PodSucceeded, nil
 					} else {

@@ -312,7 +312,7 @@ func RmPVC(volName string, scName string, nameSpace string) {
 		return true
 	},
 		"360s", // timeout
-		"1s",   // polling interval
+		"5s",   // polling interval
 	).Should(Equal(true), "PV (%s) for %s not deleted", pvc.Spec.VolumeName, volName)
 
 	// Wait for the MSV to be deleted.
@@ -320,7 +320,7 @@ func RmPVC(volName string, scName string, nameSpace string) {
 		return IsMsvDeleted(string(pvc.ObjectMeta.UID))
 	},
 		"360s", // timeout
-		"1s",   // polling interval
+		"5s",   // polling interval
 	).Should(Equal(true))
 }
 

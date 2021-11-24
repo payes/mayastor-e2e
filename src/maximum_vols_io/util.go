@@ -3,6 +3,7 @@ package maximum_vols_io
 import (
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"mayastor-e2e/common"
@@ -36,7 +37,7 @@ func (c *maxVolConfig) deleteSC() {
 func (c *maxVolConfig) createPVC() *maxVolConfig {
 	// Create the volumes
 	for _, pvc := range c.pvcNames {
-		uid := k8stest.MkPVC(c.pvcSize, pvc, c.scName, common.VolFileSystem, common.NSDefault)
+		uid := k8stest.MkPVC(c.pvcSize, pvc, c.scName, c.volType, common.NSDefault)
 		c.uuid = append(c.uuid, uid)
 	}
 
@@ -45,9 +46,24 @@ func (c *maxVolConfig) createPVC() *maxVolConfig {
 
 // deletePVC will delete all pvc
 func (c *maxVolConfig) deletePVC() {
-	for _, pvc := range c.pvcNames {
-		k8stest.RmPVC(pvc, c.scName, common.NSDefault)
+	// Delete the volumes
+	var wg sync.WaitGroup
+	wg.Add(len(c.pvcNames))
+	for i := 0; i < len(c.pvcNames); i++ {
+		go k8stest.DeletePvc(c.pvcNames[i], common.NSDefault, &c.pvcDeleteErrs[i], &wg)
 	}
+	logf.Log.Info("invoked delete methods for all PVCs")
+	wg.Wait()
+	logf.Log.Info("delete methods completed for all PVCs")
+	errs := common.ErrorAccumulator{}
+	for ix, pvcName := range c.pvcNames {
+		if c.pvcDeleteErrs[ix] != nil {
+			logf.Log.Info("failed to delete", "pvc", pvcName, "error", c.pvcDeleteErrs[ix])
+			errs.Accumulate(c.pvcDeleteErrs[ix])
+		}
+	}
+	Expect(errs.GetError()).ToNot(HaveOccurred(), "all volumes were not deleted")
+	logf.Log.Info("all PVCs deleted")
 }
 
 // createFioPods will create fio pods and run fio concurrently on all mounted volumes
@@ -60,12 +76,14 @@ func (c *maxVolConfig) createFioPods() {
 		var volFioArgs [][]string
 
 		// fio pod container
-		podContainer := coreV1.Container{
-			Name:            podName,
-			Image:           common.GetFioImage(),
-			ImagePullPolicy: coreV1.PullAlways,
-			Args:            []string{"sleep", "1000000"},
-		}
+		//		podContainer := coreV1.Container{
+		//			Name:            podName,
+		//			Image:           common.GetFioImage(),
+		//			ImagePullPolicy: coreV1.PullAlways,
+		//			Args:            []string{"sleep", "1000000"},
+		//		}
+
+		podContainer := k8stest.MakeFioContainer(podName, []string{"sleep", "1000000"})
 		var volumes []coreV1.Volume
 		for ix := 0; ix < c.volCountPerPod; ix++ {
 			// volume claim details
@@ -128,7 +146,7 @@ func (c *maxVolConfig) createFioPods() {
 		podArgs = append(podArgs, "fio")
 		podArgs = append(podArgs, common.GetDefaultFioArguments()...)
 		podArgs = append(podArgs, []string{
-			fmt.Sprintf("--size=%dm", common.DefaultFioSizeMb),
+			fmt.Sprintf("--size=%dm", c.pvcSize/2),
 		}...,
 		)
 
@@ -145,13 +163,6 @@ func (c *maxVolConfig) createFioPods() {
 		// Create first fio pod
 		_, err = k8stest.CreatePod(podObj, common.NSDefault)
 		Expect(err).ToNot(HaveOccurred(), "Creating fio pod %s", podName)
-		// Wait for the fio Pod to transition to running
-		Eventually(func() bool {
-			return k8stest.IsPodRunning(podName, common.NSDefault)
-		},
-			defTimeoutSecs,
-			"1s",
-		).Should(Equal(true))
 	}
 }
 
@@ -160,7 +171,7 @@ func (c *maxVolConfig) deleteFioPods() {
 	for _, podName := range c.fioPodNames {
 		// Delete the fio pod
 		err := k8stest.DeletePod(podName, common.NSDefault)
-		Expect(err).ToNot(HaveOccurred(), "failed to delete fio pod")
+		Expect(err).ToNot(HaveOccurred(), "failed to delete fio pod %s", podName)
 	}
 }
 
@@ -179,6 +190,9 @@ func (c *maxVolConfig) checkFioPodsComplete() {
 			tSecs += 1
 			phase, err = k8stest.CheckPodCompleted(podName, common.NSDefault)
 			Expect(err).To(BeNil(), "CheckPodComplete got error %s", err)
+			if phase == coreV1.PodPending {
+				continue
+			}
 			if phase != coreV1.PodRunning {
 				break
 			}

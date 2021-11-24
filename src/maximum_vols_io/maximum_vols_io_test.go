@@ -1,6 +1,7 @@
 package maximum_vols_io
 
 import (
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"testing"
 
 	"mayastor-e2e/common/k8stest"
@@ -39,6 +40,7 @@ var _ = Describe("Maximum number of  volumes tests", func() {
 		err := k8stest.AfterEachCheck()
 		Expect(err).ToNot(HaveOccurred())
 	})
+
 	It("should verify maximum number of  volumes test with 1 replica", func() {
 		c := generateMaxVolConfig("max-volume", 1)
 		c.maxVolumeTest()
@@ -61,4 +63,5 @@ func (c *maxVolConfig) maxVolumeTest() {
 	c.deleteFioPods()
 	c.deletePVC()
 	c.deleteSC()
+	logf.Log.Info("maxVolumeTest: completed.")
 }

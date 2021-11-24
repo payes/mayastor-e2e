@@ -11,10 +11,6 @@ import (
 	storageV1 "k8s.io/api/storage/v1"
 )
 
-const (
-	defTimeoutSecs = 300
-)
-
 type maxVolConfig struct {
 	protocol       common.ShareProto
 	fsType         common.FileSystemType
@@ -30,6 +26,7 @@ type maxVolConfig struct {
 	uuid           []string
 	duration       time.Duration
 	timeout        time.Duration
+	pvcDeleteErrs  []error
 }
 
 func generateMaxVolConfig(testName string, replicasCount int) *maxVolConfig {
@@ -39,9 +36,11 @@ func generateMaxVolConfig(testName string, replicasCount int) *maxVolConfig {
 	fioCheckTimeout, err := time.ParseDuration(params.Timeout)
 	Expect(err).ToNot(HaveOccurred(), "Timeout configuration string format is invalid.")
 	c := &maxVolConfig{
-		protocol:       common.ShareProtoNvmf,
-		volType:        common.VolFileSystem,
-		fsType:         common.Ext4FsType,
+		protocol: common.ShareProtoNvmf,
+		//		volType:        common.VolFileSystem,
+		//		fsType:         common.Ext4FsType,
+		volType:        common.VolRawBlock,
+		fsType:         common.NoneFsType,
 		volBindingMode: storageV1.VolumeBindingImmediate,
 		pvcSize:        params.VolMb,
 		volCountPerPod: params.VolumeCountPerPod,
@@ -50,6 +49,7 @@ func generateMaxVolConfig(testName string, replicasCount int) *maxVolConfig {
 		scName:         testName + "-sc",
 		duration:       fioDuration,
 		timeout:        fioCheckTimeout,
+		pvcDeleteErrs:  make([]error, params.PodCount*params.VolumeCountPerPod),
 	}
 
 	for ix := 0; ix < c.podCount; ix++ {
