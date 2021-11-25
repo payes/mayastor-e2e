@@ -4,6 +4,7 @@ package node_failure
 
 import (
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -139,62 +140,73 @@ func (c *failureConfig) RebootDesiredNodes(uuid string) {
 
 	switch c.testType {
 	case RebootAllNodes:
-		Expect(c.platform.PowerOffNode(nonNexusNodes[0])).ToNot(HaveOccurred(), "PowerOffNode")
-		Expect(c.platform.PowerOffNode(nonNexusNodes[1])).ToNot(HaveOccurred(), "PowerOffNode")
-		Expect(c.platform.PowerOffNode(nexusNode)).ToNot(HaveOccurred(), "PowerOffNode")
+		Expect(c.platform.PowerOffNode(nonNexusNodes[0])).ToNot(HaveOccurred(), "Failed to PowerOffNode %s for RebootAllNodes test", nonNexusNodes[0])
+		Expect(c.platform.PowerOffNode(nonNexusNodes[1])).ToNot(HaveOccurred(), "Failed to PowerOffNode %s for RebootAllNodes test", nonNexusNodes[1])
+		Expect(c.platform.PowerOffNode(nexusNode)).ToNot(HaveOccurred(), "Failed to PowerOffNode %s for RebootAllNodes test", nexusNode)
 
 		time.Sleep(c.DownTime)
 		c.verifyNodeNotReady(nonNexusNodes[0])
 		c.verifyNodeNotReady(nonNexusNodes[1])
 		c.verifyNodeNotReady(nexusNode)
 
-		Expect(c.platform.PowerOnNode(nonNexusNodes[0])).ToNot(HaveOccurred(), "PowerOffNode")
-		Expect(c.platform.PowerOnNode(nonNexusNodes[1])).ToNot(HaveOccurred(), "PowerOffNode")
-		Expect(c.platform.PowerOnNode(nexusNode)).ToNot(HaveOccurred(), "PowerOffNode")
+		Expect(c.platform.PowerOnNode(nonNexusNodes[0])).ToNot(HaveOccurred(), "Failed to PowerOnNode %s for RebootAllNodes test", nonNexusNodes[0])
+		Expect(c.platform.PowerOnNode(nonNexusNodes[1])).ToNot(HaveOccurred(), "Failed to PowerOnNode %s for RebootAllNodes test", nonNexusNodes[1])
+		Expect(c.platform.PowerOnNode(nexusNode)).ToNot(HaveOccurred(), "Failed to PowerOnNode %s for RebootAllNodes test", nexusNode)
 
 	case RebootOneNonNexusNode:
 
-		Expect(c.platform.PowerOffNode(nonNexusNodes[0])).ToNot(HaveOccurred(), "PowerOffNode")
+		Expect(c.platform.PowerOffNode(nonNexusNodes[0])).ToNot(HaveOccurred(), "Failed to PowerOffNode %s for RebootOneNonNexusNode test", nonNexusNodes[0])
 
 		time.Sleep(c.DownTime)
 		c.verifyNodeNotReady(nonNexusNodes[0])
 
-		Expect(c.platform.PowerOnNode(nonNexusNodes[0])).ToNot(HaveOccurred(), "PowerOffNode")
+		Expect(c.platform.PowerOnNode(nonNexusNodes[0])).ToNot(HaveOccurred(), "Failed to PowerOnNode %s for RebootOneNonNexusNode test", nonNexusNodes[0])
 
 	case RebootTwoNonNexusNodes:
-		Expect(c.platform.PowerOffNode(nonNexusNodes[0])).ToNot(HaveOccurred(), "PowerOffNode")
-		Expect(c.platform.PowerOffNode(nonNexusNodes[1])).ToNot(HaveOccurred(), "PowerOffNode")
+		Expect(c.platform.PowerOffNode(nonNexusNodes[0])).ToNot(HaveOccurred(), "Failed to PowerOffNode %s for RebootTwoNonNexusNodes test", nonNexusNodes[0])
+		Expect(c.platform.PowerOffNode(nonNexusNodes[1])).ToNot(HaveOccurred(), "Failed to PowerOffNode %s for RebootTwoNonNexusNodes test", nonNexusNodes[1])
 
 		time.Sleep(c.DownTime)
 		c.verifyNodeNotReady(nonNexusNodes[0])
 		c.verifyNodeNotReady(nonNexusNodes[1])
 
-		Expect(c.platform.PowerOnNode(nonNexusNodes[0])).ToNot(HaveOccurred(), "PowerOffNode")
-		Expect(c.platform.PowerOnNode(nonNexusNodes[1])).ToNot(HaveOccurred(), "PowerOffNode")
+		Expect(c.platform.PowerOnNode(nonNexusNodes[0])).ToNot(HaveOccurred(), "Failed to PowerOnNode %s for RebootTwoNonNexusNodes test", nonNexusNodes[0])
+		Expect(c.platform.PowerOnNode(nonNexusNodes[1])).ToNot(HaveOccurred(), "Failed to PowerOnNode %s for RebootTwoNonNexusNodes test", nonNexusNodes[1])
 
 	case RebootNexusNode:
-		Expect(c.platform.PowerOffNode(nexusNode)).ToNot(HaveOccurred(), "PowerOffNode")
+		Expect(c.platform.PowerOffNode(nexusNode)).ToNot(HaveOccurred(), "Failed to PowerOffNode %s for RebootNexusNode test", nexusNode)
 
 		time.Sleep(c.DownTime)
 		c.verifyNodeNotReady(nexusNode)
 
-		Expect(c.platform.PowerOnNode(nexusNode)).ToNot(HaveOccurred(), "PowerOffNode")
+		Expect(c.platform.PowerOnNode(nexusNode)).ToNot(HaveOccurred(), "Failed to PowerOnNode %s for RebootNexusNode test", nexusNode)
 
 	}
 }
 
 func (c *failureConfig) verifyMayastorComponentStates(numMayastorInstances int) {
-	nodeList, err := k8stest.ListMsns()
-	Expect(err).ToNot(HaveOccurred(), "ListMsNodes")
-	count := 0
-	for _, node := range nodeList {
-		status, err := k8stest.GetMsNodeStatus(node.Name)
-		Expect(err).ToNot(HaveOccurred(), "GetMsNodeStatus")
-		if status == controlplane.NodeStateOnline() {
-			count++
+	Eventually(func() int {
+		count := 0
+		nodeList, err := k8stest.ListMsns()
+		if err != nil {
+			logf.Log.Info("Failed to get mayastor nodes", "error", err)
+			return 0
 		}
-	}
-	Expect(count).To(Equal(numMayastorInstances))
+		for _, node := range nodeList {
+			status, err := k8stest.GetMsNodeStatus(node.Name)
+			if err != nil {
+				logf.Log.Info("Failed to get mayastor node status", "error", err)
+				continue
+			}
+			if status == controlplane.NodeStateOnline() {
+				count++
+			}
+		}
+		return count
+	},
+		defTimeoutSecs, // timeout
+		5,              // polling interval
+	).Should(Equal(numMayastorInstances), "Online MayastorNode count verification failed")
 	ready, err := k8stest.MayastorInstancesReady(numMayastorInstances, 3, 540)
 	Expect(err).ToNot(HaveOccurred())
 	Expect(ready).To(Equal(true))
@@ -285,6 +297,7 @@ type failureConfig struct {
 type TestType int
 
 var nodes []string
+var once sync.Once
 
 const (
 	RebootAllNodes TestType = iota
@@ -314,10 +327,12 @@ func generateFailureConfig(testType TestType, downTime time.Duration, testName s
 	Expect(err).ToNot(HaveOccurred(), err)
 	c.platform = platform.Create()
 	Expect(c.platform).ToNot(BeNil())
-	for _, node := range nodeLocs {
-		c.nodeList[node.NodeName] = node.IPAddress
-		nodes = append(nodes, node.NodeName)
-	}
+	once.Do(func() {
+		for _, node := range nodeLocs {
+			c.nodeList[node.NodeName] = node.IPAddress
+			nodes = append(nodes, node.NodeName)
+		}
+	})
 	return c
 }
 
