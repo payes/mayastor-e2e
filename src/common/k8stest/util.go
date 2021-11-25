@@ -657,10 +657,11 @@ func WaitPodComplete(podName string, sleepTimeSecs, timeoutSecs int) error {
 	var podPhase coreV1.PodPhase
 	var err error
 
-	logf.Log.Info("Waiting for pod to complete", "name", podName)
-	for ix := 0; ix < (timeoutSecs+sleepTimeSecs-1)/sleepTimeSecs; ix++ {
+	logf.Log.Info("Waiting for pod to complete", "name", podName, "timeout secs", timeoutSecs)
+	for elapsedTime := 0; elapsedTime <= timeoutSecs; elapsedTime += sleepTimeSecs {
 		time.Sleep(time.Duration(sleepTimeSecs) * time.Second)
 		podPhase, err = CheckPodCompleted(podName, common.NSDefault)
+		logf.Log.Info("WaitPodComplete got ", "podPhase", podPhase, "error", err)
 		Expect(err).ToNot(HaveOccurred(), fmt.Sprintf("failed to access pod status %s %v", podName, err))
 		if podPhase == coreV1.PodSucceeded {
 			return nil
