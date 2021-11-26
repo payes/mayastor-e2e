@@ -49,7 +49,10 @@ var _ = Describe("Mayastor Pool Modification test", func() {
 		err = k8stest.RestoreConfiguredPools()
 		Expect(err).To(BeNil(), "Not all pools are online after restoration")
 	})
-
+	
+	// Suppresing this test case for HC1 release (v1.0).  At this time, the behaviour of the Mayastor Pool Operator in regards to
+	// a change in spec.Node is undefined behaviour
+	/*
 	It("should fail to change status when pool spec node is modified", func() {
 		pools, err := custom_resources.ListMsPools()
 		Expect(err).To(BeNil(), "failed to list pools using custom resources API")
@@ -72,7 +75,7 @@ var _ = Describe("Mayastor Pool Modification test", func() {
 		}
 		err = k8stest.RestoreConfiguredPools()
 		Expect(err).To(BeNil(), "Not all pools are online after restoration")
-	})
+	})*/
 })
 
 var _ = BeforeSuite(func(done Done) {
