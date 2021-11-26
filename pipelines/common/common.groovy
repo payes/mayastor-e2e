@@ -111,7 +111,7 @@ def BuildMCPImages(Map params) {
   def test_tag = params['test_tag']
   def build_flags = ""
   if (params.containsKey('build_flags')) {
-        build_flags = parms['build_flags']
+        build_flags = params['build_flags']
   }
 
   println params
@@ -145,7 +145,7 @@ def BuildMCPImages(Map params) {
   }
   sh "cd mayastor-control-plane && git submodule update --init"
   sh "cd mayastor-control-plane && git status"
-  sh "cd mayastor-control-plane && ./scripts/release.sh --registry \"${env.REGISTRY}\" --alias-tag \"$test_tag\" "
+  sh "cd mayastor-control-plane && ./scripts/release.sh $build_flags --registry \"${env.REGISTRY}\" --alias-tag \"$test_tag\" "
 
   // Build the install image
   sh "./scripts/create-install-image.sh $build_flags --alias-tag \"$test_tag\" --mayastor Mayastor --mcp mayastor-control-plane --registry \"${env.REGISTRY}\""
