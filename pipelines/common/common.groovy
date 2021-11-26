@@ -102,15 +102,22 @@ def BuildImages(mayastorBranch, moacBranch, test_tag) {
   sh "rm -Rf moac/"
 }
 
-def BuildMCPImages(Map parms) {
-  println parms
 
-  def mayastorBranch = parms['mayastorBranch']
-  def mcpBranch = parms['mcpBranch']
-  def test_tag = parms['test_tag']
+def BuildMCPImages(Map params) {
+  def mayastorBranch = params['mayastorBranch']
+  def mayastorRev = params['mayastorRev']
+  def mcpBranch = params['mcpBranch']
+  def mcpRev = params['mcpRev']
+  def test_tag = params['test_tag']
   def build_flags = ""
-  if (parms.containsKey('build_flags')) {
+  if (params.containsKey('build_flags')) {
         build_flags = parms['build_flags']
+  }
+
+  println params
+
+  if (!mayastorBranch?.trim() || !mcpBranch?.trim()) {
+    throw new Exception("Empty branch parameters: mayastor branch is ${mayastorBranch}, mcp branch is ${mcpBranch}")
   }
 
   GetMayastor(mayastorBranch)
@@ -119,8 +126,11 @@ def BuildMCPImages(Map parms) {
   // test the free space here rather than repeating the same code in all
   // stages.
   sh "cd Mayastor && ./scripts/reclaim-space.sh 10"
-
+  if (mayastorRev?.trim()) {
+      sh "cd Mayastor && git checkout ${mayastorRev}"
+  }
   sh "cd Mayastor && git submodule update --init"
+  sh "cd Mayastor && git status"
 
   // Build images (REGISTRY is set in jenkin's global configuration).
   // Note: We might want to build and test dev images that have more
@@ -130,8 +140,12 @@ def BuildMCPImages(Map parms) {
 
   // Build mayastor control plane
   GetMCP(mcpBranch)
+  if (mcpRev?.trim()) {
+      sh "cd mayastor-control-plane && git checkout ${mcpRev}"
+  }
   sh "cd mayastor-control-plane && git submodule update --init"
-  sh "cd mayastor-control-plane && ./scripts/release.sh $build_flags --registry \"${env.REGISTRY}\" --alias-tag \"$test_tag\" "
+  sh "cd mayastor-control-plane && git status"
+  sh "cd mayastor-control-plane && ./scripts/release.sh --registry \"${env.REGISTRY}\" --alias-tag \"$test_tag\" "
 
   // Build the install image
   sh "./scripts/create-install-image.sh $build_flags --alias-tag \"$test_tag\" --mayastor Mayastor --mcp mayastor-control-plane --registry \"${env.REGISTRY}\""
