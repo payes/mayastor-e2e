@@ -186,6 +186,18 @@ func (c *fsxExt4StressConfig) verifyVolumeStateOverGrpcAndCrd() {
 
 }
 
+// verify IO is in progress
+func (c *fsxExt4StressConfig) verifyRunning() {
+	var fsxPodPhase coreV1.PodPhase
+	logf.Log.Info("Verify running", "pod", c.fsxPodName)
+	status := k8stest.IsPodRunning(c.fsxPodName, common.NSDefault)
+	logf.Log.Info("Verify running", "pod", c.fsxPodName, "IsPodRunning", status)
+	if !status {
+		fsxPodPhase, _ = k8stest.CheckPodContainerCompleted(c.fsxPodName, common.NSDefault)
+	}
+	Expect(status).To(Equal(true), "fsx pod %s phase is %v", c.fsxPodName, fsxPodPhase)
+}
+
 // verify status of IO after fault injection
 func (c *fsxExt4StressConfig) verifyUninterruptedIO() {
 	logf.Log.Info("Verify status", "pod", c.fsxPodName)
