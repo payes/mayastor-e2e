@@ -52,6 +52,7 @@ var _ = Describe("Stale MSP after node power failure test", func() {
 		if controlplane.MajorVersion() == 1 {
 			k8stest.RemoveAllNodeSelectorsFromDeployment("msp-operator", common.NSMayastor())
 			k8stest.RemoveAllNodeSelectorsFromDeployment("rest", common.NSMayastor())
+			k8stest.RemoveAllNodeSelectorsFromDeployment("csi-controller", common.NSMayastor())
 		}
 
 		err := k8stest.RestartMayastor(240, 240, 240)
@@ -75,8 +76,6 @@ var _ = Describe("Stale MSP after node power failure test", func() {
 })
 
 func (c *nodepowerfailureConfig) staleMspAfterNodePowerFailureTest() {
-
-	//List mayastor pools in the cluster
 	pools, err := k8stest.ListMsPools()
 	Expect(err).ToNot(HaveOccurred(), fmt.Sprintf("failed to list msp's in cluster, %v", err))
 
@@ -109,6 +108,11 @@ func (c *nodepowerfailureConfig) staleMspAfterNodePowerFailureTest() {
 
 		k8stest.ApplyNodeSelectorToDeployment("msp-operator", common.NSMayastor(), "kubernetes.io/hostname", coreAgentNodeName)
 		k8stest.ApplyNodeSelectorToDeployment("rest", common.NSMayastor(), "kubernetes.io/hostname", coreAgentNodeName)
+		k8stest.ApplyNodeSelectorToDeployment("csi-controller", common.NSMayastor(), "kubernetes.io/hostname", coreAgentNodeName)
+		time.Sleep(60 * time.Second)
+		ready, err := k8stest.MayastorReady(5, 60)
+		Expect(err).ToNot(HaveOccurred(), "error check mayastor is ready after applying node selectors")
+		Expect(ready).To(BeTrue(), "mayastor is not ready after applying node selectors")
 		//Select a test MSP from the cluster
 		for _, pool := range pools {
 			if pool.Spec.Node != coreAgentNodeName {
