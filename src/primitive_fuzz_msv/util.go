@@ -3,12 +3,13 @@ package primitive_fuzz_msv
 import (
 	"fmt"
 	"mayastor-e2e/common"
+	"strings"
 
 	"mayastor-e2e/common/k8stest"
 	"sync"
 	"time"
 
-	coreV1 "k8s.io/api/core/v1"
+	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	. "github.com/onsi/gomega"
@@ -19,9 +20,7 @@ import (
 func (c *PrimitiveMsvFuzzConfig) serialFuzzMsvTest() {
 	c.createSC()
 	c.createPvcSerial()
-	c.verifyVolumesCreation()
-	c.createFioPods()
-	c.deleteFioPods()
+	c.verifyVolumeCreationErrors()
 	c.deletePVC()
 	c.deleteSC()
 	c.waitForMspUsedSize(0)
@@ -31,9 +30,7 @@ func (c *PrimitiveMsvFuzzConfig) serialFuzzMsvTest() {
 func (c *PrimitiveMsvFuzzConfig) ConcurrentMsvFuzz() {
 	c.createSC()
 	c.createPvcParallel()
-	c.verifyVolumesCreation()
-	c.createFioPods()
-	c.deleteFioPods()
+	c.verifyVolumeCreationErrors()
 	c.deletePvcParallel()
 	c.verifyVolumesDeletion()
 	c.deleteSC()
@@ -180,75 +177,8 @@ func (c *PrimitiveMsvFuzzConfig) deletePvcParallel() *PrimitiveMsvFuzzConfig {
 	return c
 }
 
-// createFioPods will create fio pods and runs fio on all mounted volumes.
-func (c *PrimitiveMsvFuzzConfig) createFioPods() {
-	durationSecs := 60
-	volumeFileSizeMb := 50
-
-	for ix, podName := range c.FioPodNames {
-		args := []string{
-			"--",
-			"--time_based",
-			fmt.Sprintf("--runtime=%d", durationSecs),
-			fmt.Sprintf("--filename=%s", common.FioFsFilename),
-			fmt.Sprintf("--size=%dm", volumeFileSizeMb),
-		}
-		fioArgs := append(args, common.GetFioArgs()...)
-
-		// fio pod container
-		podContainer := coreV1.Container{
-			Name:  podName,
-			Image: common.GetFioImage(),
-			Args:  fioArgs,
-		}
-
-		// volume claim details
-		volume := coreV1.Volume{
-			Name: "ms-volume",
-			VolumeSource: coreV1.VolumeSource{
-				PersistentVolumeClaim: &coreV1.PersistentVolumeClaimVolumeSource{
-					ClaimName: c.PvcNames[ix],
-				},
-			},
-		}
-
-		podObj, err := k8stest.NewPodBuilder().
-			WithName(podName).
-			WithNamespace(common.NSDefault).
-			WithRestartPolicy(coreV1.RestartPolicyNever).
-			WithContainer(podContainer).
-			WithVolume(volume).
-			WithVolumeDeviceOrMount(common.VolFileSystem).Build()
-		Expect(err).ToNot(HaveOccurred(), fmt.Sprintf("Generating fio pod definition %s", podName))
-		Expect(podObj).ToNot(BeNil(), "failed to generate fio pod definition")
-
-		// Create fio pod
-		_, err = k8stest.CreatePod(podObj, common.NSDefault)
-		Expect(err).ToNot(HaveOccurred(), "Creating fio pod %s", podName)
-
-		// Wait for the fio Pod to transition to error
-		Eventually(func() bool {
-			return k8stest.IsPodRunning(podName, common.NSDefault)
-		},
-			defTimeoutSecs,
-			"1s",
-		).Should(Equal(false))
-	}
-}
-
-// delete all fio pods
-func (c *PrimitiveMsvFuzzConfig) deleteFioPods() {
-	for _, podName := range c.FioPodNames {
-		// Delete the fio pod
-		err := k8stest.DeletePod(podName, common.NSDefault)
-		Expect(err).ToNot(HaveOccurred(), "failed to delete fio pod")
-	}
-}
-
-// Check that all volumes have been created successfully,
-// that none of them are in the pending state,
-// that all of them have the right size
-func (c *PrimitiveMsvFuzzConfig) verifyVolumesCreation() {
+// Check that all volumes have been erred
+func (c *PrimitiveMsvFuzzConfig) verifyVolumeCreationErrors() {
 	for ix := 0; ix < len(c.PvcNames); ix++ {
 		// Confirm that the PVC has been created
 		Expect(c.CreateErrs[ix]).To(BeNil(), "failed to create PVC %s", c.PvcNames[ix])
@@ -256,12 +186,24 @@ func (c *PrimitiveMsvFuzzConfig) verifyVolumesCreation() {
 		namespace := common.NSDefault
 		volName := c.PvcNames[ix]
 		// Wait for the PVC to be bound.
-		Eventually(func() *coreV1.PersistentVolumeClaim {
-			pvc, _ := k8stest.GetPVC(volName, namespace)
-			return pvc
+		Eventually(func() bool {
+			listOptions := metaV1.ListOptions{
+				FieldSelector: "involvedObject.name=" + volName,
+			}
+			events, err := k8stest.GetEvents(namespace, listOptions)
+			Expect(err).ToNot(HaveOccurred(), "failed to get events %v", err)
+			for _, event := range events.Items {
+				if strings.Contains(event.Message, "InvalidArgument") ||
+					strings.Contains(event.Message, "Insufficient Storage") ||
+					(strings.Contains(event.Message, "storageclass") && strings.Contains(event.Message, "not found")) {
+					return true
+				}
+			}
+			logf.Log.Info("Waiting for error event", "pvc", volName, "events", events.Items)
+			return false
 		},
 			defTimeoutSecs, // timeout
-			"1s",           // polling interval
-		).Should(Not(BeNil()))
+			"5s",           // polling interval
+		).Should(Equal(true), "failed to verify volume creation errors for %s", volName)
 	}
 }
