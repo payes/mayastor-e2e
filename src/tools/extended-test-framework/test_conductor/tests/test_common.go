@@ -2,8 +2,10 @@ package tests
 
 import (
 	"fmt"
+
 	"mayastor-e2e/tools/extended-test-framework/common/custom_resources"
 
+	"mayastor-e2e/common/k8s_lib"
 	"mayastor-e2e/tools/extended-test-framework/common"
 
 	"mayastor-e2e/tools/extended-test-framework/common/k8sclient"
@@ -129,7 +131,7 @@ func MonitorCRs(
 			}
 		}
 		if pod_to_check != "" {
-			pod, err := k8sclient.GetPod(pod_to_check, k8sclient.NSDefault)
+			pod, err := k8s_lib.GetPod(pod_to_check, k8sclient.NSDefault)
 			if err != nil {
 				return fmt.Errorf("Failed to get application pod %s, err: %s", pod_to_check, err.Error())
 			}
@@ -156,7 +158,7 @@ func WaitPodNotRunning(pod_to_check string, timeout time.Duration) error {
 	var waitSecs = 5
 
 	for {
-		pod, err := k8sclient.GetPod(pod_to_check, k8sclient.NSDefault)
+		pod, err := k8s_lib.GetPod(pod_to_check, k8sclient.NSDefault)
 		if err != nil {
 			return fmt.Errorf("Failed to get application pod %s, err: %s", pod_to_check, err.Error())
 		}

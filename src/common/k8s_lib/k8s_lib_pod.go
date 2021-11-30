@@ -1,18 +1,21 @@
-package k8stest
+package k8s_lib
 
 import (
 	// container "github.com/openebs/maya/pkg/kubernetes/container/v1alpha1"
 	// volume "github.com/openebs/maya/pkg/kubernetes/volume/v1alpha1"
 
 	"context"
+	"fmt"
+	"time"
+
 	"mayastor-e2e/common"
-	"mayastor-e2e/common/e2e_config"
 
 	errors "github.com/pkg/errors"
 	coreV1 "k8s.io/api/core/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const (
@@ -31,6 +34,15 @@ type PodBuilder struct {
 	errs []error
 }
 
+func IsPodRunning(podName string, nameSpace string) bool {
+	pod, err := gKubeInt.CoreV1().Pods(nameSpace).Get(context.TODO(), podName, metaV1.GetOptions{})
+	if err != nil {
+		return false
+	}
+	return pod.Status.Phase == v1.PodRunning
+}
+
+// NewPodBuilder returns new instance of Builder
 // NewPodBuilder returns new instance of Builder
 func NewPodBuilder() *PodBuilder {
 	return &PodBuilder{pod: &Pod{object: &corev1.Pod{}}}
@@ -96,6 +108,13 @@ func (b *PodBuilder) WithLabels(labels map[string]string) *PodBuilder {
 		return b
 	}
 	b.pod.object.Labels = labels
+	return b
+}
+
+func (b *PodBuilder) WithAppLabel(applabel string) *PodBuilder {
+	label := make(map[string]string)
+	label["app"] = applabel
+	b.pod.object.Labels = label
 	return b
 }
 
@@ -242,22 +261,172 @@ func (b *PodBuilder) WithVolumeDeviceOrMount(volType common.VolumeType) *PodBuil
 	return b
 }
 
+func (b *PodBuilder) WithHostNetworkingRequired(hostNetworkingRequired bool) *PodBuilder {
+	b.pod.object.Spec.HostNetwork = hostNetworkingRequired
+	return b
+}
+
 // Build returns the Pod API instance
 func (b *PodBuilder) Build() (*corev1.Pod, error) {
-	if e2e_config.GetConfig().Platform.HostNetworkingRequired {
-		b.pod.object.Spec.HostNetwork = true
-	}
 	if len(b.errs) > 0 {
 		return nil, errors.Errorf("%+v", b.errs)
 	}
 	return b.pod.object, nil
 }
 
+// CreatePod Create a Pod in the specified namespace, no options and no context
+func CreatePod(podDef *coreV1.Pod, nameSpace string) (*coreV1.Pod, error) {
+	logf.Log.Info("Creating", "pod", podDef.Name)
+	return gKubeInt.CoreV1().Pods(nameSpace).Create(context.TODO(), podDef, metaV1.CreateOptions{})
+}
+
+// DeletePod Delete a Pod in the specified namespace, no options and no context
+func DeletePod(name string, nameSpace string, timeoutSecs int) error {
+	logf.Log.Info("Deleting", "pod", name)
+	const timoSleepSecs = 10
+	err := gKubeInt.CoreV1().Pods(nameSpace).Delete(context.TODO(), name, metaV1.DeleteOptions{})
+	if err != nil {
+		return fmt.Errorf("Failed to delete pod, error: %+v", err)
+	}
+	for i := 0; ; i += timoSleepSecs {
+		exists, err := GetPodExistsByName(name, nameSpace)
+		if err != nil {
+			return fmt.Errorf("Error determining if pod %s exists, error: %v", name, err)
+		}
+		if !exists {
+			logf.Log.Info("Deleted", "pod", name)
+			return nil
+		}
+		if i >= timeoutSecs {
+			return fmt.Errorf("Timed out waiting for pod %s to be deleted", name)
+		}
+		time.Sleep(timoSleepSecs * time.Second)
+	}
+}
+
+// DeletePodIfCompleted Delete a Pod if it completed with no container errors
+func DeletePodIfCompleted(podName string, nameSpace string, timeoutSecs int) error {
+	pod, err := gKubeInt.CoreV1().Pods(nameSpace).Get(context.TODO(), podName, metaV1.GetOptions{})
+	if err != nil {
+		return err
+	}
+	if pod.Status.Phase != v1.PodSucceeded {
+		return fmt.Errorf("Not deleting non-completed pod, status %s", pod.Status.Phase)
+	}
+	return DeletePod(podName, nameSpace, timeoutSecs)
+}
+
 // ListPod return lis of pods in the given namespace
 func ListPod(ns string) (*v1.PodList, error) {
-	pods, err := gTestEnv.KubeInt.CoreV1().Pods(ns).List(context.TODO(), metaV1.ListOptions{})
+	pods, err := gKubeInt.CoreV1().Pods(ns).List(context.TODO(), metaV1.ListOptions{})
 	if err != nil {
 		return nil, errors.New("failed to list pods")
 	}
 	return pods, nil
+}
+
+func GetPod(podName string, namespace string) (*v1.Pod, error) {
+	pods, err := gKubeInt.CoreV1().Pods(namespace).List(context.TODO(), metaV1.ListOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("pod list failed, error: %v", err)
+	}
+	for _, pod := range pods.Items {
+		if pod.Name == podName {
+			return &pod, nil
+		}
+	}
+	return nil, fmt.Errorf("pod %s not found", podName)
+}
+
+func GetPodIfPresent(podName string, namespace string) (*v1.Pod, bool, error) {
+	pods, err := gKubeInt.CoreV1().Pods(namespace).List(context.TODO(), metaV1.ListOptions{})
+	if err != nil {
+		return nil, false, fmt.Errorf("pod list failed, error: %v", err)
+	}
+	for _, pod := range pods.Items {
+		if pod.Name == podName {
+			return &pod, true, nil
+		}
+	}
+	return nil, false, nil
+}
+
+func GetPodByUuid(uuid string) (*v1.Pod, bool, error) {
+	pods, err := gKubeInt.CoreV1().Pods("").List(context.TODO(), metaV1.ListOptions{})
+	if err != nil {
+		return nil, false, fmt.Errorf("list failed, error: %v", err)
+	}
+	for _, pod := range pods.Items {
+		if uuid == string(pod.ObjectMeta.UID) {
+			return &pod, true, nil
+		}
+	}
+	return nil, false, nil
+}
+
+func GetPodStatus(uuid string) (v1.PodPhase, bool, error) {
+	pod, present, err := GetPodByUuid(uuid)
+	if err != nil {
+		return v1.PodUnknown, present, fmt.Errorf("get pod failed, error: %v", err)
+	}
+	if !present || pod == nil {
+		return v1.PodUnknown, false, err
+	}
+	return pod.Status.Phase, present, err
+}
+
+func GetPodExistsByUuid(uuid string) (bool, error) {
+	_, present, err := GetPodByUuid(uuid)
+	if err != nil {
+		return present, fmt.Errorf("get pod failed, error: %v", err)
+	}
+	return present, err
+}
+
+func GetPodExistsByName(name string, namespace string) (bool, error) {
+	_, present, err := GetPodIfPresent(name, namespace)
+	if err != nil {
+		return present, fmt.Errorf("get pod failed, error: %v", err)
+	}
+	return present, err
+}
+
+func GetPodNameAndNamespaceFromUuid(uuid string) (string, string, error) {
+	pod, present, err := GetPodByUuid(uuid)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to get pod name from uuid, error: %v", err)
+	}
+	if !present || pod == nil {
+		return "", "", fmt.Errorf("failed to find pod with uuid %s", uuid)
+	}
+	return pod.Name, pod.Namespace, nil
+}
+
+func GetPodsInNamespace(namespace string) (*v1.PodList, error) {
+	pods, err := gKubeInt.CoreV1().Pods(namespace).List(context.TODO(), metaV1.ListOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("pod list failed, error: %v", err)
+	}
+	return pods, nil
+}
+
+func WaitForPodReady(podName string, namespace string) (*v1.Pod, error) {
+	// Wait for the Pod to transition to running
+	const timoSecs = 120
+	const timoSleepSecs = 10
+	for ix := 0; ; ix++ {
+		if ix >= timoSecs/timoSleepSecs {
+			return nil, fmt.Errorf("timed out waiting for pod %s to be running", podName)
+		}
+		time.Sleep(timoSleepSecs * time.Second)
+		pods, err := gKubeInt.CoreV1().Pods(namespace).List(context.TODO(), metaV1.ListOptions{})
+		if err != nil {
+			return nil, fmt.Errorf("list failed, error: %v", err)
+		}
+		for _, pod := range pods.Items {
+			if podName == string(pod.Name) && pod.Status.Phase == v1.PodRunning {
+				return &pod, nil
+			}
+		}
+	}
 }

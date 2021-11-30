@@ -6,13 +6,13 @@ import (
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
+	"mayastor-e2e/common/k8s_lib"
 	"mayastor-e2e/tools/extended-test-framework/common/wm/client"
 	"mayastor-e2e/tools/extended-test-framework/common/wm/client/workload_monitor"
 
 	"mayastor-e2e/tools/extended-test-framework/common/wm/models"
 
 	"mayastor-e2e/tools/extended-test-framework/common"
-	"mayastor-e2e/tools/extended-test-framework/common/k8sclient"
 
 	"github.com/go-openapi/strfmt"
 )
@@ -23,12 +23,12 @@ func AddWorkload(
 	namespace string,
 	violations []models.WorkloadViolationEnum) error {
 
-	tcpod, err := k8sclient.GetPod("test-conductor", common.EtfwNamespace)
+	tcpod, err := k8s_lib.GetPod("test-conductor", common.EtfwNamespace)
 	if err != nil {
 		return fmt.Errorf("failed to get test-conductor pod, error: %v\n", err)
 	}
 
-	pod, err := k8sclient.GetPod(name, namespace)
+	pod, err := k8s_lib.GetPod(name, namespace)
 	if err != nil {
 		return fmt.Errorf("failed to get pod %s, error: %v\n", name, err)
 	}
@@ -55,7 +55,7 @@ func AddWorkload(
 
 func AddCommonWorkloads(client *client.Etfw, violations []models.WorkloadViolationEnum) error {
 
-	tcpod, err := k8sclient.GetPod("test-conductor", common.EtfwNamespace)
+	tcpod, err := k8s_lib.GetPod("test-conductor", common.EtfwNamespace)
 	if err != nil {
 		return fmt.Errorf("failed to get test-conductor pod, error: %v\n", err)
 	}
@@ -68,7 +68,7 @@ func AddCommonWorkloads(client *client.Etfw, violations []models.WorkloadViolati
 		return fmt.Errorf("failed to inform workload monitor of test-conductor, error: %v", err)
 	}
 
-	podlist, err := k8sclient.GetPodsInNamespace("mayastor")
+	podlist, err := k8s_lib.GetPodsInNamespace("mayastor")
 	if err != nil {
 		return fmt.Errorf("failed to get pods in mayastor namespace, error: %v\n", err)
 	}
@@ -99,12 +99,12 @@ func AddCommonWorkloads(client *client.Etfw, violations []models.WorkloadViolati
 
 func DeleteWorkload(client *client.Etfw, name string, namespace string) error {
 
-	tcpod, err := k8sclient.GetPod("test-conductor", common.EtfwNamespace)
+	tcpod, err := k8s_lib.GetPod("test-conductor", common.EtfwNamespace)
 	if err != nil {
 		return fmt.Errorf("failed to get tc pod %s, error: %v\n", name, err)
 	}
 
-	pod, err := k8sclient.GetPod(name, namespace)
+	pod, err := k8s_lib.GetPod(name, namespace)
 	if err != nil {
 		return fmt.Errorf("failed to get pod %s, error: %v\n", name, err)
 	}
@@ -128,7 +128,7 @@ func DeleteWorkload(client *client.Etfw, name string, namespace string) error {
 
 func DeleteWorkloads(client *client.Etfw) error {
 
-	tcpod, err := k8sclient.GetPod("test-conductor", common.EtfwNamespace)
+	tcpod, err := k8s_lib.GetPod("test-conductor", common.EtfwNamespace)
 	if err != nil {
 		return fmt.Errorf("failed to get tc pod, error: %v", err)
 	}

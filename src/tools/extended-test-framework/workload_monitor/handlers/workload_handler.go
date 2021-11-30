@@ -1,13 +1,12 @@
 package handlers
 
 import (
-	"github.com/go-openapi/runtime/middleware"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
-	"mayastor-e2e/tools/extended-test-framework/common/k8sclient"
-
+	"mayastor-e2e/common/k8s_lib"
 	"mayastor-e2e/tools/extended-test-framework/workload_monitor/list"
 	"mayastor-e2e/tools/extended-test-framework/workload_monitor/swagger/models"
+
+	"github.com/go-openapi/runtime/middleware"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"mayastor-e2e/tools/extended-test-framework/workload_monitor/swagger/restapi/operations/workload_monitor"
 )
@@ -35,7 +34,7 @@ func (impl *putWorkloadByRegistrantImpl) Handle(params workload_monitor.PutWorkl
 	wl.Namespace = ""
 	wl.WorkloadSpec = *params.Body
 
-	name, namespace, err := k8sclient.GetPodNameAndNamespaceFromUuid(string(params.Wid))
+	name, namespace, err := k8s_lib.GetPodNameAndNamespaceFromUuid(string(params.Wid))
 	if err == nil {
 		wl.Name = models.RFC1123Label(name)
 		wl.Namespace = models.RFC1123Label(namespace)

@@ -5,6 +5,8 @@ import (
 	"strings"
 	"time"
 
+	"mayastor-e2e/common/k8s_lib"
+
 	coreV1 "k8s.io/api/core/v1"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -126,7 +128,7 @@ func DeployFio(
 	logf.Log.Info("pod", "args", podArgs)
 
 	container := MakeFioContainer(fioImage, fioPodName, podArgs)
-	podBuilder := NewPodBuilder().
+	podBuilder := k8s_lib.NewPodBuilder().
 		WithName(fioPodName).
 		WithNamespace(NSDefault).
 		WithRestartPolicy(coreV1.RestartPolicyNever).
@@ -147,7 +149,7 @@ func DeployFio(
 		return fmt.Errorf("failed to build fio test pod object, error: %v", err)
 	}
 
-	pod, err := CreatePod(podObj, NSDefault)
+	pod, err := k8s_lib.CreatePod(podObj, NSDefault)
 	if err != nil {
 		return fmt.Errorf("failed to create fio pod, error: %v", err)
 	}
@@ -159,7 +161,7 @@ func DeployFio(
 	const timoSecs = 1000
 	const timoSleepSecs = 10
 	for ix := 0; ; ix++ {
-		if IsPodRunning(fioPodName, NSDefault) {
+		if k8s_lib.IsPodRunning(fioPodName, NSDefault) {
 			break
 		}
 		if ix >= timoSecs/timoSleepSecs {

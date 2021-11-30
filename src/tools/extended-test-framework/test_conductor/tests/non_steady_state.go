@@ -2,6 +2,7 @@ package tests
 
 import (
 	"fmt"
+	"mayastor-e2e/common/k8s_lib"
 	"mayastor-e2e/tools/extended-test-framework/common/k8sclient"
 	tc "mayastor-e2e/tools/extended-test-framework/test_conductor/tc"
 	"sync"
@@ -99,7 +100,7 @@ func testVolume(
 			finalerr = fmt.Errorf("failed to delete application workload %s, error = %v", fio_name, err)
 			break
 		}
-		if err = k8sclient.DeletePodIfCompleted(fio_name, k8sclient.NSDefault, podDeletionTimeoutSecs); err != nil {
+		if err = k8s_lib.DeletePodIfCompleted(fio_name, k8sclient.NSDefault, podDeletionTimeoutSecs); err != nil {
 			finalerr = fmt.Errorf("failed to delete application %s, error = %v", fio_name, err)
 			break
 		}

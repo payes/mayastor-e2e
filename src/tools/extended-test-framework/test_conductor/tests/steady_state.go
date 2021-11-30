@@ -2,6 +2,7 @@ package tests
 
 import (
 	"fmt"
+	"mayastor-e2e/common/k8s_lib"
 	"mayastor-e2e/tools/extended-test-framework/common/k8sclient"
 	tc "mayastor-e2e/tools/extended-test-framework/test_conductor/tc"
 	"time"
@@ -103,7 +104,7 @@ func SteadyStateTest(testConductor *tc.TestConductor) error {
 		combinederr = fmt.Errorf("%v: failed to delete all registered workloads, error: %v", combinederr, err)
 	}
 
-	if err = k8sclient.DeletePod(fio_name, k8sclient.NSDefault, podDeletionTimeoutSecs); err != nil {
+	if err = k8s_lib.DeletePod(fio_name, k8sclient.NSDefault, podDeletionTimeoutSecs); err != nil {
 		logf.Log.Info("failed to delete pod", "pod", fio_name, "error", err)
 		combinederr = fmt.Errorf("%v: failed to delete pod %s, error: %v", combinederr, fio_name, err)
 	}

@@ -9,6 +9,7 @@ import (
 	"mayastor-e2e/common"
 	client "mayastor-e2e/common/e2e-agent"
 	"mayastor-e2e/common/e2e_config"
+	"mayastor-e2e/common/k8s_lib"
 	"mayastor-e2e/common/k8stest"
 
 	. "github.com/onsi/ginkgo"
@@ -110,13 +111,15 @@ func createFioPod(fioPodName string, volumeName string, volumeType common.Volume
 		},
 	}
 
-	podObj, err := k8stest.NewPodBuilder().
+	podObj, err := k8s_lib.NewPodBuilder().
 		WithName(fioPodName).
 		WithNamespace(common.NSDefault).
 		WithRestartPolicy(coreV1.RestartPolicyNever).
 		WithContainer(podContainer).
 		WithVolume(volume).
-		WithVolumeDeviceOrMount(volumeType).Build()
+		WithVolumeDeviceOrMount(volumeType).
+		WithHostNetworkingRequired(e2e_config.GetConfig().Platform.HostNetworkingRequired).
+		Build()
 	Expect(err).ToNot(HaveOccurred(), "Generating fio pod definition %s", fioPodName)
 	Expect(podObj).ToNot(BeNil(), "failed to generate fio pod definition")
 

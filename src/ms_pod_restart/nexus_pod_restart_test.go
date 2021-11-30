@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"mayastor-e2e/common"
+	"mayastor-e2e/common/e2e_config"
+	"mayastor-e2e/common/k8s_lib"
 	"mayastor-e2e/common/k8stest"
 
 	coreV1 "k8s.io/api/core/v1"
@@ -90,13 +92,15 @@ func testMsPodRestartTest(
 		},
 	}
 
-	podObj, err := k8stest.NewPodBuilder().
+	podObj, err := k8s_lib.NewPodBuilder().
 		WithName(fioPodName).
 		WithNamespace(common.NSDefault).
 		WithRestartPolicy(coreV1.RestartPolicyNever).
 		WithContainer(podContainer).
 		WithVolume(volume).
-		WithVolumeDeviceOrMount(common.VolFileSystem).Build()
+		WithVolumeDeviceOrMount(common.VolFileSystem).
+		WithHostNetworkingRequired(e2e_config.GetConfig().Platform.HostNetworkingRequired).
+		Build()
 	Expect(err).ToNot(HaveOccurred(), "Generating fio pod definition %s", fioPodName)
 	Expect(podObj).ToNot(BeNil(), "failed to generate fio pod definition")
 	// Create first fio pod
@@ -161,7 +165,8 @@ func testMsPodRestartTest(
 // getMayastorPodName return the mayastor pod name where nexus is hosted
 func getMayastorPodName(ns string, nodeName string) string {
 	logf.Log.Info("CheckMsPodName")
-	podList, _ := k8stest.ListPod(ns)
+	podList, err := k8s_lib.ListPod(ns)
+	Expect(err).ToNot(HaveOccurred(), "ListPod failed, error: %v", err)
 	msPodName := ""
 	for _, pod := range podList.Items {
 		if pod.Spec.NodeName == nodeName &&

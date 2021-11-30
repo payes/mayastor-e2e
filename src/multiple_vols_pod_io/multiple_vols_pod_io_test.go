@@ -8,6 +8,7 @@ import (
 
 	"mayastor-e2e/common"
 	"mayastor-e2e/common/e2e_config"
+	"mayastor-e2e/common/k8s_lib"
 	"mayastor-e2e/common/k8stest"
 
 	. "github.com/onsi/ginkgo"
@@ -121,11 +122,12 @@ func multipleVolumeIOTest(replicas int, volumeCount int, protocol common.SharePr
 	logf.Log.Info("pod", "args", podArgs)
 
 	container := k8stest.MakeFioContainer(fioPodName, podArgs)
-	podBuilder := k8stest.NewPodBuilder().
+	podBuilder := k8s_lib.NewPodBuilder().
 		WithName(fioPodName).
 		WithNamespace(common.NSDefault).
 		WithContainer(container).
-		WithVolumes(volumes)
+		WithVolumes(volumes).
+		WithHostNetworkingRequired(e2e_config.GetConfig().Platform.HostNetworkingRequired)
 
 	if len(volDevices) != 0 {
 		podBuilder.WithVolumeDevices(volDevices)

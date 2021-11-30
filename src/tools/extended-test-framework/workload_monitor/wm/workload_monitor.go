@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 
+	"mayastor-e2e/common/k8s_lib"
 	"os"
 	"os/signal"
 	"syscall"
@@ -15,7 +16,6 @@ import (
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
-	"mayastor-e2e/tools/extended-test-framework/common/k8sclient"
 	wlist "mayastor-e2e/tools/extended-test-framework/workload_monitor/list"
 
 	"mayastor-e2e/tools/extended-test-framework/workload_monitor/swagger/models"
@@ -88,7 +88,7 @@ func NewWorkloadMonitor() (*WorkloadMonitor, error) {
 	}
 
 	// find the test_director
-	testDirectorPod, err := k8sclient.WaitForPodReady("test-director", common.EtfwNamespace)
+	testDirectorPod, err := k8s_lib.WaitForPodReady("test-director", common.EtfwNamespace)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get test-director, error: %v", err)
 	}
@@ -127,7 +127,7 @@ func (workloadMonitor *WorkloadMonitor) StartMonitor() {
 			for _, spec := range wli.Wl.WorkloadSpec.Violations {
 				switch spec {
 				case models.WorkloadViolationEnumRESTARTED:
-					pod, present, err := k8sclient.GetPodByUuid(string(wli.Wl.ID))
+					pod, present, err := k8s_lib.GetPodByUuid(string(wli.Wl.ID))
 					if err != nil {
 						logf.Log.Info("failed to get pod by UUID", "pod", wli.Wl.ID)
 					}
@@ -154,7 +154,7 @@ func (workloadMonitor *WorkloadMonitor) StartMonitor() {
 						}
 					}
 				case models.WorkloadViolationEnumTERMINATED:
-					podstatus, present, err := k8sclient.GetPodStatus(string(wli.Wl.ID))
+					podstatus, present, err := k8s_lib.GetPodStatus(string(wli.Wl.ID))
 					if err != nil {
 						logf.Log.Info("failed to get pod status", "error", err)
 					}
@@ -174,7 +174,7 @@ func (workloadMonitor *WorkloadMonitor) StartMonitor() {
 						}
 					}
 				case models.WorkloadViolationEnumNOTPRESENT:
-					present, err := k8sclient.GetPodExistsByUuid(string(wli.Wl.ID))
+					present, err := k8s_lib.GetPodExistsByUuid(string(wli.Wl.ID))
 					if err != nil {
 						fmt.Printf("failed to get pod status %s\n", wli.Wl.Name)
 					}

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"mayastor-e2e/common"
+	"mayastor-e2e/common/k8s_lib"
 	"mayastor-e2e/common/k8stest"
 
 	. "github.com/onsi/gomega"
@@ -103,7 +104,7 @@ func (c *maxVolConfig) createFioPods() {
 			pvcCount += 1
 		}
 
-		podObj, err := k8stest.NewPodBuilder().
+		podObj, err := k8s_lib.NewPodBuilder().
 			WithName(podName).
 			WithNamespace(common.NSDefault).
 			WithRestartPolicy(coreV1.RestartPolicyNever).

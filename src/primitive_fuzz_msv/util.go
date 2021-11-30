@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"mayastor-e2e/common"
 
+	"mayastor-e2e/common/e2e_config"
+	"mayastor-e2e/common/k8s_lib"
 	"mayastor-e2e/common/k8stest"
 	"sync"
 	"time"
@@ -212,13 +214,15 @@ func (c *PrimitiveMsvFuzzConfig) createFioPods() {
 			},
 		}
 
-		podObj, err := k8stest.NewPodBuilder().
+		podObj, err := k8s_lib.NewPodBuilder().
 			WithName(podName).
 			WithNamespace(common.NSDefault).
 			WithRestartPolicy(coreV1.RestartPolicyNever).
 			WithContainer(podContainer).
 			WithVolume(volume).
-			WithVolumeDeviceOrMount(common.VolFileSystem).Build()
+			WithVolumeDeviceOrMount(common.VolFileSystem).
+			WithHostNetworkingRequired(e2e_config.GetConfig().Platform.HostNetworkingRequired).
+			Build()
 		Expect(err).ToNot(HaveOccurred(), fmt.Sprintf("Generating fio pod definition %s", podName))
 		Expect(podObj).ToNot(BeNil(), "failed to generate fio pod definition")
 

@@ -6,8 +6,9 @@ import (
 	"github.com/go-openapi/strfmt"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
+	"mayastor-e2e/common/k8s_lib"
+
 	"mayastor-e2e/tools/extended-test-framework/common"
-	"mayastor-e2e/tools/extended-test-framework/common/k8sclient"
 	td "mayastor-e2e/tools/extended-test-framework/common/td/client"
 	wm "mayastor-e2e/tools/extended-test-framework/common/wm/client"
 )
@@ -33,7 +34,7 @@ func NewTestConductor() (*TestConductor, error) {
 	logf.Log.Info("test", "name", config.TestName)
 	testConductor.Config = config
 
-	workloadMonitorPod, err := k8sclient.WaitForPodReady("workload-monitor", common.EtfwNamespace)
+	workloadMonitorPod, err := k8s_lib.WaitForPodReady("workload-monitor", common.EtfwNamespace)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get workload-monitor, error: %v", err)
 	}
@@ -41,7 +42,7 @@ func NewTestConductor() (*TestConductor, error) {
 	workloadMonitorLoc := workloadMonitorPod.Status.PodIP + ":8080"
 
 	// find the test_director
-	testDirectorPod, err := k8sclient.WaitForPodReady("test-director", common.EtfwNamespace)
+	testDirectorPod, err := k8s_lib.WaitForPodReady("test-director", common.EtfwNamespace)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get test-director, error: %v", err)
 	}
@@ -56,7 +57,7 @@ func NewTestConductor() (*TestConductor, error) {
 	testConductor.WorkloadMonitorClient = wm.NewHTTPClientWithConfig(nil, transportConfigWm)
 
 	// the test run ID is the same as the uuid of the test conductor pod
-	tcpod, err := k8sclient.GetPod("test-conductor", common.EtfwNamespace)
+	tcpod, err := k8s_lib.GetPod("test-conductor", common.EtfwNamespace)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tc pod uid, error: %v", err)
 	}

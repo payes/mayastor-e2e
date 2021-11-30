@@ -6,6 +6,7 @@ import (
 
 	"mayastor-e2e/common"
 	"mayastor-e2e/common/e2e_config"
+	"mayastor-e2e/common/k8s_lib"
 	"mayastor-e2e/common/k8stest"
 
 	. "github.com/onsi/ginkgo"
@@ -81,7 +82,7 @@ func testPVC(volName string, protocol common.ShareProto, fsType common.FileSyste
 		},
 	}
 
-	podObj, err := k8stest.NewPodBuilder().
+	podObj, err := k8s_lib.NewPodBuilder().
 		WithName(fioPodFirstNodeName).
 		WithNamespace(common.NSDefault).
 		WithNodeSelectorHostnameNew(workerNodes[0]).
@@ -89,7 +90,9 @@ func testPVC(volName string, protocol common.ShareProto, fsType common.FileSyste
 		WithContainer(firstPodContainer).
 		WithVolume(volume).
 		WithVolumeDeviceOrMount(common.VolFileSystem).
-		WithLabels(label).Build()
+		WithLabels(label).
+		WithHostNetworkingRequired(e2e_config.GetConfig().Platform.HostNetworkingRequired).
+		Build()
 	Expect(err).ToNot(HaveOccurred(), "Generating fio pod definition %s", fioPodFirstNodeName)
 	Expect(podObj).ToNot(BeNil())
 	// Create first fio pod
@@ -115,7 +118,7 @@ func testPVC(volName string, protocol common.ShareProto, fsType common.FileSyste
 
 	// Update nodeselector for second node
 	podObj.Spec.NodeSelector = map[string]string{
-		k8stest.K8sNodeLabelKeyHostname: workerNodes[1],
+		k8s_lib.K8sNodeLabelKeyHostname: workerNodes[1],
 	}
 
 	// Create second fio pod

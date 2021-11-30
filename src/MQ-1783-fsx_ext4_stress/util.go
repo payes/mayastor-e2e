@@ -3,6 +3,8 @@ package fsx_ext4_stress
 import (
 	"mayastor-e2e/common"
 	"mayastor-e2e/common/controlplane"
+	"mayastor-e2e/common/e2e_config"
+	"mayastor-e2e/common/k8s_lib"
 	"mayastor-e2e/common/k8stest"
 	"mayastor-e2e/common/mayastorclient"
 	"strconv"
@@ -64,13 +66,15 @@ func (c *fsxExt4StressConfig) createFsx() {
 		},
 	}
 
-	podObj, err := k8stest.NewPodBuilder().
+	podObj, err := k8s_lib.NewPodBuilder().
 		WithName(c.fsxPodName).
 		WithNamespace(common.NSDefault).
 		WithRestartPolicy(coreV1.RestartPolicyNever).
 		WithContainer(podContainer).
 		WithVolume(volume).
-		WithVolumeDeviceOrMount(common.VolRawBlock).Build()
+		WithVolumeDeviceOrMount(common.VolRawBlock).
+		WithHostNetworkingRequired(e2e_config.GetConfig().Platform.HostNetworkingRequired).
+		Build()
 	Expect(err).ToNot(HaveOccurred(), "Generating fsx pod definition %s", c.fsxPodName)
 	Expect(podObj).ToNot(BeNil(), "failed to generate fsx pod definition")
 
