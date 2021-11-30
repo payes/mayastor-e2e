@@ -8,7 +8,7 @@ import (
 
 const (
 	podCompletionTimeout = 900
-	sleepTime            = 2
+	sleepTime            = 10
 	defTimeoutSecs       = "90s"
 	patchSleepTime       = 10
 	patchTimeout         = 240
