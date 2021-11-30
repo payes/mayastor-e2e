@@ -132,11 +132,14 @@ func testPvcDeleteTest(
 		Eventually(func() int {
 			replicas, err := k8stest.ListReplicasInCluster()
 			Expect(err).ToNot(HaveOccurred(), "failed to list replicas in cluster")
+			if replicas != nil {
+				logf.Log.Info("Found", "replicas", replicas)
+			}
 			return len(replicas)
 		},
-			defTimeoutSecs,
-			"6s",
-		).Should(Equal(0))
+			"600s",
+			"15s",
+		).Should(Equal(0), "replicas have not been garbage collected")
 	} else if controlplane.MajorVersion() == 0 {
 		status, err = verifyOldReplicas(uid)
 		Expect(err).ToNot(HaveOccurred(), "failed to verify old replica status")
