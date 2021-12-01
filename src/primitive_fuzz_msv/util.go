@@ -5,8 +5,6 @@ import (
 	"mayastor-e2e/common"
 	"strings"
 
-	"mayastor-e2e/common/e2e_config"
-	"mayastor-e2e/common/k8s_lib"
 	"mayastor-e2e/common/k8stest"
 	"sync"
 	"time"
