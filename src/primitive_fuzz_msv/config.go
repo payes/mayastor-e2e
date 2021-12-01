@@ -12,7 +12,7 @@ import (
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var defTimeoutSecs = "180s"
+var defTimeoutSecs = "900s"
 
 const (
 	timeoutSec   = 90

@@ -51,7 +51,7 @@ func (c *fsxExt4StressConfig) fsxExt4StressTest() {
 	c.createPVC()
 	c.createFsx()
 	c.verifyVolumeStateOverGrpcAndCrd()
-	c.verifyUninterruptedIO()
+	c.verifyRunning()
 	c.getNexusDetail()
 	c.faultNexusChild()
 	c.verifyFaultedReplica()
