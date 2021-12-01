@@ -176,8 +176,9 @@ func (c *fsxExt4StressConfig) verifyVolumeStateOverGrpcAndCrd() {
 	}
 	Expect(len(nexusIP)).NotTo(Equal(BeZero()), "failed to get Nexus IPs")
 
-	nexusList, _ := mayastorclient.ListNexuses(nexusIP)
-	Expect(len(nexusList)).NotTo(Equal(BeZero()), "Expected to find at least 1 nexus")
+	nexusList, err := mayastorclient.ListNexuses(nexusIP)
+	Expect(err).ToNot(HaveOccurred(), "failed to list nexuses")
+	Expect(len(nexusList)).ToNot(BeZero(), "expected at least one nexus")
 	nx := nexusList[0]
 
 	for _, ch := range nx.Children {
