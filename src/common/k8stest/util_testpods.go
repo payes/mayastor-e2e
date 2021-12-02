@@ -339,7 +339,8 @@ func CheckPodContainerCompleted(podName string, nameSpace string) (coreV1.PodPha
 	for _, containerStatus := range containerStatuses {
 		if containerStatus.Name == podName {
 			if !containerStatus.Ready {
-				if containerStatus.State.Terminated.Reason == "Completed" {
+				if containerStatus.State.Terminated != nil &&
+					containerStatus.State.Terminated.Reason == "Completed" {
 					if containerStatus.State.Terminated.ExitCode == 0 {
 						return coreV1.PodSucceeded, nil
 					} else {
