@@ -166,17 +166,11 @@ func (c *fsxExt4StressConfig) verifyVolumeStateOverGrpcAndCrd() {
 		Expect(nxChild.State).Should(Equal(controlplane.ChildStateOnline()), "Nexus child  is not online")
 	}
 
-	nodeList, err := k8stest.GetNodeLocs()
-	Expect(err).ToNot(HaveOccurred(), "Failed to get mayastor nodes")
-
 	// identify the nexus IP address
-	var nexusIP []string
-	for _, node := range nodeList {
-		nexusIP = append(nexusIP, node.IPAddress)
-	}
-	Expect(len(nexusIP)).NotTo(Equal(BeZero()), "failed to get Nexus IPs")
+	nodeIPs := k8stest.GetMayastorNodeIPAddresses()
+	Expect(len(nodeIPs)).NotTo(Equal(BeZero()), "failed to get Nexus IPs")
 
-	nexusList, err := mayastorclient.ListNexuses(nexusIP)
+	nexusList, err := mayastorclient.ListNexuses(nodeIPs)
 	Expect(err).ToNot(HaveOccurred(), "failed to list nexuses")
 	Expect(len(nexusList)).ToNot(BeZero(), "expected at least one nexus")
 	nx := nexusList[0]
