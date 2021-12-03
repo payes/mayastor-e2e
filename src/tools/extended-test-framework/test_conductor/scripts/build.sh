@@ -36,5 +36,6 @@ pushd ${SCRIPT_DIR}
 
 build test_conductor_steady_state
 build test_conductor_non_steady_state
+build test_conductor_replica_perturbation
 
 popd

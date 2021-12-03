@@ -21,6 +21,11 @@ type Device struct {
 	Table  string `json:"table"`
 }
 
+type ControlledDevice struct {
+	Device string `json:"device"`
+	State  string `json:"state"`
+}
+
 func homePage(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "Welcome home!\n")
 }
@@ -52,6 +57,7 @@ func handleRequests() {
 	router.HandleFunc("/acceptConnectionsFromNodes", acceptConnectionsFromNodes).Methods("POST")
 	router.HandleFunc("/createFaultyDevice", createFaultyDevice).Methods("POST")
 	router.HandleFunc("/exec", execCmd).Methods("POST")
+	router.HandleFunc("/devicecontrol", controlDevice).Methods("POST")
 	log.Fatal(http.ListenAndServe(podIP+":"+restPort, router))
 }
 
@@ -177,4 +183,37 @@ func createFaultyDevice(w http.ResponseWriter, r *http.Request) {
 	} else {
 		fmt.Fprint(w, string(output))
 	}
+}
+
+func controlDevice(w http.ResponseWriter, r *http.Request) {
+	var device ControlledDevice
+	params := make([]string, 2)
+
+	d := json.NewDecoder(r.Body)
+	if err := d.Decode(&device); err != nil {
+		fmt.Fprint(w, err.Error())
+	}
+	if len(device.Device) == 0 {
+		w.WriteHeader(UnprocessableEntityErrorCode)
+		fmt.Fprint(w, "no device passed")
+		return
+	}
+	if device.State != "offline" && device.State != "running" {
+		w.WriteHeader(UnprocessableEntityErrorCode)
+		fmt.Fprint(w, "invalid state")
+		return
+	}
+
+	cmdStr := "bash"
+	params[0] = "-c"
+	params[1] = "echo " + device.State + " > /host/sys/block/" + device.Device + "/device/state"
+
+	cmd := exec.Command(cmdStr, params...)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		w.WriteHeader(InternalServerErrorCode)
+		fmt.Fprint(w, err.Error())
+		return
+	}
+	fmt.Fprint(w, string(output))
 }

@@ -7,8 +7,6 @@ import (
 	"sync"
 	"time"
 
-	//"github.com/go-openapi/strfmt"
-
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	storageV1 "k8s.io/api/storage/v1"
@@ -145,9 +143,7 @@ func testVolumes(
 		defer wg.Done()
 		err := MonitorCRs(
 			testConductor,
-			[]string{},
 			duration,
-			false,
 			"",
 		)
 		if err != nil {
@@ -184,12 +180,12 @@ func NonSteadyStateTest(testConductor *tc.TestConductor) error {
 	var sc_name = "sc-immed"
 	var sc_name_local = "sc-local-wait"
 
-	duration, err := time.ParseDuration(testConductor.Config.Duration)
+	duration, err := GetDuration(testConductor.Config.Duration)
 	if err != nil {
 		return fmt.Errorf("failed to parse duration %v", err)
 	}
 
-	timeout, err := time.ParseDuration(testConductor.Config.NonSteadyState.Timeout)
+	timeout, err := GetDuration(testConductor.Config.NonSteadyState.Timeout)
 	if err != nil {
 		return fmt.Errorf("failed to parse duration %v", err)
 	}

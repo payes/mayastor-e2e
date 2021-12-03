@@ -16,7 +16,8 @@ Usage: $0 [OPTIONS]
 or:    $0 --remove
 
 Options:
-  --test <name>          test_conductor test to run, steady_state, non_steady_state or non_steady_state_multi_vols
+  --test <name>          test_conductor test to run, steady_state, non_steady_state,
+                         non_steady_state_multi_vols, or replica_perturbation
   --plan <test plan ID>  specify the test plan to receive the test runs
   --duration <duration>  set the overal run time for the test with units, e.g. 12d, 34h, 56m27s etc
   --secure-file-path	 file path for k8s sealed secrets
@@ -35,7 +36,7 @@ while [ "$#" -gt 0 ]; do
     -t|--test)
       shift
       case $1 in
-            steady_state|non_steady_state|non_steady_state_multi_vols)
+            steady_state|non_steady_state|non_steady_state_multi_vols|replica_perturbation)
                 TESTARG=$1
                 ;;
             *)
@@ -59,7 +60,7 @@ while [ "$#" -gt 0 ]; do
       ;;
     -r|--remove)
       OPERATION="delete"
-      #set +e # we can ignore errors when undeploying
+      set +e # we can ignore errors when undeploying
       ;;
     --noevent)
       SENDEVENTARG=0

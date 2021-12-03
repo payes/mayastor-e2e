@@ -208,10 +208,7 @@ func DeletePVC(volName string, nameSpace string) error {
 // determine the effective MSV state using grpc calls to the mayastor instances
 // TODO - identify nexus by UUID when the functionality is fixed.
 // For now assume there is one nexus and it is the one to test.
-func CheckVolumeStates(nodeIPs []string) ([]string, error) {
-	//const nexusTimeoutSecs = 180
-	//const waitTimeSecs = 10
-
+func GetNexusStates(nodeIPs []string) ([]string, error) {
 	var states []string
 
 	grpcNexuses, err := mayastorclient.ListNexuses(nodeIPs)
