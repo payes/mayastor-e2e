@@ -5,6 +5,7 @@ set -e pipefail
 SCRIPT_DIR=$(dirname "$0")
 pushd ${SCRIPT_DIR}
 
+pushd ../log_monitoring/scripts && ./build.sh; popd
 pushd ../test_conductor/scripts && ./build.sh; popd
 pushd ../test_director/scripts && ./build.sh;  popd
 pushd ../workload_monitor/scripts && ./build.sh; popd
