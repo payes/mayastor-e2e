@@ -24,7 +24,7 @@ func sendRequest(reqType, url string, data interface{}) (string, error) {
 	}
 	req, err := http.NewRequest(reqType, url, reqData)
 	if err != nil {
-		fmt.Print(err.Error())
+		return "", err
 	}
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("Content-Type", "application/json")
@@ -33,7 +33,7 @@ func sendRequest(reqType, url string, data interface{}) (string, error) {
 		return "", err
 	}
 	if resp.StatusCode != 200 {
-		return "", fmt.Errorf("error code %d", resp.StatusCode)
+		return "", fmt.Errorf("error code %d, resp %v", resp.StatusCode, resp)
 	}
 	defer resp.Body.Close()
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
@@ -113,10 +113,10 @@ func GetVolumeStatus(serverAddr string, uuid string) (string, error) {
 }
 
 // SetVolumeReplicas set the number of replicas for the volume
-func SetVolumeReplicas(serverAddr string, volumeid string, replicas int) error {
+func SetVolumeReplicas(serverAddr string, volumeid string, replicas int) (string, error) {
 	url := "http://" + serverAddr + ":" + RestPort + "/v0/volumes/" + volumeid + "/replica_count/" + strconv.Itoa(replicas)
-	_, err := sendRequest("PUT", url, nil)
-	return err
+	resp, err := sendRequest("PUT", url, nil)
+	return resp, err
 }
 
 // GetVolumeReplicas get the number of replicas for the volume by counting the children

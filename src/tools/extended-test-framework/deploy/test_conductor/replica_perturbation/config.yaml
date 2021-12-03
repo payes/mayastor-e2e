@@ -12,4 +12,6 @@ replicaPerturbation:
   localvolume: 0
   offlineDeviceTest: 1
   offlineDevAndReplicasTest: 1
+  replicasTest: 1
+  randomSleep: 0
 
