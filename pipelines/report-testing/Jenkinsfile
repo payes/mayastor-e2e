@@ -1,0 +1,24 @@
+#!/usr/bin/env groovy
+
+pipeline {
+    agent { label 'nixos' }
+    stages {
+        stage('generate report'){
+            steps {
+                script {
+                    withCredentials([string(credentialsId: 'XRAY_CLIENT_ID', variable: 'XRAY_CLIENT_ID')]) {
+                        withCredentials([string(credentialsId: 'XRAY_CLIENT_SECRET', variable: 'XRAY_CLIENT_SECRET')]) {
+                        cmd = "./scripts/xray-report.py --collect MQ-2184"
+                        sh "nix-shell --run '${cmd}'"
+                        }
+                    }
+                }//script
+            }//steps
+            post {
+                always {
+                    archiveArtifacts 'artifacts/**/**'
+                } //always
+            } // post
+        }//stage
+    }//stages
+}
