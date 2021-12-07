@@ -17,12 +17,20 @@ func (cp CPv1) MajorVersion() int {
 	return 1
 }
 
-var re = regexp.MustCompile(`(Request Timeout)`)
+var regExs = []*regexp.Regexp{
+	regexp.MustCompile(`(Request Timeout)`),
+	regexp.MustCompile(`(request timed out)`),
+}
 
 func (cp CPv1) IsTimeoutError(err error) bool {
 	str := fmt.Sprintf("%v", err)
-	frags := re.FindSubmatch([]byte(str))
-	return len(frags) == 2 && string(frags[1]) == "Request Timeout"
+	for _, re := range regExs {
+		frags := re.FindSubmatch([]byte(str))
+		if len(frags) != 0 {
+			return true
+		}
+	}
+	return false
 }
 
 func (cp CPv1) VolStateHealthy() string {

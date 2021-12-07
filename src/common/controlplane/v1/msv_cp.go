@@ -232,14 +232,18 @@ func CheckAllMayastorVolumesAreHealthy() error {
 	if err == nil && msvs != nil && len(msvs) != 0 {
 		for _, msv := range msvs {
 			if msv.State.Status != "Online" {
-				logf.Log.Info("CheckAllMayastorVolumesAreHealthy", "msv.State.Status", msv.State.Status)
+				logf.Log.Info("CheckAllMayastorVolumesAreHealthy",
+					"msv.State.Status", msv.State.Status,
+					"msv.Spec", msv.Spec,
+					"msv.State", msv.State,
+				)
 				allHealthy = false
 			}
 		}
 	}
 
 	if !allHealthy {
-		return fmt.Errorf("all MSVs were not healthy")
+		return fmt.Errorf("CheckAllMayastorVolumesAreHealth: all MSVs were not healthy")
 	}
 	return err
 }
