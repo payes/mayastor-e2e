@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func initPodMap() map[string]v1.Pod {
+func initFluentdPodMap() map[string]v1.Pod {
 	pods, err := ListPods(utils.FluentdNS)
 	if err != nil {
 		log.Fatalln(err, "cannot list pods inside namespace")
@@ -30,17 +30,17 @@ func initPodMap() map[string]v1.Pod {
 	return podMap
 }
 
-func checkForNewPods() {
+func checkForNewFluentdPods() {
 	go func() {
 		for {
-			time.Sleep(5 * time.Minute)
-			podNew := initPodMap()
+			podNew := initFluentdPodMap()
 			for k, _ := range podNew {
 				if _, ok := app.PodMap[k]; !ok {
 					app.PodMap[k] = podNew[k]
 					execTailPodCommand(podNew[k])
 				}
 			}
+			time.Sleep(5 * time.Minute)
 		}
 	}()
 }

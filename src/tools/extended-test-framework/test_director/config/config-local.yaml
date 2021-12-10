@@ -2,6 +2,7 @@ server:
   AppVersion: 1.0.0
   Mode: Development
   DefaultTestPlan: ET-435
+  SlackNotification: true
 
 logger:
   ReportCaller: false

@@ -2,12 +2,14 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"k8s.io/apimachinery/pkg/util/json"
 	"log"
 	"log_monitor/models"
 	"log_monitor/utils"
 	"net/http"
+	"regexp"
 	"strings"
 )
 
@@ -21,10 +23,17 @@ func ProcessLogLine(logChan chan string) {
 }
 
 func checkLine(s string) {
-	if strings.Contains(strings.ToLower(s), "error") {
-		sendEvent("FAIL", s)
-	} else if strings.Contains(strings.ToLower(s), "warn") {
-		sendEvent("WARN", s)
+	s = strings.ToLower(s)
+	match, err := regexp.MatchString(app.LogRegex, s)
+	if err != nil {
+		return
+	}
+	if match {
+		if strings.Contains(s, "error") {
+			sendEvent("FAIL", s)
+		} else if strings.Contains(s, "warn") {
+			sendEvent("WARN", s)
+		}
 	}
 }
 
@@ -58,6 +67,11 @@ func sendEvent(level, line string) {
 			break
 		}
 	}
+	if testRun.ID == "" {
+		fmt.Println("there are no test run in executing state")
+		return
+	}
+
 	var e models.Event
 	url = "http://" + p.Status.PodIP + utils.TestDirectorEventsAPI
 	e = models.Event{

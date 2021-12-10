@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"log_monitor/config"
+	"os"
 )
 
 var app config.AppConfig
@@ -17,19 +18,20 @@ func main() {
 	logChan := make(chan string)
 	defer close(logChan)
 	ProcessLogLine(logChan)
+
 	app.Client = client
 	app.LogChannel = logChan
-	app.PodMap = initPodMap()
 	app.PipeReader, app.PipeWriter = io.Pipe()
+	if os.Getenv("LOG_REGEX") != "" {
+		app.LogRegex = os.Getenv("LOG_REGEX")
+	} else {
+		app.LogRegex = `level.{0,4}(error|warn)`
+	}
 
-	checkForNewPods()
+	checkForNewFluentdPods()
 
 	if len(app.PodMap) == 0 {
 		log.Fatalln("There are no pods")
-	}
-
-	for _, v := range app.PodMap {
-		execTailPodCommand(v)
 	}
 
 	buf := bufio.NewReader(app.PipeReader)

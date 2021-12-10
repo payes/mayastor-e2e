@@ -12,4 +12,5 @@ type AppConfig struct {
 	PodMap     map[string]v1.Pod
 	PipeReader *io.PipeReader
 	PipeWriter *io.PipeWriter
+	LogRegex   string
 }

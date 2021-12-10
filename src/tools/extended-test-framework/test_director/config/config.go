@@ -16,9 +16,10 @@ type Config struct {
 
 // Server config struct
 type ServerConfig struct {
-	AppVersion      string
-	Mode            string
-	DefaultTestPlan string
+	AppVersion        string
+	Mode              string
+	DefaultTestPlan   string
+	SlackNotification bool
 }
 
 // Logger config
