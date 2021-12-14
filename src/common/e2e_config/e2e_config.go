@@ -142,6 +142,8 @@ type E2EConfig struct {
 		RescheduleDelay          int `yaml:"rescheduleDelay" env-default:"10"`
 		PodUnscheduleTimeoutSecs int `yaml:"podUnscheduleTimeoutSecs" env-default:"100"`
 		PodRescheduleTimeoutSecs int `yaml:"podRnscheduleTimeoutSecs" env-default:"180"`
+		PodRemovalTest           int `yaml:"podRemovalTest" env-default:"0"`
+		DeviceRemovalTest        int `yaml:"deviceRemovalTest" env-default:"1"`
 	} `yaml:"msPodDisruption"`
 	MaximumVolsIO struct {
 		VolMb             int    `yaml:"volMb" env-default:"64"`
