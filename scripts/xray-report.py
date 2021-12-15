@@ -4,6 +4,7 @@ import html
 import json
 import sys
 from time import sleep
+import traceback
 import xraygraphql
 import analyse
 
@@ -334,6 +335,8 @@ def main():
         for testKey in testKeys:
             if testKey in execDict:
                 test = execDict[testKey]
+                if test['finishedOn'] is None:
+                    test['finishedOn'] = 0
                 finished = int(test['finishedOn'])
                 if timestamp == 0 or finished < timestamp:
                     timestamp = finished
@@ -599,39 +602,42 @@ if __name__ == '__main__':
     testListFile = f'{_args.cachedir}/{_args.jiraKey}.tests.json'
     testExecsFile = f'{_args.cachedir}/{_args.jiraKey}.executions.json'
 
-    if _args.collect:
-        xrc = xraygraphql.XrayClient(project=_args.project)
+    try:
+        if _args.collect:
+            xrc = xraygraphql.XrayClient(project=_args.project)
 
-        print(f'Collecting set of tests in testplan {_args.jiraKey}',
-              file=sys.stderr, end='')
-        t0 = datetime.now()
-        tests = xrc.GetTestsInTestPlan(jiraKey=_args.jiraKey)
-        print(' (', datetime.now() - t0, ')', file=sys.stderr)
-        jsonUpdate(testListFile, tests)
+            print(f'Collecting set of tests in testplan {_args.jiraKey}',
+                  file=sys.stderr, end='')
+            t0 = datetime.now()
+            tests = xrc.GetTestsInTestPlan(jiraKey=_args.jiraKey)
+            print(' (', datetime.now() - t0, ')', file=sys.stderr)
+            jsonUpdate(testListFile, tests)
 
-        print(f'Collecting set of test executions in testplan {_args.jiraKey}',
-              file=sys.stderr, end='')
-        t1 = datetime.now()
-        executions = xrc.GetTestExecutionsInTestPlan(jiraKey=_args.jiraKey)
-        print(' (', datetime.now() - t1, ')', file=sys.stderr)
-        jsonUpdate(testExecsFile, executions)
+            print(f'Collecting set of test executions in testplan {_args.jiraKey}',
+                  file=sys.stderr, end='')
+            t1 = datetime.now()
+            executions = xrc.GetTestExecutionsInTestPlan(jiraKey=_args.jiraKey)
+            print(' (', datetime.now() - t1, ')', file=sys.stderr)
+            jsonUpdate(testExecsFile, executions)
 
-        print(f'Collecting set of test runs in testplan {_args.jiraKey}: ',
-              file=sys.stderr, end='')
-        t2 = datetime.now()
-        for jiraKey, testExec in executions.items():
-            execFile = f'{_args.cachedir}/exec.{jiraKey}.json'
-            if _args.refresh or not jsonExists(execFile):
-                t3 = datetime.now()
-                print(f'{jiraKey} ', file=sys.stderr, end='')
-                sys.stderr.flush()
-                execData = xrc.GetTestExecutionRuns(
-                    issueId=testExec['issueId'])
-                print(' (', datetime.now() - t3, ')', file=sys.stderr)
-                jsonSave(execFile, execData)
-                # sleep to workaround
-                #       TRACE: request failed 429, Too Many Requests
-                sleep(0.5)
-        print(' (', datetime.now() - t2, ')', file=sys.stderr)
+            print(f'Collecting set of test runs in testplan {_args.jiraKey}: ',
+                  file=sys.stderr, end='')
+            t2 = datetime.now()
+            for jiraKey, testExec in executions.items():
+                execFile = f'{_args.cachedir}/exec.{jiraKey}.json'
+                if _args.refresh or not jsonExists(execFile):
+                    t3 = datetime.now()
+                    print(f'{jiraKey} ', file=sys.stderr, end='')
+                    sys.stderr.flush()
+                    execData = xrc.GetTestExecutionRuns(
+                        issueId=testExec['issueId'])
+                    print(' (', datetime.now() - t3, ')', file=sys.stderr)
+                    jsonSave(execFile, execData)
+                    # sleep to workaround
+                    #       TRACE: request failed 429, Too Many Requests
+                    sleep(0.5)
+            print(' (', datetime.now() - t2, ')', file=sys.stderr)
 
-    main()
+        main()
+    except Exception:
+        traceback.print_exc()

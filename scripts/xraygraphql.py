@@ -636,13 +636,6 @@ class XrayClient:
         testRuns = self._collect(
             query=query,
             variables={'limit': 50, 'start': 0, 'issueId': issueId})
-        for tr in testRuns:
-            if 'finishedOn' in tr:
-                tr['finishedOnHR'] = datetime.fromtimestamp(
-                    float(tr['finishedOn'])/1000).ctime()
-            if 'startedOn' in tr:
-                tr['startedOnHR'] = datetime.fromtimestamp(
-                    float(tr['startedOn'])/1000).ctime()
 
         return testRuns
 
@@ -704,13 +697,6 @@ class XrayClient:
         testRuns = self._collect(
             query=query,
             variables={'limit': 50, 'start': 0, 'issueId': issueId})
-        for tr in testRuns:
-            if 'finishedOn' in tr:
-                tr['finishedOnHR'] = datetime.fromtimestamp(
-                    float(tr['finishedOn'])/1000).ctime()
-            if 'startedOn' in tr:
-                tr['startedOnHR'] = datetime.fromtimestamp(
-                    float(tr['startedOn'])/1000).ctime()
         return testRuns
 
     def GetTestRunResult(self, id=None):
