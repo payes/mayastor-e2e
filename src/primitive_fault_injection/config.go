@@ -10,7 +10,7 @@ import (
 
 const (
 	sleepTime      = 2
-	defTimeoutSecs = "120s"
+	defTimeoutSecs = "600s"
 	patchSleepTime = 10
 	patchTimeout   = 240
 )

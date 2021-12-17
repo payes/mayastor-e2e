@@ -176,23 +176,34 @@ func (c *primitiveFaultInjectionConfig) faultNexusChild() {
 // Validate that all state representations have converged in the expected state (gRPC and CRD)
 func (c *primitiveFaultInjectionConfig) verifyVolumeStateOverGrpcAndCrd() {
 	logf.Log.Info("Verify crd and grpc status", "msv", c.uuid)
-	msv, err := k8stest.GetMSV(c.uuid)
-	Expect(err).ToNot(HaveOccurred(), "%v", err)
-	Expect(msv).ToNot(BeNil(), "got nil msv for %v", c.uuid)
-	nexusChildren := msv.Status.Nexus.Children
-	for _, nxChild := range nexusChildren {
-		if controlplane.MajorVersion() == 0 {
-			Expect(nxChild.State).Should(Equal(controlplane.ChildStateOnline()), "Nexus child  is not online")
-		} else if controlplane.MajorVersion() == 1 {
-			var status bool
-			if nxChild.State == controlplane.ChildStateOnline() ||
-				nxChild.State == controlplane.ChildStateDegraded() {
-				status = true
-			}
-			Expect(status).Should(Equal(true), "Nexus child  is not online or degraded")
-		}
+	var statusCount int
+	Eventually(func() int {
+		msv, err := k8stest.GetMSV(c.uuid)
+		Expect(err).ToNot(HaveOccurred(), "%v", err)
+		Expect(msv).ToNot(BeNil(), "got nil msv for %v", c.uuid)
+		nexusChildren := msv.Status.Nexus.Children
+		statusCount = 0
+		for _, nxChild := range nexusChildren {
 
-	}
+			if controlplane.MajorVersion() == 0 {
+				logf.Log.Info("Nexus child state", "uri", nxChild.Uri, "child state", nxChild.State)
+				if nxChild.State == controlplane.ChildStateOnline() {
+					statusCount++
+				}
+			} else if controlplane.MajorVersion() == 1 {
+				if nxChild.State == controlplane.ChildStateOnline() ||
+					nxChild.State == controlplane.ChildStateDegraded() {
+					statusCount++
+				}
+				logf.Log.Info("Nexus child state", "uri", nxChild.Uri, "child state", nxChild.State)
+			}
+
+		}
+		return statusCount
+	},
+		defTimeoutSecs,
+		"6s",
+	).Should(Equal(3), "Nexus children are not in online or degraded state")
 
 	nodeList, err := k8stest.GetNodeLocs()
 	Expect(err).ToNot(HaveOccurred(), "Failed to get mayastor nodes")
