@@ -61,7 +61,7 @@ var _ = Describe("Mayastor primitive device retirement tests", func() {
 			_ = platform.PowerOnNode(rebootNode)
 			rebootNode = ""
 			restartMayastor = true
-			time.Sleep(2 * time.Minute)
+			time.Sleep(5 * time.Minute)
 		}
 		err := k8stest.RestartMayastor(240, 240, 240)
 		Expect(err).ToNot(HaveOccurred(), "Restart Mayastor pods, err: %v", err)
