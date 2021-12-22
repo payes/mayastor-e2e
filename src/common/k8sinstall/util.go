@@ -24,6 +24,8 @@ const InstallSuiteNameV1 = "Basic Install Suite (mayastor control plane)"
 const UninstallSuiteName = "Basic Teardown Suite"
 const UninstallSuiteNameV1 = "Basic Teardown Suite (mayastor control plane)"
 
+const MCPLogLevel = "debug"
+
 // postFixInstallation post fix installation yaml files for coverage and debug if required
 func postFixInstallation(yamlsDir string) error {
 
@@ -148,10 +150,10 @@ func GenerateControlPlaneYamlFiles() error {
 		imageTag := e2eCfg.ImageTag
 
 		bashCmd := fmt.Sprintf(
-			"%s/generate-deploy-yamls.sh -o %s -t '%s' %s test",
+			"%s/generate-deploy-yamls.sh -o %s -t '%s' -s mayastorCP.logLevel=%s %s test",
 			locations.GetControlPlaneScriptsDir(),
 			locations.GetControlPlaneGeneratedYamlsDir(),
-			imageTag, registryDirective,
+			imageTag, MCPLogLevel, registryDirective,
 		)
 		logf.Log.Info("About to execute", "command", bashCmd)
 		cmd := exec.Command("bash", "-c", bashCmd)
