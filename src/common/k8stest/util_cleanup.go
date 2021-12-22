@@ -442,6 +442,9 @@ func CleanUp() bool {
 		errs = append(errs, err)
 	}
 
+	// Provide time for mayastor volumes to be deleted automatically
+	time.Sleep(2 * time.Duration(pvcCount) * time.Minute)
+
 	pvCount, err := DeleteAllPvs()
 	if err != nil {
 		errs = append(errs, err)
