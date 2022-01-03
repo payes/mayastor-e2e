@@ -3,8 +3,9 @@ package k8stest
 import (
 	"mayastor-e2e/common"
 	"mayastor-e2e/common/controlplane"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sync"
+
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 var once sync.Once

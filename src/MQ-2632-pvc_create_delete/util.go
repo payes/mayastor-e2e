@@ -8,6 +8,9 @@ import (
 
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
+	coreV1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -29,16 +32,39 @@ func (c *pvcCreateDeleteConfig) deleteSC() {
 	Expect(err).ToNot(HaveOccurred(), "Deleting storage class %s", c.scName)
 }
 
-// createSerialPVC will create pvc in serial
+// createPVC will create pvc in serial
 func (c *pvcCreateDeleteConfig) createPVC(pvcName string) {
+	logf.Log.Info("Creating", "volume", pvcName, "storageClass", c.scName, "volume type", common.VolFileSystem)
+	volSizeMbStr := fmt.Sprintf("%dMi", c.pvcSize)
+	var fileSystemVolumeMode = coreV1.PersistentVolumeFilesystem
+	// PVC create options
+	createOpts := &coreV1.PersistentVolumeClaim{
+		ObjectMeta: metaV1.ObjectMeta{
+			Name:      pvcName,
+			Namespace: common.NSDefault,
+		},
+		Spec: coreV1.PersistentVolumeClaimSpec{
+			StorageClassName: &c.scName,
+			AccessModes:      []coreV1.PersistentVolumeAccessMode{coreV1.ReadWriteOnce},
+			Resources: coreV1.ResourceRequirements{
+				Requests: coreV1.ResourceList{
+					coreV1.ResourceStorage: resource.MustParse(volSizeMbStr),
+				},
+			},
+			VolumeMode: &fileSystemVolumeMode,
+		},
+	}
 	// Create the volumes
-	k8stest.MkPVC(c.pvcSize, pvcName, c.scName, common.VolFileSystem, common.NSDefault)
+	pvc, err := k8stest.CreatePVC(createOpts, common.NSDefault)
+	Expect(err).To(BeNil(), "Failed to create pvc, error %v", err)
+	Expect(pvc).ToNot(BeNil())
 }
 
 // deleteSerialPVC will delete pvc in serial
 func (c *pvcCreateDeleteConfig) deletePVC(pvcName string) {
-	// Create the volumes
-	k8stest.RmPVC(pvcName, c.scName, common.NSDefault)
+	err := k8stest.DeletePVC(pvcName, common.NSDefault)
+	Expect(err).ToNot(HaveOccurred(), "PVC deletion failed, pvc name: %s , Error: %v", pvcName, err)
+
 }
 
 func (c *pvcCreateDeleteConfig) pvcCreateDeleteTest() {
@@ -47,14 +73,18 @@ func (c *pvcCreateDeleteConfig) pvcCreateDeleteTest() {
 		for _, pvcName := range c.pvcNames {
 			c.createPVC(pvcName)
 		}
-		//Wait for 2 mins. This step makes sure that all the volume creation requests have been sent to csi controller pod
-		time.Sleep(2 * time.Minute)
+		//Wait for 5 mins. This step makes sure that all the volume creation requests have been sent to csi controller pod
+		logf.Log.Info("Sleep for five minutes")
+		time.Sleep(5 * time.Minute)
 		for _, pvcName := range c.pvcNames {
 			c.deletePVC(pvcName)
 		}
 	}
-	c.deleteSC()
+	c.waitForPvcDeletion()
+	c.waitForPvDeletion()
+	c.waitForMsvDeletion()
 	c.waitForMspUsedSize(0)
+	c.deleteSC()
 }
 func msnList() int {
 	msnList, err := k8stest.GetMayastorNodeNames()
@@ -85,4 +115,46 @@ func checkPoolUsedSize(poolName string, usedSize int64) error {
 		}
 	}
 	return errors.Errorf("pool %s used size did not reconcile in %d seconds", poolName, timeoutSec)
+}
+
+// verify all msv to be deleted
+func (c *pvcCreateDeleteConfig) waitForMsvDeletion() {
+	logf.Log.Info("Waiting for mayastor volumes to be deleted", "storageClass", c.scName)
+	// Wait for the msv to be deleted.
+	Eventually(func() int {
+		msv, err := k8stest.ListMsvs()
+		Expect(err).ToNot(HaveOccurred(), fmt.Sprintf("failed to list msv %v", err))
+		return len(msv)
+	},
+		defTimeoutSecs, // timeout
+		"6s",           // polling interval
+	).Should(Equal(0), "all msv are not getting deleted")
+}
+
+// verify all pv to be deleted
+func (c *pvcCreateDeleteConfig) waitForPvDeletion() {
+	logf.Log.Info("Waiting for all PV to be deleted", "storageClass", c.scName)
+	// Wait for the PV to be deleted.
+	Eventually(func() bool {
+		pvFound, err := k8stest.CheckForPVs()
+		Expect(err).ToNot(HaveOccurred(), fmt.Sprintf("failed to list pv %v", err))
+		return pvFound
+	},
+		defTimeoutSecs, // timeout
+		"6s",           // polling interval
+	).Should(Equal(false), "all PV are not getting deleted")
+}
+
+// verify all pvc to be deleted
+func (c *pvcCreateDeleteConfig) waitForPvcDeletion() {
+	logf.Log.Info("Waiting for all PVC to be deleted", "storageClass", c.scName)
+	// Wait for the PVC to be deleted.
+	Eventually(func() bool {
+		pvcFound, err := k8stest.CheckForPVCs()
+		Expect(err).ToNot(HaveOccurred(), fmt.Sprintf("failed to list pvc %v", err))
+		return pvcFound
+	},
+		defTimeoutSecs, // timeout
+		"6s",           // polling interval
+	).Should(Equal(false), "all PVC are not getting deleted")
 }
