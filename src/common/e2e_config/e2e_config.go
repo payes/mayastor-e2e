@@ -269,7 +269,7 @@ type E2EConfig struct {
 	PvcCreateDelete struct {
 		Replicas         int `yaml:"replicas" env-default:"3"`
 		VolSize          int `yaml:"volMb" env-default:"64"`
-		Iterations       int `yaml:"iterations" env-default:"10"`
+		Iterations       int `yaml:"iterations" env-default:"1"`
 		VolumeMultiplier int `yaml:"volumeMultiplier" env-default:"50"`
 	} `yaml:"pvcCreateDelete"`
 }

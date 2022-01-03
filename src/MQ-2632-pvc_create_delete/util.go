@@ -47,6 +47,8 @@ func (c *pvcCreateDeleteConfig) pvcCreateDeleteTest() {
 		for _, pvcName := range c.pvcNames {
 			c.createPVC(pvcName)
 		}
+		//Wait for 2 mins. This step makes sure that all the volume creation requests have been sent to csi controller pod
+		time.Sleep(2 * time.Minute)
 		for _, pvcName := range c.pvcNames {
 			c.deletePVC(pvcName)
 		}
