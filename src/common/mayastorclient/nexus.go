@@ -44,7 +44,7 @@ func listNexuses(address string) ([]MayastorNexus, error) {
 	defer func(conn *grpc.ClientConn) {
 		err := conn.Close()
 		if err != nil {
-			logf.Log.Info("ListPools", "error on close", err)
+			logf.Log.Info("ListNexuses", "error on close", err)
 		}
 	}(conn)
 
@@ -74,11 +74,11 @@ func listNexuses(address string) ([]MayastorNexus, error) {
 			}
 		} else {
 			err = fmt.Errorf("nil response for ListNexus on %s", address)
-			logf.Log.Info("ListPools", "error", err)
+			logf.Log.Info("ListNexuses", "error", err)
 		}
 	} else {
 		err = niceError(err)
-		logf.Log.Info("ListPools", "error", err)
+		logf.Log.Info("ListNexuses", "error", err)
 	}
 	return nexusInfos, err
 }

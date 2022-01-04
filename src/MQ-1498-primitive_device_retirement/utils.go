@@ -65,7 +65,7 @@ func (c *primitiveDeviceRetirementConfig) deletePVC() {
 	k8stest.RmPVC(c.pvcName, c.scName, common.NSDefault)
 }
 
-func (c *primitiveDeviceRetirementConfig) createFioPod(verify bool) {
+func (c *primitiveDeviceRetirementConfig) createFioPod(nodeName string, verify bool) {
 
 	var args = []string{
 		"--",
@@ -102,6 +102,7 @@ func (c *primitiveDeviceRetirementConfig) createFioPod(verify bool) {
 		WithRestartPolicy(coreV1.RestartPolicyNever).
 		WithContainer(podContainer).
 		WithVolume(volume).
+		WithNodeSelectorHostnameNew(nodeName).
 		WithVolumeDeviceOrMount(c.volType).Build()
 	Expect(err).ToNot(HaveOccurred(), "Generating fio pod definition %s", c.podName)
 	Expect(podObj).ToNot(BeNil(), "failed to generate fio pod definition")
@@ -150,12 +151,12 @@ func (c *primitiveDeviceRetirementConfig) PrimitiveDataIntegrity() {
 	Expect(secondchecksum).To(Equal(firstchecksum), "checksums differ")
 }
 
-func (c *primitiveDeviceRetirementConfig) GetReplicaAddressesForNonNexusNodes(uuid, nexusNode string) []string {
+func (c *primitiveDeviceRetirementConfig) GetReplicaAddressesForNonTestNodes(uuid, testNode string) []string {
 	var addrs []string
 	_, nodes := k8stest.GetMsvNodes(uuid)
 
 	for _, node := range nodes {
-		if node == nexusNode {
+		if node == testNode {
 			continue
 		}
 		addr, err := k8stest.GetNodeIPAddress(node)

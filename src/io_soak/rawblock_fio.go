@@ -31,6 +31,15 @@ func (job FioRawBlockSoakJob) removeVolume() {
 }
 
 func (job FioRawBlockSoakJob) makeTestPod(selector map[string]string) (*coreV1.Pod, error) {
+	var z64 int64 = 0
+	var vTrue bool = true
+
+	sc := coreV1.SecurityContext{
+		Privileged:               &vTrue,
+		RunAsUser:                &z64,
+		AllowPrivilegeEscalation: &vTrue,
+	}
+
 	pod := k8stest.CreateFioPodDef(job.podName, job.volName, common.VolRawBlock, common.NSDefault)
 	pod.Spec.NodeSelector = selector
 
@@ -47,6 +56,7 @@ func (job FioRawBlockSoakJob) makeTestPod(selector map[string]string) (*coreV1.P
 	}
 	args = append(args, GetIOSoakFioArgs()...)
 	pod.Spec.Containers[0].Args = args
+	pod.Spec.Containers[0].SecurityContext = &sc
 
 	pod, err := k8stest.CreatePod(pod, common.NSDefault)
 	return pod, err

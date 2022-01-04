@@ -47,32 +47,43 @@ var _ = Describe("Mayastor primitive device retirement tests", func() {
 	})
 
 	AfterEach(func() {
+
 		if len(rebootNode) != 0 {
 			platform := platform.Create()
 
+			// Reattaching the detached volume
 			Expect(platform.AttachVolume("mayastor-"+rebootNode, rebootNode)).To(BeNil())
+
+			// Node is being rebooted so that the volume comes back at the same location
+			// as was there before detaching
 			_ = platform.PowerOffNode(rebootNode)
 			time.Sleep(30 * time.Second)
 			_ = platform.PowerOnNode(rebootNode)
 			rebootNode = ""
 			restartMayastor = true
-			time.Sleep(2 * time.Minute)
+			time.Sleep(5 * time.Minute)
 		}
-		if restartMayastor {
-			err := k8stest.RestartMayastor(240, 240, 240)
-			Expect(err).ToNot(HaveOccurred(), "Restart Mayastor pods")
-		}
+		err := k8stest.RestartMayastor(240, 240, 240)
+		Expect(err).ToNot(HaveOccurred(), "Restart Mayastor pods, err: %v", err)
 		// Check resource leakage.
-		err := k8stest.AfterEachCheck()
+		err = k8stest.AfterEachCheck()
 		Expect(err).ToNot(HaveOccurred())
 	})
 	It("should verify primitive device retirement test (detached nexus)", func() {
-		c := generatePrimitiveDeviceRetirementConfig("primitive-device-retirement-detach-nexus-volume")
-		c.DetachCloudVolumeTest()
+		c := generatePrimitiveDeviceRetirementConfig("detach-nexus-volume")
+		c.DetachCloudVolumeTest(true)
+	})
+	It("should verify primitive device retirement test (detached non-nexus)", func() {
+		c := generatePrimitiveDeviceRetirementConfig("detach-non-nexus-volume")
+		c.DetachCloudVolumeTest(false)
 	})
 	It("should verify primitive device retirement test (crashed nexus)", func() {
-		c := generatePrimitiveDeviceRetirementConfig("primitive-device-retirement-crash-nexus-mayastor")
-		c.CrashMayastorTest()
+		c := generatePrimitiveDeviceRetirementConfig("crash-nexus-mayastor")
+		c.CrashMayastorTest(true)
+	})
+	It("should verify primitive device retirement test (crashed non nexus)", func() {
+		c := generatePrimitiveDeviceRetirementConfig("crash-non-nexus-mayastor")
+		c.CrashMayastorTest(false)
 	})
 })
 
@@ -81,22 +92,33 @@ var (
 	restartMayastor bool
 )
 
-func (c *primitiveDeviceRetirementConfig) DetachCloudVolumeTest() {
-	var err error
+func (c *primitiveDeviceRetirementConfig) DetachCloudVolumeTest(testNexusNode bool) {
+	var (
+		err               error
+		testNode, appNode string
+	)
 
 	c.createSC()
 	uuid := c.createPVC()
 
-	// Create the fio Pod, The first time is just to write a verification pattern to the volume
-	c.podName = "fio-write-" + c.pvcName
-	c.createFioPod(false)
+	nodes, err := k8stest.GetMayastorNodeNames()
+	Expect(err).ToNot(HaveOccurred())
+	Expect(len(nodes) >= 2).To(BeTrue())
+	if testNexusNode {
+		appNode = nodes[0]
+		testNode = nodes[0]
+	} else {
+		appNode = nodes[0]
+		testNode = nodes[1]
+	}
 
-	nexusNode, _ := k8stest.GetMsvNodes(uuid)
-	Expect(nexusNode).NotTo(Equal(""))
+	// Create the fio Pod, The first time is just to write a verification pattern to the volume
+	c.podName = "write-" + c.pvcName
+	c.createFioPod(appNode, false)
 
 	time.Sleep(10 * time.Second)
-	Expect(c.platform.DetachVolume("mayastor-" + nexusNode)).To(BeNil())
-	rebootNode = nexusNode
+	Expect(c.platform.DetachVolume("mayastor-" + testNode)).To(BeNil())
+	rebootNode = testNode
 
 	Expect(k8stest.WaitPodComplete(c.podName, sleepTime, timeout)).To(BeNil())
 
@@ -105,8 +127,8 @@ func (c *primitiveDeviceRetirementConfig) DetachCloudVolumeTest() {
 	Expect(err).ToNot(HaveOccurred())
 
 	// Create a new fio Pod, This time just to verify the data.
-	c.podName = "fio-verify-" + c.pvcName
-	c.createFioPod(true)
+	c.podName = "verify-" + c.pvcName
+	c.createFioPod(appNode, true)
 
 	Expect(k8stest.WaitPodComplete(c.podName, sleepTime, timeout)).To(BeNil())
 
@@ -114,38 +136,48 @@ func (c *primitiveDeviceRetirementConfig) DetachCloudVolumeTest() {
 	err = k8stest.DeletePod(c.podName, common.NSDefault)
 	Expect(err).ToNot(HaveOccurred())
 
-	err = k8stest.SetMsvReplicaCount(uuid, c.replicas-1)
-	Expect(err).ToNot(HaveOccurred(), "Failed to patch Mayastor volume %s", uuid)
+	if testNexusNode {
+		err = k8stest.SetMsvReplicaCount(uuid, c.replicas-1)
+		Expect(err).ToNot(HaveOccurred(), "Failed to patch Mayastor volume %s", uuid)
 
-	c.replicaIPs = c.GetReplicaAddressesForNonNexusNodes(uuid, nexusNode)
-	Expect(len(c.replicaIPs)).To(Equal(2))
+		c.replicaIPs = c.GetReplicaAddressesForNonTestNodes(uuid, testNode)
+		Expect(len(c.replicaIPs)).To(Equal(2))
 
-	// Match data between both the healthy replicas
-	c.PrimitiveDataIntegrity()
+		// Match data between both the healthy replicas
+		c.PrimitiveDataIntegrity()
+	}
 
-	Expect(c.platform.AttachVolume("mayastor-"+rebootNode, rebootNode)).To(BeNil())
 	c.deletePVC()
 	c.deleteSC()
 }
 
 // CrashMayastorTest crashes pod with nexus and verifies data consistency
-func (c *primitiveDeviceRetirementConfig) CrashMayastorTest() {
-	var err error
+func (c *primitiveDeviceRetirementConfig) CrashMayastorTest(testNexusNode bool) {
+	var (
+		err               error
+		testNode, appNode string
+	)
 
 	c.createSC()
 	uuid := c.createPVC()
 
-	// Create the fio Pod, The first time is just to write a verification pattern to the volume
-	c.podName = "fio-write-" + c.pvcName
-	c.createFioPod(false)
+	nodes, err := k8stest.GetMayastorNodeNames()
+	Expect(err).ToNot(HaveOccurred())
+	Expect(len(nodes) >= 2).To(BeTrue())
+	if testNexusNode {
+		appNode = nodes[0]
+		testNode = nodes[0]
+	} else {
+		appNode = nodes[0]
+		testNode = nodes[1]
+	}
 
 	err = k8stest.MsvConsistencyCheck(uuid)
 	Expect(err).ToNot(HaveOccurred())
 
-	nexusNode, _ := k8stest.GetMsvNodes(uuid)
-	Expect(nexusNode).NotTo(Equal(""))
-
-	testNode := nexusNode
+	// Create the fio Pod, The first time is just to write a verification pattern to the volume
+	c.podName = "fio-write-" + c.pvcName
+	c.createFioPod(appNode, false)
 
 	time.Sleep(time.Second)
 
@@ -171,7 +203,7 @@ func (c *primitiveDeviceRetirementConfig) CrashMayastorTest() {
 	time.Sleep(time.Minute)
 	// Create a new fio Pod, This time just to verify the data.
 	c.podName = "fio-verify-" + c.pvcName
-	c.createFioPod(true)
+	c.createFioPod(appNode, true)
 
 	// Wait for application pod to complete IOs
 	Expect(k8stest.WaitPodComplete(c.podName, sleepTime, timeout)).To(BeNil())
@@ -184,15 +216,18 @@ func (c *primitiveDeviceRetirementConfig) CrashMayastorTest() {
 	Expect(err).ToNot(HaveOccurred())
 
 	time.Sleep(time.Minute)
-	err = k8stest.MsvConsistencyCheck(uuid)
-	Expect(err).ToNot(HaveOccurred())
 
-	// Non nexus replicas are selected
-	c.replicaIPs = c.GetReplicaAddressesForNonNexusNodes(uuid, newNexusNode)
-	Expect(len(c.replicaIPs)).To(Equal(2))
+	if testNexusNode {
+		err = k8stest.MsvConsistencyCheck(uuid)
+		Expect(err).ToNot(HaveOccurred())
 
-	// Match data between the healthy replicas
-	c.PrimitiveDataIntegrity()
+		// Non nexus replicas are selected
+		c.replicaIPs = c.GetReplicaAddressesForNonTestNodes(uuid, testNode)
+		Expect(len(c.replicaIPs)).To(Equal(2))
+
+		// Match data between the healthy replicas
+		c.PrimitiveDataIntegrity()
+	}
 
 	c.deletePVC()
 	c.deleteSC()

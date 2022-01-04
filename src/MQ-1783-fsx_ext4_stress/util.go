@@ -166,17 +166,11 @@ func (c *fsxExt4StressConfig) verifyVolumeStateOverGrpcAndCrd() {
 		Expect(nxChild.State).Should(Equal(controlplane.ChildStateOnline()), "Nexus child  is not online")
 	}
 
-	nodeList, err := k8stest.GetNodeLocs()
-	Expect(err).ToNot(HaveOccurred(), "Failed to get mayastor nodes")
-
 	// identify the nexus IP address
-	var nexusIP []string
-	for _, node := range nodeList {
-		nexusIP = append(nexusIP, node.IPAddress)
-	}
-	Expect(len(nexusIP)).NotTo(Equal(BeZero()), "failed to get Nexus IPs")
+	nodeIPs := k8stest.GetMayastorNodeIPAddresses()
+	Expect(len(nodeIPs)).NotTo(Equal(BeZero()), "failed to get Nexus IPs")
 
-	nexusList, err := mayastorclient.ListNexuses(nexusIP)
+	nexusList, err := mayastorclient.ListNexuses(nodeIPs)
 	Expect(err).ToNot(HaveOccurred(), "failed to list nexuses")
 	Expect(len(nexusList)).ToNot(BeZero(), "expected at least one nexus")
 	nx := nexusList[0]
@@ -284,9 +278,11 @@ func (c *fsxExt4StressConfig) waitForFsxPodCompletion() {
 	Expect(err).ToNot(HaveOccurred(), "Failed to check %s pod completion status", c.fsxPodName)
 }
 
-// verify faulted replica
+// verify faulted replica state, in case of moac faulted replica state will be Faulted
+// but in case of restful control plane, faulted replica state will be Degraded.
+// Wait for exactly one faulted or degraded replica as only single replica is faulted
 func (c *fsxExt4StressConfig) verifyFaultedReplica() {
-	var onlineCount, faultedCount, otherCount int
+	var onlineCount, faultedCount, degradedCount, otherCount int
 	t0 := time.Now()
 	for ix := 0; ix < patchTimeout; ix += patchSleepTime {
 		time.Sleep(time.Second * patchSleepTime)
@@ -295,19 +291,24 @@ func (c *fsxExt4StressConfig) verifyFaultedReplica() {
 		Expect(msv).ToNot(BeNil(), "got nil msv for %v", c.uuid)
 		onlineCount = 0
 		faultedCount = 0
+		degradedCount = 0
 		otherCount = 0
 		for _, child := range msv.Status.Nexus.Children {
 			if child.State == controlplane.ChildStateFaulted() {
 				faultedCount++
 			} else if child.State == controlplane.ChildStateOnline() {
 				onlineCount++
+			} else if child.State == controlplane.ChildStateDegraded() {
+				degradedCount++
 			} else {
 				logf.Log.Info("Children state other then faulted and online", "child.State", child.State)
 				otherCount++
 			}
 		}
-		logf.Log.Info("Replica state", "faulted", faultedCount, "online", onlineCount, "other", otherCount)
+		logf.Log.Info("Replica state", "Faulted", faultedCount, "Online", onlineCount, "Degraded", degradedCount, "other", otherCount)
 		if faultedCount == 1 && otherCount == 0 && onlineCount != 0 {
+			break
+		} else if degradedCount == 1 && otherCount == 0 && onlineCount != 0 {
 			break
 		}
 	}

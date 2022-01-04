@@ -203,6 +203,16 @@ func getMspUsage() (int64, error) {
 func resourceCheck(waitForPools bool) error {
 	var errs = common.ErrorAccumulator{}
 
+	// Check that Mayastor pods are healthy no restarts or fails.
+	err := CheckTestPodsHealth(common.NSMayastor())
+	if err != nil {
+		if e2e_config.GetConfig().SelfTest {
+			logf.Log.Info("SelfTesting, ignoring:", "", err)
+		} else {
+			errs.Accumulate(err)
+		}
+	}
+
 	pods, err := CheckForTestPods()
 	errs.Accumulate(err)
 	if pods {
@@ -236,16 +246,6 @@ func resourceCheck(waitForPools bool) error {
 			} else {
 				logf.Log.Info("Listing MSVs returned nil array")
 			}
-		}
-	}
-
-	// Check that Mayastor pods are healthy no restarts or fails.
-	err = CheckTestPodsHealth(common.NSMayastor())
-	if err != nil {
-		if e2e_config.GetConfig().SelfTest {
-			logf.Log.Info("SelfTesting, ignoring:", "", err)
-		} else {
-			errs.Accumulate(err)
 		}
 	}
 
