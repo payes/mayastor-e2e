@@ -268,9 +268,10 @@ type E2EConfig struct {
 	} `yaml:"fsxExt4Stress"`
 	PvcCreateDelete struct {
 		Replicas         int `yaml:"replicas" env-default:"3"`
-		VolSize          int `yaml:"volMb" env-default:"64"`
+		VolSize          int `yaml:"volMb" env-default:"20"`
 		Iterations       int `yaml:"iterations" env-default:"1"`
-		VolumeMultiplier int `yaml:"volumeMultiplier" env-default:"50"`
+		VolumeMultiplier int `yaml:"volumeMultiplier" env-default:"100"`
+		DelayTime        int `yaml:"delayTime" env-default:"5"`
 	} `yaml:"pvcCreateDelete"`
 }
 

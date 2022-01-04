@@ -29,6 +29,7 @@ type pvcCreateDeleteConfig struct {
 	pvcSize        int
 	optsList       []coreV1.PersistentVolumeClaim
 	volumeCount    int
+	delayTime      int
 }
 
 func generatePvcCreateDeleteConfig(testName string, volCount int) *pvcCreateDeleteConfig {
@@ -42,6 +43,7 @@ func generatePvcCreateDeleteConfig(testName string, volCount int) *pvcCreateDele
 		iterations:     params.Iterations,
 		replicas:       params.Replicas,
 		scName:         testName + "-sc",
+		delayTime:      params.DelayTime,
 	}
 	c.volumeCount = volCount * params.VolumeMultiplier
 
