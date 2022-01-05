@@ -35,7 +35,7 @@ func (c *pvcCreateDeleteConfig) deleteSC() {
 // createPVC will create pvc in serial
 func (c *pvcCreateDeleteConfig) createPVC(pvcName string) {
 	logf.Log.Info("Creating", "volume", pvcName, "storageClass", c.scName, "volume type", common.VolFileSystem)
-	volSizeMbStr := fmt.Sprintf("%dMi", c.pvcSize)
+	volSizeMbStr := fmt.Sprintf("%dMi", c.pvcSizeMB)
 	var fileSystemVolumeMode = coreV1.PersistentVolumeFilesystem
 	// PVC create options
 	createOpts := &coreV1.PersistentVolumeClaim{
