@@ -73,8 +73,8 @@ func (c *pvcCreateDeleteConfig) pvcCreateDeleteTest() {
 		for _, pvcName := range c.pvcNames {
 			c.createPVC(pvcName)
 		}
-		//Wait for 5 mins. This step makes sure that all the volume creation requests have been sent to csi controller pod
-		logf.Log.Info("Sleep for five minutes")
+		//Wait for more than 5 min mins. This step makes sure that all the volume creation requests have been sent to csi controller pod
+		logf.Log.Info("Added sleep for more then five min", "sleep time in minutes", c.delayTime)
 		time.Sleep(time.Duration(c.delayTime) * time.Minute)
 		for _, pvcName := range c.pvcNames {
 			c.deletePVC(pvcName)
