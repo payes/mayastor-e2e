@@ -2,7 +2,7 @@ testName: "non-steady-state"
 test: "MQ-2243"
 e2eFioImage: ci-registry.mayastor-ci.mayadata.io/mayadata/e2e-fio
 msnodes: 3
-duration: 336
+duration: 14d
 sendEvent: 1
 sendXrayTest: 1
 nonSteadyState:

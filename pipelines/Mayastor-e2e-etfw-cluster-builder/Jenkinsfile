@@ -60,10 +60,10 @@ pipeline {
     agent { label 'nixos' }
     parameters {
         string(
-            defaultValue: 'hc1-nightly',
+            defaultValue: '',
             name: 'image_tag',
             trim: true,
-            description: 'image tag of mayastor images, e.g. nightly-stable or selfci'
+            description: 'Image tag of mayastor images to install, e.g. hc1-2022-01-04-00-17-03 <br> Images are built by nightly runs of Mayastor-e2e-MCP-nightly.'
         )
         choice(
             name: 'NODE_TYPE',
@@ -83,6 +83,15 @@ pipeline {
                 </table>''')
     }
     stages {
+        stage('parameter check') {
+            steps {
+                script {
+                    if (params.image_tag == '') {
+                        error 'Mayastor image tag not specified'
+                    }
+                }
+            }
+        }
         stage('build cluster') {
             steps {
                 script {
