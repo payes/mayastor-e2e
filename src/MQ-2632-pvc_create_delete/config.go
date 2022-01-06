@@ -11,7 +11,7 @@ import (
 const (
 	timeoutSec     = 180
 	sleepTimeSec   = 2
-	defTimeoutSecs = 1800
+	defTimeoutSecs = 3600
 )
 
 type pvcCreateDeleteConfig struct {
