@@ -22,7 +22,7 @@ pipeline {
     agent { label 'nixos' }
     parameters {
         run(
-            name:'BUILD',
+            name:'CLUS_BUILD',
             projectName: 'k8s-build-cluster',
             description: 'Selects cluster to use.'
         )
@@ -49,17 +49,16 @@ pipeline {
             }
             steps {
                 script {
-                    GetClusterAdminConf("${BUILD_JOBNAME}", e2e_environment, "${BUILD_NUMBER}")
+                    GetClusterAdminConf("${env.CLUS_BUILD_JOBNAME}", e2e_environment, "${env.CLUS_BUILD_NUMBER}")
                     // cluster should have one node dedicated to etfw pods
                     def rc = sh(script: 'kubectl describe nodes | grep openebs.io/role=mayastor-e2e:NoExecute', returnStatus: true)
                     if (rc != 0) {
                         error "Failed, cluster not labelled for extended-test-framework"
                     }
                     withCredentials([file(credentialsId: 'SEALED_SECRET_YAML', variable: 'file')]) {
-                 	cmd = "cd src/tools/extended-test-framework/scripts && ./deploy.sh -t \"${params.test}\" -p \"${params.plan}\" -d \"${params.duration}\" -s \"${file}\" && ./wait.sh"
-                    	sh "nix-shell --run '${cmd}'"
-		    }
-
+                        cmd = "cd src/tools/extended-test-framework/scripts && ./deploy.sh -t \"${params.test}\" -n \"Build #${env.BUILD_NUMBER}\" -p \"${params.plan}\" -d \"${params.duration}\" -s \"${file}\" && ./wait.sh"
+                        sh "nix-shell --run '${cmd}'"
+                   }
                 }
             }
             post {

@@ -353,9 +353,6 @@ func perturbVolume(
 
 	if err != nil {
 		logf.Log.Info("test failed", "error", err)
-		if locerr := SendEventTestCompletedFail(testConductor, err.Error()); locerr != nil {
-			logf.Log.Info("failed to send fail event", "error", locerr)
-		}
 	}
 	return err
 }
@@ -415,7 +412,6 @@ func ReplicaPerturbationTest(testConductor *tc.TestConductor) error {
 	}
 
 	// create storage classes
-
 	if testConductor.Config.ReplicaPerturbation.LocalVolume != 0 {
 		sc_name = "sc-local-wait"
 		if err = k8sclient.NewScBuilder().
@@ -464,9 +460,6 @@ func ReplicaPerturbationTest(testConductor *tc.TestConductor) error {
 	}
 
 	if combinederr != nil {
-		if err := SendEventTestCompletedFail(testConductor, combinederr.Error()); err != nil {
-			logf.Log.Info("failed to send fail event", "error", err)
-		}
 		logf.Log.Info("Errors found", "error", combinederr.Error())
 	}
 	return combinederr

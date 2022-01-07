@@ -108,9 +108,6 @@ func testVolume(
 	}
 	if finalerr != nil {
 		logf.Log.Info("test failed", "error", finalerr)
-		if err := SendEventTestCompletedFail(testConductor, finalerr.Error()); err != nil {
-			logf.Log.Info("failed to send fail event", "error", err)
-		}
 	}
 	return finalerr
 }
