@@ -8,6 +8,7 @@ import java.util.concurrent.TimeUnit
 
 def default_test_profile = "hc1-nightly"
 
+
 def e2e_params = [
     // Tests Queue
     tests_queue : [] as LinkedBlockingQueue,
@@ -25,7 +26,7 @@ def e2e_params = [
     // Environment to run e2e test in (job param of e2e_build_cluster_job)
     e2e_environment : "hcloud-kubeadm",
     //Kubernetes version
-    kubernetes_verion : '',
+    kubernetes_verion : '1.23',
 
     // Mayastor image tag - image tag for testing.
     e2e_image_tag : '',
@@ -38,7 +39,7 @@ def e2e_params = [
     // Xray: send report
     xray_send_report : true,
     // Xray: test plan
-    xray_test_plan : 'MQ-2184',
+    xray_test_plan : 'MQ-2621',
 
     publish_tag: 'e2e-nightly',
 ]
@@ -46,7 +47,9 @@ def e2e_params = [
 // Environment to run e2e test in (job param of $e2e_build_cluster_job)
 def e2e_environment = e2e_params['e2e_environment']
 
-String cron_schedule = "H 0 * * *"
+//The five time-and-date fields are as follows: 
+//minute (0-59), hour (0-23, 0 = midnight), day (1-31), month (1-12), weekday (0-6, 0 = Sunday).
+String cron_schedule = "H 7 * * 0"
 
 def Common() {
     def common = load "./pipelines/common/common.groovy"
@@ -60,9 +63,9 @@ pipeline {
     timeout(time: 23, unit: 'HOURS')
     buildDiscarder(logRotator(numToKeepStr: '365', artifactNumToKeepStr: '365'))
   }
-  triggers {
-    cron(cron_schedule)
-  }
+//   triggers {
+//     cron(cron_schedule)
+//   }
   parameters {
     choice(choices: [default_test_profile,'experiment'], name: 'profile', description: 'test profile')
   }
@@ -80,7 +83,7 @@ pipeline {
                 println("Profile is not ${default_test_profile}, setting testplan to ET-388")
                 e2e_params['xray_test_plan'] = 'ET-388'
           }
-          e2e_params['e2e_image_tag'] = 'hc1-' + common.GetTestTag()
+          e2e_params['e2e_image_tag'] = 'hc1-' + common.GetTestTag() + "-" + e2e_params['kubernetes_verion']
           build_params = [
             mayastorBranch : 'release/1.0',
             mcpBranch : 'release/1.0',
@@ -98,29 +101,6 @@ pipeline {
         }
       }
     }//stage build docker images
-    stage('push images to Docker Hub') {
-      agent { label 'nixos-mayastor' }
-      steps {
-        catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
-            script{
-                def test_tag = e2e_params['e2e_image_tag']
-                def publish_tag = e2e_params['publish_tag']
-                withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
-                    sh 'echo $PASSWORD | docker login -u $USERNAME --password-stdin'
-                }
-                sh "./scripts/re-tag-images.sh --src-tag ${test_tag} --alias-tag ${publish_tag} --registry dockerhub"
-            }
-        }
-      }
-      post {
-          always {
-              catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
-                sh 'docker logout'
-                sh 'docker image prune --all --force'
-              }
-          }
-      }
-    }//stage 'push images'
     stage('build tests queue')  {
         agent { label 'nixos' }
         steps {
