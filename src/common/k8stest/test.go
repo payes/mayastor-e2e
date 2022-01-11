@@ -232,20 +232,16 @@ func resourceCheck(waitForPools bool) error {
 		errs.Accumulate(fmt.Errorf("found PersistentVolumes"))
 	}
 
-	//FIXME: control plane 1 temporary do not check MSVs
-	if controlplane.MajorVersion() == 0 {
-		// Mayastor volumes
-		msvs, err := ListMsvs()
-		if err != nil {
-			errs.Accumulate(err)
-		} else {
-			if msvs != nil {
-				if len(msvs) != 0 {
-					errs.Accumulate(fmt.Errorf("found MayastorVolumes"))
-				}
-			} else {
-				logf.Log.Info("Listing MSVs returned nil array")
+	msvs, err := ListMsvs()
+	if err != nil {
+		errs.Accumulate(err)
+	} else {
+		if msvs != nil {
+			if len(msvs) != 0 {
+				errs.Accumulate(fmt.Errorf("found MayastorVolumes"))
 			}
+		} else {
+			logf.Log.Info("Listing MSVs returned nil array")
 		}
 	}
 

@@ -23,6 +23,7 @@ import (
 )
 
 const (
+	defWaitTimeout   = "600s"
 	defTimeoutSecs   = 240  // in seconds
 	durationSecs     = 600  // in seconds
 	volumeFileSizeMb = 250  // in Mb
@@ -182,6 +183,8 @@ func (c *failureConfig) RebootDesiredNodes(uuid string) {
 		Expect(c.platform.PowerOnNode(nexusNode)).ToNot(HaveOccurred(), "Failed to PowerOnNode %s for RebootNexusNode test", nexusNode)
 
 	}
+	k8stest.WaitForMCPPath(defWaitTimeout)
+	k8stest.WaitForMayastorSockets(k8stest.GetMayastorNodeIPAddresses(), defWaitTimeout)
 }
 
 func (c *failureConfig) verifyMayastorComponentStates(numMayastorInstances int) {
@@ -216,18 +219,18 @@ func (c *failureConfig) verifyMayastorComponentStates(numMayastorInstances int) 
 
 func (c *failureConfig) verifyApplicationPodRunning(state bool) {
 	labels := "e2e-test=reboot"
-	logf.Log.Info("Verify application deployment ready", "state", state)
 	Eventually(func() bool {
 		runningStatus := k8stest.DeploymentReady(c.deployName, common.NSDefault)
+		logf.Log.Info("Verify application deployment ready", "desired state", state, "actual state", runningStatus)
 		return runningStatus
 	},
 		defTimeoutSecs, // timeout
 		5,              // polling interval
 	).Should(Equal(state))
 
-	logf.Log.Info("Verify application pod running", "state", state)
 	Eventually(func() bool {
 		_, runningStatus, err := k8stest.IsPodWithLabelsRunning(labels, common.NSDefault)
+		logf.Log.Info("IsPodWithLabelsRunning", "labels", labels, "desired state", state, "actual state", runningStatus, "error", err)
 		Expect(err).ToNot(HaveOccurred())
 		return runningStatus
 	},

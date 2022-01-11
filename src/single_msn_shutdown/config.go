@@ -13,6 +13,7 @@ import (
 
 const (
 	defTimeoutSecs   = 300 // in seconds
+	defWaitTimeout   = "600s"
 	volumeFileSizeMb = 100
 	thinkTime        = 100000 // in milliseconds
 	thinkTimeBlocks  = 10

@@ -8,11 +8,13 @@ import (
 	"mayastor-e2e/common"
 	"mayastor-e2e/common/e2e_config"
 
+	. "github.com/onsi/gomega"
 	errors "github.com/pkg/errors"
 	coreV1 "k8s.io/api/core/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const (
@@ -260,4 +262,20 @@ func ListPod(ns string) (*v1.PodList, error) {
 		return nil, errors.New("failed to list pods")
 	}
 	return pods, nil
+}
+
+func VerifyPodsOnNode(podLabelsList []string, nodeName string, namespace string) {
+	for _, label := range podLabelsList {
+		Eventually(func() bool {
+			nodeList, err := GetNodeListForPods("app="+label, namespace)
+			if err == nil && len(nodeList) == 1 && nodeList[nodeName] == v1.PodRunning {
+				return true
+			}
+			logf.Log.Info("VerifyPodsOnNode", "podLabel", label, "NodList", nodeList, "error", err)
+			return false
+		},
+			300, // timeout
+			5,   // polling interval
+		).Should(Equal(true))
+	}
 }

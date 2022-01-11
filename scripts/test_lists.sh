@@ -138,6 +138,7 @@ single_msn_shutdown
 stale_msp_after_node_power_failure
 synchronous_replication
 volume_filesystem
+MQ-2307-etcd_inaccessibility
 "
 #stale_msp_after_node_power_failure is moac specific
 
