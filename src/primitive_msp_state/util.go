@@ -98,7 +98,7 @@ func verifyMspState(poolName string, crPool v1alpha1.MayastorPool,
 func verifyMspCapacity(poolName string, crPool v1alpha1.MayastorPool,
 	grpcPool mayastorclient.MayastorPool) bool {
 	var status bool
-	if int64(crPool.Status.Capacity) == int64(grpcPool.Capacity) {
+	if crPool.Status.Capacity == grpcPool.Capacity {
 		status = true
 	} else {
 		logf.Log.Info("verifyMspState",
@@ -114,7 +114,7 @@ func verifyMspCapacity(poolName string, crPool v1alpha1.MayastorPool,
 func verifyMspUsedSpace(poolName string, crPool v1alpha1.MayastorPool,
 	grpcPool mayastorclient.MayastorPool) bool {
 	var status bool
-	if int64(crPool.Status.Used) == int64(grpcPool.Used) {
+	if crPool.Status.Used == grpcPool.Used {
 		status = true
 	} else {
 		logf.Log.Info("verifyMspUsedSpace", "pool", poolName, "CR", crPool.Status.Used, "gRPC", grpcPool.Used)
