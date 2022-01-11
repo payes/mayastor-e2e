@@ -205,9 +205,15 @@ func DeletePVC(volName string, nameSpace string) error {
 	return nil
 }
 
-// determine the effective MSV state using grpc calls to the mayastor instances
-// TODO - identify nexus by UUID when the functionality is fixed.
-// For now assume there is one nexus and it is the one to test.
+func ListPVCs(nameSpace string) (*coreV1.PersistentVolumeClaimList, error) {
+	pvcs, err := gKubeInt.CoreV1().PersistentVolumeClaims(nameSpace).List(context.TODO(), metaV1.ListOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list PVCs, error %v", err)
+	}
+	return pvcs, err
+}
+
+// gather the set of MSV states using grpc calls to the mayastor instances
 func GetNexusStates(nodeIPs []string) ([]string, error) {
 	var states []string
 

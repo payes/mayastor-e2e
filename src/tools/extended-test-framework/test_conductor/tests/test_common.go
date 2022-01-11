@@ -37,10 +37,25 @@ const MCP_MSV_FAULTED = "Faulted"
 const MCP_MSV_ONLINE = "Online"
 const MCP_MSV_UNKNOWN = "Unknown"
 
+const PV_PREFIX = "pvc-"
+
 var violations = []models.WorkloadViolationEnum{
 	models.WorkloadViolationEnumRESTARTED,
 	models.WorkloadViolationEnumTERMINATED,
 	models.WorkloadViolationEnumNOTPRESENT,
+}
+
+func checkPVCexists(vol_id string) (bool, error) {
+	pvc_list, err := k8sclient.ListPVCs(k8sclient.NSDefault)
+	if err != nil {
+		return false, err
+	}
+	for _, pvc := range pvc_list.Items {
+		if pvc.Spec.VolumeName == PV_PREFIX+vol_id {
+			return true, err
+		}
+	}
+	return false, err
 }
 
 func CheckMSVwithCP(ms_ip string) error {
@@ -52,8 +67,14 @@ func CheckMSVwithCP(ms_ip string) error {
 		switch vol.State.Status {
 
 		case MCP_MSV_FAULTED:
-			return fmt.Errorf("found faulted volume, uuid %s", vol.State.Uuid)
-
+			exists, err := checkPVCexists(vol.State.Uuid)
+			if err != nil {
+				return fmt.Errorf("failed to check PVC exists, error: %v", err)
+			} else if exists {
+				return fmt.Errorf("found faulted volume, uuid %s", vol.State.Uuid)
+			} else {
+				logf.Log.Info("Spurious faulted volume", "uuid", vol.State.Uuid)
+			}
 		case MCP_MSV_ONLINE:
 		case MCP_MSV_DEGRADED:
 		case MCP_MSV_UNKNOWN:
