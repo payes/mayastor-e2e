@@ -7,19 +7,11 @@ type MayastorPoolSpec struct {
 	Node  string   `json:"node"`
 }
 
-type spec struct {
-	Disks []string `json:"disks"`
-	Node  string   `json:"node"`
-}
-
 type MayastorPoolStatus struct {
-	Avail    int64    `json:"avail"`
-	Capacity int64    `json:"capacity"`
-	Disks    []string `json:"disks"`
-	Reason   string   `json:"reason"`
-	Spec     spec     `json:"spec"`
-	State    string   `json:"state"`
-	Used     int64    `json:"used"`
+	Available uint64 `json:"available"`
+	Capacity  uint64 `json:"capacity"`
+	State     string `json:"state"`
+	Used      uint64 `json:"used"`
 }
 
 type MayastorPool struct {

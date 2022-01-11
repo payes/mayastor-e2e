@@ -15,16 +15,15 @@ func crdToMsp(crdMsp *v1alpha1Api.MayastorPool) common.MayastorPool {
 			Disks: crdMsp.Spec.Disks,
 		},
 		Status: common.MayastorPoolStatus{
-			Capacity: crdMsp.Status.Capacity,
-			Used:     crdMsp.Status.Used,
-			Disks:    crdMsp.Status.Disks,
+			Capacity: int64(crdMsp.Status.Capacity),
+			Used:     int64(crdMsp.Status.Used),
+			Disks:    crdMsp.Spec.Disks,
 			Spec: common.MayastorPoolSpec{
 				Disks: crdMsp.Spec.Disks,
 				Node:  crdMsp.Spec.Node,
 			},
-			State:  crdMsp.Status.State,
-			Avail:  crdMsp.Status.Avail,
-			Reason: crdMsp.Status.Reason,
+			State: crdMsp.Status.State,
+			Avail: int64(crdMsp.Status.Available),
 		},
 	}
 }
