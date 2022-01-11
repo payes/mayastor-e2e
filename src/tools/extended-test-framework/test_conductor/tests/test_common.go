@@ -37,10 +37,25 @@ const MCP_MSV_FAULTED = "Faulted"
 const MCP_MSV_ONLINE = "Online"
 const MCP_MSV_UNKNOWN = "Unknown"
 
+const PV_PREFIX = "pvc-"
+
 var violations = []models.WorkloadViolationEnum{
 	models.WorkloadViolationEnumRESTARTED,
 	models.WorkloadViolationEnumTERMINATED,
 	models.WorkloadViolationEnumNOTPRESENT,
+}
+
+func checkPVCexists(vol_id string) (bool, error) {
+	pvc_list, err := k8sclient.ListPVCs(k8sclient.NSDefault)
+	if err != nil {
+		return false, err
+	}
+	for _, pvc := range pvc_list.Items {
+		if pvc.Spec.VolumeName == PV_PREFIX+vol_id {
+			return true, err
+		}
+	}
+	return false, err
 }
 
 func CheckMSVwithCP(ms_ip string) error {
@@ -52,8 +67,14 @@ func CheckMSVwithCP(ms_ip string) error {
 		switch vol.State.Status {
 
 		case MCP_MSV_FAULTED:
-			return fmt.Errorf("found faulted volume, uuid %s", vol.State.Uuid)
-
+			exists, err := checkPVCexists(vol.State.Uuid)
+			if err != nil {
+				return fmt.Errorf("failed to check PVC exists, error: %v", err)
+			} else if exists {
+				return fmt.Errorf("found faulted volume, uuid %s", vol.State.Uuid)
+			} else {
+				logf.Log.Info("Spurious faulted volume", "uuid", vol.State.Uuid)
+			}
 		case MCP_MSV_ONLINE:
 		case MCP_MSV_DEGRADED:
 		case MCP_MSV_UNKNOWN:
@@ -191,10 +212,12 @@ func MonitorCRs(
 	pod_to_check string) error {
 
 	var endTime = time.Now().Add(duration)
-	var waitSecs = 5
-	for i := 0; ; i++ {
-		if i%100 == 0 {
-			logf.Log.Info("Monitoring CRs", "seconds elapsed", i*waitSecs)
+	var elapsedSecs = 0
+	const waitSecs = 5
+	const progressSecs = 240
+	for {
+		if elapsedSecs%progressSecs == 0 {
+			logf.Log.Info("Monitoring CRs", "hours", elapsedSecs/3600, "minutes", elapsedSecs/60)
 		}
 		ms_ips, err := k8sclient.GetMayastorNodeIPs()
 		if err != nil {
@@ -230,6 +253,7 @@ func MonitorCRs(
 			}
 		}
 		time.Sleep(time.Duration(waitSecs) * time.Second)
+		elapsedSecs += waitSecs
 	}
 	return nil
 }
@@ -271,11 +295,12 @@ func WaitPodNotRunning(pod_to_check string, timeout time.Duration) error {
 
 func SendTestRunToDo(testConductor *tc.TestConductor) error {
 	if testConductor.Config.SendXrayTest == 1 {
+		text := testDescription(testConductor) + " Test run: preparing"
 		if err := common.SendTestRunToDo(
 			testConductor.TestDirectorClient,
 			testConductor.TestRunId,
-			"",
-			testConductor.Config.Test); err != nil {
+			text,
+			testConductor.Config.XrayTestID); err != nil {
 
 			return fmt.Errorf("failed to create test run, error: %v", err)
 		}
@@ -288,11 +313,12 @@ func SendTestRunToDo(testConductor *tc.TestConductor) error {
 
 func SendTestRunStarted(testConductor *tc.TestConductor) error {
 	if testConductor.Config.SendXrayTest == 1 {
+		text := testDescription(testConductor) + " Test run: started"
 		if err := common.SendTestRunStarted(
 			testConductor.TestDirectorClient,
 			testConductor.TestRunId,
-			"",
-			testConductor.Config.Test); err != nil {
+			text,
+			testConductor.Config.XrayTestID); err != nil {
 
 			return fmt.Errorf("failed to set test run to executing, error: %v", err)
 		}
@@ -305,12 +331,13 @@ func SendTestRunStarted(testConductor *tc.TestConductor) error {
 
 func SendTestRunFinished(testConductor *tc.TestConductor, err error) error {
 	if testConductor.Config.SendXrayTest == 1 {
+		text := testDescription(testConductor) + " Test run: finished"
 		if err == nil {
 			if err := common.SendTestRunCompletedOk(
 				testConductor.TestDirectorClient,
 				testConductor.TestRunId,
-				"",
-				testConductor.Config.Test); err != nil {
+				text,
+				testConductor.Config.XrayTestID); err != nil {
 				return fmt.Errorf("failed to set test run to completed, error: %v", err)
 			}
 		} else {
@@ -318,7 +345,7 @@ func SendTestRunFinished(testConductor *tc.TestConductor, err error) error {
 				testConductor.TestDirectorClient,
 				testConductor.TestRunId,
 				err.Error(),
-				testConductor.Config.Test); err != nil {
+				testConductor.Config.XrayTestID); err != nil {
 				return fmt.Errorf("failed to set test run to failed, error: %v", err)
 			}
 		}
@@ -335,20 +362,27 @@ func SendTestRunFinished(testConductor *tc.TestConductor, err error) error {
 	return nil
 }
 
+func testDescription(testConductor *tc.TestConductor) string {
+	return testConductor.Config.XrayTestID + ", " + testConductor.Config.TestName + ", " + testConductor.Config.RunName
+}
+
 func SendEventTestPreparing(testConductor *tc.TestConductor) error {
-	return SendEvent(testConductor, td.EventClassEnumINFO, "Test preparing, "+testConductor.Config.Test)
+	return SendEvent(
+		testConductor,
+		td.EventClassEnumINFO,
+		"Event: test preparing on node: "+testConductor.NodeName)
 }
 
 func SendEventTestStarted(testConductor *tc.TestConductor) error {
-	return SendEvent(testConductor, td.EventClassEnumINFO, "Test started, "+testConductor.Config.Test)
+	return SendEvent(testConductor, td.EventClassEnumINFO, "Event: test started")
 }
 
 func SendEventTestCompletedOk(testConductor *tc.TestConductor) error {
-	return SendEvent(testConductor, td.EventClassEnumINFO, "Test completed, "+testConductor.Config.Test)
+	return SendEvent(testConductor, td.EventClassEnumINFO, "Event: test completed")
 }
 
 func SendEventTestCompletedFail(testConductor *tc.TestConductor, text string) error {
-	return SendEvent(testConductor, td.EventClassEnumFAIL, "Test failed:, "+text)
+	return SendEvent(testConductor, td.EventClassEnumFAIL, "Event: test failure: "+text)
 }
 
 func SendEvent(testConductor *tc.TestConductor, eventClass td.EventClassEnum, message string) error {
@@ -356,7 +390,7 @@ func SendEvent(testConductor *tc.TestConductor, eventClass td.EventClassEnum, me
 		if err := common.SendEvent(
 			testConductor.TestDirectorClient,
 			testConductor.TestRunId,
-			message,
+			testDescription(testConductor)+" "+message,
 			eventClass,
 			td.EventSourceClassEnumTestDashConductor); err != nil {
 			return fmt.Errorf("failed to inform test director of event, error: %v", err)

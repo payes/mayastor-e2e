@@ -24,6 +24,8 @@ def e2e_params = [
     e2e_destroy_cluster_job : 'k8s-destroy-cluster',
     // Environment to run e2e test in (job param of e2e_build_cluster_job)
     e2e_environment : "hcloud-kubeadm",
+    //Kubernetes version
+    kubernetes_verion : '',
 
     // Mayastor image tag - image tag for testing.
     e2e_image_tag : '',

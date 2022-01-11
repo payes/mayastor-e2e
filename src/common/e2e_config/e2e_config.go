@@ -266,6 +266,13 @@ type E2EConfig struct {
 		FileSystemType    string `yaml:"fileSystemType" env-default:"ext4"`
 		NumberOfOperation int    `yaml:"numberOfOperation" env-default:"9977777"`
 	} `yaml:"fsxExt4Stress"`
+	PvcCreateDelete struct {
+		Replicas         int `yaml:"replicas" env-default:"3"`
+		VolSize          int `yaml:"volMb" env-default:"20"`
+		Iterations       int `yaml:"iterations" env-default:"1"`
+		VolumeMultiplier int `yaml:"volumeMultiplier" env-default:"110"`
+		DelayTime        int `yaml:"delayTime" env-default:"10"`
+	} `yaml:"pvcCreateDelete"`
 }
 
 var once sync.Once

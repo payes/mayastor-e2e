@@ -18,6 +18,7 @@ type TestConductor struct {
 	WorkloadMonitorClient *wm.Etfw
 	Config                ExtendedTestConfig
 	TestRunId             strfmt.UUID
+	NodeName              string
 }
 
 const SourceInstance = "test-conductor"
@@ -60,6 +61,7 @@ func NewTestConductor() (*TestConductor, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tc pod uid, error: %v", err)
 	}
+	testConductor.NodeName = tcpod.Spec.NodeName
 
 	testConductor.TestRunId = strfmt.UUID(tcpod.ObjectMeta.UID)
 

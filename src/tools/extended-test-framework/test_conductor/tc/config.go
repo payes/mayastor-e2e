@@ -16,12 +16,13 @@ const gConfigFile = "/config.yaml"
 
 // E2EConfig is a application configuration structure
 type ExtendedTestConfig struct {
-	TestName string `yaml:"testName" env-default:"default"`
+	RunName  string `yaml:"RunName" env-default:"unnamed" env:"RUNNAME"` // human-readable test instance name for logging
+	TestName string `yaml:"testName" env-default:"default"`              // selected test to run
 
 	// FIXME: handle empty poolDevice
 	PoolDevice   string `yaml:"poolDevice" env:"e2e_pool_device"`
 	E2eFioImage  string `yaml:"e2eFioImage" env-default:"mayadata/e2e-fio" env:"e2e_fio_image"`
-	Test         string `yaml:"test" env:"e2e_test"`
+	XrayTestID   string `yaml:"test" env:"e2e_test"`
 	Msnodes      int    `yaml:"msnodes" env-default:"3" env:"e2e_msnodes"`
 	Duration     string `yaml:"duration" env-default:"60m" env:"DURATION"`
 	SendXrayTest int    `yaml:"sendXrayTest" env-default:"1" env:"SENDXRAYTEST"`

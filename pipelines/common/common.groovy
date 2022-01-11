@@ -177,6 +177,32 @@ def BuildCluster(e2e_build_cluster_job, e2e_environment) {
   )
 }
 
+def BuildK8sVersionedCluster(e2e_build_cluster_job, e2e_environment, kubernetes_verion) {
+  def uuid = UUID.randomUUID()
+  return build(
+    job: "${e2e_build_cluster_job}",
+    propagate: true,
+    wait: true,
+    parameters: [
+      [
+        $class: 'StringParameterValue',
+        name: "ENVIRONMENT",
+        value: "${e2e_environment}"
+      ],
+      [
+        $class: 'StringParameterValue',
+        name: "UUID",
+        value: "${uuid}"
+      ],
+      [
+        $class: 'StringParameterValue',
+        name: "KUBERNETES_VERSION",
+        value: "${kubernetes_verion}"
+      ]
+    ]
+  )
+}
+
 def DestroyCluster(e2e_destroy_cluster_job, k8s_job) {
   build(
     job: "${e2e_destroy_cluster_job}",
@@ -268,6 +294,16 @@ def LokiUninstall(tag, test) {
   sh 'kubectl delete -f ./loki/promtail_namespace_e2e.yaml'
 }
 
+// Install Loki on the cluster with kubernetes version 1.22 and above
+def LokiInstallV1(tag, test) {
+  String loki_run_id = GetLokiRunId()
+  sh 'kubectl apply -f ./loki/promtail_namespace_e2e.yaml'
+  sh 'kubectl apply -f ./loki/promtail_rbac_e2e_v1.yaml'
+  sh 'kubectl apply -f ./loki/promtail_configmap_e2e.yaml'
+  def cmd = "run=\"${loki_run_id}\" version=\"${tag}\" test=\"${test}\" envsubst -no-unset < ./loki/promtail_daemonset_e2e.template.yaml | kubectl apply -f -"
+  sh "nix-shell --run '${cmd}'"
+}
+
 def GetTestList(profile) {
   def list = sh(
     script: "scripts/e2e-get-test-list.sh '${profile}'",
@@ -327,12 +363,18 @@ def RunOneTestPerCluster(e2e_test,
                           e2e_build_cluster_job,
                           e2e_destroy_cluster_job,
                           e2e_environment,
-                          e2e_reports_dir) {
+                          e2e_reports_dir,
+                          kubernetes_verion) {
     def failed_tests=""
     def k8s_job=""
     def testset = "install ${e2e_test} uninstall"
     println testset
-    k8s_job = BuildCluster(e2e_build_cluster_job, e2e_environment)
+    println kubernetes_verion
+    if (kubernetes_verion != "" && kubernetes_verion != null){
+      k8s_job = BuildK8sVersionedCluster(e2e_build_cluster_job, e2e_environment, kubernetes_verion)
+    } else {
+      k8s_job = BuildCluster(e2e_build_cluster_job, e2e_environment)
+    }
     GetClusterAdminConf(e2e_environment, k8s_job)
     def session_id = e2e_test.replaceAll(",", "-")
 
@@ -343,7 +385,11 @@ def RunOneTestPerCluster(e2e_test,
       usernamePassword(credentialsId: 'GRAFANA_API', usernameVariable: 'grafana_api_user', passwordVariable: 'grafana_api_pw'),
       string(credentialsId: 'HCLOUD_TOKEN', variable: 'HCLOUD_TOKEN')
     ]) {
-      LokiInstall(test_tag, e2e_test)
+      if (kubernetes_verion != "" && kubernetes_verion != null && kubernetes_verion != "1.21.7"){
+          LokiInstallV1(test_tag, e2e_test)
+      } else {
+          LokiInstall(test_tag, e2e_test)
+      }
       try {
         sh "nix-shell --run '${cmd}'"
       } catch(err) {
@@ -487,6 +533,7 @@ def RunParallelStage(Map params) {
     def e2e_destroy_cluster_job = params['e2e_destroy_cluster_job']
     def e2e_environment = params['e2e_environment']
     def e2e_reports_dir = params['e2e_reports_dir']
+    def kubernetes_verion = params['kubernetes_verion']
 
     def loki_run_id = GetLokiRunId()
 
@@ -499,7 +546,8 @@ def RunParallelStage(Map params) {
                                                     e2e_build_cluster_job,
                                                     e2e_destroy_cluster_job,
                                                     e2e_environment,
-                                                    e2e_reports_dir)
+                                                    e2e_reports_dir,
+                                                    kubernetes_verion)
 
             if (failed_test != "") {
                 failed_tests_queue.add(failed_test)

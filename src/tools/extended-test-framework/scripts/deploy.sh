@@ -2,13 +2,14 @@
 
 set -e
 
-TESTARG=""
-OPERATION=""
-PLANARG=""
 DURATIONARG=""
+RUNNAMEARG=""
+OPERATION=""
+PATHARG=""
+PLANARG=""
 SENDXRAYTESTARG="1"
 SENDEVENTARG="1"
-PATHARG=""
+TESTARG=""
 
 help() {
   cat <<EOF
@@ -16,11 +17,12 @@ Usage: $0 [OPTIONS]
 or:    $0 --remove
 
 Options:
+  --duration <duration>  set the overal run time for the test with units, e.g. 12d, 34h, 56m27s etc
+  --name                 optional string passed to log output to identify test
+  --plan <test plan ID>  specify the test plan to receive the test runs
+  --secure-file-path	 file path for k8s sealed secrets
   --test <name>          test_conductor test to run, steady_state, non_steady_state,
                          non_steady_state_multi_vols, or replica_perturbation
-  --plan <test plan ID>  specify the test plan to receive the test runs
-  --duration <duration>  set the overal run time for the test with units, e.g. 12d, 34h, 56m27s etc
-  --secure-file-path	 file path for k8s sealed secrets
 or
   --remove               remove instead of deploy
 Examples:
@@ -33,6 +35,32 @@ EOF
 while [ "$#" -gt 0 ]; do
   case "$1" in
 
+    -d|--duration)
+      shift
+      DURATIONARG=$1
+      ;;
+    --noevent)
+      SENDEVENTARG=0
+      ;;
+    --noxraytest)
+      SENDXRAYTESTARG=0
+      ;;
+    -n|--name)
+      shift
+      RUNNAMEARG=$1
+      ;;
+    -p|--plan)
+      shift
+      PLANARG=$1
+      ;;
+    -r|--remove)
+      OPERATION="delete"
+      set +e # we can ignore errors when undeploying
+      ;;
+    -s|--secure-file-path)
+      shift
+      PATHARG=$1
+      ;;
     -t|--test)
       shift
       case $1 in
@@ -45,28 +73,6 @@ while [ "$#" -gt 0 ]; do
                 exit 1
 		;;
       esac
-      ;;
-    -d|--duration)
-      shift
-      DURATIONARG=$1
-      ;;
-    -p|--plan)
-      shift
-      PLANARG=$1
-      ;;
-    -s|--secure-file-path)
-      shift
-      PATHARG=$1
-      ;;
-    -r|--remove)
-      OPERATION="delete"
-      set +e # we can ignore errors when undeploying
-      ;;
-    --noevent)
-      SENDEVENTARG=0
-      ;;
-    --noxraytest)
-      SENDXRAYTESTARG=0
       ;;
     -h)
       help
@@ -149,7 +155,7 @@ else
   kubectl create configmap tc-config -n mayastor-e2e --from-file=${DEPLOYDIR}/test_conductor/${TESTARG}/config.yaml
 
   kubectl create -f ${DEPLOYDIR}/test_conductor/test_conductor.yaml
-  TEST=${IMAGEARG} DURATION=${DURATIONARG} SENDXRAYTEST=${SENDXRAYTESTARG} SENDEVENT=${SENDEVENTARG} envsubst  < ${DEPLOYDIR}/test_conductor/test_conductor_pod.yaml.template | kubectl apply -f -
+  DURATION=${DURATIONARG} RUNNAME=${RUNNAMEARG} SENDXRAYTEST=${SENDXRAYTESTARG} SENDEVENT=${SENDEVENTARG} TEST=${IMAGEARG} envsubst  < ${DEPLOYDIR}/test_conductor/test_conductor_pod.yaml.template | kubectl apply -f -
 
   kubectl create -f ${DEPLOYDIR}/workload_monitor/workload_monitor.yaml
 fi
