@@ -9,6 +9,7 @@ import (
 
 const (
 	defTimeoutSecs = 120 // in seconds
+	defWaitTimeout = "600s"
 )
 
 type nodepowerfailureConfig struct {
