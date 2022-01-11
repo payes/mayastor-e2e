@@ -128,7 +128,7 @@ func ConcurrentCreateDeletePoolTest() {
 
 func ConcurrentCreateDeletePoolOnSingleNodeTest() {
 	params := e2e_config.GetConfig().PrimitiveMspStressTest
-	Expect(GiB*int64(params.PartitionSizeInGiB*params.PartitionCount) < PoolCapacity).To(Equal(true), "Total of partition sizes exceeding pool size")
+	Expect(uint64(GiB*int64(params.PartitionSizeInGiB*params.PartitionCount)) < PoolCapacity).To(Equal(true), "Total of partition sizes exceeding pool size")
 	wg := sync.WaitGroup{}
 	nodeList, err := k8stest.GetNodeLocsMap()
 	Expect(err).ToNot(HaveOccurred(), "%v", err)
@@ -143,7 +143,7 @@ func ConcurrentCreateDeletePoolOnSingleNodeTest() {
 			poolSuffix := "-pool-" + strconv.Itoa(i)
 			go func(node k8stest.NodeLocation) {
 				defer GinkgoRecover()
-				CreateDeletePools(map[string]k8stest.NodeLocation{node.NodeName: node}, poolSuffix, 1, diskPath, GiB*int64(params.PartitionSizeInGiB))
+				CreateDeletePools(map[string]k8stest.NodeLocation{node.NodeName: node}, poolSuffix, 1, diskPath, uint64(GiB*int64(params.PartitionSizeInGiB)))
 				wg.Done()
 			}(node)
 		}

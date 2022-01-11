@@ -166,7 +166,7 @@ func (c *mspStateConfig) checkPoolUsedSize(poolName string, replicaSize int64) e
 		time.Sleep(time.Duration(sleepTimeSecs) * time.Second)
 		pool, err := k8stest.GetMsPool(poolName)
 		Expect(err).ToNot(HaveOccurred(), fmt.Sprintf("failed to get mayastor pool %s %v", poolName, err))
-		if pool.Status.Used == replicaSize {
+		if int64(pool.Status.Used) == replicaSize {
 			return nil
 		}
 	}

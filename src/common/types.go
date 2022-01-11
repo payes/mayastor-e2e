@@ -126,13 +126,13 @@ type MayastorPoolSpec struct {
 }
 
 type MayastorPoolStatus struct {
-	Avail    int64            `json:"avail"`
-	Capacity int64            `json:"capacity"`
+	Avail    uint64           `json:"avail"`
+	Capacity uint64           `json:"capacity"`
 	Disks    []string         `json:"disks"`
 	Reason   string           `json:"reason"`
 	Spec     MayastorPoolSpec `json:"spec"`
 	State    string           `json:"state"`
-	Used     int64            `json:"used"`
+	Used     uint64           `json:"used"`
 }
 
 type MayastorPoolInterface interface {

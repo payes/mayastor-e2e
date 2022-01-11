@@ -73,20 +73,20 @@ func (c *primitiveMaxVolConfig) removeVolumes() *primitiveMaxVolConfig {
 }
 
 // verify msp used size
-func (c *primitiveMaxVolConfig) verifyMspUsedSize(size int64) {
+func (c *primitiveMaxVolConfig) verifyMspUsedSize(size uint64) {
 	// List Pools by CRDs
 	crdPools, err := k8stest.ListMsPools()
 	Expect(err).ToNot(HaveOccurred(), "List pools via CRD failed")
 	for _, crdPool := range crdPools {
 		replicaCount := poolReplicaCount(crdPool.Name, crdPool.Spec.Node)
-		expectedUsedPoolSize := 1024 * 1024 * size * int64(replicaCount)
+		expectedUsedPoolSize := 1024 * 1024 * size * uint64(replicaCount)
 		err := checkPoolUsedSize(crdPool.Name, expectedUsedPoolSize)
 		Expect(err).ShouldNot(HaveOccurred(), "failed to verify used size of pool %s error %v", crdPool.Name, err)
 	}
 }
 
 // checkPoolUsedSize verify mayastor pool used size
-func checkPoolUsedSize(poolName string, usedSize int64) error {
+func checkPoolUsedSize(poolName string, usedSize uint64) error {
 	logf.Log.Info("Waiting for pool used size", "name", poolName)
 	for ix := 0; ix < (timeoutSec+sleepTimeSec-1)/sleepTimeSec; ix++ {
 		time.Sleep(time.Duration(sleepTimeSec) * time.Second)

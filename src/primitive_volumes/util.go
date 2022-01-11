@@ -186,7 +186,7 @@ func msnList() int {
 }
 
 // verify msp used size
-func (c *pvcConcurrentConfig) waitForMspUsedSize(size int64) {
+func (c *pvcConcurrentConfig) waitForMspUsedSize(size uint64) {
 	// List Pools by CRDs
 	crdPools, err := k8stest.ListMsPools()
 	Expect(err).ToNot(HaveOccurred(), "List pools via CRD failed")
@@ -197,7 +197,7 @@ func (c *pvcConcurrentConfig) waitForMspUsedSize(size int64) {
 }
 
 // checkPoolUsedSize verify mayastor pool used size
-func checkPoolUsedSize(poolName string, usedSize int64) error {
+func checkPoolUsedSize(poolName string, usedSize uint64) error {
 	logf.Log.Info("Waiting for pool used size", "name", poolName)
 	for ix := 0; ix < (timeoutSec+sleepTimeSec-1)/sleepTimeSec; ix++ {
 		time.Sleep(time.Duration(sleepTimeSec) * time.Second)
