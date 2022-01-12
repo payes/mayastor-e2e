@@ -25,12 +25,12 @@ type mspSpec struct {
 }
 
 type mspState struct {
-	Capacity int64    `json:"capacity"`
+	Capacity uint64   `json:"capacity"`
 	Disks    []string `json:"disks"`
 	ID       string   `json:"id"`
 	Node     string   `json:"node"`
 	Status   string   `json:"status"`
-	Used     int64    `json:"used"`
+	Used     uint64   `json:"used"`
 }
 
 func GetMayastorCpPool(name string) (*MayastorCpPool, error) {

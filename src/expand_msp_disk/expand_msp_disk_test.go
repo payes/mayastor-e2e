@@ -81,7 +81,7 @@ func diskPartitioningTest(protocol common.ShareProto, volumeType common.VolumeTy
 	// Storage capacity of pool before resizing the disk
 	pools, err = k8stest.ListMsPools()
 	Expect(err).ToNot(HaveOccurred(), "List pools failed")
-	capacityBeforeDiskResize := map[string]int64{}
+	capacityBeforeDiskResize := map[string]uint64{}
 	for _, pool := range pools {
 		capacityBeforeDiskResize[pool.Name] = pool.Status.Capacity
 	}
@@ -122,7 +122,7 @@ func diskPartitioningTest(protocol common.ShareProto, volumeType common.VolumeTy
 			break
 		}
 	}
-	capacityAfterDiskResize := map[string]int64{}
+	capacityAfterDiskResize := map[string]uint64{}
 
 	// Store capacity of pools after
 	// resizing the partitioned disk
@@ -282,7 +282,7 @@ func createFioPod(podName string, volName string, durationSecs string, volumeFil
 }
 
 // compareDiskSize compares disk
-func compareDiskSize(capacityBeforeDiskResize map[string]int64, capacityAfterDiskResize map[string]int64) error {
+func compareDiskSize(capacityBeforeDiskResize map[string]uint64, capacityAfterDiskResize map[string]uint64) error {
 	for poolName, poolCapacity := range capacityBeforeDiskResize {
 		if capacityAfterDiskResize[poolName] != poolCapacity {
 			return errors.Errorf("Capacity of pool: %s changed, capacity before disk partition : %d and capacity after disk partition : %d", poolName, poolCapacity, capacityAfterDiskResize[poolName])

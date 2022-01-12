@@ -1,109 +1,140 @@
-apiVersion: apiextensions.k8s.io/v1
-kind: CustomResourceDefinition
-metadata:
-  name: mayastorpools.openebs.io
-spec:
-  group: openebs.io
-  versions:
-    - name: v1alpha1
-      served: true
-      storage: true
-      subresources:
-        status: {}
-      schema:
-        openAPIV3Schema:
-          type: object
-          properties:
-            apiVersion:
-              type: string
-            kind:
-              type: string
-            metadata:
-              type: object
-            spec:
-              description: Specification of the mayastor pool.
-              type: object
-              required:
-              - node
-              - disks
-              properties:
-                node:
-                  description: Name of the k8s node where the storage pool is located.
-                  type: string
-                disks:
-                  description: Disk devices (paths or URIs) that should be used for the pool.
-                  type: array
-                  items:
-                    type: string
-            status:
-              description: Status part updated by the pool controller.
-              type: object
-              properties:
-                spec:
-                  type: object
-                  properties:
-                    node:
-                      description: Name of the k8s node where the storage pool is located. (set on creation)
-                      type: string
-                    disks:
-                      description: Disk devices (paths or URIs) that should be used for the pool. (set on creation)
-                      type: array
-                      items:
-                        type: string
-                state:
-                  description: Pool state.
-                  type: string
-                reason:
-                  description: Reason for the pool state value if applicable.
-                  type: string
-                disks:
-                  description: Disk device URIs that are actually used for the pool.
-                  type: array
-                  items:
-                    type: string
-                capacity:
-                  description: Capacity of the pool in bytes.
-                  type: integer
-                  format: int64
-                  minimum: 0
-                used:
-                  description: How many bytes are used in the pool.
-                  type: integer
-                  format: int64
-                  minimum: 0
-                avail:
-                  description: Free space in the pool in bytes.
-                  type: integer
-                  format: int64
-                  minimum: 0
-      additionalPrinterColumns:
-      - name: Node
-        type: string
-        description: Node where the storage pool is located
-        jsonPath: .spec.node
-      - name: State
-        type: string
-        description: State of the storage pool
-        jsonPath: .status.state
-      - name: Capacity
-        type: integer
-        description: Capacity of the pool in bytes.
-        format: int64
-        jsonPath: .status.capacity
-      - name: Used
-        type: integer
-        description: How many bytes are used in the pool.
-        format: int64
-        jsonPath: .status.used
-      - name: Avail
-        type: integer
-        description: Free space in the pool in bytes.
-        format: int64
-        jsonPath: .status.avail
-  scope: Namespaced
-  names:
-    kind: MayastorPool
-    listKind: MayastorPoolList
-    plural: mayastorpools
-    singular: mayastorpool
-    shortNames: ["msp"]
+{
+  "apiVersion": "apiextensions.k8s.io/v1",
+  "kind": "CustomResourceDefinition",
+  "metadata": {
+    "name": "mayastorpools.openebs.io"
+  },
+  "spec": {
+    "group": "openebs.io",
+    "names": {
+      "categories": [],
+      "kind": "MayastorPool",
+      "plural": "mayastorpools",
+      "shortNames": [
+        "msp"
+      ],
+      "singular": "mayastorpool"
+    },
+    "scope": "Namespaced",
+    "versions": [
+      {
+        "additionalPrinterColumns": [
+          {
+            "description": "node the pool is on",
+            "jsonPath": ".spec.node",
+            "name": "node",
+            "type": "string"
+          },
+          {
+            "description": "pool status",
+            "jsonPath": ".status.state",
+            "name": "status",
+            "type": "string"
+          },
+          {
+            "description": "total bytes",
+            "format": "int64",
+            "jsonPath": ".status.capacity",
+            "name": "capacity",
+            "type": "integer"
+          },
+          {
+            "description": "used bytes",
+            "format": "int64",
+            "jsonPath": ".status.used",
+            "name": "used",
+            "type": "integer"
+          },
+          {
+            "description": "available bytes",
+            "format": "int64",
+            "jsonPath": ".status.available",
+            "name": "available",
+            "type": "integer"
+          }
+        ],
+        "name": "v1alpha1",
+        "schema": {
+          "openAPIV3Schema": {
+            "description": "Auto-generated derived type for MayastorPoolSpec via `CustomResource`",
+            "properties": {
+              "spec": {
+                "description": "The pool spec which contains the parameters we use when creating the pool",
+                "properties": {
+                  "disks": {
+                    "description": "The disk device the pool is located on",
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "node": {
+                    "description": "The node the pool is placed on",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "disks",
+                  "node"
+                ],
+                "type": "object"
+              },
+              "status": {
+                "description": "Status of the pool which is driven and changed by the controller loop",
+                "nullable": true,
+                "properties": {
+                  "available": {
+                    "description": "Available number of bytes",
+                    "format": "uint64",
+                    "minimum": 0.0,
+                    "type": "integer"
+                  },
+                  "capacity": {
+                    "description": "Capacity as number of bytes",
+                    "format": "uint64",
+                    "minimum": 0.0,
+                    "type": "integer"
+                  },
+                  "state": {
+                    "description": "The state of the pool",
+                    "enum": [
+                      "Creating",
+                      "Created",
+                      "Online",
+                      "Unknown",
+                      "Error"
+                    ],
+                    "type": "string"
+                  },
+                  "used": {
+                    "description": "Used number of bytes",
+                    "format": "uint64",
+                    "minimum": 0.0,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "available",
+                  "capacity",
+                  "state",
+                  "used"
+                ],
+                "type": "object"
+              }
+            },
+            "required": [
+              "spec"
+            ],
+            "title": "MayastorPool",
+            "type": "object"
+          }
+        },
+        "served": true,
+        "storage": true,
+        "subresources": {
+          "status": {}
+        }
+      }
+    ]
+  }
+}

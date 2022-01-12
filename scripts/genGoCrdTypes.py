@@ -8,7 +8,8 @@ yamltypes2go = {
     'integer': 'int',
     'int64': 'int64',
     'boolean': 'bool',
-    'string': 'string'
+    'string': 'string',
+    'uint64': 'uint64'
 }
 
 # type name mapping for structs and sub structs found within a CRD.
