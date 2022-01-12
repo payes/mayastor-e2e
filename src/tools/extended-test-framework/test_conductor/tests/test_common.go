@@ -5,6 +5,7 @@ import (
 	"hash/fnv"
 	"mayastor-e2e/tools/extended-test-framework/common/custom_resources"
 	"mayastor-e2e/tools/extended-test-framework/common/mini_mcp_client"
+	"os"
 	"strconv"
 
 	"mayastor-e2e/tools/extended-test-framework/common"
@@ -45,6 +46,8 @@ var violations = []models.WorkloadViolationEnum{
 	models.WorkloadViolationEnumNOTPRESENT,
 }
 
+var faultedPVCs = map[string]bool{}
+
 func checkPVCexists(vol_id string) (bool, error) {
 	pvc_list, err := k8sclient.ListPVCs(k8sclient.NSDefault)
 	if err != nil {
@@ -58,22 +61,44 @@ func checkPVCexists(vol_id string) (bool, error) {
 	return false, err
 }
 
+func checkPVCexistsViaNexusUuid(ms_ip string, nexus_uuid string) (bool, string, error) {
+
+	vols, err := mini_mcp_client.GetVolumes(ms_ip)
+	if err != nil {
+		return false, "", fmt.Errorf("failed to get volumes, error: %v", err)
+	}
+	// iterate through the volumes until we get the one with the right target uuid
+	for _, vol := range vols {
+		if vol.State.Target.Uuid == nexus_uuid {
+			vol_presence, err := checkPVCexists(vol.State.Uuid)
+			return vol_presence, vol.State.Uuid, err
+		}
+	}
+	return false, "", err
+}
+
 func CheckMSVwithCP(ms_ip string) error {
 	vols, err := mini_mcp_client.GetVolumes(ms_ip)
 	if err != nil {
-		return fmt.Errorf("failed to get volume uuids, error: %v", err)
+		return fmt.Errorf("failed to get volumes, error: %v", err)
 	}
 	for _, vol := range vols {
 		switch vol.State.Status {
 
 		case MCP_MSV_FAULTED:
-			exists, err := checkPVCexists(vol.State.Uuid)
-			if err != nil {
-				return fmt.Errorf("failed to check PVC exists, error: %v", err)
-			} else if exists {
-				return fmt.Errorf("found faulted volume, uuid %s", vol.State.Uuid)
-			} else {
-				logf.Log.Info("Spurious faulted volume", "uuid", vol.State.Uuid)
+			_, done := faultedPVCs[vol.State.Uuid]
+			if !done {
+				logf.Log.Info("Faulted MSV detected", "uuid", vol.State.Uuid)
+				exists, err := checkPVCexists(vol.State.Uuid)
+				if err != nil {
+					return fmt.Errorf("failed to check PVC exists, error: %v", err)
+				}
+				if exists {
+					faultedPVCs[vol.State.Uuid] = true
+					return fmt.Errorf("found faulted volume, uuid %s", vol.State.Uuid)
+				} else {
+					logf.Log.Info("Spurious faulted volume", "uuid", vol.State.Uuid)
+				}
 			}
 		case MCP_MSV_ONLINE:
 		case MCP_MSV_DEGRADED:
@@ -87,22 +112,34 @@ func CheckMSVwithCP(ms_ip string) error {
 }
 
 func CheckMSVwithGrpc(ms_ips []string) error {
-	states, err := k8sclient.GetNexusStates(ms_ips)
+	nexuses, err := k8sclient.GetNexuses(ms_ips)
 	if err != nil {
 		return fmt.Errorf("Nexus grpc check failed, err: %v", err)
 	}
-	for _, state := range states {
-		switch state {
+	for _, nexus := range nexuses {
+		switch nexus.State.String() {
 
 		case MCP_NEXUS_FAULTED:
-			return fmt.Errorf("Nexus is not healthy, state is %s", state)
-
+			logf.Log.Info("Faulted nexus detected", "uuid", nexus.Uuid)
+			exists, vol_uuid, err := checkPVCexistsViaNexusUuid(ms_ips[0], nexus.Uuid)
+			if err != nil {
+				return fmt.Errorf("failed to check PVC exists for nexus %s, error: %v", nexus.Uuid, err)
+			}
+			_, done := faultedPVCs[vol_uuid]
+			if !done {
+				if exists {
+					faultedPVCs[vol_uuid] = true
+					return fmt.Errorf("Nexus %s is not healthy, state is %s, vol uuid is %s", nexus.Uuid, nexus.State.String(), vol_uuid)
+				} else {
+					logf.Log.Info("Spurious faulted nexus", "nexus uuid", nexus.Uuid)
+				}
+			}
 		case MCP_NEXUS_UNKNOWN:
 		case MCP_NEXUS_DEGRADED:
 		case MCP_NEXUS_ONLINE:
 
 		default:
-			return fmt.Errorf("Nexus unexpected state %s", state)
+			return fmt.Errorf("Nexus unexpected state %s", nexus.State.String())
 		}
 	}
 	return nil
@@ -196,7 +233,7 @@ func GetDuration(durationstr string) (time.Duration, error) {
 	if err != nil {
 		return time.Duration(0), fmt.Errorf("failed to convert duration %v", err)
 	}
-	logf.Log.Info("Converted duration", "in hours", durationstr)
+	logf.Log.Info("Converted duration", "converted value", durationstr)
 	duration, err := time.ParseDuration(durationstr)
 	if err != nil {
 		return time.Duration(0), fmt.Errorf("failed to parse duration %v", err)
@@ -217,7 +254,7 @@ func MonitorCRs(
 	const progressSecs = 240
 	for {
 		if elapsedSecs%progressSecs == 0 {
-			logf.Log.Info("Monitoring CRs", "hours", elapsedSecs/3600, "minutes", elapsedSecs/60)
+			logf.Log.Info("Monitoring CRs", "hours", elapsedSecs/3600, "minutes", (elapsedSecs/60)%60)
 		}
 		ms_ips, err := k8sclient.GetMayastorNodeIPs()
 		if err != nil {
@@ -227,10 +264,14 @@ func MonitorCRs(
 			return fmt.Errorf("No MS nodes found")
 		}
 		if err := CheckMSVwithGrpc(ms_ips); err != nil {
-			return fmt.Errorf("MSV grpc check failed, err: %s", err.Error())
+			if senderr := SendEventTestFail(testConductor, err.Error()); senderr != nil {
+				logf.Log.Info("failed to send fail event", "error", senderr)
+			}
 		}
 		if err := CheckMSVwithCP(ms_ips[0]); err != nil {
-			return fmt.Errorf("MSV CP check failed, err: %s", err.Error())
+			if senderr := SendEventTestFail(testConductor, err.Error()); senderr != nil {
+				logf.Log.Info("failed to send fail event", "error", senderr)
+			}
 		}
 		if err := CheckPools(testConductor.Config.Msnodes); err != nil {
 			return fmt.Errorf("MSP check failed, err: %s", err.Error())
@@ -329,37 +370,37 @@ func SendTestRunStarted(testConductor *tc.TestConductor) error {
 	return nil
 }
 
-func SendTestRunFinished(testConductor *tc.TestConductor, err error) error {
+func SendTestRunFinished(testConductor *tc.TestConductor, test_err error) {
 	if testConductor.Config.SendXrayTest == 1 {
 		text := testDescription(testConductor) + " Test run: finished"
-		if err == nil {
+		if test_err == nil {
 			if err := common.SendTestRunCompletedOk(
 				testConductor.TestDirectorClient,
 				testConductor.TestRunId,
 				text,
 				testConductor.Config.XrayTestID); err != nil {
-				return fmt.Errorf("failed to set test run to completed, error: %v", err)
+				test_err = fmt.Errorf("failed to set test run to completed, error: %v", err)
 			}
 		} else {
 			if err := common.SendTestRunCompletedFail(
 				testConductor.TestDirectorClient,
 				testConductor.TestRunId,
-				err.Error(),
+				test_err.Error(),
 				testConductor.Config.XrayTestID); err != nil {
-				return fmt.Errorf("failed to set test run to failed, error: %v", err)
+				test_err = fmt.Errorf("failed to set test run to failed, error: %vtest outcome: %v", err, test_err)
 			}
 		}
 	}
-	if err == nil {
+	if test_err == nil {
 		if err := SendEventTestCompletedOk(testConductor); err != nil {
-			return fmt.Errorf("failed to inform test director of completion event, error: %v", err)
+			test_err = fmt.Errorf("failed to inform test director of successful completion event, error: %v", err)
 		}
 	} else {
-		if err := SendEventTestCompletedFail(testConductor, err.Error()); err != nil {
-			return fmt.Errorf("failed to inform test director of completion event, error: %v", err)
+		if err := SendEventTestFail(testConductor, test_err.Error()); err != nil {
+			test_err = fmt.Errorf("failed to inform test director of failed completion event, error: %v, test outcome: %v", err, test_err)
 		}
 	}
-	return nil
+	os.Exit(GetTestOutcome(testConductor, test_err))
 }
 
 func testDescription(testConductor *tc.TestConductor) string {
@@ -381,7 +422,7 @@ func SendEventTestCompletedOk(testConductor *tc.TestConductor) error {
 	return SendEvent(testConductor, td.EventClassEnumINFO, "Event: test completed")
 }
 
-func SendEventTestCompletedFail(testConductor *tc.TestConductor, text string) error {
+func SendEventTestFail(testConductor *tc.TestConductor, text string) error {
 	return SendEvent(testConductor, td.EventClassEnumFAIL, "Event: test failure: "+text)
 }
 
@@ -395,6 +436,30 @@ func SendEvent(testConductor *tc.TestConductor, eventClass td.EventClassEnum, me
 			td.EventSourceClassEnumTestDashConductor); err != nil {
 			return fmt.Errorf("failed to inform test director of event, error: %v", err)
 		}
+	} else {
+		logf.Log.Info("Event", "type", eventClass, "message", message)
 	}
 	return nil
+}
+
+// return 1 if either the XRay test has been marked as failed, or if
+// the test-conductor has itself found an error or test failure.
+func GetTestOutcome(testConductor *tc.TestConductor, test_err error) int {
+	if testConductor.Config.SendXrayTest == 1 {
+		status, err := common.GetTestRunStatus(
+			testConductor.TestDirectorClient,
+			testConductor.TestRunId)
+		if err != nil {
+			logf.Log.Info("Failed to get test run status", "error", err.Error())
+			return 1
+		}
+		if status != td.TestRunStatusEnumPASSED {
+			return 1
+		}
+	}
+	if test_err != nil {
+		logf.Log.Info("Test failed", "error", test_err.Error())
+		return 1
+	}
+	return 0
 }

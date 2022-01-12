@@ -299,14 +299,14 @@ func DeletePod(name string, nameSpace string, timeoutSecs int) error {
 	}
 }
 
-// DeletePodIfCompleted Delete a Pod if it completed with no container errors
-func DeletePodIfCompleted(podName string, nameSpace string, timeoutSecs int) error {
+// CheckPodAndDelete: Delete a Pod if it completed with no container errors
+func CheckPodAndDelete(podName string, nameSpace string, timeoutSecs int) error {
 	pod, err := gKubeInt.CoreV1().Pods(nameSpace).Get(context.TODO(), podName, metaV1.GetOptions{})
 	if err != nil {
 		return err
 	}
 	if pod.Status.Phase != v1.PodSucceeded {
-		return fmt.Errorf("Not deleting non-completed pod, status %s", pod.Status.Phase)
+		return fmt.Errorf("Pod failed, status %s", pod.Status.Phase)
 	}
 	return DeletePod(podName, nameSpace, timeoutSecs)
 }
