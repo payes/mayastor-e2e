@@ -353,6 +353,16 @@ func CheckPodContainerCompleted(podName string, nameSpace string) (coreV1.PodPha
 	return pod.Status.Phase, err
 }
 
+var mayastorInitialPodCount int
+
+func SetMayastorInitialPodCount(count int) {
+	mayastorInitialPodCount = count
+}
+
+func GetMayastorInitialPodCount() int {
+	return mayastorInitialPodCount
+}
+
 // List mayastor pod names, conditionally
 //  1) No timestamp - all mayastor pods
 //	2) With timestamp - all mayastor pods created after the timestamp which are Running.
@@ -429,7 +439,7 @@ func RestartMayastorPods(timeoutSecs int) error {
 		newPodNames, err = listMayastorPods(&now)
 		if err == nil {
 			logf.Log.Info("Restarted", "pods", newPodNames)
-			if len(newPodNames) >= len(podNames) {
+			if len(newPodNames) >= GetMayastorInitialPodCount() {
 				logf.Log.Info("All pods have been restarted.")
 				return nil
 			}
