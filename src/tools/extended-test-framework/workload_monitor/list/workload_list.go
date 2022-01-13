@@ -9,9 +9,11 @@ import (
 )
 
 type WorkloadListItem struct {
-	Restarts int32
-	Wl       *models.Workload
-	Rid      strfmt.UUID
+	Restarts        int32
+	FailureReported bool
+	AbsenceReported bool
+	Wl              *models.Workload
+	Rid             strfmt.UUID
 }
 
 type WorkloadList struct {
@@ -39,6 +41,8 @@ func AddToWorkloadList(pwl *models.Workload, rid strfmt.UUID, wid strfmt.UUID) {
 	}
 	wli := WorkloadListItem{}
 	wli.Restarts = 0
+	wli.AbsenceReported = false
+	wli.FailureReported = false
 	wli.Wl = pwl
 	wli.Rid = rid
 	gWorkloadList.WorkloadMap[rid][wid] = wli
@@ -48,6 +52,28 @@ func SetWorkloadListItemRestarts(rid strfmt.UUID, wid strfmt.UUID, restarts int3
 	if _, found := gWorkloadList.WorkloadMap[rid]; found {
 		if wli, found := gWorkloadList.WorkloadMap[rid][wid]; found {
 			wli.Restarts = restarts
+			gWorkloadList.WorkloadMap[rid][wid] = wli
+			return true
+		}
+	}
+	return false
+}
+
+func SetWorkloadListItemAbsenceReported(rid strfmt.UUID, wid strfmt.UUID) bool {
+	if _, found := gWorkloadList.WorkloadMap[rid]; found {
+		if wli, found := gWorkloadList.WorkloadMap[rid][wid]; found {
+			wli.AbsenceReported = true
+			gWorkloadList.WorkloadMap[rid][wid] = wli
+			return true
+		}
+	}
+	return false
+}
+
+func SetWorkloadListItemFailureReported(rid strfmt.UUID, wid strfmt.UUID) bool {
+	if _, found := gWorkloadList.WorkloadMap[rid]; found {
+		if wli, found := gWorkloadList.WorkloadMap[rid][wid]; found {
+			wli.FailureReported = true
 			gWorkloadList.WorkloadMap[rid][wid] = wli
 			return true
 		}

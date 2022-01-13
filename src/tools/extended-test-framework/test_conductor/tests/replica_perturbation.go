@@ -19,9 +19,9 @@ import (
 
 const testName = "replica-perturbation"
 
-func getOnlyVolume(ms_ip string) (string, string, error) {
-	uuid, status, err := mini_mcp_client.GetOnlyVolume(ms_ip)
-	return uuid, status, err
+func getOnlyVolume(ms_ip string) (string, string, string, error) {
+	uuid, status, nexus_node, err := mini_mcp_client.GetOnlyVolume(ms_ip)
+	return uuid, status, nexus_node, err
 }
 
 func getVolumeStatus(ms_ip string, uuid string) (string, error) {
@@ -38,7 +38,7 @@ func waitForVolumeStatus(ms_ip string, uuid string, wantedState string) error {
 		if state == wantedState {
 			break
 		}
-		if i == 100 {
+		if i == 30 {
 			return fmt.Errorf("timed out waiting for nexus to be %s", wantedState)
 		}
 		logf.Log.Info("volume not ready", "current state", state, "wanted state", wantedState)
@@ -64,63 +64,69 @@ func setReplicas(ms_ip string, uuid string, replicas int) error {
 	if err != nil {
 		return fmt.Errorf("failed to set replicas to %d, err: %v", replicas, err)
 	}
+	return err
+	//return waitForReplicas(ms_ip, uuid, replicas)
+}
+
+func waitForReplicas(ms_ip string, uuid string, replicas int) error {
 	for i := 0; i < 100; i++ {
 		reps, err := mini_mcp_client.GetVolumeReplicas(ms_ip, uuid)
 		if err != nil {
 			return fmt.Errorf("failed to get replicas, err: %v", err)
 		}
-		logf.Log.Info("set volume replicas", "wanted replicas", replicas, "got replicas", reps)
+		logf.Log.Info("wait for replicas", "wanted replicas", replicas, "got replicas", reps)
 		if reps == replicas {
 			return nil
 		}
 		time.Sleep(time.Second)
 	}
-	return fmt.Errorf("failed to set replicas to %d, timed out", replicas)
+	return fmt.Errorf("wait for replicas to be %d, timed out", replicas)
 }
 
-func offlineDevice(index int, nodecount int) (string, string, error) {
+func offlineDevice(index int, nodecount int) (string, string, string, error) {
 	var err error
 	var nodeIp string
 	var poolDevice string
+	var nodeName string
 
 	// list the pools
 	pools, err := custom_resources.ListMsPools()
 	if err != nil {
-		return nodeIp, poolDevice, fmt.Errorf("failed to list pools, err: %v", err)
+		return nodeIp, poolDevice, nodeName, fmt.Errorf("failed to list pools, err: %v", err)
 	}
 	if len(pools) < nodecount {
-		return nodeIp, poolDevice, fmt.Errorf("Expected %d ips, found %d", nodecount, len(pools))
-	}
-	for _, pool := range pools {
-		logf.Log.Info("pool", "name", pool.Name, "device", pool.Spec.Disks[0])
+		return nodeIp, poolDevice, nodeName, fmt.Errorf("Expected %d ips, found %d", nodecount, len(pools))
 	}
 
 	// get the node IPs
 	locs, err := k8sclient.GetNodeLocs()
 	if err != nil {
-		return nodeIp, poolDevice, fmt.Errorf("MSV grpc check failed to get nodes, err: %s", err.Error())
+		return nodeIp, poolDevice, nodeName, fmt.Errorf("MSV grpc check failed to get nodes, err: %s", err.Error())
 	}
 	if len(locs) < nodecount {
-		return nodeIp, poolDevice, fmt.Errorf("Expected %d ips, found %d", nodecount, len(locs))
+		return nodeIp, poolDevice, nodeName, fmt.Errorf("Expected %d ips, found %d", nodecount, len(locs))
 	}
 	pool := pools[index]
+	nodeName = pool.Spec.Node
 
 	for _, node := range locs {
 		if node.NodeName == pool.Spec.Node {
+			logf.Log.Info("offlined node", "name", node.NodeName, "IP", node.IPAddress)
+			logf.Log.Info("offlined pool", "name", pool.Name, "device", pool.Spec.Disks[0])
 			nodeIp = node.IPAddress
 			if len(pool.Spec.Disks) != 1 {
-				return nodeIp, poolDevice, fmt.Errorf("Unexpected number of disks, expected 1 found %d", len(pool.Spec.Disks))
+				return nodeIp, poolDevice, nodeName, fmt.Errorf("Unexpected number of disks, expected 1 found %d", len(pool.Spec.Disks))
 			}
 			poolDevice = pool.Spec.Disks[0]
 			if !strings.HasPrefix(poolDevice, "/dev/") {
-				return nodeIp, poolDevice, fmt.Errorf("Unexpected device path %s", poolDevice)
+				return nodeIp, poolDevice, nodeName, fmt.Errorf("Unexpected device path %s", poolDevice)
 			}
 			poolDevice = poolDevice[5:]
 			break
 		}
 	}
 	if nodeIp == "" {
-		return nodeIp, poolDevice, fmt.Errorf("Could not find node for pool %s", pool.Name)
+		return nodeIp, poolDevice, nodeName, fmt.Errorf("Could not find node for pool %s", pool.Name)
 	}
 	// we need the IP address of a node and its pool
 	// a pool has spec.node, so we can find the node name
@@ -128,14 +134,14 @@ func offlineDevice(index int, nodecount int) (string, string, error) {
 
 	res, err := e2eagent.ControlDevice(nodeIp, poolDevice, "offline")
 	if err != nil {
-		return nodeIp, poolDevice, err
+		return nodeIp, poolDevice, nodeName, err
 	}
 	if err = checkDeviceState(nodeIp, poolDevice, "offline"); err != nil {
-		return nodeIp, poolDevice, err
+		return nodeIp, poolDevice, nodeName, err
 	}
 	logf.Log.Info("offline device succeeded", "device", poolDevice, "node", nodeIp, "response", res)
 
-	return nodeIp, poolDevice, err
+	return nodeIp, poolDevice, nodeName, err
 }
 
 func onlineDevice(nodeIp string, poolDevice string) error {
@@ -230,42 +236,48 @@ func perturbVolume(
 		return fmt.Errorf("failed to inform workload monitor of %s, error: %v", fio_name, err)
 	}
 
+	var nexus_node string
 	var offlinedNodeIp string
+	var offlinedNodeName string
 	var uuid string
 	var status string
 	var poolToAffect int
 	var poolDevice string
+
+	// While (test_not_failed) Loop:
 	for {
-		// While (test_not_failed) Loop:
 		if time.Now().After(endTime) {
 			break
 		}
 
-		//  Check MSV is in the healthy state
-		if uuid, status, err = getOnlyVolume(msNodeIps[0]); err != nil {
+		//  Check the MSV is healthy state
+		if uuid, status, nexus_node, err = getOnlyVolume(msNodeIps[0]); err != nil {
 			err = fmt.Errorf("failed to get volumes via rest, error: %v", err)
 			break
 		}
-		logf.Log.Info("got volume", "uuid", uuid, "status", status)
+		logf.Log.Info("got volume", "uuid", uuid, "status", status, "nexus node", nexus_node)
 		if status != MCP_MSV_ONLINE {
 			err = fmt.Errorf("Unexpected volume status, expected %s, got %s", MCP_MSV_ONLINE, status)
 			break
 		}
 
 		if testConductor.Config.ReplicaPerturbation.OfflineDeviceTest != 0 {
+			logf.Log.Info("1) ============ offline / online one backing device ============")
 			//  Select one Disk Pool (at “random”) as a victim
 			//  The selection algorithm used should feature a randomising element.
 			if poolToAffect, err = EtfwRandom(uint32(testConductor.Config.Msnodes)); err != nil {
 				break
 			}
 
-			logf.Log.Info("about to down a pool", "index", poolToAffect)
-
-			//  Offline disk backing the pool
-			if offlinedNodeIp, poolDevice, err = offlineDevice(poolToAffect, testConductor.Config.Msnodes); err != nil {
+			//  Offline the disk backing the pool
+			if offlinedNodeIp, poolDevice, offlinedNodeName, err = offlineDevice(poolToAffect, testConductor.Config.Msnodes); err != nil {
 				break
 			}
-			//  echo offline | sudo tee /sys/block/sdx/device/state
+			logf.Log.Info("made device offline", "index", poolToAffect, "node", offlinedNodeName)
+			if offlinedNodeName == nexus_node {
+				logf.Log.Info("affected nexus node")
+			}
+
 			//  Wait for MSV state to become degraded
 			if err = waitForVolumeStatus(cpNodeIp, uuid, MCP_MSV_DEGRADED); err != nil {
 				break
@@ -273,7 +285,7 @@ func perturbVolume(
 
 			//  Online disk backing the pool
 			if err = onlineDevice(offlinedNodeIp, poolDevice); err != nil {
-				err = fmt.Errorf("failed to online device, error: %v", err)
+				err = fmt.Errorf("failed to make device online, error: %v", err)
 				break
 			}
 			offlinedNodeIp = ""
@@ -281,38 +293,34 @@ func perturbVolume(
 			if err = waitForVolumeStatus(cpNodeIp, uuid, MCP_MSV_ONLINE); err != nil {
 				break
 			}
-			if err = randomSleep(); err != nil {
+
+			if err = waitForReplicas(cpNodeIp, uuid, 3); err != nil {
 				break
+			}
+
+			if testConductor.Config.ReplicaPerturbation.DoRandomSleep != 0 {
+				if err = randomSleep(); err != nil {
+					break
+				}
 			}
 		}
 
-		if testConductor.Config.ReplicaPerturbation.OfflineDevAndReplicasTest != 0 {
+		if testConductor.Config.ReplicaPerturbation.ReplicasTest != 0 {
 
-			if poolToAffect, err = EtfwRandom(uint32(testConductor.Config.Msnodes)); err != nil {
-				break
-			}
+			logf.Log.Info("2) ============ decrement / increment replica cound 2<->3 ============")
+			logf.Log.Info("about to reduce replica count to 2")
 
-			// offline a pool
-			if offlinedNodeIp, poolDevice, err = offlineDevice(poolToAffect, testConductor.Config.Msnodes); err != nil {
-				break
-			}
-
-			// wait for volume degraded
-			if err = waitForVolumeStatus(cpNodeIp, uuid, MCP_MSV_DEGRADED); err != nil {
-				break
-			}
-
-			//  Edit MSV replica count (decrement, from 3 to 2)
+			//  Change MSV replica count (decrement, from 3 to 2)
 			if err = setReplicas(cpNodeIp, uuid, 2); err != nil {
 				break
 			}
 
-			//  Wait for MSV state = healthy
-			if err = waitForVolumeStatus(cpNodeIp, uuid, MCP_MSV_ONLINE); err != nil {
+			if err = waitForReplicas(cpNodeIp, uuid, 2); err != nil {
 				break
 			}
 
-			//  Edit MSV replica count (increment, from 2 to 3)
+			logf.Log.Info("about to increase replica count to 3")
+			//  Change MSV replica count (increment, from 2 to 3)
 			if err = setReplicas(cpNodeIp, uuid, 3); err != nil {
 				break
 			}
@@ -322,6 +330,64 @@ func perturbVolume(
 				break
 			}
 
+			logf.Log.Info("waiting for 3 replicas")
+			if err = waitForReplicas(cpNodeIp, uuid, 3); err != nil {
+				break
+			}
+
+			//  Wait for MSV state to be healthy
+			if err = waitForVolumeStatus(cpNodeIp, uuid, MCP_MSV_ONLINE); err != nil {
+				break
+			}
+			if testConductor.Config.ReplicaPerturbation.DoRandomSleep != 0 {
+				if err = randomSleep(); err != nil {
+					break
+				}
+			}
+		}
+
+		if testConductor.Config.ReplicaPerturbation.OfflineDevAndReplicasTest != 0 {
+			logf.Log.Info("3) ============ off/online device and change replica count ============")
+
+			if poolToAffect, err = EtfwRandom(uint32(testConductor.Config.Msnodes)); err != nil {
+				break
+			}
+
+			// offline a device
+			if offlinedNodeIp, poolDevice, offlinedNodeName, err = offlineDevice(poolToAffect, testConductor.Config.Msnodes); err != nil {
+				break
+			}
+
+			logf.Log.Info("made device offline", "index", poolToAffect, "node", offlinedNodeName)
+			if offlinedNodeName == nexus_node {
+				logf.Log.Info("affected nexus node")
+			}
+
+			// wait for the volume to be degraded
+			if err = waitForVolumeStatus(cpNodeIp, uuid, MCP_MSV_DEGRADED); err != nil {
+				break
+			}
+
+			logf.Log.Info("about to reduce replica count to 2")
+			//  Change MSV replica count (decrement, from 3 to 2)
+			if err = setReplicas(cpNodeIp, uuid, 2); err != nil {
+				break
+			}
+
+			//  Wait for MSV state to be healthy
+			if err = waitForVolumeStatus(cpNodeIp, uuid, MCP_MSV_ONLINE); err != nil {
+				break
+			}
+
+			logf.Log.Info("about to increase replica count to 3")
+			//  Change MSV replica count (increment, from 2 to 3)
+			//  This should fail.
+			if err = setReplicas(cpNodeIp, uuid, 3); err == nil {
+				err = fmt.Errorf("set replicas to 3 did not fail")
+				break
+			}
+
+			logf.Log.Info("about to online the device")
 			// online the pool
 			if err = onlineDevice(offlinedNodeIp, poolDevice); err != nil {
 				err = fmt.Errorf("failed to online device, error: %v", err)
@@ -329,14 +395,35 @@ func perturbVolume(
 			}
 			offlinedNodeIp = ""
 
-			//  Wait for MSV state = healthy
+			logf.Log.Info("about to increase replica count to 3")
+			// Change MSV replica count (increment, from 2 to 3)
+			// This will fail until the pool is healthy.
+			done := false
+			for ix := 0; ix < 60; ix++ {
+				time.Sleep(time.Duration(time.Second))
+				if err = setReplicas(cpNodeIp, uuid, 3); err == nil {
+					done = true
+					break
+				}
+				logf.Log.Info("waiting for increase of replica count to succeed")
+			}
+			if !done {
+				err = fmt.Errorf("timed out trying to set replicas to 3")
+				break
+			}
+			//  Wait for MSV state to be healthy
 			if err = waitForVolumeStatus(cpNodeIp, uuid, MCP_MSV_ONLINE); err != nil {
 				break
 			}
-			if err = randomSleep(); err != nil {
-				break
+			if testConductor.Config.ReplicaPerturbation.DoRandomSleep != 0 {
+				if err = randomSleep(); err != nil {
+					break
+				}
 			}
 		}
+	}
+	if err != nil {
+		logf.Log.Info("test failed", "error", err)
 	}
 	if offlinedNodeIp != "" {
 		_ = onlineDevice(offlinedNodeIp, poolDevice) // avoid breaking the node
@@ -350,10 +437,6 @@ func perturbVolume(
 	if locerr := k8sclient.DeletePVC(pvc_name, k8sclient.NSDefault); locerr != nil {
 		err = CombineErrors(err, fmt.Errorf("Failed to delete pvc %s, error = %v", pvc_name, locerr))
 	}
-
-	if err != nil {
-		logf.Log.Info("test failed", "error", err)
-	}
 	return err
 }
 
@@ -366,7 +449,6 @@ func testVolumePerturbation(
 	var errchan = make(chan error, 1)
 	var wg sync.WaitGroup
 
-	//
 	wg.Add(1)
 	go func() {
 		defer wg.Done()

@@ -49,7 +49,6 @@ func NewTestConductor() (*TestConductor, error) {
 
 	logf.Log.Info("test-director", "pod IP", testDirectorPod.Status.PodIP)
 	testDirectorLoc := testDirectorPod.Status.PodIP + ":8080"
-
 	transportConfigTd := td.DefaultTransportConfig().WithHost(testDirectorLoc)
 	testConductor.TestDirectorClient = td.NewHTTPClientWithConfig(nil, transportConfigTd)
 

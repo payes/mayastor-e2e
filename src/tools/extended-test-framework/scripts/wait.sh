@@ -5,7 +5,7 @@ NAMESPACE="mayastor-e2e"
 
 # wait 100s for test-conductor to be running
 for i in {0..100}; do
-    res=$(kubectl get pod -n ${NAMESPACE} | grep test-conductor | grep 'Running\|Completed' || true)
+    res=$(kubectl get pod -n ${NAMESPACE} | grep test-conductor | grep 'Running\|Completed\|Error' || true)
     if [ "${res}" != "" ]; then
         break
     fi

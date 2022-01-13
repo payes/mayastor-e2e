@@ -54,6 +54,8 @@ type ExtendedTestConfig struct {
 		LocalVolume               int `yaml:"localvolume" env-default:"0"`
 		OfflineDeviceTest         int `yaml:"offlineDeviceTest" env-default:"0"`
 		OfflineDevAndReplicasTest int `yaml:"offlineDevAndReplicasTest" env-default:"0"`
+		ReplicasTest              int `yaml:"replicasTest" env-default:"0"`
+		DoRandomSleep             int `yaml:"doRandomSleep" env-default:"0"`
 	} `yaml:"replicaPerturbation"`
 }
 

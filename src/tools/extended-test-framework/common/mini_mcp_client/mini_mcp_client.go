@@ -55,6 +55,7 @@ type SparseVolume struct {
 				State string `json:"state"`
 			} `json:"children"`
 			Uuid string `json:"uuid"`
+			Node string `json:"node"`
 		} `json:"target"`
 		Uuid   string `json:"uuid"`
 		Status string `json:"status"`
@@ -63,21 +64,21 @@ type SparseVolume struct {
 
 // Get the volume uuid and status.
 // Errors if there are not exactly 1 MS volume in the cluster.
-func GetOnlyVolume(serverAddr string) (string, string, error) {
+func GetOnlyVolume(serverAddr string) (string, string, string, error) {
 	var vollist []SparseVolume
 	url := "http://" + serverAddr + ":" + RestPort + "/v0/volumes"
 	resp, err := sendRequest("GET", url, nil)
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 	err = json.Unmarshal([]byte(resp), &vollist)
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 	if len(vollist) != 1 {
-		return "", "", fmt.Errorf("invalid number of volumes %d", len(vollist))
+		return "", "", "", fmt.Errorf("invalid number of volumes %d", len(vollist))
 	}
-	return vollist[0].State.Uuid, vollist[0].State.Status, nil
+	return vollist[0].State.Uuid, vollist[0].State.Status, vollist[0].State.Target.Node, nil
 }
 
 func GetVolumes(serverAddr string) ([]SparseVolume, error) {
