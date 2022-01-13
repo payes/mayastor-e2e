@@ -400,7 +400,15 @@ func BeforeEachCheck() error {
 	if resourceCheckError = resourceCheck(false); resourceCheckError != nil {
 		logf.Log.Info("BeforeEachCheck failed", "error", resourceCheckError)
 		resourceCheckError = fmt.Errorf("%w; not running test case, k8s cluster is not \"clean\"!!! ", resourceCheckError)
+	} else {
+		podNames, err := listMayastorPods(nil)
+		if err != nil {
+			err = fmt.Errorf("%w; not running test case, not able to get pod list", err)
+			return err
+		}
+		SetMayastorInitialPodCount(len(podNames))
 	}
+
 	return resourceCheckError
 }
 
