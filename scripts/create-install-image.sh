@@ -93,7 +93,7 @@ while [ "$#" -gt 0 ]; do
 done
 
 if [ -z "$MAYASTOR_DIR" ] ; then
-    echo "no mayastor repository directory specified"
+    echo "mayastor repository directory not specified"
     exit 127
 fi
 
@@ -123,18 +123,34 @@ pushd "${MAYASTOR_DIR}" \
 # to avoid failure in jenkins archiving where we overwrite
 # artifacts/install-bundle returned by each parallel run
 if [ -n "$MCP_DIR" ]; then
-    pushd "${MCP_DIR}" \
-        && mkdir -p "$workdir/mcp/scripts" \
-        && cp scripts/generate-deploy-yamls.sh "$workdir/mcp/scripts" \
-        && cp -R chart "$workdir/mcp" \
-        && mkdir -p "$workdir/mcp/bin" \
-        && cp "$(nix-build -A utils.release.linux-musl.kubectl-plugin --no-out-link)/bin/kubectl-mayastor" "$workdir/mcp/bin" \
-        && chmod a+w "$workdir/mcp/bin/kubectl-mayastor" \
-        && mkdir -p "$workdir/mcp/control-plane/rest/openapi-specs" \
-        && cp control-plane/rest/openapi-specs/* "$workdir/mcp/control-plane/rest/openapi-specs" \
-        && build_info+=("\"mayastor-control-plane-revision\": \"$(git rev-parse HEAD)\"") \
-        && build_info+=("\"mayastor-control-plane-short-revision\": \"$(git rev-parse --short=12 HEAD)\"") \
-        && popd
+    pushd "${MCP_DIR}"
+        build_info+=("\"mayastor-control-plane-revision\": \"$(git rev-parse HEAD)\"")
+        build_info+=("\"mayastor-control-plane-short-revision\": \"$(git rev-parse --short=12 HEAD)\"")
+        # for release 1 compatibility
+        mkdir -p "$workdir/mcp/scripts" || exit 1
+        cp scripts/*.sh "$workdir/mcp/scripts" || exit 1
+        # post release 1
+        mkdir -p "$workdir/mcp/scripts/deploy" || exit 1
+        if [ -d "scripts/deploy" ]; then
+            cp scripts/deploy/* "$workdir/mcp/scripts/deploy" || exit 1
+        fi
+        cp -R chart "$workdir/mcp" || exit 1
+        mkdir -p "$workdir/mcp/control-plane/rest/openapi-specs" || exit 1
+        cp control-plane/rest/openapi-specs/* "$workdir/mcp/control-plane/rest/openapi-specs" || exit 1
+        mkdir -p "$workdir/mcp/bin" || exit 1
+        # try current rune for kubectl plugin build
+        if ! plugin_nix_dir=$(nix-build -A utils.release.linux-musl.kubectl-plugin --no-out-link); then
+        # try previous rune for  kubectl plugin build
+            if ! plugin_nix_dir=$(nix-build -A utils.release.kubectl-plugin --no-out-link); then
+                echo "failed to build kubectl plugin"
+                exit 1
+            fi
+        fi
+        cp "$plugin_nix_dir/bin/kubectl-mayastor" "$workdir/mcp/bin" || exit 1
+        chmod a+wx "$workdir/mcp/bin/kubectl-mayastor" || exit 1
+        find . -print
+    popd
+    # Release 1 compatibility {
     # FIXME: dangling CRD yaml files break deployment using helm
     pushd "$workdir" \
         && rm -f chart/crds/* \

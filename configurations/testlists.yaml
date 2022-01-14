@@ -1,0 +1,104 @@
+testprofiles:
+  regression:
+    - basic_volume_io
+    - control_plane_rescheduling
+    - csi,resource_check
+    - dynamic_provisioning
+    - expand_msp_disk
+    - io_soak
+    - maximum_vols_io
+    - mayastorpool_schema
+    - MQ-1498-primitive_device_retirement
+    - MQ-1783-fsx_ext4_stress
+    - MQ-2219-rc-reconciliation
+    - MQ-2307-etcd_inaccessibility
+    - MQ-2330-ms_pod_disruption_rm_vol
+    - MQ-2632-pvc_create_delete
+    - MQ-2644-invalid_volume_sizes
+    - ms_pod_disruption
+    - ms_pod_disruption_no_io
+    - ms_pod_restart
+    - ms_pool_delete
+    - msv_rebuild
+    - multiple_vols_pod_io
+    - nexus_location
+    - node_failure
+    - node_shutdown
+    - pool_modify
+    - primitive_data_integrity
+    - primitive_fault_injection
+    - primitive_fuzz_msv
+    - primitive_msp_deletion
+    - primitive_msp_state
+    - primitive_msp_stress
+    - primitive_replicas
+    - primitive_volumes
+    - pvc_delete
+    - pvc_readwriteonce
+    - pvc_stress_fio
+    - pvc_waitforfirstconsumer
+    - single_msn_shutdown
+    - stale_msp_after_node_power_failure
+    - synchronous_replication
+    - volume_filesystem
+  smoke-test:
+    - resource_check
+  minimal:
+    - resource_check
+  basic:
+    - basic_volume_io
+    - csi,resource_check
+  hf1:
+    - primitive_data_integrity
+    - primitive_fault_injection
+    - primitive_msp_deletion
+  self-ci:
+    - basic_volume_io
+    - csi,resource_check
+    - dynamic_provisioning
+    - expand_msp_disk
+    - ms_pod_restart
+    - ms_pool_delete
+    - pvc_waitforfirstconsumer
+    - pvc_readwriteonce
+    - volume_filesystem
+metadata:
+  recorded_durations:
+    basic_volume_io: 7
+    control_plane_rescheduling: 6
+    csi,resource_check: 9
+    dynamic_provisioning: 5
+    expand_msp_disk: 6
+    io_soak: 81
+    maximum_vols_io: 32
+    mayastor_pool_schema: 4
+    MQ-1498-primitive_device_retirement: 34
+    MQ-1783-fsx_ext4_stress: 10
+    MQ-2219-rc-reconciliation: 5
+    MQ-2307-etcd_inaccessibility: 21
+    MQ-2330-ms_pod_disruption_rm_vol: 6
+    MQ-2632-pvc_create_delete: 86
+    MQ-2644-invalid_volume_sizes: 8
+    ms_pod_disruption: 38
+    ms_pod_restart: 5
+    ms_pool_delete: 7
+    msv_rebuild: 18
+    multiple_vols_pod_io: 15
+    nexus_location: 16
+    node_failure: 66
+    node_shutdown: 18
+    pool_modify: 4
+    primitive_data_integrity: 5
+    primitive_fault_injection: 19
+    primitive_fuzz_msv: 57
+    primitive_msp_state: 105
+    primitive_msp_stress: 15
+    primitive_volumes: 19
+    primitve_msp_deletion: 66
+    pvc_delete: 6
+    pvc_readwriteonce: 10
+    pvc_waitforfirstconsumer: 5
+    single_msn_shutdown: 100
+    stale_msp_after_node_power_failure: 8
+    synchronous_replication: 10
+    volume_filesystem: 4

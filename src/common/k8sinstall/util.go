@@ -3,6 +3,7 @@ package k8sinstall
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"os/exec"
 	"sort"
 	"strings"
@@ -152,13 +153,29 @@ func GenerateControlPlaneYamlFiles() error {
 		}
 
 		imageTag := e2eCfg.ImageTag
+
 		mcpScriptDir, err := locations.GetControlPlaneScriptsDir()
 		if err != nil {
 			return err
 		}
-		bashCmd := fmt.Sprintf(
-			"%s/generate-deploy-yamls.sh -o %s -t '%s' -s mayastorCP.logLevel=%s %s test",
+
+		// Try release 1 location
+		scriptFile := fmt.Sprintf("%s/generate-deploy-yamls.sh",
 			mcpScriptDir,
+		)
+		if _, err := os.Stat(scriptFile); err != nil {
+			// Try post release 1 location
+			scriptFile = fmt.Sprintf("%s/deploy/generate-yamls.sh",
+				mcpScriptDir,
+			)
+		}
+		if _, err := os.Stat(scriptFile); err != nil {
+			return err
+		}
+
+		bashCmd := fmt.Sprintf(
+			"%s -o %s -t '%s' -s mayastorCP.logLevel=%s %s test",
+			scriptFile,
 			locations.GetControlPlaneGeneratedYamlsDir(),
 			imageTag, MCPLogLevel, registryDirective,
 		)

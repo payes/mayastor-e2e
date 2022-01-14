@@ -210,7 +210,7 @@ type E2EConfig struct {
 		PoolDeleteTimeoutSecs  string `yaml:"poolDeleteTimeoutSecs" env-default:"40s"`
 		PoolCreateTimeoutSecs  string `yaml:"poolCreateTimeoutSecs" env-default:"20s"`
 		MayastorRestartTimeout int    `yaml:"mayastorRestartTimeout" env-default:"240"`
-		Iterations             int    `yaml:"iterations" env-default:"100"`
+		Iterations             int    `yaml:"iterations" env-default:"30"`
 	} `yaml:"primitiveMspDelete"`
 
 	PrimitiveMspStressTest struct {
