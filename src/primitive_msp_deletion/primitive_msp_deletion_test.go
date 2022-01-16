@@ -19,6 +19,10 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+const (
+	defWaitTimeout = "300s"
+)
+
 func TestPrimitiveMspDeletionTest(t *testing.T) {
 	// Initialise test and set class and file names for reports
 	k8stest.InitTesting(t, "Primitive Mayastor Pool Deletion Test", "primitive_msp_deletion")
@@ -126,6 +130,9 @@ func primitiveMspDeletionTest() {
 	// Restart mayastor pods
 	err = k8stest.RestartMayastorPods(params.MayastorRestartTimeout)
 	Expect(err).ToNot(HaveOccurred(), "Restart Mayastor pods")
+
+	k8stest.WaitForMCPPath(defWaitTimeout)
+	k8stest.WaitForMayastorSockets(k8stest.GetMayastorNodeIPAddresses(), defWaitTimeout)
 
 	// Create mayastorpools
 	Eventually(func() error {

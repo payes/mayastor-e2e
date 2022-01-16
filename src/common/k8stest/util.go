@@ -414,7 +414,7 @@ func StatefulSetReady(statefulSetName string, namespace string) bool {
 	status := statefulSet.Status
 	logf.Log.Info("StatefulSet "+statefulSetName, "status", status)
 	return status.Replicas == status.ReadyReplicas &&
-		status.ReadyReplicas == status.CurrentReplicas
+		status.ReadyReplicas == status.CurrentReplicas && status.ReadyReplicas != 0
 }
 
 func ControlPlaneReady(sleepTime int, duration int) bool {

@@ -105,6 +105,7 @@ func (c *appConfig) deleteDeployment() {
 }
 
 func verifyMayastorComponentStates(numMayastorInstances int) {
+	k8stest.WaitForMCPPath(defWaitTimeout)
 	// TODO Enable this once issue is fixed in Mayastor
 	/*
 		nodeList, err := crds.ListNodes()
@@ -121,7 +122,7 @@ func verifyMayastorComponentStates(numMayastorInstances int) {
 	Expect(err).ToNot(HaveOccurred())
 	Expect(ready).To(Equal(true))
 	// FIXME: is this correct for control plane versions > 0 ?
-	ready = k8stest.ControlPlaneReady(3, 60)
+	ready = k8stest.ControlPlaneReady(3, 300)
 	Expect(ready).To(Equal(true), "control plane is not ready")
 }
 
