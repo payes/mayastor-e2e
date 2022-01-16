@@ -53,6 +53,7 @@ func EnablePoolDeviceAtNode(nodeName string, device string) {
 func GetNonNexusNodes(uid string) []string {
 	var nonNexusNodes []string
 	nexusNode, nodes := k8stest.GetMsvNodes(uid)
+	logf.Log.Info("GetNonNexusNodes", "nexusNode", nexusNode, "nodes", nodes)
 
 	for _, node := range nodes {
 		if node == nexusNode {
@@ -60,6 +61,7 @@ func GetNonNexusNodes(uid string) []string {
 		}
 		nonNexusNodes = append(nonNexusNodes, node)
 	}
+	logf.Log.Info("GetNonNexusNodes", "nexusNode", nexusNode, "nonNexusNodes", nonNexusNodes)
 	return nonNexusNodes
 }
 
