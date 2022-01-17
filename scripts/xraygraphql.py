@@ -4,7 +4,6 @@ This module defines a class which uses interfaces with the Xray GraphQL
 interface to enumerate Test, TestSets, TestPlans, TestExecutions and
 TestRuns
 '''
-from datetime import datetime
 import json
 import os
 import requests
@@ -432,6 +431,7 @@ class XrayClient:
                         issueId
                         jira(fields: ["key", "summary"])
                         lastModified
+                        testEnvironments
                     }
                 }
             }
@@ -607,6 +607,7 @@ class XrayClient:
         GetTestExecutionRuns($limit: Int!, $start: Int!, $issueId: String!) {
             getTestExecution(issueId: $issueId) {
                 issueId
+                testEnvironments
                 testRuns(limit: $limit, start: $start) {
                     total
                     start
