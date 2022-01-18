@@ -15,9 +15,9 @@ trace = False
 
 _client_id = None
 _client_secret = None
-_auth_url = 'https://xray.cloud.xpand-it.com/api/v1/authenticate'
+_auth_url = 'https://xray.cloud.getxray.app/api/v2/authenticate'
 
-_gql_url = 'https://xray.cloud.xpand-it.com/api/v2/graphql'
+_gql_url = 'https://xray.cloud.getxray.app/api/v2/graphql'
 
 
 class XrayClient:
