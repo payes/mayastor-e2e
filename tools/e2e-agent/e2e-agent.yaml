@@ -1,0 +1,60 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-vars
+  namespace: e2e-agent
+data:
+  REST_PORT: "10012"
+  MAYASTOR_PORT: "10124"
+  E2E_HOST_ADDR: ""
+
+---
+kind: DaemonSet
+apiVersion: apps/v1
+metadata:
+  name: e2e-rest-agent
+  labels:
+    app: e2e-rest-agent
+  namespace: e2e-agent
+spec:
+  selector:
+    matchLabels:
+        app: e2e-rest-agent
+  template:
+    metadata:
+      labels:
+        app: e2e-rest-agent
+    spec:
+      priorityClassName: system-node-critical
+      hostNetwork: true
+      hostPID: true
+      containers:
+        - name: e2e-rest-agent
+          env:
+          - name: MY_POD_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
+          envFrom:
+          - configMapRef:
+              name: test-vars
+          securityContext:
+            privileged: true
+            allowPrivilegeEscalation: true
+          image: ci-registry.mayastor-ci.mayadata.io/mayadata/e2e-agent:latest
+          volumeMounts:
+            - name: host-root
+              mountPath: /host
+              mountPropagation: "Bidirectional"
+            - name: device-dir
+              mountPath: /dev
+      volumes:
+        - name: host-root
+          hostPath:
+            path: /
+            type: Directory
+        - name: device-dir
+          hostPath:
+            path: /dev
+            type: Directory
+---

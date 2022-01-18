@@ -1,0 +1,93 @@
+#!/usr/bin/env groovy
+
+// On-demand E2E infra configuration
+// https://mayadata.atlassian.net/wiki/spaces/MS/pages/247332965/Test+infrastructure#On-Demand-E2E-K8S-Clusters
+
+def e2e_build_cluster_job='k8s-build-cluster' // Jenkins job to build cluster
+def e2e_destroy_cluster_job='k8s-destroy-cluster' // Jenkins job to destroy cluster
+// Environment to run e2e test in (job param of $e2e_build_cluster_job)
+def e2e_environment="hcloud-kubeadm"
+// Global variable to pass current k8s job between stages
+def test_tag=""
+
+e2e_reports_dir='artifacts/reports/'
+e2e_test_profile = 'c1'
+
+String cron_schedule = "H 12 * * *"
+
+xray_send_report=true
+xray_nightly_C1_testplan='MQ-1486'
+
+pipeline {
+  agent none
+  options {
+    timeout(time: 23, unit: 'HOURS')
+    buildDiscarder(logRotator(numToKeepStr: '365', artifactNumToKeepStr: '365'))
+  }
+  triggers {
+    cron(cron_schedule)
+  }
+  stages {
+    stage('test') {
+      stages {
+        stage('build docker images') {
+          agent { label 'nixos-mayastor' }
+          steps {
+            script {
+              common = load "./pipelines/common/common.groovy"
+              test_tag = common.GetTestTag()
+              common.BuildImages('develop', 'develop', test_tag)
+            }
+          }
+          post {
+            // Always remove all docker images because they are usually used just once
+            // and underlaying pkgs are already cached by nix so they can be easily
+            // recreated.
+            always {
+              sh 'docker image prune --all --force'
+            }
+          }
+        }
+        stage('run e2e') {
+          agent { label 'nixos' }
+          environment {
+            KUBECONFIG = "${env.WORKSPACE}/${e2e_environment}/modules/k8s/secrets/admin.conf"
+          }
+          steps {
+            script {
+              common = load "./pipelines/common/common.groovy"
+              loki_run_id = common.GetLokiRunId()
+              sh "mkdir -p ./${e2e_reports_dir}"
+
+              failed_tests = common.RunTestsOnePerCluster(e2e_test_profile,
+                                                          test_tag,
+                                                          loki_run_id,
+                                                          e2e_build_cluster_job,
+                                                          e2e_destroy_cluster_job,
+                                                          e2e_environment,
+                                                          e2e_reports_dir)
+              if (failed_tests != "") {
+                  error("The following tests failed: " + failed_tests)
+              }
+            }
+          }
+          post {
+            always {
+              archiveArtifacts 'artifacts/**/*.*'
+              // handle junit results on success or failure
+              junit "${e2e_reports_dir}/**/*.xml"
+              script {
+                if (xray_send_report == true) {
+                  // xray_send_report alters the report artifacts
+                  // so should run after archiveArtifacts and junit
+                  common = load "./pipelines/common/common.groovy"
+                  common.SendXrayReport(xray_nightly_C1_testplan, test_tag, e2e_reports_dir)
+                }
+              }
+            }
+          }//post
+        }//stage 'run e2e'
+      }//stages
+    }//stage 'test'
+  }//stages
+}

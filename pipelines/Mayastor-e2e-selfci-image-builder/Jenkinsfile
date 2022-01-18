@@ -1,0 +1,108 @@
+#!/usr/bin/env groovy
+
+// On-demand E2E infra configuration
+// https://mayadata.atlassian.net/wiki/spaces/MS/pages/247332965/Test+infrastructure#On-Demand-E2E-K8S-Clusters
+
+def e2e_build_cluster_job='k8s-build-cluster' // Jenkins job to build cluster
+def e2e_destroy_cluster_job='k8s-destroy-cluster' // Jenkins job to destroy cluster
+// Environment to run e2e test in (job param of $e2e_build_cluster_job)
+def e2e_environment="hcloud-kubeadm"
+// Global variable to pass current k8s job between stages
+def k8s_job=""
+def test_tag=""
+
+e2e_selfci_image_tag='selfci'
+e2e_reports_dir='artifacts/reports/'
+e2e_selfci_test_profile = 'selfci'
+
+String cron_schedule = "H 6 * * *"
+
+pipeline {
+  agent none
+  options {
+    timeout(time: 180, unit: 'MINUTES')
+    buildDiscarder(logRotator(numToKeepStr: '365', artifactNumToKeepStr: '365'))
+  }
+  triggers {
+    cron(cron_schedule)
+  }
+  stages {
+    stage('test') {
+      stages {
+        stage('build docker images') {
+          agent { label 'nixos-mayastor' }
+          steps {
+            script {
+              common = load "./pipelines/common/common.groovy"
+              test_tag = common.GetTestTag()
+              common.BuildImages('develop', 'develop', test_tag)
+            }
+          }
+          post {
+            // Always remove all docker images because they are usually used just once
+            // and underlaying pkgs are already cached by nix so they can be easily
+            // recreated.
+            always {
+              sh 'docker image prune --all --force'
+            }
+          }
+        }
+        stage('run e2e') {
+          agent { label 'nixos' }
+          environment {
+            KUBECONFIG = "${env.WORKSPACE}/${e2e_environment}/modules/k8s/secrets/admin.conf"
+          }
+          steps {
+            script {
+              common = load "./pipelines/common/common.groovy"
+              loki_run_id = common.GetLokiRunId()
+              sh "mkdir -p ./${e2e_reports_dir}"
+
+              k8s_job = common.BuildCluster(e2e_build_cluster_job, e2e_environment)
+              common.GetClusterAdminConf(e2e_environment, k8s_job)
+
+              def cmd = "./scripts/e2e-test.sh --device /dev/sdb --tag \"${test_tag}\" --logs --onfail reinstall --profile \"${e2e_selfci_test_profile}\" --loki_run_id \"${loki_run_id}\" --loki_test_label \"${e2e_selfci_test_profile}\" --reportsdir \"${env.WORKSPACE}/${e2e_reports_dir}\" --registry \"${env.REGISTRY}\" --session \"self-ci-image-builder\" "
+
+              withCredentials([
+                usernamePassword(credentialsId: 'GRAFANA_API', usernameVariable: 'grafana_api_user', passwordVariable: 'grafana_api_pw'),
+                string(credentialsId: 'HCLOUD_TOKEN', variable: 'HCLOUD_TOKEN')
+              ]) {
+                common.LokiInstall(test_tag, e2e_selfci_test_profile)
+                sh "nix-shell --run '${cmd}'"
+                common.LokiUninstall(test_tag, e2e_selfci_test_profile)
+              }
+              common.DestroyCluster(e2e_destroy_cluster_job, k8s_job)
+              k8s_job=""
+            }
+          }
+          post {
+            always {
+              archiveArtifacts 'artifacts/**/*.*'
+              // handle junit results on success or failure
+              junit "${e2e_reports_dir}/**/*.xml"
+              script {
+                if (k8s_job != "") {
+                  common = load "./pipelines/common/common.groovy"
+                  common.DestroyCluster(e2e_destroy_cluster_job, k8s_job)
+                }
+              }
+            }
+          }//post
+        }//stage 'run e2e'
+      }//stages
+    }//stage 'test'
+    stage('push images') {
+      agent { label 'nixos-mayastor' }
+      steps {
+        // on success re-tag images as "selfci", push to CI registry
+        sh "./scripts/re-tag-images.sh --src-tag $test_tag --alias-tag ${e2e_selfci_image_tag}"
+      }
+      post {
+        always {
+          sh 'docker logout'
+          sh 'docker image prune --all --force'
+        }
+      }
+    }
+  }//stages
+}

@@ -1,0 +1,82 @@
+# This configuration is for testing changes made to mayastor-e2e
+# and is used for mayastor-e2e CI runs
+# Defining feature is that long running tests have attenuated durations
+configName: selfci
+grpcMandated: true
+selfTest: true
+pvcStress:
+  replicas: 1
+  cdCycles: 1
+  crudCycles: 1
+ioSoakTest:
+  replicas: 1
+  duration: 3m
+  # loadFactor is number of volumes for each mayastor instance
+  # volumes for disruptor pods are allocated from within this "pool"
+  loadFactor: 3
+  protocols:
+  - nvmf
+  # fioStartDelay units are seconds
+  fioStartDelay: 90
+  readyTimeout: 180s
+  disrupt:
+    # Number of disruptor pods
+    podCount: 3
+    # faultAfter units are seconds
+    faultAfter: 51
+    readyTimeout: 60s
+  # thinkTime units are microseconds
+  fioDutyCycles:
+  - thinkTime: 500000
+    thinkTimeBlocks: 1000
+  - thinkTime: 750000
+    thinkTimeBlocks: 1000
+  - thinkTime: 1250000
+    thinkTimeBlocks: 2000
+  - thinkTime: 1500000
+    thinkTimeBlocks: 3000
+  - thinkTime: 1750000
+    thinkTimeBlocks: 3000
+  - thinkTime: 2000000
+    thinkTimeBlocks: 4000
+csi:
+  replicas: 1
+  smallClaimSize: 50Mi
+  largeClaimSize: 500Mi
+uninstall:
+  cleanup: 0
+basicVolumeIO:
+  replicas: 1
+  # timeout units are seconds
+  fioTimeout: 20
+  # volSizeMb units are MiB
+  volSizeMb: 64
+  # fsVolSizeMb units are MiB
+  fsVolSizeMb: 50
+multiVolumesPodIO:
+  replicas: 1
+  volumeSizeMb: 64
+maximumVolsIO:
+  # 4 volumes
+  volMb: 1024
+  volumeCountPerPod: 2
+  podCount: 2
+  duration: 30s
+  timeout:  600s
+pvcReadWriteOnce:
+  # timeout units are seconds
+  fioTimeout: 20
+pvcDelete:
+  # volSizeMb units are MiB
+  volSizeMb: 64
+  # fsVolSizeMb units are MiB
+  fsVolSizeMb: 50
+primitiveReplicas:
+    iterations: 10
+    startSizeMb: 64
+    endSizeMb: 512
+    sizeStepMb: 64
+primitiveMaxVolsInPool:
+  volMb: 64
+  volumeCountPerPool: 110
+  replicas: 1

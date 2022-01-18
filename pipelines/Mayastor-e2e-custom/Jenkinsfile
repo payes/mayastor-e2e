@@ -1,0 +1,148 @@
+#!/usr/bin/env groovy
+
+// On-demand E2E infra configuration
+// https://mayadata.atlassian.net/wiki/spaces/MS/pages/247332965/Test+infrastructure#On-Demand-E2E-K8S-Clusters
+
+// Jenkins jobs to build and destroy clusters
+if (params.platform == 'volterra') {
+  e2e_build_cluster_job = 'k8s-build-cluster-volterra'
+  e2e_destroy_cluster_job = 'k8s-destroy-cluster-volterra'
+  // Environment to run e2e test in (job param of $e2e_build_cluster_job)
+  e2e_environment = 'hcloud-volterra'
+  e2e_script = 'volterra-e2e-test.sh'
+} else {
+  e2e_build_cluster_job = 'k8s-build-cluster'
+  e2e_destroy_cluster_job = 'k8s-destroy-cluster'
+  // Environment to run e2e test in (job param of $e2e_build_cluster_job)
+  e2e_environment = 'hcloud-kubeadm'
+  e2e_script = 'e2e-test.sh'
+}
+
+// Global variable to pass current k8s job between stages
+def k8s_job=""
+
+e2e_image_tag='nightly-stable'
+
+if (params.e2e_branch != '') {
+  e2e_mayastor_dir = 'mayastor-e2e'
+  e2e_artifacts_dir = "${e2e_mayastor_dir}/artifacts"
+} else {
+  e2e_mayastor_dir = '.'
+  e2e_artifacts_dir = "artifacts" // Jenkins doen't support paths starting with "./"
+}
+e2e_reports_dir = "${e2e_artifacts_dir}/reports"
+
+pipeline {
+  agent none
+  options {
+    timeout(time: 6, unit: 'HOURS')
+    buildDiscarder(logRotator(numToKeepStr: '100', artifactNumToKeepStr: '100'))
+  }
+  parameters {
+    string(defaultValue: 'install,uninstall', name: 'tests', trim: true, description: 'comma or space separated list of tests to run, always should start with install and (optionally) end with uninstall')
+    choice(choices: ['', 'self_ci', 'c1', 'nightly-stable', 'staging'], name: 'profile', description: 'profile, overrides tests')
+    booleanParam(defaultValue: true, name: 'delete_cluster_on_failure', description: 'if false, failed tests will leave the cluster running')
+    choice(choices: ['generic', 'volterra'], name: 'platform', description: 'server platform')
+    booleanParam(defaultValue: true, name: 'use_ci_registry', description: 'true to use the CI registry, false to pull images from DockerHub')
+    string(defaultValue: e2e_image_tag, name: 'image_tag', trim: true, description: 'image tag of mayastor images, e.g. nightly-stable or selfci')
+    string(defaultValue: '', name: 'config_path', trim: true, description: 'specify for non-default config file, e.g. selfci_config.yaml nightly_full_config.yaml or soak_config.yaml')
+    string(defaultValue: '', name: 'e2e_branch', trim: true, description: 'specify for non-develop Mayastor-e2e branch to use')
+  }
+  stages {
+    stage('test') {
+      stages {
+        stage('build e2e cluster') {
+          agent { label 'nixos' }
+          steps {
+            script {
+              common = load "./pipelines/common/common.groovy"
+              k8s_job = common.BuildCluster(e2e_build_cluster_job, e2e_environment)
+            }
+          }
+        }
+        stage('run e2e') {
+          agent { label 'nixos' }
+          environment {
+            KUBECONFIG = "${env.WORKSPACE}/${e2e_environment}/modules/k8s/secrets/admin.conf"
+          }
+          steps {
+            script {
+              // if not using the branch this pipeline is associated with,
+              // explicity clone and checkout the branch to use
+              if (params.e2e_branch != '') {
+                checkout([
+                  $class: 'GitSCM',
+                  branches: [[name: "*/${params.e2e_branch}"]],
+                  doGenerateSubmoduleConfigurations: false,
+                  extensions: [[
+                    $class: 'RelativeTargetDirectory',
+                    relativeTargetDir: "mayastor-e2e"
+                  ]],
+                  submoduleCfg: [],
+                    userRemoteConfigs:
+                    [[url: "https://github.com/mayadata-io/mayastor-e2e", credentialsId: "github-checkout"]]])
+
+              }
+            }
+            script {
+              common = load "./pipelines/common/common.groovy"
+              common.GetClusterAdminConf(e2e_environment, k8s_job)
+              loki_run_id = common.GetLokiRunId()
+              abs_e2e_reports_dir = "${env.WORKSPACE}/${e2e_reports_dir}"
+              sh "mkdir -p ${abs_e2e_reports_dir}"
+
+              def cmd = "./scripts/${e2e_script} --device /dev/sdb --tag \"${params.image_tag}\" --loki_run_id \"${loki_run_id}\" --loki_test_label \"custom\" --reportsdir \"${abs_e2e_reports_dir}\" --session \"custom\" "
+
+              if (params.use_ci_registry == true) {
+                cmd = cmd + " --registry \"" + env.REGISTRY + "\""
+              } else {
+                cmd = cmd + " --registry dockerhub"
+              }
+              if (params.config_path != '') {
+                cmd = cmd + " --config \"${params.config_path}\""
+              }
+              if (params.profile != '') {
+                cmd = cmd + " --profile \"${params.profile}\""
+              } else {
+                cmd = cmd + " --tests \"${params.tests}\""
+              }
+
+              withCredentials([
+                usernamePassword(credentialsId: 'GRAFANA_API', usernameVariable: 'grafana_api_user', passwordVariable: 'grafana_api_pw'),
+                string(credentialsId: 'HCLOUD_TOKEN', variable: 'HCLOUD_TOKEN')
+              ]) {
+                common.LokiInstall(params.image_tag, "custom")
+                sh "nix-shell --run 'cd ${env.WORKSPACE}/${e2e_mayastor_dir} && ${cmd}'"
+                common.LokiUninstall(params.image_tag, "custom") // so that, if we keep the cluster, the next Loki instance can use different parameters
+              }
+            }
+          }
+          post {
+            failure {
+              script {
+                common = load "./pipelines/common/common.groovy"
+                if (params.delete_cluster_on_failure) {
+                  common.DestroyCluster(e2e_destroy_cluster_job, k8s_job)
+                } else {
+                  common.WarnOrphanCluster(k8s_job)
+                }
+              }
+            }//failure
+
+            success {
+              script {
+                common = load "./pipelines/common/common.groovy"
+                common.DestroyCluster(e2e_destroy_cluster_job, k8s_job)
+              }
+            }
+            always {
+              archiveArtifacts "${e2e_artifacts_dir}/**/*.*"
+              // handle junit results on success or failure
+              junit "${e2e_reports_dir}/**/*.xml"
+            }// always
+          }//post
+        }//stage 'run e2e'
+      }//stages
+    }//stage 'test'
+  }//stages
+}

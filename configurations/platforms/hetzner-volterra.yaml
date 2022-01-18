@@ -1,0 +1,6 @@
+platform:
+  name: Hetzner-Volterra
+  cannotRestorePools: true
+  hostNetworkingRequired: true
+  mayastorNamespace: ves-system
+  filteredMayastorPodCheck: 1

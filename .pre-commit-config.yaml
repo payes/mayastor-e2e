@@ -1,0 +1,14 @@
+repos:
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v3.4.0  # Use the ref you want to point at
+    hooks:
+    -   id: trailing-whitespace
+-   repo: local
+    hooks:
+    -   id: go-checks
+        name: Go checks
+        entry: ./scripts/go-checks.sh
+        types: [file, go]
+        pass_filenames: true
+        language: system
+        description: Run gofmt and lint on files included in the commit.
