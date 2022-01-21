@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestInvalidVolumSizes(t *testing.T) {
+func TestInvalidVolumeSizes(t *testing.T) {
 	// Initialise test and set class and file names for reports
 	k8stest.InitTesting(t, "MQ-2644", "MQ-2644")
 }
