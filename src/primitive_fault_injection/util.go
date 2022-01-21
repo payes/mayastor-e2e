@@ -185,12 +185,7 @@ func (c *primitiveFaultInjectionConfig) verifyVolumeStateOverGrpcAndCrd() {
 		statusCount = 0
 		for _, nxChild := range nexusChildren {
 
-			if controlplane.MajorVersion() == 0 {
-				logf.Log.Info("Nexus child state", "uri", nxChild.Uri, "child state", nxChild.State)
-				if nxChild.State == controlplane.ChildStateOnline() {
-					statusCount++
-				}
-			} else if controlplane.MajorVersion() == 1 {
+			if controlplane.MajorVersion() == 1 {
 				if nxChild.State == controlplane.ChildStateOnline() ||
 					nxChild.State == controlplane.ChildStateDegraded() {
 					statusCount++

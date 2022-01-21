@@ -310,12 +310,6 @@ func DeleteAllPools() bool {
 		logf.Log.Info("DeleteAllPools: deleting MayastorPools")
 		for _, pool := range pools {
 			logf.Log.Info("DeleteAllPools: deleting", "pool", pool.GetName())
-			if controlplane.MajorVersion() == 0 {
-				finalizers := pool.GetFinalizers()
-				if finalizers != nil {
-					logf.Log.Info("DeleteAllPools: found finalizers on pool ", "pool", pool.GetName(), "finalizers", finalizers)
-				}
-			}
 			err = custom_resources.DeleteMsPool(pool.GetName())
 			if err != nil {
 				logf.Log.Info("DeleteAllPools: failed to delete pool", "pool", pool.GetName(), "error", err)

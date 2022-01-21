@@ -84,25 +84,6 @@ func (c *nodepowerfailureConfig) staleMspAfterNodePowerFailureTest() {
 	var poolName, nodeName string
 	var diskName []string
 
-	if controlplane.MajorVersion() == 0 {
-
-		//Get node name on which moac pod is scheduled
-		moacNodeName, err := k8stest.GetMoacNodeName()
-		Expect(err).ToNot(HaveOccurred())
-		Expect(moacNodeName).ToNot(BeEmpty(), fmt.Sprintf("moac pod not found in running state, %v", err))
-
-		//Select a test MSP from the cluster, which is not present on the
-		//same node on which moac pod is scheduled
-		for _, pool := range pools {
-			if pool.Spec.Node != moacNodeName {
-				poolName = pool.Name
-				nodeName = pool.Spec.Node
-				diskName = pool.Spec.Disks
-				break
-			}
-		}
-	}
-
 	if controlplane.MajorVersion() == 1 {
 		coreAgentNodeName, err := k8stest.GetCoreAgentNodeName()
 		Expect(err).ToNot(HaveOccurred())

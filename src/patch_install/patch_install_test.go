@@ -1,11 +1,12 @@
 package patch_install
 
 import (
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 	"mayastor-e2e/common/e2e_config"
 	"mayastor-e2e/common/k8stest"
 	"testing"
+
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 )
 
 // Patch the mayastor installation on the cluster under test.
@@ -27,9 +28,6 @@ func patchMayastor() {
 
 	err = k8stest.MayastorCsiPatch(registry, imageTag, e2e_config.GetConfig().Platform.MayastorNamespace)
 	Expect(err).ToNot(HaveOccurred(), "Patching mayastor CSI daemonset failed")
-
-	err = k8stest.MayastorMoacPatch(registry, imageTag, e2e_config.GetConfig().Platform.MayastorNamespace)
-	Expect(err).ToNot(HaveOccurred(), "Patching MOAC  failed")
 
 	err = k8stest.RestartMayastor(240, 120, 120)
 	Expect(err).ToNot(HaveOccurred(), "Restarting mayastor failed")

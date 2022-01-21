@@ -70,17 +70,12 @@ func GenerateMayastorYamlFiles() error {
 	poolDirectives := ""
 	masterNode := ""
 	if len(e2eCfg.PoolDevice) != 0 {
-		poolDevice := e2eCfg.PoolDevice
 		for _, node := range nodeLocs {
 			if node.MasterNode {
 				masterNode = node.NodeName
 			}
 			if !node.MayastorNode {
 				continue
-			}
-			if controlplane.MajorVersion() == 0 {
-				// MOAC
-				poolDirectives += fmt.Sprintf(" -p '%s,%s'", node.NodeName, poolDevice)
 			}
 		}
 	}
@@ -136,10 +131,6 @@ func WaitForPoolCrd() bool {
 
 func GenerateControlPlaneYamlFiles() error {
 	e2eCfg := e2e_config.GetConfig()
-
-	if controlplane.MajorVersion() == 0 {
-		return nil
-	}
 
 	if controlplane.MajorVersion() == 1 {
 		registryDirective := ""
@@ -303,11 +294,6 @@ func InstallMayastor() error {
 		}
 	}
 
-	if controlplane.MajorVersion() == 0 {
-		k8stest.KubeCtlApplyYaml("moac-rbac.yaml", yamlsDir)
-		k8stest.KubeCtlApplyYaml("moac-deployment.yaml", yamlsDir)
-	}
-
 	ready, err := k8stest.MayastorReady(2, 540)
 	if err != nil {
 		return err
@@ -318,7 +304,7 @@ func InstallMayastor() error {
 
 	ready = k8stest.ControlPlaneReady(10, 180)
 	if !ready {
-		return fmt.Errorf("mayastor control plane/MOAC installation is not ready")
+		return fmt.Errorf("mayastor control plane installation is not ready")
 	}
 
 	// wait for mayastor node to be ready
@@ -412,16 +398,6 @@ func TeardownMayastor() error {
 			return fmt.Errorf(" PersistentVolumes were found, none expected")
 		}
 
-		if controlplane.MajorVersion() == 0 {
-			found, err = k8stest.CheckForMsvs()
-			if err != nil {
-				logf.Log.Info("Failed to check MSVs", "error", err)
-			}
-			if found {
-				return fmt.Errorf(" Mayastor volume CRDs were found, none expected")
-			}
-		}
-
 		err = custom_resources.CheckAllMsPoolsAreOnline()
 		if err != nil {
 			return err
@@ -453,10 +429,7 @@ func TeardownMayastor() error {
 		if err != nil {
 			return err
 		}
-	} else {
-		go k8stest.KubeCtlDeleteYaml("moac-deployment.yaml", yamlsDir)
 	}
-
 	go k8stest.KubeCtlDeleteYaml("csi-daemonset.yaml", yamlsDir)
 	go k8stest.KubeCtlDeleteYaml("mayastor-daemonset.yaml", yamlsDir)
 	go k8stest.KubeCtlDeleteYaml("nats-deployment.yaml", yamlsDir)
@@ -481,15 +454,6 @@ func TeardownMayastor() error {
 		}
 	}
 
-	// Delete all CRDs in the mayastor namespace.
-	// FIXME: should we? For now yes if nothing else this ensures consistency
-	// when deploying and redeploying Mayastor with MOAC and Mayastor with control plane
-	// on the same cluster.
-	if controlplane.MajorVersion() == 0 {
-		k8stest.KubeCtlDeleteYaml("moac-rbac.yaml", yamlsDir)
-		deleteCRD("mayastornodes.openebs.io")
-		deleteCRD("mayastorvolumes.openebs.io")
-	}
 	deleteCRD("mayastorpools.openebs.io")
 
 	if cleanup {
