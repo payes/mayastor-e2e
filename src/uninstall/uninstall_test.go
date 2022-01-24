@@ -1,9 +1,10 @@
 package uninstall
 
 import (
-	. "github.com/onsi/ginkgo"
 	"mayastor-e2e/common/controlplane"
 	"testing"
+
+	. "github.com/onsi/ginkgo"
 
 	"mayastor-e2e/common/k8sinstall"
 	"mayastor-e2e/common/k8stest"
@@ -14,8 +15,6 @@ import (
 func TestTeardownSuite(t *testing.T) {
 	// Initialise test and set class and file names for reports
 	switch controlplane.MajorVersion() {
-	case 0:
-		k8stest.InitTesting(t, k8sinstall.UninstallSuiteName, "uninstall")
 	case 1:
 		k8stest.InitTesting(t, k8sinstall.UninstallSuiteNameV1, "uninstall")
 	}

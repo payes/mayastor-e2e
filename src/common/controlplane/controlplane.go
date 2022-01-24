@@ -3,7 +3,6 @@ package controlplane
 import (
 	"fmt"
 	"mayastor-e2e/common"
-	v0 "mayastor-e2e/common/controlplane/v0"
 	v1 "mayastor-e2e/common/controlplane/v1"
 	"mayastor-e2e/common/e2e_config"
 	"strconv"
@@ -93,8 +92,6 @@ func getControlPlane() ControlPlaneInterface {
 			panic(err)
 		}
 		switch major {
-		case 0:
-			ifc = v0.MakeCP()
 		case 1:
 			ifc = v1.MakeCP(&nodeIpAddresses)
 		default:

@@ -14,8 +14,6 @@ import (
 func TestInstallSuite(t *testing.T) {
 	// Initialise test and set class and file names for reports
 	switch controlplane.MajorVersion() {
-	case 0:
-		k8stest.InitTesting(t, k8sinstall.InstallSuiteName, "install")
 	case 1:
 		k8stest.InitTesting(t, k8sinstall.InstallSuiteNameV1, "install")
 	}

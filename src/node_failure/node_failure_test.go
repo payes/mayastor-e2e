@@ -261,18 +261,6 @@ func (c *failureConfig) verifyNodeNotReady(nodeName string) {
 		5,              // polling interval
 	).Should(Equal(false))
 
-	/*
-		// This check is not always possible as MOAC might be
-		// running on the node which has been turned off
-		Eventually(func() string {
-			msn, err := custom_resources.GetMsNode(nodeName)
-			Expect(err).ToNot(HaveOccurred(), "GetMsNode")
-			return msn.Status
-		},
-			defTimeoutSecs, // timeout
-			"5s",           // polling interval
-		).Should(Equal("offline"))
-	*/
 }
 
 func (c *failureConfig) deleteSC() {

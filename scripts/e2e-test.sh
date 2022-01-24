@@ -279,7 +279,6 @@ else
     coveragedir="$coveragedir/$session"
 fi
 
-mcp=''
 
 if [ -z "$mayastor_root_dir" ]; then
     mkdir -p "$sessiondir"
@@ -290,70 +289,19 @@ if [ -z "$mayastor_root_dir" ]; then
         echo "Unable to extract install files for $tag"
         exit $EXITV_INVALID_OPTION
     fi
-    mcp=$(find "$mayastor_root_dir" -name mcp -type d)
-    if [ -z "$mcp" ] ; then
-        # "$mayastor_root_dir/csi/moac/crds/mayastor*.yaml" doesn't work
-        # in that the script does not receive a list of yaml files but instead
-        # gets mayastor*.yaml. Hence the odd double quoting style
-        # "$mayastor_root_dir"/csi/moac/crds/mayastor*.yaml
-        if ! "$SCRIPTDIR/genGoCrdTypes.py"  "$mayastor_root_dir"/csi/moac/crds/mayastor*.yaml ; then
-            echo "Failed to generate Go CRD types"
-            exit $EXITV_CRD_GO_GEN
-        fi
+    kbctl_plugin=$(find "$mayastor_root_dir" -name kubectl-mayastor)
+    if [ -n "$kbctl_plugin" ]; then
+        kbctl_plugin_dir=$(dirname "$kbctl_plugin")
+        echo "Found kubectl plugin $kbctl_plugin"
+        export e2e_kubectl_plugin_dir=$kbctl_plugin_dir
     else
-        kbctl_plugin=$(find "$mayastor_root_dir" -name kubectl-mayastor)
-        if [ -n "$kbctl_plugin" ]; then
-            kbctl_plugin_dir=$(dirname "$kbctl_plugin")
-            echo "Found kubectl plugin $kbctl_plugin"
-            export e2e_kubectl_plugin_dir=$kbctl_plugin_dir
-        else
-            echo "Did not find mayastor kubectl-plugin"
-            exit $EXITV_MISSING_KUBECTL_PLUGIN
-        fi
-    fi # mcp
+        echo "Did not find mayastor kubectl-plugin"
+        exit $EXITV_MISSING_KUBECTL_PLUGIN
+    fi
 fi
 export e2e_mayastor_root_dir=$mayastor_root_dir
 export e2e_session_dir=$sessiondir
 
-if [ -z "$mcp" ] ; then
-    # grpc proto compatibility check
-    if ! cmp src/common/mayastorclient/grpc/mayastor.proto "$mayastor_root_dir/rpc/mayastor-api/protobuf/mayastor.proto"
-    then
-        echo "src/common/mayastorclient/grpc/mayastor.proto != $mayastor_root_dir/rpc/mayastor-api/protobuf/mayastor.proto"
-        echo "see src/common/mayastorclient/grpc/README.md"
-    # 17/06/2021 temporarily mutate the check into warning
-    # to properly fix we need to generate the client code from the proto,
-    # and for that to work we need and install bundle which packages the proto
-    # file from mayastor.
-    #    exit $EXITV_FILE_MISMATCH
-        echo "WARNING proto files mismatch: src/common/mayastorclient/grpc/mayastor.proto != $mayastor_root_dir/rpc/mayastor-api/protobuf/mayastor.proto"
-    fi
-
-    # CRD compatibility checks
-    if ! cmp src/common/custom_resources/mayastorvolume.yaml "$mayastor_root_dir/csi/moac/crds/mayastorvolume.yaml"
-    then
-        echo "src/common/custom_resources/mayastorvolume.yaml != $mayastor_root_dir/csi/moac/crds/mayastorvolume.yaml"
-        echo "see src/common/custom_resources/README.md"
-        exit $EXITV_FILE_MISMATCH
-    fi
-
-    if ! cmp src/common/custom_resources/mayastorpool.yaml "$mayastor_root_dir/csi/moac/crds/mayastorpool.yaml"
-    then
-        echo "src/common/custom_resources/mayastorpool.yaml != $mayastor_root_dir/csi/moac/crds/mayastorpool.yaml"
-        echo "see src/common/custom_resources/README.md"
-    # 24/06/2021 temporarily mutate the check into warning
-    # to properly fix we need to generate the client code from the yaml.
-    #    exit $EXITV_FILE_MISMATCH
-        echo "WARNING CRD yaml mismatch: src/common/custom_resources/mayastorpool.yaml != $mayastor_root_dir/csi/moac/crds/mayastorpool.yaml"
-    fi
-
-    if ! cmp src/common/custom_resources/mayastornode.yaml "$mayastor_root_dir/csi/moac/crds/mayastornode.yaml"
-    then
-        echo "src/common/custom_resources/mayastornode.yaml != $mayastor_root_dir/csi/moac/crds/mayastornode.yaml"
-        echo "see src/common/custom_resources/README.md"
-        exit $EXITV_FILE_MISMATCH
-    fi
-fi
 
 if [ -z "$device" ]; then
   echo "Device for storage pools must be specified"
@@ -470,11 +418,7 @@ contains() {
 
 # The values of e2e_control_plane must match control plane values
 # in src/common/constants.go
-if [ -z "$mcp" ]; then
-    version_from_bundle="0.8.2"
-else
-    version_from_bundle="1.0.0"
-fi
+version_from_bundle="1.0.0"
 
 if [ -n "$mayastor_version" ]; then
     if [ "$version_from_bundle" != "$mayastor_version" ]; then
