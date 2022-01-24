@@ -55,6 +55,8 @@ var _ = Describe("Stale MSP after node power failure test", func() {
 			k8stest.RemoveAllNodeSelectorsFromDeployment("msp-operator", common.NSMayastor())
 			k8stest.RemoveAllNodeSelectorsFromDeployment("rest", common.NSMayastor())
 			k8stest.RemoveAllNodeSelectorsFromDeployment("csi-controller", common.NSMayastor())
+		} else {
+			Expect(controlplane.MajorVersion).Should(Equal(1), "unsupported control plane version %d/n", controlplane.MajorVersion())
 		}
 
 		err := k8stest.RestartMayastor(240, 240, 240)
@@ -107,6 +109,8 @@ func (c *nodepowerfailureConfig) staleMspAfterNodePowerFailureTest() {
 				break
 			}
 		}
+	} else {
+		Expect(controlplane.MajorVersion).Should(Equal(1), "unsupported control plane version %d/n", controlplane.MajorVersion())
 	}
 
 	//Power off the node on which test MSP is running

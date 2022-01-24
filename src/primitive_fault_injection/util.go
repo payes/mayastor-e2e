@@ -191,6 +191,8 @@ func (c *primitiveFaultInjectionConfig) verifyVolumeStateOverGrpcAndCrd() {
 					statusCount++
 				}
 				logf.Log.Info("Nexus child state", "uri", nxChild.Uri, "child state", nxChild.State)
+			} else {
+				Expect(controlplane.MajorVersion).Should(Equal(1), "unsupported control plane version %d/n", controlplane.MajorVersion())
 			}
 
 		}

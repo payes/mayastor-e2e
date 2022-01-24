@@ -432,6 +432,9 @@ func ControlPlaneReady(sleepTime int, duration int) bool {
 				ready = ready && tmp
 			}
 		}
+	} else {
+		logf.Log.Info("unsupported control plane", "version", controlplane.MajorVersion())
+		return ready
 	}
 	return ready
 }
@@ -682,9 +685,7 @@ func CheckAndSetControlPlane() error {
 		return fmt.Errorf("restful Control plane components are absent")
 	}
 
-	if foundCoreAgents {
-		version = "1.0.0"
-	}
+	version = "1.0.0"
 
 	logf.Log.Info("CheckAndSetControlPlane", "version", version)
 	if !e2e_config.SetControlPlane(version) {

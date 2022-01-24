@@ -140,6 +140,8 @@ func testPvcDeleteTest(
 			"600s",
 			"15s",
 		).Should(Equal(0), "replicas have not been garbage collected")
+	} else {
+		Expect(controlplane.MajorVersion).Should(Equal(1), "unsupported control plane version %d/n", controlplane.MajorVersion())
 	}
 
 	// Create the volume to check orphaned replica behavior

@@ -199,6 +199,8 @@ func DeleteAllMsvs() (int, error) {
 	// FIXME: For now on control plane version 1 we cannot/should not delete MSVs
 	if controlplane.MajorVersion() == 1 {
 		return 0, nil
+	} else if controlplane.MajorVersion() != 1 {
+		return 1, fmt.Errorf("unsupported control plane version %d/n", controlplane.MajorVersion())
 	}
 
 	// If after deleting PVCs and PVs Mayastor volumes are leftover

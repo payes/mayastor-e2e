@@ -292,6 +292,8 @@ func InstallMayastor() error {
 		if err != nil {
 			return err
 		}
+	} else {
+		return fmt.Errorf("unsupported control plane version %d/n", controlplane.MajorVersion())
 	}
 
 	ready, err := k8stest.MayastorReady(2, 540)
@@ -416,6 +418,8 @@ func TeardownMayastor() error {
 	}
 	if controlplane.MajorVersion() == 1 {
 		err = GenerateControlPlaneYamlFiles()
+	} else {
+		return fmt.Errorf("unsupported control plane version %d/n", controlplane.MajorVersion())
 	}
 	if err != nil {
 		return err
@@ -429,6 +433,8 @@ func TeardownMayastor() error {
 		if err != nil {
 			return err
 		}
+	} else {
+		return fmt.Errorf("unsupported control plane version %d/n", controlplane.MajorVersion())
 	}
 	go k8stest.KubeCtlDeleteYaml("csi-daemonset.yaml", yamlsDir)
 	go k8stest.KubeCtlDeleteYaml("mayastor-daemonset.yaml", yamlsDir)

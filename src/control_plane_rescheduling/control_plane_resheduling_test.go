@@ -82,6 +82,8 @@ func controlPlaneReschedulingTest(protocol common.ShareProto, volumeType common.
 		// After scaling down control plane components wait for 10 Sec.
 		time.Sleep(10 * time.Second)
 
+	} else {
+		Expect(controlplane.MajorVersion).Should(Equal(1), "unsupported control plane version %d/n", controlplane.MajorVersion())
 	}
 
 	// Check if all fio pods are in running state or not
@@ -101,6 +103,8 @@ func controlPlaneReschedulingTest(protocol common.ShareProto, volumeType common.
 		for _, appName := range appNameList {
 			k8stest.SetReplication(appName, e2e_config.GetConfig().Platform.MayastorNamespace, &replicas)
 		}
+	} else {
+		Expect(controlplane.MajorVersion).Should(Equal(1), "unsupported control plane version %d/n", controlplane.MajorVersion())
 	}
 
 	// Wait for fio pods to get into completed state

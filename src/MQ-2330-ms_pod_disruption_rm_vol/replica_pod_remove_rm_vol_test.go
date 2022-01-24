@@ -317,8 +317,9 @@ func ReplicaLossVolumeDelete(pvcName string, storageClassName string, fioPodName
 	Expect(len(pools)).To(Equal(1), "Expected 1 pool on the nexus")
 	logf.Log.Info("nexus pool state is", "state", pools[0].State)
 	Expect(pools[0].State).To(Equal(mayastorGrpc.PoolState_POOL_ONLINE), "Expected nexus pool to be online")
-
-	if controlplane.MajorVersion() == 1 {
+	// mayastor control plane version
+	cpVersion := controlplane.MajorVersion()
+	if cpVersion == 1 {
 		logf.Log.Info("waiting for replicas to be garbage collected")
 		const sleepTimeSecs = 30
 		const timeoutSecs = 60 * 30 // 30 minutes
@@ -332,6 +333,8 @@ func ReplicaLossVolumeDelete(pvcName string, storageClassName string, fioPodName
 			logf.Log.Info("replicas", "count", repCount)
 		}
 		Expect(repCount).To(Equal(0), "Expected 0 replicas for deleted volume")
+	} else {
+		Expect(cpVersion).To(Equal(1), "unsupported control plane version %d\n", cpVersion)
 	}
 
 	// the cluster is broken at this point so needs repairing
