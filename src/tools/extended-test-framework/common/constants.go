@@ -48,9 +48,6 @@ const MayastorEngineLabelValue = "mayastor"
 
 const FsxBlockFileName = "/dev/sdm"
 
-// Control plane identifiers for config
-const CpMcp2 = "mcp2"
-
 // Mayastor kubectl plugin details
 const KubectlMayastorPlugin = "kubectl-mayastor"
 const PluginPort = "30011"
