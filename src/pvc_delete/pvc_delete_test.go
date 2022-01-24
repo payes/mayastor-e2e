@@ -10,7 +10,7 @@ import (
 	"mayastor-e2e/common/e2e_config"
 	"mayastor-e2e/common/k8stest"
 	"mayastor-e2e/common/mayastorclient"
-	"mayastor-e2e/common/mayastorclient/grpc"
+	grpc "mayastor-e2e/common/mayastorclient/protobuf"
 
 	coreV1 "k8s.io/api/core/v1"
 

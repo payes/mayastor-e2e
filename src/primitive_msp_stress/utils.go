@@ -5,7 +5,7 @@ import (
 	agent "mayastor-e2e/common/e2e-agent"
 	"mayastor-e2e/common/k8stest"
 	"mayastor-e2e/common/mayastorclient"
-	"mayastor-e2e/common/mayastorclient/grpc"
+	"mayastor-e2e/common/mayastorclient/protobuf"
 	"strconv"
 	"strings"
 	"time"
@@ -121,7 +121,7 @@ func verifyPoolCreated(nodeAddr, poolName string, capacity uint64) bool {
 		return false
 	}
 
-	if ok := (grpcPool.State == grpc.PoolState_POOL_ONLINE && strings.ToLower(crdPool.Status.State) == "online"); !ok {
+	if ok := (grpcPool.State == protobuf.PoolState_POOL_ONLINE && strings.ToLower(crdPool.Status.State) == "online"); !ok {
 		logf.Log.Info("Failed to verify state", "Expected State", "PoolState_POOL_ONLINE", "grpcPool.State", grpcPool.State, "crdPool.Status.State", crdPool.Status.State)
 		return false
 	}

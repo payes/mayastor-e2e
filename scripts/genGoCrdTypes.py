@@ -27,7 +27,7 @@ typeNameMaps = {
         'nexus': 'Nexus',
         'targetnodes': 'TargetNodes',
     },
-    'mayastorpool': {
+    'mayastorpoolcrd': {
         '_spec': 'MayastorPoolSpec',
         '_status': 'MayastorPoolStatus',
     },
@@ -40,7 +40,7 @@ typeNameMaps = {
 # mapping for CRD type name with custom capitalization
 crdTypeMap = {
     'mayastorvolume': 'MayastorVolume',
-    'mayastorpool':  'MayastorPool',
+    'mayastorpoolcrd':  'MayastorPool',
     'mayastornode':  'MayastorNode',
 }
 

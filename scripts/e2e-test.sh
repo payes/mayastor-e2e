@@ -46,6 +46,8 @@ mayastor_root_dir=""
 policy_cleanup_before="${e2e_policy_cleanup_before:-false}"
 profile_test_list=""
 ssh_identity=""
+grpc_code_gen=
+crd_code_gen=
 
 declare -A profiles
 # List and Sequence of tests.
@@ -87,6 +89,12 @@ Options:
   --session                 session name, adds a subdirectory with session name to artifacts, logs and reports
                             directories to facilitate concurrent execution of test runs (default timestamp-uuid)
   --version                 Mayastor version, 0 => MOAC, > 1 => restful control plane
+  --grpc_code_gen <true|false>
+                            On true, grpc server and clinet code will be generated
+                            On false, grpc server and clinet code will not be generated
+  --crd_code_gen <true|false>
+                            On true, custom resource clinet code will be generated
+                            On false, custom resource clinet code will not be generated
 Examples:
   $0 --device /dev/nvme0n1 --registry 127.0.0.1:5000 --tag a80ce0c
 EOF
@@ -138,6 +146,14 @@ while [ "$#" -gt 0 ]; do
     -t|--tag)
       shift
       tag=$1
+      ;;
+    -g|--grpc_code_gen)
+      shift
+      grpc_code_gen="$1"
+      ;;
+    -c|--crd_code_gen)
+      shift
+      crd_code_gen="$1"
       ;;
     -T|--tests)
       shift
@@ -390,6 +406,28 @@ mkdir -p "$reportsdir"
 mkdir -p "$logsdir"
 
 test_failed=0
+
+# Generate gRPC server and client code from mayastor.proto file
+if [ -n "$grpc_code_gen" -a "$grpc_code_gen"="true" ]; then
+  echo "Generating gRPC client and server code: $PWD"
+  #Update mayastor.proto file with option go_package = "github.com/openebs/mayastor-api/protobuf";
+  path="$mayastor_root_dir/rpc/mayastor-api/protobuf"
+  sed -i '/syntax = "proto3";/a option go_package = "github.com/openebs/mayastor-api/protobuf";' "$path/mayastor.proto"
+  cmd="cd $mayastor_root_dir/rpc/mayastor-api && protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative protobuf/mayastor.proto"
+  echo "Command to execute in nix shell: $cmd"
+  nix-shell --run "$cmd" ./ci.nix
+  # Copy mayastor_grpc.pb.go and mayastor.pb.go to /src/common/mayastorclient/protobuf
+  cp "$path/mayastor_grpc.pb.go" "$path/mayastor.pb.go" ./src/common/mayastorclient/protobuf 
+fi
+
+# Generate CR client code from mayastorpoolcrd.yaml file
+if [ -n "$crd_code_gen" -a "$crd_code_gen"="true" ]; then
+  echo "Generating CR client code: $PWD"
+  path="$mayastor_root_dir/mcp/chart/templates/mayastorpoolcrd.yaml"
+  cmd="./scripts/genGoCrdTypes.py $path"
+  echo "Command to execute in nix shell: $cmd"
+  nix-shell --run "$cmd" ./ci.nix
+fi
 
 # Run go test in directory specified as $1 (relative path)
 function runGoTest {
