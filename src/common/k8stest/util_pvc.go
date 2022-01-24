@@ -4,6 +4,7 @@ package k8stest
 import (
 	"context"
 	"fmt"
+	"mayastor-e2e/common/controlplane"
 	"mayastor-e2e/common/mayastorclient"
 	"strings"
 	"sync"
@@ -201,6 +202,10 @@ func MkPVC(volSizeMb int, volName string, scName string, volType common.VolumeTy
 // MsvConsistencyCheck check consistency of  MSV Spec, Status, and associated objects returned by gRPC
 func MsvConsistencyCheck(uuid string) error {
 	//FIXME: implement new MsvConsistencyCheck inline with mayastor control plane
+	// JIRA: https://mayadata.atlassian.net/browse/MQ-2741
+	if controlplane.MajorVersion() != 0 {
+		return nil
+	}
 	msv, err := GetMSV(uuid)
 	if msv == nil {
 		return fmt.Errorf("MsvConsistencyCheck: GetMsv: %v, got nil pointer to msv", uuid)
