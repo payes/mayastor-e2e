@@ -263,7 +263,6 @@ else
     coveragedir="$coveragedir/$session"
 fi
 
-mcp=''
 
 if [ -z "$mayastor_root_dir" ]; then
     mkdir -p "$sessiondir"
@@ -274,7 +273,6 @@ if [ -z "$mayastor_root_dir" ]; then
         echo "Unable to extract install files for $tag"
         exit $EXITV_INVALID_OPTION
     fi
-    mcp=$(find "$mayastor_root_dir" -name mcp -type d)
     kbctl_plugin=$(find "$mayastor_root_dir" -name kubectl-mayastor)
     if [ -n "$kbctl_plugin" ]; then
         kbctl_plugin_dir=$(dirname "$kbctl_plugin")
