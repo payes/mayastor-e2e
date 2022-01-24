@@ -12,7 +12,7 @@ import (
 	"mayastor-e2e/common/e2e_config"
 	"mayastor-e2e/common/k8stest"
 	"mayastor-e2e/common/mayastorclient"
-	mayastorGrpc "mayastor-e2e/common/mayastorclient/grpc"
+	mayastorGrpc "mayastor-e2e/common/mayastorclient/protobuf"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

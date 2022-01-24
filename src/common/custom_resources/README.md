@@ -28,6 +28,11 @@ working directory set to the mayastor e2e repo root directory).
 ```
 ./scripts/genGoCrdTypes.py artifacts/install/XXXX/csi/moac/crds/mayastor*.yaml
 ```
+In case of mayastor control plane , use below command to generate pool custom resource client code
+
+```
+./scripts/genGoCrdTypes.py artifacts/install-bundle/XXXX/mcp/chart/templates/mayastorpoolcrd.yaml
+```
 
 where `XXXX` is the mayastor build tag
 

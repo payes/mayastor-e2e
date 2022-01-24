@@ -105,6 +105,7 @@ func (c *shutdownConfig) deleteDeployment() {
 }
 
 func (c *shutdownConfig) verifyMayastorComponentStates(numMayastorInstances int) {
+	k8stest.WaitForMCPPath(defWaitTimeout)
 	nodeList, err := k8stest.ListMsns()
 	Expect(err).ToNot(HaveOccurred(), "ListMsNodes")
 	count := 0
@@ -119,7 +120,7 @@ func (c *shutdownConfig) verifyMayastorComponentStates(numMayastorInstances int)
 	ready, err := k8stest.MayastorInstancesReady(numMayastorInstances, 3, 540)
 	Expect(err).ToNot(HaveOccurred())
 	Expect(ready).To(Equal(true))
-	ready = k8stest.ControlPlaneReady(3, 60)
+	ready = k8stest.ControlPlaneReady(3, 300)
 	Expect(ready).To(Equal(true), "control is not ready")
 }
 

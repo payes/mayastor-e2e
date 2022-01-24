@@ -45,7 +45,7 @@ type IssueType struct {
 }
 
 func GetJiraTaskDetails(key string) (*JiraTask, error) {
-	client := &http.Client{Timeout: 15 * time.Second}
+	client := &http.Client{Timeout: 30 * time.Second}
 	req, err := http.NewRequest(http.MethodGet, issueURL+key, nil)
 	if err != nil {
 		log.Error(err.Error())

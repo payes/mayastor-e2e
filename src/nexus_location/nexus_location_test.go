@@ -169,6 +169,9 @@ func remotelyProvisionedVolume(replicas int, local bool) {
 		logf.Log.Info("Failed to list nexuses")
 	}
 
+	logf.Log.Info("sleep... 60 secs")
+	time.Sleep(60 * time.Second)
+
 	// Delete the fio pod
 	err = k8stest.DeletePod(fioPodName, ns)
 	Expect(err).ToNot(HaveOccurred(), "failed to delete test pod")

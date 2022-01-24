@@ -78,7 +78,6 @@ func (c *inaccessibleEtcdTestConfig) etcdInaccessibilityWhenReplicaFaulted() {
 	WaitForEtcdState(false)
 
 	nodes := GetNonNexusNodes(uuid)
-	Expect(len(nodes)).To(Equal(1))
 
 	DisablePoolDeviceAtNode(nodes[0], poolDevice)
 
@@ -134,16 +133,13 @@ var _ = Describe("Mayastor Volume IO test", func() {
 	})
 
 	AfterEach(func() {
+
 		if detachedDeviceAtNode != "" {
 			EnablePoolDeviceAtNode(detachedDeviceAtNode, poolDevice)
 		}
 		var replicas int32 = 1
 		k8stest.SetStatefulsetReplication("mayastor-etcd", e2e_config.GetConfig().Platform.MayastorNamespace, &replicas)
-
 		k8stest.WaitForMCPPath(defTimeoutSecs)
-		// Check resource leakage.
-		err := k8stest.AfterEachCheck()
-		Expect(err).ToNot(HaveOccurred())
 	})
 
 	It("should verify data consistency when etcd is brought down", func() {

@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	authUrl    = "https://xray.cloud.xpand-it.com/api/v2/authenticate"
-	graphqlUrl = "https://xray.cloud.xpand-it.com/api/v2/graphql"
+	authUrl    = "https://xray.cloud.getxray.app/api/v2/authenticate"
+	graphqlUrl = "https://xray.cloud.getxray.app/api/v2/graphql"
 )
 
 var clientId = os.Getenv("XRAY_CLIENT_ID")

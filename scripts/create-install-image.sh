@@ -128,7 +128,7 @@ if [ -n "$MCP_DIR" ]; then
         && cp scripts/generate-deploy-yamls.sh "$workdir/mcp/scripts" \
         && cp -R chart "$workdir/mcp" \
         && mkdir -p "$workdir/mcp/bin" \
-        && cp "$(nix-build -A utils.release.kubectl-plugin --no-out-link)/bin/kubectl-mayastor" "$workdir/mcp/bin" \
+        && cp "$(nix-build -A utils.release.linux-musl.kubectl-plugin --no-out-link)/bin/kubectl-mayastor" "$workdir/mcp/bin" \
         && chmod a+w "$workdir/mcp/bin/kubectl-mayastor" \
         && mkdir -p "$workdir/mcp/control-plane/rest/openapi-specs" \
         && cp control-plane/rest/openapi-specs/* "$workdir/mcp/control-plane/rest/openapi-specs" \
