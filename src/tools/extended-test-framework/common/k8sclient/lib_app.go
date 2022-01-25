@@ -38,6 +38,28 @@ func MakeFioContainer(fioImage string, name string, args []string) coreV1.Contai
 	}
 }
 
+func MakePriviligedContainer(image string, name string, args []string) coreV1.Container {
+	containerArgs := args
+	if len(containerArgs) == 0 {
+		containerArgs = []string{"sleep", "1000000"}
+	}
+	var z64 int64 = 0
+	var vTrue bool = true
+
+	sc := coreV1.SecurityContext{
+		Privileged:               &vTrue,
+		RunAsUser:                &z64,
+		AllowPrivilegeEscalation: &vTrue,
+	}
+	return coreV1.Container{
+		Name:            name,
+		Image:           image,
+		ImagePullPolicy: coreV1.PullAlways,
+		Args:            containerArgs,
+		SecurityContext: &sc,
+	}
+}
+
 func DeployFio(
 	fioImage string,
 	fioPodName string,
@@ -161,6 +183,91 @@ func DeployFio(
 	for ix := 0; ; ix++ {
 		if IsPodRunning(fioPodName, NSDefault) {
 			break
+		}
+		if ix >= timoSecs/timoSleepSecs {
+			return fmt.Errorf("timed out waiting for pod to be running")
+		}
+		time.Sleep(timoSleepSecs * time.Second)
+	}
+	return nil
+}
+
+func DeployStorageTester(
+	image string,
+	podName string,
+	pvcName string,
+	volumeType VolumeType,
+	args []string,
+) error {
+
+	vname := "ms-volume"
+	volume := coreV1.Volume{
+		Name: vname,
+		VolumeSource: coreV1.VolumeSource{
+			PersistentVolumeClaim: &coreV1.PersistentVolumeClaimVolumeSource{
+				ClaimName: pvcName,
+			},
+		},
+	}
+	var volumes []coreV1.Volume
+	var volMounts []coreV1.VolumeMount
+	var volDevices []coreV1.VolumeDevice
+	volumes = append(volumes, volume)
+
+	if volumeType == VolFileSystem {
+		mount := coreV1.VolumeMount{
+			Name:      vname,
+			MountPath: "/volume",
+		}
+		volMounts = append(volMounts, mount)
+	} else {
+		device := coreV1.VolumeDevice{
+			Name:       vname,
+			DevicePath: "/dev/sdm",
+		}
+		volDevices = append(volDevices, device)
+	}
+
+	restartPolicy := coreV1.RestartPolicyNever
+	container := MakePriviligedContainer(image, podName, args)
+	podBuilder := NewPodBuilder().
+		WithName(podName).
+		WithNamespace(NSDefault).
+		WithRestartPolicy(restartPolicy).
+		WithContainer(container).
+		WithVolumes(volumes).
+		WithAppLabel("e2e-storage-tester")
+
+	if len(volDevices) != 0 {
+		podBuilder.WithVolumeDevices(volDevices)
+	}
+
+	if len(volMounts) != 0 {
+		podBuilder.WithVolumeMounts(volMounts)
+	}
+
+	podObj, err := podBuilder.Build()
+	if err != nil {
+		return fmt.Errorf("failed to build pod object, error: %v", err)
+	}
+
+	pod, err := CreatePod(podObj, NSDefault)
+	if err != nil {
+		return fmt.Errorf("failed to create pod, error: %v", err)
+	}
+	if pod == nil {
+		return fmt.Errorf("failed to create pod, pod nil")
+	}
+
+	// Wait for the fio Pod to transition to running
+	const timoSecs = 1000
+	const timoSleepSecs = 10
+	for ix := 0; ; ix++ {
+		if IsPodRunning(podName, NSDefault) {
+			break
+		}
+		if IsPodFailed(podName, NSDefault) {
+			return fmt.Errorf("pod is in failed state")
 		}
 		if ix >= timoSecs/timoSleepSecs {
 			return fmt.Errorf("timed out waiting for pod to be running")

@@ -3,10 +3,12 @@ package tests
 import (
 	"fmt"
 	"hash/fnv"
+	e2eagent "mayastor-e2e/common/e2e-agent"
 	"mayastor-e2e/tools/extended-test-framework/common/custom_resources"
 	"mayastor-e2e/tools/extended-test-framework/common/mini_mcp_client"
 	"os"
 	"strconv"
+	"strings"
 
 	"mayastor-e2e/tools/extended-test-framework/common"
 
@@ -39,6 +41,11 @@ const MCP_MSV_ONLINE = "Online"
 const MCP_MSV_UNKNOWN = "Unknown"
 
 const PV_PREFIX = "pvc-"
+
+type deviceDescriptor struct {
+	node   string
+	device string
+}
 
 var violations = []models.WorkloadViolationEnum{
 	models.WorkloadViolationEnumRESTARTED,
@@ -241,6 +248,16 @@ func GetDuration(durationstr string) (time.Duration, error) {
 	return duration, err
 }
 
+func getOnlyVolume(ms_ip string) (string, string, error) {
+	uuid, status, err := mini_mcp_client.GetOnlyVolume(ms_ip)
+	return uuid, status, err
+}
+
+func getVolumeStatus(ms_ip string, uuid string) (string, error) {
+	status, err := mini_mcp_client.GetVolumeStatus(ms_ip, uuid)
+	return status, err
+}
+
 // if pod_to_check is given, the test wait for the pod to complete and duration is a timeout
 // otherwise run the check for the full length of duration.
 func MonitorCRs(
@@ -311,6 +328,122 @@ func EtfwRandom(valrange uint32) (int, error) {
 		return 0, fmt.Errorf("Internal checksum error, error: %v", err)
 	}
 	return int(h.Sum32() % valrange), err
+}
+
+func offlineDevice(index int, nodecount int, devs []deviceDescriptor) ([]deviceDescriptor, error) {
+	var err error
+	var nodeIp string
+	var poolDevice string
+
+	// list the pools
+	pools, err := custom_resources.ListMsPools()
+	if err != nil {
+		return devs, fmt.Errorf("failed to list pools, err: %v", err)
+	}
+	if len(pools) < nodecount {
+		return devs, fmt.Errorf("Expected %d ips, found %d", nodecount, len(pools))
+	}
+	for _, pool := range pools {
+		logf.Log.Info("pool", "name", pool.Name, "device", pool.Spec.Disks[0])
+	}
+
+	// get the node IPs
+	locs, err := k8sclient.GetNodeLocs()
+	if err != nil {
+		return devs, fmt.Errorf("MSV grpc check failed to get nodes, err: %s", err.Error())
+	}
+	if len(locs) < nodecount {
+		return devs, fmt.Errorf("Expected %d ips, found %d", nodecount, len(locs))
+	}
+	pool := pools[index]
+
+	for _, node := range locs {
+		if node.NodeName == pool.Spec.Node {
+			nodeIp = node.IPAddress
+			if len(pool.Spec.Disks) != 1 {
+				return devs, fmt.Errorf("Unexpected number of disks, expected 1 found %d", len(pool.Spec.Disks))
+			}
+			poolDevice = pool.Spec.Disks[0]
+			if !strings.HasPrefix(poolDevice, "/dev/") {
+				return devs, fmt.Errorf("Unexpected device path %s", poolDevice)
+			}
+			poolDevice = poolDevice[5:]
+			break
+		}
+	}
+	if nodeIp == "" {
+		return devs, fmt.Errorf("Could not find node for pool %s", pool.Name)
+	}
+	// we need the IP address of a node and its pool
+	// a pool has spec.node, so we can find the node name
+	// GetNodeLocs includes the node name as well as the IPs
+
+	res, err := e2eagent.ControlDevice(nodeIp, poolDevice, "offline")
+	if err != nil {
+		return devs, err
+	}
+	if err = checkDeviceState(nodeIp, poolDevice, "offline"); err != nil {
+		return devs, err
+	}
+	logf.Log.Info("offline device succeeded", "device", poolDevice, "node", nodeIp, "response", res)
+	devs = append(devs, deviceDescriptor{node: nodeIp, device: poolDevice})
+	return devs, err
+}
+
+func onlineDevice(nodeIp string, poolDevice string) error {
+	var err error
+
+	res, err := e2eagent.ControlDevice(nodeIp, poolDevice, "running")
+	if err != nil {
+		return err
+	}
+	if err = checkDeviceState(nodeIp, poolDevice, "running"); err != nil {
+		return err
+	}
+	logf.Log.Info("online device succeeded", "device", poolDevice, "response", res)
+	return err
+}
+
+func randomSleep() error {
+	sleepMinutesSet := []int{2, 5, 10, 30}
+	idx, err := EtfwRandom(uint32(len(sleepMinutesSet)))
+	if err != nil {
+		return err
+	}
+	sleepMins := sleepMinutesSet[idx]
+	logf.Log.Info("sleeping", "minutes", sleepMins)
+	time.Sleep(time.Duration(sleepMins) * time.Minute)
+	return err
+}
+
+// restoreDevices Set all known offlined devices to running
+func restoreDevices(devs []deviceDescriptor) ([]deviceDescriptor, error) {
+	for _, dev := range devs {
+		if err := onlineDevice(dev.node, dev.device); err != nil {
+			return devs, err
+		}
+		devs = devs[1:]
+	}
+	return devs, nil
+}
+
+func waitForVolumeStatus(ms_ip string, uuid string, wantedState string) error {
+	for i := 0; ; i++ {
+		state, err := getVolumeStatus(ms_ip, uuid)
+		if err != nil {
+			return fmt.Errorf("failed to get nexus state, error: %v", err)
+		}
+		if state == wantedState {
+			break
+		}
+		if i == 100 {
+			return fmt.Errorf("timed out waiting for nexus to be %s", wantedState)
+		}
+		logf.Log.Info("volume not ready", "current state", state, "wanted state", wantedState)
+		time.Sleep(10 * time.Second)
+	}
+	logf.Log.Info("volume now in wanted state", "state", wantedState)
+	return nil
 }
 
 func WaitPodNotRunning(pod_to_check string, timeout time.Duration) error {
