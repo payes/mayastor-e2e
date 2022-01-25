@@ -21,6 +21,8 @@ type ReplicaElimination struct {
 	Timeout       string `yaml:"timeout" env-default:"15m"`
 	VolumeSizeMb  int    `yaml:"volumeSizeMb" env-default:"512"`
 	BlocksToWrite int    `yaml:"blocksToWrite" env-default:"100000"`
+	KillMayastor  int    `yaml:"killmayastor" env-default:"0"`
+	RandomSleep   int    `yaml:"randomSleep" env-default:"0"`
 }
 
 type ReplicaPerturbation struct {

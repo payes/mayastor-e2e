@@ -3,10 +3,10 @@ package tests
 import (
 	"fmt"
 	"mayastor-e2e/tools/extended-test-framework/common/k8sclient"
+	"mayastor-e2e/tools/extended-test-framework/common/mini_mcp_client"
 	"sync"
 	"time"
 
-	mayastorGrpc "mayastor-e2e/common/mayastorclient/protobuf"
 	tc "mayastor-e2e/tools/extended-test-framework/test_conductor/tc"
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -16,63 +16,33 @@ import (
 
 const storage_tester_image = "ci-registry.mayastor-ci.mayadata.io/mayadata/e2e-storage-tester:latest"
 
-// checkUsableVolumeReplicas poll the mayastor pods for the replicas
+// checkVolume
+// Poll the control plane for the status and number of replicas
 // in the given volume for the given number of seconds.
-// Return with error if the count is zero within that time or if
-// all of the replicas are faulted.
-func checkUsableVolumeReplicas(ms_node_ips []string, uuid string, seconds int) error {
+// Log whenever the count is zero within that time.
+// The checks are for debugging only and do not affect the outcome
+// of the test.
+func checkVolume(ms_ip string, uuid string, seconds int) error {
+	var reps int
+	var err error
 
 	for i := 0; i < seconds; i++ {
 		// for debugging
-		status, volerr := getVolumeStatus(ms_node_ips[0], uuid)
+		status, volerr := getVolumeStatus(ms_ip, uuid)
 		if volerr != nil {
 			logf.Log.Info("Could not get volume status", "error", volerr.Error())
 		} else {
 			logf.Log.Info("Volume status", "status", status)
 		}
-
-		nexuses, err := k8sclient.GetNexuses(ms_node_ips)
+		reps, err = mini_mcp_client.GetVolumeReplicaCount(ms_ip, uuid)
 		if err != nil {
-			return fmt.Errorf("failed to get nexuses, uuid %s, err: %v", uuid, err)
+			return fmt.Errorf("failed to get replicas, uuid %s, err: %v", uuid, err)
 		}
-		if len(nexuses) == 0 {
-			return fmt.Errorf("no nexuses found, uuid %s", uuid)
-		} else if len(nexuses) != 1 {
-			// there could be an orphaned nexus
-			logf.Log.Info("unexpected number of nexuses", "count", len(nexuses))
+		if reps == 0 {
+			logf.Log.Info("found zero replicas", "uuid", uuid)
 		}
-		var foundnexus bool = false
-		for _, nexus := range nexuses {
-			// the uuid forms the last 36 chars of the uri
-			extractedUuid := nexus.DeviceUri
-			extractedUuid = extractedUuid[len(extractedUuid)-36:]
-			if uuid == extractedUuid {
-				foundnexus = true
-				logf.Log.Info("found nexus", "uuid", nexus.Uuid, "uri", nexus.DeviceUri)
-				if len(nexus.Children) == 0 {
-					return fmt.Errorf("no nexus children found, uuid %s", uuid)
-				}
-				var allfaulted bool = true
-				for _, replica := range nexus.Children {
-					logf.Log.Info("replica check", "replica state", replica.State)
-					if replica.State != mayastorGrpc.ChildState_CHILD_FAULTED {
-						allfaulted = false
-						break
-					}
-				}
-				if allfaulted {
-					return fmt.Errorf("all %d children are faulted, uuid %s", len(nexuses[0].Children), uuid)
-				}
-				logf.Log.Info("replica check", "replicas", len(nexus.Children), "iteration", i, "uuid", uuid)
-				break
-			}
-		}
-		if !foundnexus {
-			return fmt.Errorf("could not find nexus with uuid %s", uuid)
-		}
-		time.Sleep(time.Second)
+		time.Sleep(10 * time.Second)
 	}
-	logf.Log.Info("replicas still valid after timeout", "timeout seconds", seconds, "uuid", uuid)
 	return nil
 }
 
@@ -127,13 +97,14 @@ func eliminateVolume(
 	var uuid string
 	var status string
 	var devs []deviceDescriptor
-	var zeroerr error
+	var iteration int
 
-	for {
+	for iteration = 1; ; iteration++ {
 		// While (test_not_failed) Loop:
 		if time.Now().After(endTime) {
 			break
 		}
+		logf.Log.Info("---- start of test ----", "iteration", iteration)
 
 		//  Check MSV is in the healthy state
 		if uuid, status, err = getOnlyVolume(msNodeIps[0]); err != nil {
@@ -171,14 +142,12 @@ func eliminateVolume(
 			break
 		}
 
-		//  Offline disk 0
-		if devs, err = offlineDevice(0, testConductor.Config.Msnodes, devs); err != nil {
-			break
-		}
+		// delay to aid debugging
+		time.Sleep(10 * time.Second)
 
 		storage_tester_name = "e2e-storage-tester-read"
 		// deploy the storage tester to send IO (reads) to trigger the fault
-		args = []string{"./e2e-storage-tester", "-t", "150", "-r", "-n", blocksParam, deviceParam}
+		args = []string{"./e2e-storage-tester", "-r", "-n", blocksParam, "-t", "300", "-d", "100", deviceParam}
 		if err = k8sclient.DeployStorageTester(
 			storage_tester_image,
 			storage_tester_name,
@@ -191,53 +160,50 @@ func eliminateVolume(
 		}
 		logf.Log.Info("Created load pod", "pod", storage_tester_name)
 
-		//  Wait for MSV state to become degraded
-		if err = waitForVolumeStatus(cpNodeIp, uuid, MCP_MSV_DEGRADED); err != nil {
-			break
-		}
+		if config.KillMayastor == 0 {
+			//  Offline disk 0
+			if devs, err = offlineDevice(0, testConductor.Config.Msnodes, devs); err != nil {
+				break
+			}
+			//  echo offline | sudo tee /sys/block/sdx/device/state
+			//  Wait for MSV state to become degraded
+			if err = waitForVolumeStatus(cpNodeIp, uuid, MCP_MSV_DEGRADED); err != nil {
+				break
+			}
+			//  Offline disk 1
+			if devs, err = offlineDevice(1, testConductor.Config.Msnodes, devs); err != nil {
+				break
+			}
 
-		//  Offline disk 1
-		if devs, err = offlineDevice(1, testConductor.Config.Msnodes, devs); err != nil {
-			break
-		}
-
-		//  Offline disk 2
-		if devs, err = offlineDevice(2, testConductor.Config.Msnodes, devs); err != nil {
-			break
-		}
-
-		// check that the number of replicas does not go to zero and are not all faulted
-		if zeroerr = checkUsableVolumeReplicas(msNodeIps, uuid, 100); zeroerr != nil {
-			// don't abort just yet, keep the error and see if we get a verification error as well
-			logf.Log.Info("vol zero error", "error", zeroerr.Error())
-		}
-
-		if !k8sclient.IsPodRunning(storage_tester_name, k8sclient.NSDefault) {
-			err = fmt.Errorf("expected pod %s to still be running", storage_tester_name)
-			break
-		}
-		logf.Log.Info("e2e-storage-tester is still running.", "pod", storage_tester_name)
-
-		// wait until the pod finishes
-		logf.Log.Info("Waiting for e2e-storage-tester to complete.", "pod", storage_tester_name)
-		if err = WaitPodNotRunning(storage_tester_name, timeout); err != nil {
-			break
-		}
-		logf.Log.Info("e2e-storage-tester has completed.", "pod", storage_tester_name)
-		// it should have failed due to I/O errors
-		if !k8sclient.IsPodFailed(storage_tester_name, k8sclient.NSDefault) {
-			err = fmt.Errorf("expected pod %s to have failed", storage_tester_name)
-			break
-		}
-		logf.Log.Info("deleting e2e-storage-tester-read")
-		if err = k8sclient.DeletePod(storage_tester_name, k8sclient.NSDefault, podDeletionTimeoutSecs); err != nil {
-			logf.Log.Info("failed to delete e2e-storage-tester", "error", err.Error())
-			break
-		}
-
-		//  Online the disks backing the pools
-		if devs, err = restoreDevices(devs); err != nil {
-			break
+			//  Offline disk 2
+			if devs, err = offlineDevice(2, testConductor.Config.Msnodes, devs); err != nil {
+				break
+			}
+			// wait and log whether the number of replicas goes to zero
+			if err = checkVolume(cpNodeIp, uuid, 100); err != nil {
+				logf.Log.Info("vol zero error", "error", err.Error())
+				break
+			}
+			//  Online the disks backing the pools
+			if devs, err = restoreDevices(devs); err != nil {
+				break
+			}
+		} else {
+			logf.Log.Info("killing mayastor", "index", 0)
+			if err = killMayastor(0, testConductor.Config.Msnodes); err != nil {
+				break
+			}
+			logf.Log.Info("killing mayastor", "index", 1)
+			if err = killMayastor(1, testConductor.Config.Msnodes); err != nil {
+				break
+			}
+			logf.Log.Info("killing mayastor", "index", 2)
+			if err = killMayastor(2, testConductor.Config.Msnodes); err != nil {
+				break
+			}
+			if err = waitForVolumeNotOnline(cpNodeIp, uuid); err != nil {
+				break
+			}
 		}
 
 		//  Wait for MSV state to become healthy
@@ -245,10 +211,18 @@ func eliminateVolume(
 			break
 		}
 
-		// verify the data is valid
+		// wait until the pod completes, successfully or not
+		logf.Log.Info("Waiting for e2e-storage-tester to complete.", "pod", storage_tester_name)
+		if err = WaitPodNotRunning(storage_tester_name, timeout); err != nil {
+			break
+		}
+		_ = k8sclient.DeletePod(storage_tester_name, k8sclient.NSDefault, podDeletionTimeoutSecs)
+
+		// delay to aid debugging
+		time.Sleep(10 * time.Second)
+
 		storage_tester_name = "e2e-storage-tester-verify"
-		args = []string{"./e2e-storage-tester", "-v", "-n", blocksParam, deviceParam}
-		// deploy storage tester
+		args = []string{"./e2e-storage-tester", "-v", "-n", blocksParam, "-t", "150", deviceParam}
 		if err = k8sclient.DeployStorageTester(
 			storage_tester_image,
 			storage_tester_name,
@@ -259,33 +233,34 @@ func eliminateVolume(
 			err = fmt.Errorf("failed to deploy e2e-storage-tester pod %s, error: %v", storage_tester_name, err)
 			break
 		}
-		logf.Log.Info("Created pod", "pod", storage_tester_name)
+		logf.Log.Info("Created verification pod", "pod", storage_tester_name)
 
 		// wait until the pod completes with a success state
 		logf.Log.Info("Waiting for e2e-storage-tester to complete.", "pod", storage_tester_name)
 		if err = WaitPodNotRunning(storage_tester_name, timeout); err != nil {
 			break
 		}
-		// this will fail if the pod has finished with an error
 		if err = k8sclient.CheckPodAndDelete(storage_tester_name, k8sclient.NSDefault, podDeletionTimeoutSecs); err != nil {
 			break
 		}
-		if zeroerr != nil { // we found zero or all-faulted replicas earlier
-			break
-		}
-		if err = randomSleep(); err != nil {
-			break
+
+		// delay to aid debugging
+		time.Sleep(10 * time.Second)
+
+		if config.RandomSleep == 1 {
+			if err = randomSleep(); err != nil {
+				break
+			}
 		}
 	}
-	if zeroerr != nil {
-		err = CombineErrors(err, zeroerr)
+	_, _ = restoreDevices(devs) // avoid breaking the node on error
+	if err == nil {
+		_ = k8sclient.DeletePod(storage_tester_name, k8sclient.NSDefault, podDeletionTimeoutSecs)
+		if locerr := k8sclient.DeletePVC(pvc_name, k8sclient.NSDefault); locerr != nil {
+			err = CombineErrors(err, fmt.Errorf("Failed to delete pvc %s, error = %v", pvc_name, locerr))
+		}
 	}
 
-	_, _ = restoreDevices(devs) // avoid breaking the cluster on error
-
-	if err == nil { // otherwise the pod may exist and we can't delete the PVC
-		err = k8sclient.DeletePVC(pvc_name, k8sclient.NSDefault)
-	}
 	if err != nil {
 		logf.Log.Info("test failed", "error", err)
 	}
@@ -325,7 +300,11 @@ func ReplicaEliminationTest(testConductor *tc.TestConductor) error {
 	var combinederr error
 	var err error
 	var config = testConductor.Config.ReplicaElimination
+	var exclusion_list []string
 
+	if config.KillMayastor != 0 { // ignore mayastor restarts because we will cause them
+		exclusion_list = append(exclusion_list, "mayastor")
+	}
 	if err = SendTestRunToDo(testConductor); err != nil {
 		return fmt.Errorf("failed to inform test director of test start, error: %v", err)
 	}
@@ -337,9 +316,11 @@ func ReplicaEliminationTest(testConductor *tc.TestConductor) error {
 		return fmt.Errorf("failed to inform test director of test start, error: %v", err)
 	}
 
-	if err = tc.AddCommonWorkloads(
+	if err = tc.AddCommonWorkloadsWithExclusions(
 		testConductor.WorkloadMonitorClient,
-		violations); err != nil {
+		violations,
+		exclusion_list,
+	); err != nil {
 		return fmt.Errorf("failed add common workloads, error: %v", err)
 	}
 
