@@ -20,11 +20,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = tests.ReplicaPerturbationTest(testConductor)
+	test_err := tests.ReplicaPerturbationTest(testConductor)
 
-	err = tests.SendTestRunFinished(testConductor, err)
-	if err != nil {
-		logf.Log.Info("failed to report result", "error", err)
-		os.Exit(1)
-	}
+	tests.SendTestRunFinished(testConductor, test_err)
 }

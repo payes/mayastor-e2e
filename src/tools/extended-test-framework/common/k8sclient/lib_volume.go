@@ -214,16 +214,12 @@ func ListPVCs(nameSpace string) (*coreV1.PersistentVolumeClaimList, error) {
 }
 
 // gather the set of MSV states using grpc calls to the mayastor instances
-func GetNexusStates(nodeIPs []string) ([]string, error) {
-	var states []string
+func GetNexuses(nodeIPs []string) ([]mayastorclient.MayastorNexus, error) {
+	var nexuses []mayastorclient.MayastorNexus
 
-	grpcNexuses, err := mayastorclient.ListNexuses(nodeIPs)
+	nexuses, err := mayastorclient.ListNexuses(nodeIPs)
 	if err != nil {
-		return states, fmt.Errorf("failed to list nexuses via gRPC, %v", err)
+		return nexuses, fmt.Errorf("failed to list nexuses via gRPC, %v", err)
 	}
-
-	for _, n := range grpcNexuses {
-		states = append(states, n.State.String())
-	}
-	return states, nil
+	return nexuses, err
 }

@@ -49,6 +49,22 @@ func sendTestRunStatus(client *client.Etfw, uuid strfmt.UUID, message string, ji
 	return nil
 }
 
+func GetTestRunStatus(client *client.Etfw, uuid strfmt.UUID) (models.TestRunStatusEnum, error) {
+	params := test_director.NewGetTestRunByIDParams()
+	params.ID = string(uuid)
+	pRunStatusOk, err := client.TestDirector.GetTestRunByID(params)
+
+	if err != nil {
+		return models.TestRunStatusEnumFAILED, fmt.Errorf("failed to get test run, error: %v %v", err, pRunStatusOk)
+	} else {
+		logf.Log.Info("get test run",
+			"message", pRunStatusOk.Payload.Data,
+			"status", pRunStatusOk.Payload.Status,
+			"key", pRunStatusOk.Payload.TestKey)
+	}
+	return pRunStatusOk.Payload.Status, nil
+}
+
 func SendTestRunCompletedOk(client *client.Etfw, uuid strfmt.UUID, message string, jira_key string) error {
 	logf.Log.Info("SendTestRunCompletedOk")
 	return sendTestRunStatus(client, uuid, message, jira_key, models.TestRunStatusEnumPASSED)
