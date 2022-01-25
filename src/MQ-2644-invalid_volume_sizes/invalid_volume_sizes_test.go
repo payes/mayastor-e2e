@@ -50,7 +50,7 @@ var _ = Describe("Test invalid volume sizes", func() {
 		c.pvcNormalFioTest()
 		c2 := generatePvc("bigger-than-remaining", 3, 8000)
 		c2.pvcInvalidSizeTest()
-		c.runFio()
+		c.runAndDeleteFio()
 	})
 
 	It("should verify to not create pvc without enough space left in one pool", func() {
@@ -60,8 +60,8 @@ var _ = Describe("Test invalid volume sizes", func() {
 		c2.pvcNormalFioTest()
 		c3 := generatePvc("not-enough-space-one-pool", 3, 5000)
 		c3.pvcInvalidSizeTest()
-		c.runFio()
-		c2.runFio()
+		c.runAndDeleteFio()
+		c2.runAndDeleteFio()
 	})
 
 	It("should verify to not create pvc with negative size", func() {

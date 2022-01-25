@@ -90,10 +90,8 @@ func (c *pvcConfig) pvcInvalidSizeTest() {
 func (c *pvcConfig) pvcNormalFioTest() {
 	c.createStorageClass()
 
-	c.createPVC(c.pvcName, false)
-	logf.Log.Info("Creating PVC", "name", c.pvcName, "volume size", c.pvcSizeMB)
-	//Wait for more than 5 min mins. This step makes sure that all the volume creation requests have been sent to csi controller pod
-	time.Sleep(time.Duration(c.delayTime) * time.Minute)
+	pvcUuid := k8stest.MkPVC(c.pvcSizeMB, c.pvcName, c.scName, c.volType, common.NSDefault)
+	logf.Log.Info("Creating PVC", "name", c.pvcName, "volume size", c.pvcSizeMB, "pvc uuid", pvcUuid)
 }
 
 func (c *pvcConfig) pvcZeroOrNegativeSizeTest() {
@@ -169,7 +167,7 @@ func (c *pvcConfig) createFioPod(podName string) {
 	logf.Log.Info("fio test pod is running.")
 }
 
-func (c *pvcConfig) runFio() {
+func (c *pvcConfig) runAndDeleteFio() {
 	name := c.pvcName + "-fio"
 	c.createFioPod(name)
 	Eventually(func() coreV1.PodPhase {
@@ -183,6 +181,8 @@ func (c *pvcConfig) runFio() {
 		defTimeoutSecs,
 		"5s",
 	).Should(Equal(coreV1.PodSucceeded))
+	err := k8stest.DeletePod(name, common.NSDefault)
+	Expect(err).ToNot(HaveOccurred())
 }
 
 func cleanUp() {

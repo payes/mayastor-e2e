@@ -38,7 +38,7 @@ func generatePvc(testName string, replicas int, volSizeMB int) *pvcConfig {
 		iterations:     params.Iterations,
 		replicas:       replicas,
 		scName:         testName + "-sc",
-		delayTime:      2,
+		delayTime:      3,
 		volumeCount:    1,
 	}
 	c.pvcName = fmt.Sprintf("%s-pvc", testName)
