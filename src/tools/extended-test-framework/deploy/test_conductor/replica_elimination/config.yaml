@@ -1,15 +1,13 @@
-testName: "replica-perturbation"
-test: "MQ-1807"
+testName: "replica-elimination"
+test: "MQ-2746"
 e2eFioImage: ci-registry.mayastor-ci.mayadata.io/mayadata/e2e-fio
 msnodes: 3
 duration: 14d
 sendEvent: 1
 sendXrayTest: 1
-replicaPerturbation:
+replicaElimination:
   replicas: 3
   volumeSizeMb: 512
   fsvolume: 0
   localvolume: 0
-  offlineDeviceTest: 0
-  offlineDevAndReplicasTest: 0
 

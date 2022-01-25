@@ -38,7 +38,7 @@ func MakeFioContainer(fioImage string, name string, args []string) coreV1.Contai
 	}
 }
 
-func DeployFio(
+func DeployFioGeneric(
 	fioImage string,
 	fioPodName string,
 	pvcName string,
@@ -46,7 +46,9 @@ func DeployFio(
 	volSize int,
 	fioLoops int,
 	thinkTime int,
-	thinkTimeBlocks int) error {
+	thinkTimeBlocks int,
+	verifyOnly bool,
+	restart bool) error {
 
 	vname := "ms-volume"
 	volume := coreV1.Volume{
@@ -96,16 +98,17 @@ func DeployFio(
 		})
 	}
 
-	// Create the fio Pod
-
 	// Construct argument list for fio to run a single instance of fio,
 	// with multiple jobs, one for each volume.
 	var podArgs []string
 
 	// 1) directives for all fio jobs
 	podArgs = append(podArgs, []string{"---", "fio"}...)
-	podArgs = append(podArgs, GetDefaultFioArguments()...)
-
+	if verifyOnly {
+		podArgs = append(podArgs, GetVerifyFioArguments()...)
+	} else {
+		podArgs = append(podArgs, GetDefaultFioArguments()...)
+	}
 	if volumeType == VolFileSystem {
 		// for FS play safe use filesize which is 75% of volume size
 		podArgs = append(podArgs, fmt.Sprintf("--size=%dm", (volSize*75)/100))
@@ -125,11 +128,15 @@ func DeployFio(
 	podArgs = append(podArgs, "&")
 	logf.Log.Info("pod", "args", podArgs)
 
+	restartPolicy := coreV1.RestartPolicyNever
+	if restart {
+		restartPolicy = coreV1.RestartPolicyAlways
+	}
 	container := MakeFioContainer(fioImage, fioPodName, podArgs)
 	podBuilder := NewPodBuilder().
 		WithName(fioPodName).
 		WithNamespace(NSDefault).
-		WithRestartPolicy(coreV1.RestartPolicyNever).
+		WithRestartPolicy(restartPolicy).
 		WithContainer(container).
 		WithVolumes(volumes).
 		WithAppLabel(fio_app_label)
@@ -162,10 +169,82 @@ func DeployFio(
 		if IsPodRunning(fioPodName, NSDefault) {
 			break
 		}
+		if IsPodFailed(fioPodName, NSDefault) {
+			return fmt.Errorf("pod is in failed state")
+		}
 		if ix >= timoSecs/timoSleepSecs {
 			return fmt.Errorf("timed out waiting for pod to be running")
 		}
 		time.Sleep(timoSleepSecs * time.Second)
 	}
 	return nil
+}
+
+func DeployFio(
+	fioImage string,
+	fioPodName string,
+	pvcName string,
+	volumeType VolumeType,
+	volSize int,
+	fioLoops int,
+	thinkTime int,
+	thinkTimeBlocks int) error {
+
+	return DeployFioGeneric(
+		fioImage,
+		fioPodName,
+		pvcName,
+		volumeType,
+		volSize,
+		fioLoops,
+		thinkTime,
+		thinkTimeBlocks,
+		false,
+		false,
+	)
+}
+
+func DeployFioToVerify(
+	fioImage string,
+	fioPodName string,
+	pvcName string,
+	volumeType VolumeType,
+	volSize int) error {
+
+	return DeployFioGeneric(
+		fioImage,
+		fioPodName,
+		pvcName,
+		volumeType,
+		volSize,
+		1,
+		0,
+		0,
+		true,
+		false,
+	)
+}
+
+func DeployFioRestarting(
+	fioImage string,
+	fioPodName string,
+	pvcName string,
+	volumeType VolumeType,
+	volSize int,
+	fioLoops int,
+	thinkTime int,
+	thinkTimeBlocks int) error {
+
+	return DeployFioGeneric(
+		fioImage,
+		fioPodName,
+		pvcName,
+		volumeType,
+		volSize,
+		fioLoops,
+		thinkTime,
+		thinkTimeBlocks,
+		false,
+		true,
+	)
 }

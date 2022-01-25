@@ -2,10 +2,8 @@ package tests
 
 import (
 	"fmt"
-	e2eagent "mayastor-e2e/common/e2e-agent"
 	"mayastor-e2e/tools/extended-test-framework/common/k8sclient"
 	"mayastor-e2e/tools/extended-test-framework/common/mini_mcp_client"
-	"strings"
 	"sync"
 	"time"
 
@@ -16,46 +14,35 @@ import (
 	storageV1 "k8s.io/api/storage/v1"
 )
 
-func checkDeviceState(nodeIp string, poolDevice string, state string) error {
-	cmd := "cat /sys/block/" + poolDevice + "/device/state"
-	res, _ := e2eagent.Exec(nodeIp, cmd)
-	res = strings.TrimRight(res, "\n")
-	if res != state {
-		return fmt.Errorf("unexpected state: expected %s, got %s", state, res)
-	} else {
-		return nil
-	}
-}
-
-func setReplicas(ms_ip string, uuid string, replicas int) error {
-	err := mini_mcp_client.SetVolumeReplicas(ms_ip, uuid, replicas)
-	if err != nil {
-		return fmt.Errorf("failed to set replicas to %d, err: %v", replicas, err)
-	}
-	for i := 0; i < 100; i++ {
+// checkVolumeReplicasNotZero poll the control plane for the number of replicas
+// in the given volume for the given number of seconds.
+// Return with error if the count is zero within that time.
+func checkVolumeReplicasNotZero(ms_ip string, uuid string, seconds int) error {
+	for i := 0; i < seconds; i++ {
 		reps, err := mini_mcp_client.GetVolumeReplicas(ms_ip, uuid)
 		if err != nil {
 			return fmt.Errorf("failed to get replicas, err: %v", err)
 		}
-		logf.Log.Info("set volume replicas", "wanted replicas", replicas, "got replicas", reps)
-		if reps == replicas {
-			return nil
+		if reps == 0 {
+			return fmt.Errorf("found zero replicas")
 		}
 		time.Sleep(time.Second)
 	}
-	return fmt.Errorf("failed to set replicas to %d, timed out", replicas)
+	return nil
 }
 
-func perturbVolume(
+func eliminateVolume(
 	testConductor *tc.TestConductor,
+	config tc.ReplicaElimination,
 	sc_name string,
-	duration time.Duration) error {
+	duration time.Duration,
+	timeout time.Duration) error {
 
 	var endTime = time.Now().Add(duration)
 	var err error
 	var suffix string
 	const podDeletionTimeoutSecs = 120
-	const testName = "replica-perturbation"
+	const testName = "replica-elimination"
 
 	msNodeIps, err := k8sclient.GetMayastorNodeIPs()
 	if err != nil {
@@ -67,7 +54,7 @@ func perturbVolume(
 	var cpNodeIp = msNodeIps[0]
 
 	vol_type := k8sclient.VolRawBlock // golang has no ternary operator
-	if testConductor.Config.ReplicaPerturbation.FsVolume != 0 {
+	if config.FsVolume != 0 {
 		vol_type = k8sclient.VolFileSystem
 		suffix = "fs"
 	} else {
@@ -79,7 +66,7 @@ func perturbVolume(
 
 	// create PVC
 	msv_uid, err := k8sclient.MkPVC(
-		testConductor.Config.ReplicaPerturbation.VolumeSizeMb,
+		config.VolumeSizeMb,
 		pvc_name,
 		sc_name,
 		vol_type,
@@ -90,32 +77,8 @@ func perturbVolume(
 	}
 	logf.Log.Info("Created pvc", "name", pvc_name, "msv UID", msv_uid)
 
-	// deploy fio
-	if err = k8sclient.DeployFio(
-		testConductor.Config.E2eFioImage,
-		fio_name,
-		pvc_name,
-		vol_type,
-		testConductor.Config.ReplicaPerturbation.VolumeSizeMb,
-		1000000,
-		testConductor.Config.ReplicaPerturbation.ThinkTime,
-		testConductor.Config.ReplicaPerturbation.ThinkTimeBlocks,
-	); err != nil {
-		return fmt.Errorf("failed to deploy pod %s, error: %v", fio_name, err)
-	}
-	logf.Log.Info("Created pod", "pod", fio_name)
-
-	if err = tc.AddWorkload(
-		testConductor.WorkloadMonitorClient,
-		fio_name,
-		k8sclient.NSDefault,
-		violations); err != nil {
-		return fmt.Errorf("failed to inform workload monitor of %s, error: %v", fio_name, err)
-	}
-
 	var uuid string
 	var status string
-	var poolToAffect int
 	var devs []deviceDescriptor
 
 	for {
@@ -123,6 +86,21 @@ func perturbVolume(
 		if time.Now().After(endTime) {
 			break
 		}
+
+		// deploy fio
+		if err = k8sclient.DeployFioRestarting(
+			testConductor.Config.E2eFioImage,
+			fio_name,
+			pvc_name,
+			vol_type,
+			config.VolumeSizeMb,
+			1000000,
+			config.ThinkTime,
+			config.ThinkTimeBlocks,
+		); err != nil {
+			return fmt.Errorf("failed to deploy pod %s, error: %v", fio_name, err)
+		}
+		logf.Log.Info("Created pod", "pod", fio_name)
 
 		//  Check MSV is in the healthy state
 		if uuid, status, err = getOnlyVolume(msNodeIps[0]); err != nil {
@@ -135,102 +113,78 @@ func perturbVolume(
 			break
 		}
 
-		if testConductor.Config.ReplicaPerturbation.OfflineDeviceTest != 0 {
-			//  Select one Disk Pool (at “random”) as a victim
-			//  The selection algorithm used should feature a randomising element.
+		//  Select one Disk Pool (at “random”) as a victim
+		//  The selection algorithm used should feature a randomising element.
 
-			logf.Log.Info("======== offline single device test ========")
+		logf.Log.Info("======== offline all devices test ========")
 
-			if poolToAffect, err = EtfwRandom(uint32(testConductor.Config.Msnodes)); err != nil {
-				break
-			}
-
-			logf.Log.Info("about to offline a device", "index", poolToAffect)
-
-			//  Offline disk backing the pool
-			if devs, err = offlineDevice(poolToAffect, testConductor.Config.Msnodes, devs); err != nil {
-				break
-			}
-
-			//  echo offline | sudo tee /sys/block/sdx/device/state
-			//  Wait for MSV state to become degraded
-			if err = waitForVolumeStatus(cpNodeIp, uuid, MCP_MSV_DEGRADED); err != nil {
-				break
-			}
-
-			//  Online disk backing the pool
-			if devs, err = restoreDevices(devs); err != nil {
-				break
-			}
-			//  Wait for MSV state to become healthy
-			if err = waitForVolumeStatus(cpNodeIp, uuid, MCP_MSV_ONLINE); err != nil {
-				break
-			}
-			if err = randomSleep(); err != nil {
-				break
-			}
+		//  Offline disk 0
+		if devs, err = offlineDevice(0, testConductor.Config.Msnodes, devs); err != nil {
+			break
+		}
+		//  echo offline | sudo tee /sys/block/sdx/device/state
+		//  Wait for MSV state to become degraded
+		if err = waitForVolumeStatus(cpNodeIp, uuid, MCP_MSV_DEGRADED); err != nil {
+			break
 		}
 
-		if testConductor.Config.ReplicaPerturbation.OfflineDevAndReplicasTest != 0 {
+		//  Offline disk 1
+		if devs, err = offlineDevice(1, testConductor.Config.Msnodes, devs); err != nil {
+			break
+		}
 
-			logf.Log.Info("======== offline device and reduce replicas ========")
+		//  Offline disk 2
+		if devs, err = offlineDevice(2, testConductor.Config.Msnodes, devs); err != nil {
+			break
+		}
 
-			if poolToAffect, err = EtfwRandom(uint32(testConductor.Config.Msnodes)); err != nil {
-				break
-			}
+		// check that the number of replicas does not go to zero
+		if err = checkVolumeReplicasNotZero(cpNodeIp, uuid, 100); err != nil {
+			logf.Log.Info("vol zero error", "error", err.Error())
+			break
+		}
+		if err := k8sclient.DeletePod(fio_name, k8sclient.NSDefault, podDeletionTimeoutSecs); err != nil {
+			break
+		}
 
-			// offline a device
-			if devs, err = offlineDevice(poolToAffect, testConductor.Config.Msnodes, devs); err != nil {
-				break
-			}
+		//  Online the disks backing the pools
+		if devs, err = restoreDevices(devs); err != nil {
+			break
+		}
 
-			// wait for volume degraded
-			if err = waitForVolumeStatus(cpNodeIp, uuid, MCP_MSV_DEGRADED); err != nil {
-				break
-			}
+		//  Wait for MSV state to become healthy
+		if err = waitForVolumeStatus(cpNodeIp, uuid, MCP_MSV_ONLINE); err != nil {
+			break
+		}
+		// deploy fio to verify the data
+		// TODO: use a different application to verify data after I/O has errored.
+		if err = k8sclient.DeployFioToVerify(
+			testConductor.Config.E2eFioImage,
+			fio_name,
+			pvc_name,
+			vol_type,
+			config.VolumeSizeMb,
+		); err != nil {
+			break
+		}
+		logf.Log.Info("Recreated pod", "pod", fio_name)
 
-			//  Edit MSV replica count (decrement, from 3 to 2)
-			if err = setReplicas(cpNodeIp, uuid, 2); err != nil {
-				break
-			}
+		// wait until the pod completes with a success state
+		if err = WaitPodNotRunning(fio_name, timeout); err != nil {
+			break
+		}
 
-			//  Wait for MSV state = healthy
-			if err = waitForVolumeStatus(cpNodeIp, uuid, MCP_MSV_ONLINE); err != nil {
-				break
-			}
+		if err = k8sclient.CheckPodAndDelete(fio_name, k8sclient.NSDefault, podDeletionTimeoutSecs); err != nil {
+			break
+		}
 
-			//  Edit MSV replica count (increment, from 2 to 3)
-			if err = setReplicas(cpNodeIp, uuid, 3); err != nil {
-				break
-			}
-
-			//  Wait for MSV state = degraded
-			if err = waitForVolumeStatus(cpNodeIp, uuid, MCP_MSV_DEGRADED); err != nil {
-				break
-			}
-
-			// online the device
-			if devs, err = restoreDevices(devs); err != nil {
-				break
-			}
-
-			//  Wait for MSV state = healthy
-			if err = waitForVolumeStatus(cpNodeIp, uuid, MCP_MSV_ONLINE); err != nil {
-				break
-			}
-			if err = randomSleep(); err != nil {
-				break
-			}
+		if err = randomSleep(); err != nil {
+			break
 		}
 	}
 	_, _ = restoreDevices(devs) // avoid breaking the node on error
+	_ = k8sclient.DeletePod(fio_name, k8sclient.NSDefault, podDeletionTimeoutSecs)
 
-	if locerr := tc.DeleteWorkload(testConductor.WorkloadMonitorClient, fio_name, k8sclient.NSDefault); locerr != nil {
-		err = CombineErrors(err, fmt.Errorf("Failed to delete application workloads, err %v", locerr))
-	}
-	if locerr := k8sclient.DeletePod(fio_name, k8sclient.NSDefault, podDeletionTimeoutSecs); locerr != nil {
-		err = CombineErrors(err, fmt.Errorf("Failed to delete application %s, error = %v", fio_name, locerr))
-	}
 	if locerr := k8sclient.DeletePVC(pvc_name, k8sclient.NSDefault); locerr != nil {
 		err = CombineErrors(err, fmt.Errorf("Failed to delete pvc %s, error = %v", pvc_name, locerr))
 	}
@@ -241,10 +195,12 @@ func perturbVolume(
 	return err
 }
 
-func testVolumePerturbation(
+func testVolumeElimination(
 	testConductor *tc.TestConductor,
+	config tc.ReplicaElimination,
 	sc_name string,
-	duration time.Duration) error {
+	duration time.Duration,
+	timeout time.Duration) error {
 
 	var combinederr error
 	var errchan = make(chan error, 1)
@@ -254,7 +210,7 @@ func testVolumePerturbation(
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		err := perturbVolume(testConductor, sc_name, duration)
+		err := eliminateVolume(testConductor, config, sc_name, duration, timeout)
 		if err != nil {
 			logf.Log.Info("Test thread exiting", "error", err.Error())
 			errchan <- err
@@ -269,9 +225,10 @@ func testVolumePerturbation(
 	return combinederr
 }
 
-func ReplicaPerturbationTest(testConductor *tc.TestConductor) error {
+func ReplicaEliminationTest(testConductor *tc.TestConductor) error {
 	var combinederr error
 	var err error
+	var config = testConductor.Config.ReplicaElimination
 
 	if err = SendTestRunToDo(testConductor); err != nil {
 		return fmt.Errorf("failed to inform test director of test start, error: %v", err)
@@ -295,12 +252,17 @@ func ReplicaPerturbationTest(testConductor *tc.TestConductor) error {
 		return fmt.Errorf("failed to parse duration %v", err)
 	}
 
+	timeout, err := GetDuration(config.Timeout)
+	if err != nil {
+		return fmt.Errorf("failed to parse duration %v", err)
+	}
+
 	// create storage classes
-	if testConductor.Config.ReplicaPerturbation.LocalVolume != 0 {
+	if config.LocalVolume != 0 {
 		sc_name = "sc-local-wait"
 		if err = k8sclient.NewScBuilder().
 			WithName(sc_name).
-			WithReplicas(testConductor.Config.ReplicaPerturbation.Replicas).
+			WithReplicas(config.Replicas).
 			WithProtocol(protocol).
 			WithNamespace(k8sclient.NSDefault).
 			WithVolumeBindingMode(storageV1.VolumeBindingWaitForFirstConsumer).
@@ -315,7 +277,7 @@ func ReplicaPerturbationTest(testConductor *tc.TestConductor) error {
 		sc_name = "sc-immed"
 		if err = k8sclient.NewScBuilder().
 			WithName(sc_name).
-			WithReplicas(testConductor.Config.ReplicaPerturbation.Replicas).
+			WithReplicas(config.Replicas).
 			WithProtocol(protocol).
 			WithNamespace(k8sclient.NSDefault).
 			WithVolumeBindingMode(storageV1.VolumeBindingImmediate).
@@ -329,10 +291,13 @@ func ReplicaPerturbationTest(testConductor *tc.TestConductor) error {
 	}
 	logf.Log.Info("Created storage class", "sc", sc_name)
 
-	combinederr = testVolumePerturbation(
+	combinederr = testVolumeElimination(
 		testConductor,
+		config,
 		sc_name,
-		duration)
+		duration,
+		timeout,
+	)
 
 	if err := tc.DeleteWorkloads(testConductor.WorkloadMonitorClient); err != nil {
 		combinederr = CombineErrors(combinederr, fmt.Errorf("Failed to delete all registered workloads, error = %v", err))

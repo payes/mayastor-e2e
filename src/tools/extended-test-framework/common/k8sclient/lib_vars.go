@@ -26,6 +26,17 @@ var fioParams = []string{
 	"--verify_async=2",
 }
 
+var fioValidateOnlyParams = []string{
+	"--direct=1",
+	"--rw=randread",
+	"--ioengine=libaio",
+	"--bs=4k",
+	"--iodepth=16",
+	"--verify=crc32",
+	"--verify_fatal=1",
+	"--verify_async=2",
+}
+
 // GetFioArgs return the default command line for fio - for use with Mayastor,
 // for single volume
 func GetFioArgs() []string {
@@ -35,6 +46,10 @@ func GetFioArgs() []string {
 // GetDefaultFioArguments return the default settings (arguments) for fio - for use with Mayastor
 func GetDefaultFioArguments() []string {
 	return fioParams
+}
+
+func GetVerifyFioArguments() []string {
+	return fioValidateOnlyParams
 }
 
 func GetFioImage() string {
