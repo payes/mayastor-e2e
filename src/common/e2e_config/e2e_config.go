@@ -71,7 +71,7 @@ type E2EConfig struct {
 	// Timeout for MOAC CR state reconciliation in seconds, some CR state is not update promptly for example pool usage
 	// and finalizers. On hcloud the time lag between synchronisation has been observed to be in the order of
 	// a minute.
-	MoacSyncTimeoutSeconds int `yaml:"moacSyncTimeoutSeconds" env-default:"600"`
+	MoacSyncTimeoutSeconds int `yaml:"moacSyncTimeoutSeconds" env-default:"10"`
 	// Restart Mayastor on failure in a prior AfterEach or ResourceCheck
 	BeforeEachCheckAndRestart bool `yaml:"beforeEachCheckAndRestart" env-default:"false"`
 	// Fail  quickly after failure of a prior AfterEach, overrides BeforeEachCheckAndRestart

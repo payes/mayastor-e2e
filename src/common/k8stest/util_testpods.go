@@ -306,6 +306,16 @@ func CheckTestPodsHealth(namespace string) error {
 	return nil
 }
 
+// GetPodHostIp retrieve the IP address  of the node hosting a pod
+func GetPodHostIp(podName string, nameSpace string) (string, error) {
+	podApi := gTestEnv.KubeInt.CoreV1().Pods
+	pod, err := podApi(nameSpace).Get(context.TODO(), podName, metaV1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+	return pod.Status.HostIP, err
+}
+
 func CheckPodCompleted(podName string, nameSpace string) (coreV1.PodPhase, error) {
 
 	// Keeping this commented out code for the time being.
@@ -317,16 +327,6 @@ func CheckPodCompleted(podName string, nameSpace string) (coreV1.PodPhase, error
 	//	return pod.Status.Phase, err
 	//
 	return CheckPodContainerCompleted(podName, nameSpace)
-}
-
-// GetPodHostIp retrieve the IP address  of the node hosting a pod
-func GetPodHostIp(podName string, nameSpace string) (string, error) {
-	podApi := gTestEnv.KubeInt.CoreV1().Pods
-	pod, err := podApi(nameSpace).Get(context.TODO(), podName, metaV1.GetOptions{})
-	if err != nil {
-		return "", err
-	}
-	return pod.Status.HostIP, err
 }
 
 func CheckPodContainerCompleted(podName string, nameSpace string) (coreV1.PodPhase, error) {
@@ -662,4 +662,62 @@ func MakeFsxContainer(name string, args []string) coreV1.Container {
 		Args:            args,
 		SecurityContext: &sc,
 	}
+}
+
+// DumpPodInfo print pod info.
+func DumpPodInfo(podName string, nameSpace string) error {
+	podApi := gTestEnv.KubeInt.CoreV1().Pods
+	pod, err := podApi(nameSpace).Get(context.TODO(), podName, metaV1.GetOptions{})
+	if err != nil {
+		return err
+	}
+	{
+		logf.Log.Info("pod", "name", pod.Name, "Status", pod.Status)
+		containerStatuses := pod.Status.ContainerStatuses
+		for _, containerStatus := range containerStatuses {
+			logf.Log.Info("container", "name", containerStatus.Name, "Status", containerStatus)
+		}
+	}
+	return nil
+}
+
+//GetPodContainerStates  return the container states for a pod
+func GetPodContainerStates(podName string, nameSpace string) ([]v1.ContainerState, error) {
+	var containerStates []v1.ContainerState
+	podApi := gTestEnv.KubeInt.CoreV1().Pods
+	pod, err := podApi(nameSpace).Get(context.TODO(), podName, metaV1.GetOptions{})
+	if err != nil {
+		return containerStates, err
+	}
+	containerStatuses := pod.Status.ContainerStatuses
+	for _, containerStatus := range containerStatuses {
+		containerStates = append(containerStates, containerStatus.State)
+
+	}
+	return containerStates, err
+}
+
+// GetPodCompletion  return whether a pod is running, and exit codes of associated containers
+// this is an attempt to simplify the testing for pod completion.
+// Unfortunately the observed semantics of pod status phase field render that field unusable.
+// For example the value is "Running" even when the single container of the pod has terminated,
+// with an error.
+// Note: the exit codes for containers which are running or waiting are set to 0
+func GetPodCompletion(podName string, nameSpace string) (bool, []int, error) {
+	running := false
+	waiting := false
+	var exitCodes []int
+	cnStates, err := GetPodContainerStates(podName, nameSpace)
+	if err == nil {
+		for _, cs := range cnStates {
+			running = running || cs.Running != nil
+			waiting = waiting || cs.Waiting != nil
+			if cs.Terminated != nil {
+				exitCodes = append(exitCodes, int(cs.Terminated.ExitCode))
+			} else {
+				exitCodes = append(exitCodes, 0)
+			}
+		}
+	}
+	return !(running || waiting), exitCodes, err
 }
