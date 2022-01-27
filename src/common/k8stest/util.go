@@ -635,13 +635,6 @@ func WaitPodComplete(podName string, sleepTimeSecs, timeoutSecs int) error {
 	return errors.Errorf("pod did not complete, phase %v", podPhase)
 }
 
-// WorkaroundForMQ1536 work around required for MQ-1536
-// TODO revisit.
-func WorkaroundForMQ1536() {
-	_, err := DeleteAllPoolFinalizers()
-	Expect(err).ToNot(HaveOccurred(), "failed to delete all pool finalizers (WorkaroundForMQ1536)")
-}
-
 // DeleteVolumeAttachmets deletes volume attachments for a node
 func DeleteVolumeAttachments(nodeName string) error {
 	volumeAttachments, err := gTestEnv.KubeInt.StorageV1().VolumeAttachments().List(context.TODO(), metaV1.ListOptions{})
