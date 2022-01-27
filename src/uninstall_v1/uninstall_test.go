@@ -24,7 +24,8 @@ var _ = Describe("Mayastor setup", func() {
 })
 
 var _ = BeforeSuite(func(done Done) {
-	k8stest.SetupTestEnvBasic()
+	err := k8stest.SetupTestEnvBasic()
+	Expect(err).ToNot(HaveOccurred(), "failed to setup test environment in BeforeSuite : SetupTestEnvBasic %v", err)
 
 	close(done)
 }, 60)
@@ -33,5 +34,7 @@ var _ = AfterSuite(func() {
 	// NB This only tears down the local structures for talking to the cluster,
 	// not the kubernetes cluster itself.
 	By("tearing down the test environment")
-	k8stest.TeardownTestEnv()
+	err := k8stest.TeardownTestEnv()
+	Expect(err).ToNot(HaveOccurred(), "failed to tear down test environment in AfterSuite : TeardownTestEnv %v", err)
+
 })

@@ -26,12 +26,14 @@ var _ = Describe("Mayastor setup", func() {
 })
 
 var _ = BeforeSuite(func(done Done) {
-	k8stest.SetupTestEnvBasic()
-
+	err := k8stest.SetupTestEnvBasic()
+	Expect(err).ToNot(HaveOccurred(), "failed to setup test environment in BeforeSuite : SetupTestEnvBasic %v", err)
 	close(done)
 }, 60)
 
 var _ = AfterSuite(func() {
 	By("tearing down the test environment")
-	k8stest.TeardownTestEnvNoCleanup()
+	err := k8stest.TeardownTestEnvNoCleanup()
+	Expect(err).ToNot(HaveOccurred(), "failed to tear down test environment in AfterSuite : TeardownTestEnv %v", err)
+
 })

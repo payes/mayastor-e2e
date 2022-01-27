@@ -19,9 +19,11 @@ func TestMspStressTest(t *testing.T) {
 }
 
 var _ = BeforeSuite(func(done Done) {
-	k8stest.SetupTestEnv()
+	err := k8stest.SetupTestEnv()
+	Expect(err).ToNot(HaveOccurred(), "failed to setup test environment in BeforeSuite : SetupTestEnv %v", err)
+
 	// List pools in the cluster
-	err := k8stest.RestoreConfiguredPools()
+	err = k8stest.RestoreConfiguredPools()
 	Expect(err).To(BeNil(), "Not all pools are online after restoration")
 	pools, err := k8stest.ListMsPools()
 	Expect(err).To(BeNil(), "Failed to list pools")
@@ -63,7 +65,9 @@ var _ = AfterSuite(func() {
 
 	// NB This only tears down the local structures for talking to the cluster,
 	// not the kubernetes cluster itself.	By("tearing down the test environment")
-	k8stest.TeardownTestEnv()
+	err = k8stest.TeardownTestEnv()
+	Expect(err).ToNot(HaveOccurred(), "failed to tear down test environment in AfterSuite : TeardownTestEnv %v", err)
+
 })
 
 var _ = Describe("Primitive MSP Stress Test", func() {

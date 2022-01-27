@@ -54,12 +54,11 @@ func InitTesting(t *testing.T, classname string, reportname string) {
 	}
 }
 
-func SetupTestEnvBasic() {
+func SetupTestEnvBasic() error {
 	logf.SetLogger(zap.New(zap.UseDevMode(true), zap.WriteTo(GinkgoWriter)))
 	fmt.Printf("Mayastor namespace is \"%s\"\n", common.NSMayastor())
 
 	By("bootstrapping test environment")
-	var err error
 
 	useCluster := true
 	testEnv := &envtest.Environment{
@@ -68,19 +67,24 @@ func SetupTestEnvBasic() {
 	}
 
 	cfg, err := testEnv.Start()
-	Expect(err).ToNot(HaveOccurred())
-	Expect(cfg).ToNot(BeNil())
+	if err != nil {
+		return fmt.Errorf("failed to start local Kubernetes server : Start: %v", err)
+	} else if cfg == nil {
+		return fmt.Errorf("failed to get local Kubernetes config : Start: %v", err)
+	}
 
 	k8sManager, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme: scheme.Scheme,
 		// We do not consume prometheus metrics.
 		MetricsBindAddress: "0",
 	})
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil {
+		return fmt.Errorf("failed to get new manager for creating Controllers: NewManager: %v", err)
+	}
 
 	go func() {
 		err = k8sManager.Start(ctrl.SetupSignalHandler())
-		Expect(err).ToNot(HaveOccurred())
+		panic(fmt.Errorf("failed to start new manager for creating Controllers %v", err))
 	}()
 
 	mgrSyncCtx, mgrSyncCtxCancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -90,16 +94,23 @@ func SetupTestEnvBasic() {
 	}
 
 	k8sClient := k8sManager.GetClient()
-	Expect(k8sClient).ToNot(BeNil())
+	if k8sClient == nil {
+		return fmt.Errorf("failed to get Kubernetes client : GetClient: %v", err)
+	}
 
 	restConfig := config.GetConfigOrDie()
-	Expect(restConfig).ToNot(BeNil())
-
+	if restConfig == nil {
+		return fmt.Errorf("failed to create *rest.Config for talking to a Kubernetes apiserver : GetConfigOrDie: %v", err)
+	}
 	kubeInt := kubernetes.NewForConfigOrDie(restConfig)
-	Expect(kubeInt).ToNot(BeNil())
+	if kubeInt == nil {
+		return fmt.Errorf("failed to create new Clientset for the given config : NewForConfigOrDie: %v", err)
+	}
 
 	dynamicClient := dynamic.NewForConfigOrDie(restConfig)
-	Expect(dynamicClient).ToNot(BeNil())
+	if kubeInt == nil {
+		return fmt.Errorf("failed to create new Interface for the given config : NewForConfigOrDie: %v", err)
+	}
 
 	gTestEnv = TestEnvironment{
 		Cfg:           cfg,
@@ -114,30 +125,46 @@ func SetupTestEnvBasic() {
 	// subsequent calls to mayastorClient.CanConnect retrieves
 	// the result.
 	mayastorclient.CheckAndSetConnect(GetMayastorNodeIPAddresses())
+	return nil
 }
 
-func SetupTestEnv() {
-	SetupTestEnvBasic()
+func SetupTestEnv() error {
+	err := SetupTestEnvBasic()
+	if err != nil {
+		return fmt.Errorf("failed to setup test environment : SetupTestEnvBasic: %v", err)
+	}
 
-	err := CheckAndSetControlPlane()
-	Expect(err).To(BeNil())
+	err = CheckAndSetControlPlane()
+	if err != nil {
+		return fmt.Errorf("failed to setup control plane version : CheckAndSetControlPlane: %v", err)
+	}
 
 	// Fail the test setup if gRPC calls are mandated and
 	// gRPC calls are not supported.
 	if e2e_config.GetConfig().GrpcMandated {
-		Expect(mayastorclient.CanConnect()).To(BeTrue(),
-			"gRPC calls to mayastor are disabled, but mandated by configuration")
+		grpcCalls := mayastorclient.CanConnect()
+		if !grpcCalls {
+			return fmt.Errorf("gRPC calls to mayastor are disabled, but mandated by configuration : CanConnect: %v", grpcCalls)
+		}
 	}
+	return nil
 }
 
-func TeardownTestEnvNoCleanup() {
+func TeardownTestEnvNoCleanup() error {
 	err := gTestEnv.TestEnv.Stop()
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil {
+		return fmt.Errorf("failed to tear down test environment: Stop %v", err)
+	}
+	return nil
 }
 
-func TeardownTestEnv() {
+func TeardownTestEnv() error {
 	AfterSuiteCleanup()
-	TeardownTestEnvNoCleanup()
+	err := TeardownTestEnvNoCleanup()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // AfterSuiteCleanup  placeholder function for now
