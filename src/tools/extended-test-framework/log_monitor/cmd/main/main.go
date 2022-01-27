@@ -7,6 +7,7 @@ import (
 	"log"
 	"log_monitor/config"
 	"os"
+	"time"
 )
 
 var app config.AppConfig
@@ -31,10 +32,16 @@ func main() {
 		app.LogRegex = `level.{0,4}(error|warn)`
 	}
 
+	time.Sleep(30 * time.Second)
 	checkForNewFluentdPods()
+	counter := 5
+	for counter > 0 && len(app.PodMap) == 0 {
+		time.Sleep(time.Duration(5/counter) * time.Minute)
+		counter--
+	}
 
-	if len(app.PodMap) == 0 {
-		log.Fatalln("There are no pods")
+	if counter == 0 && len(app.PodMap) == 0 {
+		log.Fatalln("There are no fluentd pods")
 	}
 
 	buf := bufio.NewReader(app.PipeReader)
