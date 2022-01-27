@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"io"
+	v1 "k8s.io/api/core/v1"
 	"log"
 	"log_monitor/config"
 	"os"
@@ -15,6 +16,8 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
+
+	app.PodMap = make(map[string]v1.Pod)
 	logChan := make(chan string)
 	defer close(logChan)
 	ProcessLogLine(logChan)
