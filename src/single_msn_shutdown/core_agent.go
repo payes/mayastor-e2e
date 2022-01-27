@@ -21,6 +21,9 @@ func (c *shutdownConfig) nonCoreAgentNodeShutdownTest() {
 	k8stest.ApplyNodeSelectorToDeployment("msp-operator", common.NSMayastor(), "kubernetes.io/hostname", coreAgentNodeName)
 	k8stest.ApplyNodeSelectorToDeployment("rest", common.NSMayastor(), "kubernetes.io/hostname", coreAgentNodeName)
 	k8stest.ApplyNodeSelectorToDeployment("csi-controller", common.NSMayastor(), "kubernetes.io/hostname", coreAgentNodeName)
+
+	k8stest.VerifyPodsOnNode([]string{"msp-operator", "rest", "csi-controller"}, coreAgentNodeName, common.NSMayastor())
+
 	verifyMayastorComponentStates(c.numMayastorInstances)
 
 	// Create SC, PVC and Application Deployment
@@ -56,8 +59,8 @@ func (c *shutdownConfig) nonCoreAgentNodeShutdownTest() {
 	Expect(c.platform.PowerOnNode(conf.nodeName)).ToNot(HaveOccurred(), "PowerOnNode")
 	poweredOffNode = ""
 	verifyNodesReady()
-	logf.Log.Info("Sleeping for 2 mins... for all the mayastor pods to be in running status")
-	time.Sleep(2 * time.Minute)
+	k8stest.WaitForMCPPath(defWaitTimeout)
+	k8stest.WaitForMayastorSockets(k8stest.GetMayastorNodeIPAddresses(), defWaitTimeout)
 	// Delete deployment, PVC and SC
 	for _, config := range c.config {
 		config.deleteDeployment()
@@ -83,6 +86,9 @@ func (c *shutdownConfig) coreAgentNodeShutdownTest() {
 	k8stest.ApplyNodeSelectorToDeployment("msp-operator", common.NSMayastor(), "kubernetes.io/hostname", coreAgentNodeName)
 	k8stest.ApplyNodeSelectorToDeployment("rest", common.NSMayastor(), "kubernetes.io/hostname", coreAgentNodeName)
 	k8stest.ApplyNodeSelectorToDeployment("csi-controller", common.NSMayastor(), "kubernetes.io/hostname", coreAgentNodeName)
+
+	k8stest.VerifyPodsOnNode([]string{"msp-operator", "rest", "csi-controller"}, coreAgentNodeName, common.NSMayastor())
+
 	verifyMayastorComponentStates(c.numMayastorInstances)
 	k8stest.RemoveAllNodeSelectorsFromDeployment("msp-operator", common.NSMayastor())
 	k8stest.RemoveAllNodeSelectorsFromDeployment("rest", common.NSMayastor())
@@ -119,6 +125,7 @@ func (c *shutdownConfig) coreAgentNodeShutdownTest() {
 	// After 5 mins [(2(Earlier)+4(now)], core agent will be scheduled to some other node
 	logf.Log.Info("Sleeping for 4 more mins... for core agent to be scheduled on a different node")
 	time.Sleep(4 * time.Minute)
+	k8stest.WaitForMCPPath(defWaitTimeout)
 
 	verifyMayastorComponentStates(c.numMayastorInstances - 1)
 	for _, config := range c.config {
@@ -132,8 +139,10 @@ func (c *shutdownConfig) coreAgentNodeShutdownTest() {
 	Expect(c.platform.PowerOnNode(conf.nodeName)).ToNot(HaveOccurred(), "PowerOnNode")
 	poweredOffNode = ""
 	verifyNodesReady()
-	logf.Log.Info("Sleeping for 2 mins... for all the mayastor pods to be in running status")
-	time.Sleep(2 * time.Minute)
+
+	k8stest.WaitForMCPPath(defWaitTimeout)
+	k8stest.WaitForMayastorSockets(k8stest.GetMayastorNodeIPAddresses(), defWaitTimeout)
+
 	// Delete deployment, PVC and SC
 	for _, config := range c.config {
 		config.deleteDeployment()

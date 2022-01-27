@@ -105,6 +105,7 @@ func (c *appConfig) deleteDeployment() {
 }
 
 func verifyMayastorComponentStates(numMayastorInstances int) {
+	k8stest.WaitForMCPPath(defWaitTimeout)
 	// TODO Enable this once issue is fixed in Mayastor
 	/*
 		nodeList, err := crds.ListNodes()
@@ -121,7 +122,7 @@ func verifyMayastorComponentStates(numMayastorInstances int) {
 	Expect(err).ToNot(HaveOccurred())
 	Expect(ready).To(Equal(true))
 	// FIXME: is this correct for control plane versions > 0 ?
-	ready = k8stest.ControlPlaneReady(3, 60)
+	ready = k8stest.ControlPlaneReady(3, 300)
 	Expect(ready).To(Equal(true), "control plane is not ready")
 }
 
@@ -156,7 +157,10 @@ func (c *appConfig) verifyApplicationPodRunning(state bool) {
 func verifyNodeNotReady(nodeName string, verifyMsnStatus bool) {
 	Eventually(func() bool {
 		readyStatus, err := k8stest.IsNodeReady(nodeName, nil)
-		Expect(err).ToNot(HaveOccurred())
+		if err != nil {
+			logf.Log.Info("Get node status failed", "error", err)
+			return true
+		}
 		return readyStatus
 	},
 		defTimeoutSecs, // timeout
@@ -166,6 +170,10 @@ func verifyNodeNotReady(nodeName string, verifyMsnStatus bool) {
 	if verifyMsnStatus {
 		Eventually(func() bool {
 			status, err := k8stest.GetMsNodeStatus(nodeName)
+			if err != nil {
+				logf.Log.Info("Get msn status failed", "error", err)
+				return false
+			}
 			Expect(err).ToNot(HaveOccurred(), "GetMsNodeStatus")
 			return (status == controlplane.NodeStateOffline() || status == controlplane.NodeStateUnknown() || status == controlplane.NodeStateEmpty())
 		},
@@ -178,7 +186,10 @@ func verifyNodeNotReady(nodeName string, verifyMsnStatus bool) {
 func verifyNodesReady() {
 	Eventually(func() bool {
 		readyStatus, err := k8stest.AreNodesReady()
-		Expect(err).ToNot(HaveOccurred())
+		if err != nil {
+			logf.Log.Info("Get node status failed", "error", err)
+			return false
+		}
 		return readyStatus
 	},
 		defTimeoutSecs, // timeout
@@ -276,7 +287,22 @@ func (c *appConfig) verifyTaskCompletionStatus(status string) {
 }
 
 func getMsvState(uuid string) string {
-	volState, err := k8stest.GetMsvState(uuid)
-	Expect(err).To(BeNil(), "failed to access volume state %s, error=%v", uuid, err)
+
+	var (
+		volState string
+		err      error
+	)
+
+	Eventually(func() error {
+		volState, err = k8stest.GetMsvState(uuid)
+		if err != nil {
+			logf.Log.Info("failed to access volume state", "uuid", uuid, "error", err)
+		}
+		return err
+	},
+		defTimeoutSecs, // timeout
+		5,              // polling interval
+	).Should(BeNil())
+
 	return volState
 }

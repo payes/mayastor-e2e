@@ -32,6 +32,9 @@ func sendRequest(reqType, url string, data interface{}) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if resp.StatusCode != 200 {
+		return "", fmt.Errorf("error code %d", resp.StatusCode)
+	}
 	defer resp.Body.Close()
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
@@ -51,6 +54,7 @@ type SparseVolume struct {
 			Children []struct {
 				State string `json:"state"`
 			} `json:"children"`
+			Uuid string `json:"uuid"`
 		} `json:"target"`
 		Uuid   string `json:"uuid"`
 		Status string `json:"status"`

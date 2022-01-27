@@ -281,13 +281,20 @@ def writeTable(fp, hdrs, table, h2=None):
     print('</table>', file=fp)
 
 
-def startReport(fp, annotation=''):
+def startReport(fp, annotation='', testEnv=None):
+    if testEnv:
+        te = f'({", ".join(testEnv)})'
+    else:
+        te = ''
     hs = htmlStart.replace('Mayastor E2E Results',
-                           f'Mayastor E2E Results {annotation}'.strip())
+                           f'Mayastor E2E Results {annotation} {te}'.strip())
     print(hs, file=fp)
     tplink = issueLink(_args.jiraKey)
     print(f'<h2>Test Plan <a href="{tplink}">{_args.jiraKey}</a></h2>',
           file=fp)
+    if testEnv:
+        print(f'<p>Test Environments: {testEnv}</p>',
+              file=fp)
 
 
 def endReport(fp):
@@ -295,6 +302,7 @@ def endReport(fp):
 
 
 def main():
+
     defs2src = analyse.scrapeSources(
         os.path.realpath(sys.path[0] + '/../src'))
     defs2src = {
@@ -321,12 +329,20 @@ def main():
                         key=lambda d: int(d['jira']['key'].split('-')[-1]),
                         reverse=True)
 
+    testEnvsCombis = []
+
+    defaultTestEnv = _args.testenvs.split(',')
     # Work out the timestamp for each execution
     # Unfortunately there isn't a field we can use to derive the
     # timestamp for the test execution. So we record the earliest
     # timestamp of a test run in the test execution, and use that
     # to generate the date information for the execution
     for exe in executions:
+        if exe.get('testEnvironments') == []:
+            exe['testEnvironments'] = defaultTestEnv
+
+        exe['testEnvironments'] = sorted(exe['testEnvironments'])
+
         execDict = {
             d['test']['jira']['key']: d for d in jsonLoad(
                 f'{_args.cachedir}/exec.{exe["jira"]["key"]}.json')
@@ -337,22 +353,59 @@ def main():
                 test = execDict[testKey]
                 if test['finishedOn'] is None:
                     test['finishedOn'] = 0
-                finished = int(test['finishedOn'])
+                tmp = test['finishedOn']
+                try:
+                    finished = int(tmp)/1000
+                except ValueError:
+                    finished = int(datetime.strptime(
+                        tmp, "%Y-%m-%dT%H:%M:%S.%fZ").timestamp())
                 if timestamp == 0 or finished < timestamp:
                     timestamp = finished
-        exe['timestamp'] = timestamp/1000
+        exe['timestamp'] = timestamp
         if timestamp == 0:
             print(f'No test runs found, will discard test execution {exe}',
                   file=sys.stderr)
 
     executions = [exe for exe in executions if exe['timestamp'] != 0]
 
+    for exe in executions:
+        if exe['testEnvironments'] not in testEnvsCombis:
+            testEnvsCombis.append(exe['testEnvironments'])
+
+    for testEnvironments in testEnvsCombis:
+        createReport(
+            [
+                exe for exe in executions
+                if testEnvironments == exe['testEnvironments']
+            ],
+            tests,
+            testKeys,
+            defs2src,
+            testEnvironments
+        )
+
+    createReport(
+        executions[:],
+        tests,
+        testKeys,
+        defs2src,
+        ['all']
+    )
+
+
+def createReport(executions, tests, testKeys, defs2src, testEnvironments):
     if len(executions) > _args.columns:
         executions = executions[:_args.columns]
 
+    def envString(te):
+        return '\n\t'.join(te)
+
     execRow = [
         headerCell(
-            titl=d['jira']['summary'],
+            titl=(
+                f'{d["jira"]["summary"]}\ntestEnvironments:'
+                f'\n\t{envString(d["testEnvironments"])}'
+            ),
             link=issueLink(d['jira']['key']),
             txt=datetime.fromtimestamp(float(d['timestamp'])).strftime('%d')
         )
@@ -521,12 +574,13 @@ def main():
         ctable[4].append(plainCell(txt=f'{beforeaftersuite_fail_count}'))
         ctable[5].append(plainCell(txt=f'{beforeaftersuite_notrun_count}'))
 
-    reportFile = os.path.join(_args.resultsdir, 'e2e-report.html')
+    reportFile = os.path.join(
+        _args.resultsdir,
+        f'e2e-report-{_args.jiraKey}-{"-".join(testEnvironments)}.html'
+    )
     print(f'Generating {reportFile}')
     with open(reportFile, 'w') as fp:
-        startReport(fp, f'{_args.jiraKey}')
-
-        writeTable(fp, hdrRows, ttable, f'Tests ({len(ttable)})')
+        startReport(fp, f'{_args.jiraKey}', testEnvironments)
 
         writeTable(fp, hdrRows, ftable, f'Failed tests ({len(ftable)})')
 
@@ -535,6 +589,8 @@ def main():
                    'results, worst to best')
 
         writeTable(fp, hdrRows, ntable, f'Tests not run ({len(ntable)})')
+
+        writeTable(fp, hdrRows, ttable, f'Tests ({len(ttable)})')
 
         writeTable(fp, hdrRows, atable,
                    'All tests (including BeforeSuite,AfterSuite,....)'
@@ -593,6 +649,16 @@ if __name__ == '__main__':
                         type=int, default=42,
                         help='number of results columns'
                         )
+    parser.add_argument('--testenvs', dest='testenvs',
+                        default=(
+                            'osf_ubuntu,osv_20.04.3_lts,'
+                            'osk_5.8.0-63-generic,'
+                            'k8srel_1.21,'
+                            'k8spatchrel_1.21.8,'
+                            'plat_hcloud'
+                        ),
+                        help=', seperated list of test environments'
+                        )
 
     _args = parser.parse_args()
 
@@ -613,7 +679,8 @@ if __name__ == '__main__':
             print(' (', datetime.now() - t0, ')', file=sys.stderr)
             jsonUpdate(testListFile, tests)
 
-            print(f'Collecting set of test executions in testplan {_args.jiraKey}',
+            print('Collecting set of test executions in testplan'
+                  f' {_args.jiraKey}',
                   file=sys.stderr, end='')
             t1 = datetime.now()
             executions = xrc.GetTestExecutionsInTestPlan(jiraKey=_args.jiraKey)

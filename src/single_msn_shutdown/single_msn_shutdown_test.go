@@ -40,21 +40,14 @@ var _ = Describe("Mayastor single msn shutdown test", func() {
 		if len(poweredOffNode) != 0 {
 			platform := platform.Create()
 			_ = platform.PowerOnNode(poweredOffNode)
+			k8stest.WaitForMCPPath(defWaitTimeout)
+			k8stest.WaitForMayastorSockets(k8stest.GetMayastorNodeIPAddresses(), defWaitTimeout)
 		}
 		// Check resource leakage.
 		err := k8stest.AfterEachCheck()
 		Expect(err).ToNot(HaveOccurred())
 	})
 	switch controlplane.MajorVersion() {
-	case 0:
-		It("should verify single non moac msn shutdown test", func() {
-			c := generateConfig("single-non-moac-msn-shutdown")
-			c.nonMoacNodeShutdownTest()
-		})
-		It("should verify single moac msn shutdown test", func() {
-			c := generateConfig("single-moac-msn-shutdown")
-			c.moacNodeShutdownTest()
-		})
 	case 1:
 		It("should verify single non core-agent msn shutdown test", func() {
 			c := generateConfig("single-non-core-agent-msn-shutdown")

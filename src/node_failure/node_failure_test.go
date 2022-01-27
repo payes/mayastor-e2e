@@ -23,6 +23,7 @@ import (
 )
 
 const (
+	defWaitTimeout   = "600s"
 	defTimeoutSecs   = 240  // in seconds
 	durationSecs     = 600  // in seconds
 	volumeFileSizeMb = 250  // in Mb
@@ -182,6 +183,8 @@ func (c *failureConfig) RebootDesiredNodes(uuid string) {
 		Expect(c.platform.PowerOnNode(nexusNode)).ToNot(HaveOccurred(), "Failed to PowerOnNode %s for RebootNexusNode test", nexusNode)
 
 	}
+	k8stest.WaitForMCPPath(defWaitTimeout)
+	k8stest.WaitForMayastorSockets(k8stest.GetMayastorNodeIPAddresses(), defWaitTimeout)
 }
 
 func (c *failureConfig) verifyMayastorComponentStates(numMayastorInstances int) {
@@ -210,24 +213,24 @@ func (c *failureConfig) verifyMayastorComponentStates(numMayastorInstances int) 
 	ready, err := k8stest.MayastorInstancesReady(numMayastorInstances, 3, 540)
 	Expect(err).ToNot(HaveOccurred())
 	Expect(ready).To(Equal(true))
-	ready = k8stest.ControlPlaneReady(3, 60)
+	ready = k8stest.ControlPlaneReady(3, 300)
 	Expect(ready).To(Equal(true), "control is not ready")
 }
 
 func (c *failureConfig) verifyApplicationPodRunning(state bool) {
 	labels := "e2e-test=reboot"
-	logf.Log.Info("Verify application deployment ready", "state", state)
 	Eventually(func() bool {
 		runningStatus := k8stest.DeploymentReady(c.deployName, common.NSDefault)
+		logf.Log.Info("Verify application deployment ready", "desired state", state, "actual state", runningStatus)
 		return runningStatus
 	},
 		defTimeoutSecs, // timeout
 		5,              // polling interval
 	).Should(Equal(state))
 
-	logf.Log.Info("Verify application pod running", "state", state)
 	Eventually(func() bool {
 		_, runningStatus, err := k8stest.IsPodWithLabelsRunning(labels, common.NSDefault)
+		logf.Log.Info("IsPodWithLabelsRunning", "labels", labels, "desired state", state, "actual state", runningStatus, "error", err)
 		Expect(err).ToNot(HaveOccurred())
 		return runningStatus
 	},
@@ -258,18 +261,6 @@ func (c *failureConfig) verifyNodeNotReady(nodeName string) {
 		5,              // polling interval
 	).Should(Equal(false))
 
-	/*
-		// This check is not always possible as MOAC might be
-		// running on the node which has been turned off
-		Eventually(func() string {
-			msn, err := custom_resources.GetMsNode(nodeName)
-			Expect(err).ToNot(HaveOccurred(), "GetMsNode")
-			return msn.Status
-		},
-			defTimeoutSecs, // timeout
-			"5s",           // polling interval
-		).Should(Equal("offline"))
-	*/
 }
 
 func (c *failureConfig) deleteSC() {

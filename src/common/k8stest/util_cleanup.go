@@ -199,6 +199,8 @@ func DeleteAllMsvs() (int, error) {
 	// FIXME: For now on control plane version 1 we cannot/should not delete MSVs
 	if controlplane.MajorVersion() == 1 {
 		return 0, nil
+	} else if controlplane.MajorVersion() != 1 {
+		return 1, fmt.Errorf("unsupported control plane version %d/n", controlplane.MajorVersion())
 	}
 
 	// If after deleting PVCs and PVs Mayastor volumes are leftover
@@ -310,12 +312,6 @@ func DeleteAllPools() bool {
 		logf.Log.Info("DeleteAllPools: deleting MayastorPools")
 		for _, pool := range pools {
 			logf.Log.Info("DeleteAllPools: deleting", "pool", pool.GetName())
-			if controlplane.MajorVersion() == 0 {
-				finalizers := pool.GetFinalizers()
-				if finalizers != nil {
-					logf.Log.Info("DeleteAllPools: found finalizers on pool ", "pool", pool.GetName(), "finalizers", finalizers)
-				}
-			}
 			err = custom_resources.DeleteMsPool(pool.GetName())
 			if err != nil {
 				logf.Log.Info("DeleteAllPools: failed to delete pool", "pool", pool.GetName(), "error", err)

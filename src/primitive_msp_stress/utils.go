@@ -5,7 +5,7 @@ import (
 	agent "mayastor-e2e/common/e2e-agent"
 	"mayastor-e2e/common/k8stest"
 	"mayastor-e2e/common/mayastorclient"
-	"mayastor-e2e/common/mayastorclient/grpc"
+	"mayastor-e2e/common/mayastorclient/protobuf"
 	"strconv"
 	"strings"
 	"time"
@@ -20,12 +20,12 @@ var (
 	defTimeoutSecs    = "300s"
 	GiB               = int64(1024 * 1024 * 1024)
 	MiB               = int64(1024 * 1024)
-	EstimatedMetaSize = 100 * MiB
-	PoolCapacity      int64
+	EstimatedMetaSize = uint64(100 * MiB)
+	PoolCapacity      uint64
 	DiskPath          string
 )
 
-func CreateDeletePools(nodeList map[string]k8stest.NodeLocation, poolSuffix string, iter int, diskPath string, capacity int64) {
+func CreateDeletePools(nodeList map[string]k8stest.NodeLocation, poolSuffix string, iter int, diskPath string, capacity uint64) {
 	var err error
 	invalidNodePoolExt := "-fuzz-pool-wrong-node"
 	invalidDiskPoolExt := "-fuzz-pool-wrong-disk"
@@ -108,7 +108,7 @@ func CreateDeletePools(nodeList map[string]k8stest.NodeLocation, poolSuffix stri
 	}
 }
 
-func verifyPoolCreated(nodeAddr, poolName string, capacity int64) bool {
+func verifyPoolCreated(nodeAddr, poolName string, capacity uint64) bool {
 	grpcPool, err := mayastorclient.GetPool(poolName, nodeAddr)
 	if err != nil {
 		logf.Log.Info("failed to get pool via grpc")
@@ -121,11 +121,11 @@ func verifyPoolCreated(nodeAddr, poolName string, capacity int64) bool {
 		return false
 	}
 
-	if ok := (grpcPool.State == grpc.PoolState_POOL_ONLINE && strings.ToLower(crdPool.Status.State) == "online"); !ok {
+	if ok := (grpcPool.State == protobuf.PoolState_POOL_ONLINE && strings.ToLower(crdPool.Status.State) == "online"); !ok {
 		logf.Log.Info("Failed to verify state", "Expected State", "PoolState_POOL_ONLINE", "grpcPool.State", grpcPool.State, "crdPool.Status.State", crdPool.Status.State)
 		return false
 	}
-	if ok := (CapacityRange(int64(grpcPool.Capacity), capacity) && CapacityRange(crdPool.Status.Capacity, capacity)); !ok {
+	if ok := (CapacityRange(grpcPool.Capacity, capacity) && CapacityRange(crdPool.Status.Capacity, capacity)); !ok {
 		logf.Log.Info("Failed to verify capacity", "Expected capacity", capacity, "grpcPool.Capacity", grpcPool.Capacity, "crdPool.Status.Capacity", crdPool.Status.Capacity)
 		return false
 	}
@@ -136,7 +136,7 @@ func verifyPoolCreated(nodeAddr, poolName string, capacity int64) bool {
 	return true
 }
 
-func CapacityRange(actual, expected int64) bool {
+func CapacityRange(actual, expected uint64) bool {
 	if (actual <= expected) || (actual >= expected-EstimatedMetaSize) {
 		return true
 	}

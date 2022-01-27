@@ -11,6 +11,7 @@ import (
 )
 
 const (
+	defWaitTimeout   = "600s"
 	defTimeoutSecs   = 800  // in seconds
 	durationSecs     = 600  // in seconds
 	volumeFileSizeMb = 250  // in Mb

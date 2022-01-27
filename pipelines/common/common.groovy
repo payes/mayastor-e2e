@@ -371,8 +371,10 @@ def RunOneTestPerCluster(e2e_test,
     println testset
     println kubernetes_verion
     if (kubernetes_verion != "" && kubernetes_verion != null){
+      echo "e2e_kubernetes_version=${kubernetes_verion}"
       k8s_job = BuildK8sVersionedCluster(e2e_build_cluster_job, e2e_environment, kubernetes_verion)
     } else {
+      echo "e2e_kubernetes_version=1.21.8"
       k8s_job = BuildCluster(e2e_build_cluster_job, e2e_environment)
     }
     GetClusterAdminConf(e2e_environment, k8s_job)

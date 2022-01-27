@@ -353,6 +353,16 @@ func CheckPodContainerCompleted(podName string, nameSpace string) (coreV1.PodPha
 	return pod.Status.Phase, err
 }
 
+var mayastorInitialPodCount int
+
+func SetMayastorInitialPodCount(count int) {
+	mayastorInitialPodCount = count
+}
+
+func GetMayastorInitialPodCount() int {
+	return mayastorInitialPodCount
+}
+
 // List mayastor pod names, conditionally
 //  1) No timestamp - all mayastor pods
 //	2) With timestamp - all mayastor pods created after the timestamp which are Running.
@@ -429,7 +439,7 @@ func RestartMayastorPods(timeoutSecs int) error {
 		newPodNames, err = listMayastorPods(&now)
 		if err == nil {
 			logf.Log.Info("Restarted", "pods", newPodNames)
-			if len(newPodNames) >= len(podNames) {
+			if len(newPodNames) >= GetMayastorInitialPodCount() {
 				logf.Log.Info("All pods have been restarted.")
 				return nil
 			}
@@ -591,35 +601,6 @@ func RestartMayastor(restartTOSecs int, readyTOSecs int, poolsTOSecs int) error 
 	}
 
 	return err
-}
-
-func GetMoacPodName() ([]string, error) {
-	var podNames []string
-	podApi := gTestEnv.KubeInt.CoreV1().Pods
-	pods, err := podApi(common.NSMayastor()).List(context.TODO(), metaV1.ListOptions{})
-	if err != nil {
-		return podNames, err
-	}
-	for _, pod := range pods.Items {
-		if strings.HasPrefix(pod.Name, "moac") {
-			podNames = append(podNames, pod.Name)
-		}
-	}
-	return podNames, nil
-}
-
-func GetMoacNodeName() (string, error) {
-	podApi := gTestEnv.KubeInt.CoreV1().Pods
-	pods, err := podApi(common.NSMayastor()).List(context.TODO(), metaV1.ListOptions{})
-	if err != nil {
-		return "", err
-	}
-	for _, pod := range pods.Items {
-		if strings.HasPrefix(pod.Name, "moac") && pod.Status.Phase == "Running" {
-			return pod.Spec.NodeName, nil
-		}
-	}
-	return "", nil
 }
 
 func GetCoreAgentNodeName() (string, error) {

@@ -2,17 +2,19 @@ package exp
 
 import (
 	"fmt"
-	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/uuid"
 	"mayastor-e2e/common"
 	"mayastor-e2e/common/e2e_config"
 	"mayastor-e2e/common/k8stest"
 	"mayastor-e2e/common/mayastorclient"
-	mayastorgrpc "mayastor-e2e/common/mayastorclient/grpc"
+	mayastorgrpc "mayastor-e2e/common/mayastorclient/protobuf"
+
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/uuid"
+
+	"testing"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"testing"
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )

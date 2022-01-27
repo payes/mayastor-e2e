@@ -9,7 +9,6 @@ OUTPUT_TAG="nightly-stable"
 #SCRIPTDIR=$(dirname "$(realpath "$0")")
 #E2EROOT=$(realpath "$SCRIPTDIR/..")
 MAYASTOR_DIR=""
-MOAC_DIR=""
 MCP_DIR=""
 declare -a build_info
 
@@ -42,7 +41,6 @@ Options:
   --alias-tag                Tag to give CI image, default is ${OUTPUT_TAG}
 
   --mayastor                 Path to root Mayastor directory
-  --moac                     Path to root MOAC directory
   --mcp                      Path to root Mayastor control plane directory
   --coverage                 Build is a coverage build
   --debug                    Build is debug build
@@ -74,11 +72,6 @@ while [ "$#" -gt 0 ]; do
       MAYASTOR_DIR=$1
       shift
       ;;
-    --moac)
-      shift
-      MOAC_DIR=$1
-      shift
-      ;;
     --mcp)
       shift
       MCP_DIR=$1
@@ -104,8 +97,8 @@ if [ -z "$MAYASTOR_DIR" ] ; then
     exit 127
 fi
 
-if [ -z "$MOAC_DIR" ] && [ -z "$MCP_DIR" ]; then
-    echo "neither moac nor mcp repository directory specified"
+if [ -z "$MCP_DIR" ]; then
+    echo "mcp repository directory not specified"
     exit 127
 fi
 
@@ -126,15 +119,6 @@ pushd "${MAYASTOR_DIR}" \
     && cp -R chart/ "$workdir" \
     && popd
 
-if [ -n "$MOAC_DIR" ]; then
-    pushd "${MOAC_DIR}" \
-        && mkdir -p "$workdir/csi/moac/crds" \
-        && cp crds/* "$workdir/csi/moac/crds/" \
-        && build_info+=("\"moac-revision\": \"$(git rev-parse HEAD)\"") \
-        && build_info+=("\"moac-short-revision\": \"$(git rev-parse --short=12 HEAD)\"") \
-        && popd
-fi
-
 # Note we ensure that $workdir/mcp/bin/kubectl-mayastor is writable,
 # to avoid failure in jenkins archiving where we overwrite
 # artifacts/install-bundle returned by each parallel run
@@ -144,7 +128,7 @@ if [ -n "$MCP_DIR" ]; then
         && cp scripts/generate-deploy-yamls.sh "$workdir/mcp/scripts" \
         && cp -R chart "$workdir/mcp" \
         && mkdir -p "$workdir/mcp/bin" \
-        && cp "$(nix-build -A utils.release.kubectl-plugin --no-out-link)/bin/kubectl-mayastor" "$workdir/mcp/bin" \
+        && cp "$(nix-build -A utils.release.linux-musl.kubectl-plugin --no-out-link)/bin/kubectl-mayastor" "$workdir/mcp/bin" \
         && chmod a+w "$workdir/mcp/bin/kubectl-mayastor" \
         && mkdir -p "$workdir/mcp/control-plane/rest/openapi-specs" \
         && cp control-plane/rest/openapi-specs/* "$workdir/mcp/control-plane/rest/openapi-specs" \
@@ -154,10 +138,6 @@ if [ -n "$MCP_DIR" ]; then
     # FIXME: dangling CRD yaml files break deployment using helm
     pushd "$workdir" \
         && rm -f chart/crds/* \
-        && popd
-    # FIXME: remove moac yaml files which are pulled in from mayastor
-    pushd "$workdir" \
-        && find chart/ -name moac\*.yaml -print0 | xargs -0 rm -f \
         && popd
 fi
 

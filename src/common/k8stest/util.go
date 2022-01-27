@@ -339,41 +339,6 @@ func mayastorCSIReadyPodCount() int {
 	return int(mayastorCsiDaemonSet.Status.NumberAvailable)
 }
 
-func moacReady() bool {
-	var moacDeployment appsV1.Deployment
-	if gTestEnv.K8sClient.Get(context.TODO(), types.NamespacedName{Name: "moac", Namespace: common.NSMayastor()}, &moacDeployment) != nil {
-		logf.Log.Info("Failed to get MOAC deployment")
-		return false
-	}
-
-	logf.Log.Info("moacDeployment.Status",
-		"ObservedGeneration", moacDeployment.Status.ObservedGeneration,
-		"Replicas", moacDeployment.Status.Replicas,
-		"UpdatedReplicas", moacDeployment.Status.UpdatedReplicas,
-		"ReadyReplicas", moacDeployment.Status.ReadyReplicas,
-		"AvailableReplicas", moacDeployment.Status.AvailableReplicas,
-		"UnavailableReplicas", moacDeployment.Status.UnavailableReplicas,
-		"CollisionCount", moacDeployment.Status.CollisionCount)
-	for ix, condition := range moacDeployment.Status.Conditions {
-		logf.Log.Info("Condition", "ix", ix,
-			"Status", condition.Status,
-			"Type", condition.Type,
-			"Message", condition.Message,
-			"Reason", condition.Reason)
-	}
-
-	for _, condition := range moacDeployment.Status.Conditions {
-		if condition.Type == appsV1.DeploymentAvailable {
-			if condition.Status == coreV1.ConditionTrue {
-				logf.Log.Info("MOAC is Available")
-				return true
-			}
-		}
-	}
-	logf.Log.Info("MOAC is Not Available")
-	return false
-}
-
 func DeploymentReady(deploymentName, namespace string) bool {
 	var deployment appsV1.Deployment
 	if err := gTestEnv.K8sClient.Get(context.TODO(), types.NamespacedName{Name: deploymentName, Namespace: namespace}, &deployment); err != nil {
@@ -414,7 +379,7 @@ func StatefulSetReady(statefulSetName string, namespace string) bool {
 	status := statefulSet.Status
 	logf.Log.Info("StatefulSet "+statefulSetName, "status", status)
 	return status.Replicas == status.ReadyReplicas &&
-		status.ReadyReplicas == status.CurrentReplicas
+		status.ReadyReplicas == status.CurrentReplicas && status.ReadyReplicas != 0
 }
 
 func ControlPlaneReady(sleepTime int, duration int) bool {
@@ -468,10 +433,8 @@ func ControlPlaneReady(sleepTime int, duration int) bool {
 			}
 		}
 	} else {
-		for ix := 0; ix < count && !ready; ix++ {
-			time.Sleep(time.Duration(sleepTime) * time.Second)
-			ready = moacReady()
-		}
+		logf.Log.Info("unsupported control plane", "version", controlplane.MajorVersion())
+		return ready
 	}
 	return ready
 }
@@ -705,13 +668,8 @@ func CheckAndSetControlPlane() error {
 	var deployment appsV1.Deployment
 	var statefulSet appsV1.StatefulSet
 	var err error
-	var foundMoac = false
 	var foundCoreAgents = false
 	var version string
-
-	if err = gTestEnv.K8sClient.Get(context.TODO(), types.NamespacedName{Name: "moac", Namespace: common.NSMayastor()}, &deployment); err == nil {
-		foundMoac = true
-	}
 
 	// Check for core-agents either as deployment or statefulset to correctly handle older builds of control plane
 	// which use core-agents deployment and newer builds which use core-agents statefulset
@@ -723,18 +681,11 @@ func CheckAndSetControlPlane() error {
 		foundCoreAgents = true
 	}
 
-	if foundMoac && foundCoreAgents {
-		return fmt.Errorf("MOAC and Restful Control plane components are present")
+	if !foundCoreAgents {
+		return fmt.Errorf("restful Control plane components are absent")
 	}
-	if !foundMoac && !foundCoreAgents {
-		return fmt.Errorf("MOAC and Restful Control plane components are absent")
-	}
-	if foundMoac {
-		version = "0.8.2"
-	}
-	if foundCoreAgents {
-		version = "1.0.0"
-	}
+
+	version = "1.0.0"
 
 	logf.Log.Info("CheckAndSetControlPlane", "version", version)
 	if !e2e_config.SetControlPlane(version) {

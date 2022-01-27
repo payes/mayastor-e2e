@@ -3,7 +3,6 @@ package k8stest
 import (
 	"context"
 	"fmt"
-	"mayastor-e2e/common/controlplane"
 	"mayastor-e2e/common/custom_resources"
 	"mayastor-e2e/common/e2e_config"
 	"mayastor-e2e/common/mayastorclient"
@@ -152,13 +151,7 @@ func AfterSuiteCleanup() {
 // CheckMsPoolFinalizers check
 //	1) that finalizers exist for pools with replicas (used size != 0)
 //  2) that finalizers DO NOT EXIST for pools with no replicas (used size == 0)
-//  with timeout to allow MOAC state sync.
 func CheckMsPoolFinalizers() error {
-	if controlplane.MajorVersion() != 0 {
-		// Finalizers do not need to be checked with deployments of control plane versions
-		// > 0 as finalizers are not added and removed when volumes/replicas are created or removed
-		return nil
-	}
 	err := custom_resources.CheckAllMsPoolFinalizers()
 	logf.Log.Info("Checking pool finalizers", "timeout seconds", e2e_config.GetConfig().MoacSyncTimeoutSeconds)
 	const sleepTime = 5
@@ -175,8 +168,8 @@ func CheckMsPoolFinalizers() error {
 	return err
 }
 
-func getMspUsage() (int64, error) {
-	var mspUsage int64
+func getMspUsage() (uint64, error) {
+	var mspUsage uint64
 	msPools, err := ListMsPools()
 	if err != nil {
 		logf.Log.Info("unable to list mayastor pools")
@@ -232,20 +225,16 @@ func resourceCheck(waitForPools bool) error {
 		errs.Accumulate(fmt.Errorf("found PersistentVolumes"))
 	}
 
-	//FIXME: control plane 1 temporary do not check MSVs
-	if controlplane.MajorVersion() == 0 {
-		// Mayastor volumes
-		msvs, err := ListMsvs()
-		if err != nil {
-			errs.Accumulate(err)
-		} else {
-			if msvs != nil {
-				if len(msvs) != 0 {
-					errs.Accumulate(fmt.Errorf("found MayastorVolumes"))
-				}
-			} else {
-				logf.Log.Info("Listing MSVs returned nil array")
+	msvs, err := ListMsvs()
+	if err != nil {
+		errs.Accumulate(err)
+	} else {
+		if msvs != nil {
+			if len(msvs) != 0 {
+				errs.Accumulate(fmt.Errorf("found MayastorVolumes"))
 			}
+		} else {
+			logf.Log.Info("Listing MSVs returned nil array")
 		}
 	}
 
@@ -404,7 +393,15 @@ func BeforeEachCheck() error {
 	if resourceCheckError = resourceCheck(false); resourceCheckError != nil {
 		logf.Log.Info("BeforeEachCheck failed", "error", resourceCheckError)
 		resourceCheckError = fmt.Errorf("%w; not running test case, k8s cluster is not \"clean\"!!! ", resourceCheckError)
+	} else {
+		podNames, err := listMayastorPods(nil)
+		if err != nil {
+			err = fmt.Errorf("%w; not running test case, not able to get pod list", err)
+			return err
+		}
+		SetMayastorInitialPodCount(len(podNames))
 	}
+
 	return resourceCheckError
 }
 

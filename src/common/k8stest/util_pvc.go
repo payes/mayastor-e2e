@@ -202,6 +202,7 @@ func MkPVC(volSizeMb int, volName string, scName string, volType common.VolumeTy
 // MsvConsistencyCheck check consistency of  MSV Spec, Status, and associated objects returned by gRPC
 func MsvConsistencyCheck(uuid string) error {
 	//FIXME: implement new MsvConsistencyCheck inline with mayastor control plane
+	// JIRA: https://mayadata.atlassian.net/browse/MQ-2741
 	if controlplane.MajorVersion() != 0 {
 		return nil
 	}

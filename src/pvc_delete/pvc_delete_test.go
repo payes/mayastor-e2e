@@ -10,7 +10,7 @@ import (
 	"mayastor-e2e/common/e2e_config"
 	"mayastor-e2e/common/k8stest"
 	"mayastor-e2e/common/mayastorclient"
-	"mayastor-e2e/common/mayastorclient/grpc"
+	grpc "mayastor-e2e/common/mayastorclient/protobuf"
 
 	coreV1 "k8s.io/api/core/v1"
 
@@ -140,10 +140,8 @@ func testPvcDeleteTest(
 			"600s",
 			"15s",
 		).Should(Equal(0), "replicas have not been garbage collected")
-	} else if controlplane.MajorVersion() == 0 {
-		status, err = verifyOldReplicas(uid)
-		Expect(err).ToNot(HaveOccurred(), "failed to verify old replica status")
-		Expect(status).Should(Equal(true))
+	} else {
+		Expect(controlplane.MajorVersion).Should(Equal(1), "unsupported control plane version %d/n", controlplane.MajorVersion())
 	}
 
 	// Create the volume to check orphaned replica behavior
@@ -160,13 +158,6 @@ func testPvcDeleteTest(
 	msv, err = k8stest.GetMSV(uidSec)
 	Expect(err).ToNot(HaveOccurred(), "%v", err)
 	Expect(msv).ToNot(BeNil(), "failed to get msv")
-
-	// verify orphaned replica status, it should not be part of any msv in case of MOAC
-	if controlplane.MajorVersion() == 0 {
-		status, err = verifyOrphanedReplicas(uidSec, replica)
-		Expect(err).ToNot(HaveOccurred(), "failed to verify orphaned replica status")
-		Expect(status).Should(Equal(true))
-	}
 
 	// Delete the volume
 	k8stest.RmPVC(volName, scName, common.NSDefault)
@@ -220,43 +211,6 @@ func getMayastorNodeIpAddres(nodeName string) ([]string, error) {
 		}
 	}
 	return nodeAddres, err
-}
-
-// verify old replica status
-func verifyOldReplicas(uid string) (bool, error) {
-	replicas, err := k8stest.ListReplicasInCluster()
-	var status bool
-	if err != nil {
-		logf.Log.Info("failed to retrieve list of replicas")
-		return status, err
-	}
-	for _, replica := range replicas {
-		if replica.Uuid == uid {
-			status = true
-			break
-		}
-	}
-	return status, nil
-}
-
-// verify orphaned replica status i.e it should not form part of any msv
-func verifyOrphanedReplicas(uid string, replicaCount int) (bool, error) {
-	replicas, err := k8stest.ListReplicasInCluster()
-	var status bool
-	count := 0
-	if err != nil {
-		logf.Log.Info("ResourceEachCheck: failed to retrieve list of replicas")
-		return status, err
-	}
-	for _, replica := range replicas {
-		if replica.Uuid == uid {
-			count++
-		}
-	}
-	if count == replicaCount {
-		status = true
-	}
-	return status, nil
 }
 
 // verify mayastor pool status on node address

@@ -1,7 +1,7 @@
 package mayastorclient
 
 import (
-	mayastorGrpc "mayastor-e2e/common/mayastorclient/grpc"
+	mayastorGrpc "mayastor-e2e/common/mayastorclient/protobuf"
 )
 
 var null = mayastorGrpc.Null{}
