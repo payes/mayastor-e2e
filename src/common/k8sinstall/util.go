@@ -219,7 +219,9 @@ func installControlPlane() error {
 	yamlsDir := locations.GetControlPlaneGeneratedYamlsDir()
 	for _, yf := range yamlFiles {
 		err := k8stest.KubeCtlApplyYaml(yf, yamlsDir)
-		errs.Accumulate(fmt.Errorf("failed to apply yaml file %s , yaml path: %s, error: %v", yf, yamlsDir, err))
+		if err != nil {
+			errs.Accumulate(fmt.Errorf("failed to apply yaml file %s , yaml path: %s, error: %v", yf, yamlsDir, err))
+		}
 	}
 	return errs.GetError()
 }
