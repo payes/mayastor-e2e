@@ -27,7 +27,8 @@ func TestPrimitiveDeviceRetirement(t *testing.T) {
 }
 
 var _ = BeforeSuite(func(done Done) {
-	k8stest.SetupTestEnv()
+	err := k8stest.SetupTestEnv()
+	Expect(err).ToNot(HaveOccurred(), "failed to setup test environment in BeforeSuite : SetupTestEnv %v", err)
 
 	close(done)
 }, 60)
@@ -35,7 +36,8 @@ var _ = BeforeSuite(func(done Done) {
 var _ = AfterSuite(func() {
 	// NB This only tears down the local structures for talking to the cluster,
 	// not the kubernetes cluster itself.	By("tearing down the test environment")
-	k8stest.TeardownTestEnv()
+	err := k8stest.TeardownTestEnv()
+	Expect(err).ToNot(HaveOccurred(), "failed to tear down test environment in AfterSuite : TeardownTestEnv %v", err)
 })
 
 var _ = Describe("Mayastor primitive device retirement tests", func() {
