@@ -52,9 +52,14 @@ var _ = Describe("Stale MSP after node power failure test", func() {
 			k8stest.WaitForMayastorSockets(k8stest.GetMayastorNodeIPAddresses(), defWaitTimeout)
 		}
 		if controlplane.MajorVersion() == 1 {
-			k8stest.RemoveAllNodeSelectorsFromDeployment("msp-operator", common.NSMayastor())
-			k8stest.RemoveAllNodeSelectorsFromDeployment("rest", common.NSMayastor())
-			k8stest.RemoveAllNodeSelectorsFromDeployment("csi-controller", common.NSMayastor())
+			var errs common.ErrorAccumulator
+			for _, deploy := range msDeployment {
+				err := k8stest.RemoveAllNodeSelectorsFromDeployment(deploy, common.NSMayastor())
+				if err != nil {
+					errs.Accumulate(err)
+				}
+			}
+			Expect(errs.GetError()).ToNot(HaveOccurred(), "Failed to  remove node selectors from deployment, %v", errs.GetError())
 		} else {
 			Expect(controlplane.MajorVersion).Should(Equal(1), "unsupported control plane version %d/n", controlplane.MajorVersion())
 		}
@@ -85,15 +90,20 @@ func (c *nodepowerfailureConfig) staleMspAfterNodePowerFailureTest() {
 
 	var poolName, nodeName string
 	var diskName []string
+	var errs common.ErrorAccumulator
 
 	if controlplane.MajorVersion() == 1 {
 		coreAgentNodeName, err := k8stest.GetCoreAgentNodeName()
 		Expect(err).ToNot(HaveOccurred())
 		Expect(coreAgentNodeName).ToNot(BeEmpty(), fmt.Sprintf("core agent pod not found in running state, %v", err))
 
-		k8stest.ApplyNodeSelectorToDeployment("msp-operator", common.NSMayastor(), "kubernetes.io/hostname", coreAgentNodeName)
-		k8stest.ApplyNodeSelectorToDeployment("rest", common.NSMayastor(), "kubernetes.io/hostname", coreAgentNodeName)
-		k8stest.ApplyNodeSelectorToDeployment("csi-controller", common.NSMayastor(), "kubernetes.io/hostname", coreAgentNodeName)
+		for _, deploy := range msDeployment {
+			err = k8stest.ApplyNodeSelectorToDeployment(deploy, common.NSMayastor(), "kubernetes.io/hostname", coreAgentNodeName)
+			if err != nil {
+				errs.Accumulate(err)
+			}
+		}
+		Expect(errs.GetError()).ToNot(HaveOccurred(), "Failed to  apply node selectors to deployment, %v", errs.GetError())
 		k8stest.VerifyPodsOnNode([]string{"msp-operator", "rest", "csi-controller"}, coreAgentNodeName, common.NSMayastor())
 		k8stest.WaitForMCPPath(defWaitTimeout)
 		k8stest.WaitForMayastorSockets(k8stest.GetMayastorNodeIPAddresses(), defWaitTimeout)

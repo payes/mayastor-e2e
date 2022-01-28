@@ -26,6 +26,14 @@ const UninstallSuiteNameV1 = "Basic Teardown Suite (mayastor control plane)"
 
 const MCPLogLevel = "debug"
 
+// mayastor install yaml files names
+var mayastorYamlFiles = []string{
+	"etcd",
+	"nats-deployment.yaml",
+	"csi-daemonset.yaml",
+	"mayastor-daemonset.yaml",
+}
+
 // postFixInstallation post fix installation yaml files for coverage and debug if required
 func postFixInstallation(yamlsDir string) error {
 
@@ -203,18 +211,21 @@ func getCPYamlFiles() ([]string, error) {
 }
 
 func installControlPlane() error {
+	var errs common.ErrorAccumulator
 	yamlFiles, err := getCPYamlFiles()
 	if err != nil {
 		return err
 	}
 	yamlsDir := locations.GetControlPlaneGeneratedYamlsDir()
 	for _, yf := range yamlFiles {
-		k8stest.KubeCtlApplyYaml(yf, yamlsDir)
+		err := k8stest.KubeCtlApplyYaml(yf, yamlsDir)
+		errs.Accumulate(fmt.Errorf("failed to apply yaml file %s , yaml path: %s, error: %v", yf, yamlsDir, err))
 	}
-	return nil
+	return errs.GetError()
 }
 
 func uninstallControlPlane() error {
+	errors := make(chan error)
 	yamlFiles, err := getCPYamlFiles()
 	if err != nil {
 		return err
@@ -229,10 +240,16 @@ func uninstallControlPlane() error {
 		// by running the deletes on different threads
 		// this may break the reversal of uninstalls
 		// for now this is good enough
-		go k8stest.KubeCtlDeleteYaml(yf, yamlsDir)
+		go func() {
+			err = k8stest.KubeCtlDeleteYaml(yf, yamlsDir)
+			if err != nil {
+				errors <- err
+			}
+		}()
+		//go k8stest.KubeCtlDeleteYaml(yf, yamlsDir)
 		time.Sleep(time.Second * 1)
 	}
-	return nil
+	return <-errors
 }
 
 // Install mayastor on the cluster under test.
@@ -240,6 +257,7 @@ func uninstallControlPlane() error {
 // objects, so that we can verify the local deploy yaml files are correct.
 func InstallMayastor() error {
 	var err error
+	var errs common.ErrorAccumulator
 	e2eCfg := e2e_config.GetConfig()
 
 	if len(e2eCfg.ImageTag) == 0 {
@@ -282,10 +300,15 @@ func InstallMayastor() error {
 		return err
 	}
 
-	k8stest.KubeCtlApplyYaml("etcd", yamlsDir)
-	k8stest.KubeCtlApplyYaml("nats-deployment.yaml", yamlsDir)
-	k8stest.KubeCtlApplyYaml("csi-daemonset.yaml", yamlsDir)
-	k8stest.KubeCtlApplyYaml("mayastor-daemonset.yaml", yamlsDir)
+	for _, yaml := range mayastorYamlFiles {
+		err = k8stest.KubeCtlApplyYaml(yaml, yamlsDir)
+		if err != nil {
+			errs.Accumulate(err)
+		}
+	}
+	if errs.GetError() != nil {
+		return errs.GetError()
+	}
 
 	if controlplane.MajorVersion() == 1 {
 		err = installControlPlane()
@@ -324,7 +347,10 @@ func InstallMayastor() error {
 	}
 
 	// Now create configured pools on all nodes.
-	k8stest.CreateConfiguredPools()
+	err = k8stest.CreateConfiguredPools()
+	if err != nil {
+		return err
+	}
 
 	// Wait for pools to be online
 	const timoSecs = 240
@@ -436,10 +462,21 @@ func TeardownMayastor() error {
 	} else {
 		return fmt.Errorf("unsupported control plane version %d/n", controlplane.MajorVersion())
 	}
-	go k8stest.KubeCtlDeleteYaml("csi-daemonset.yaml", yamlsDir)
-	go k8stest.KubeCtlDeleteYaml("mayastor-daemonset.yaml", yamlsDir)
-	go k8stest.KubeCtlDeleteYaml("nats-deployment.yaml", yamlsDir)
-	go k8stest.KubeCtlDeleteYaml("etcd", yamlsDir)
+
+	// delete in reverse order
+	errors := make(chan error)
+	for i := len(mayastorYamlFiles) - 1; i >= 0; i-- {
+		yf := mayastorYamlFiles[i]
+		go func() {
+			err = k8stest.KubeCtlDeleteYaml(yf, yamlsDir)
+			if err != nil {
+				errors <- err
+			}
+		}()
+	}
+	if errors != nil {
+		return <-errors
+	}
 
 	{
 		const timeOutSecs = 240

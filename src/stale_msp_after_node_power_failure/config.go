@@ -12,6 +12,12 @@ const (
 	defWaitTimeout = "600s"
 )
 
+var msDeployment = []string{
+	"msp-operator",
+	"rest",
+	"csi-controller",
+}
+
 type nodepowerfailureConfig struct {
 	platform types.Platform
 }

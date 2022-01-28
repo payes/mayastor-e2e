@@ -13,7 +13,6 @@ import (
 	"mayastor-e2e/common"
 	"mayastor-e2e/common/mayastorclient"
 
-	. "github.com/onsi/gomega"
 	errors "github.com/pkg/errors"
 
 	appsV1 "k8s.io/api/apps/v1"
@@ -26,21 +25,27 @@ import (
 )
 
 // Helper for passing yaml from the specified directory to kubectl
-func KubeCtlApplyYaml(filename string, dir string) {
+func KubeCtlApplyYaml(filename string, dir string) error {
 	cmd := exec.Command("kubectl", "apply", "-f", filename)
 	cmd.Dir = dir
 	logf.Log.Info("kubectl apply ", "yaml file", filename, "path", cmd.Dir)
 	out, err := cmd.CombinedOutput()
-	Expect(err).ToNot(HaveOccurred(), "%s", out)
+	if err != nil {
+		return fmt.Errorf("failed to apply yaml file %s : Output: %s : Error: %v", filename, out, err)
+	}
+	return nil
 }
 
 // Helper for passing yaml from the specified directory to kubectl
-func KubeCtlDeleteYaml(filename string, dir string) {
+func KubeCtlDeleteYaml(filename string, dir string) error {
 	cmd := exec.Command("kubectl", "delete", "-f", filename)
 	cmd.Dir = dir
 	logf.Log.Info("kubectl delete ", "yaml file", filename, "path", cmd.Dir)
 	out, err := cmd.CombinedOutput()
-	Expect(err).ToNot(HaveOccurred(), "%s", out)
+	if err != nil {
+		return fmt.Errorf("failed to apply yaml file %s : Output: %s : Error: %v", filename, out, err)
+	}
+	return nil
 }
 
 // create a storage class with default volume binding mode i.e. not specified
@@ -107,49 +112,70 @@ func ApplyNodeSelectorToPodObject(pod *coreV1.Pod, label string, value string) {
 }
 
 // Add a node selector to the deployment spec and apply
-func ApplyNodeSelectorToDeployment(deploymentName string, namespace string, label string, value string) {
+func ApplyNodeSelectorToDeployment(deploymentName string, namespace string, label string, value string) error {
 	depApi := gTestEnv.KubeInt.AppsV1().Deployments
 	deployment, err := depApi(namespace).Get(context.TODO(), deploymentName, metaV1.GetOptions{})
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil {
+		return fmt.Errorf("failed to get deployment %s : ns: %s : Error: %v", deploymentName, namespace, err)
+	}
 	if deployment.Spec.Template.Spec.NodeSelector == nil {
 		deployment.Spec.Template.Spec.NodeSelector = make(map[string]string)
 	}
 	deployment.Spec.Template.Spec.NodeSelector[label] = value
 	_, err = depApi(namespace).Update(context.TODO(), deployment, metaV1.UpdateOptions{})
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil {
+		return fmt.Errorf("failed to apply node selector to deployment %s : ns: %s : Error: %v", deploymentName, namespace, err)
+	}
+	return nil
 }
 
 // Remove all node selectors from the deployment spec and apply
-func RemoveAllNodeSelectorsFromDeployment(deploymentName string, namespace string) {
+func RemoveAllNodeSelectorsFromDeployment(deploymentName string, namespace string) error {
 	depApi := gTestEnv.KubeInt.AppsV1().Deployments
 	deployment, err := depApi(namespace).Get(context.TODO(), deploymentName, metaV1.GetOptions{})
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil {
+		return fmt.Errorf("failed to get deployment %s : ns: %s : Error: %v", deploymentName, namespace, err)
+	}
 	if deployment.Spec.Template.Spec.NodeSelector != nil {
 		deployment.Spec.Template.Spec.NodeSelector = nil
 		_, err = depApi(namespace).Update(context.TODO(), deployment, metaV1.UpdateOptions{})
 	}
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil {
+		return fmt.Errorf("failed to remove node selector from deployment %s : ns: %s : Error: %v", deploymentName, namespace, err)
+	}
+	return nil
 }
 
-func SetReplication(appName string, namespace string, replicas *int32) {
+func SetReplication(appName string, namespace string, replicas *int32) error {
 	depAPI := gTestEnv.KubeInt.AppsV1().Deployments
 	stsAPI := gTestEnv.KubeInt.AppsV1().StatefulSets
 	labels := "app=" + appName
 	deployments, err := depAPI(namespace).List(context.TODO(), metaV1.ListOptions{LabelSelector: labels})
-	Expect(err).ToNot(HaveOccurred())
-	sts, err := stsAPI(namespace).List(context.TODO(), metaV1.ListOptions{LabelSelector: labels})
-	Expect(err).ToNot(HaveOccurred())
-	if len(deployments.Items) == 1 {
-		SetDeploymentReplication(deployments.Items[0].Name, namespace, replicas)
-	} else if len(sts.Items) == 1 {
-		SetStatefulsetReplication(sts.Items[0].Name, namespace, replicas)
-	} else {
-		Expect(false).To(BeTrue(), "app %s is not deployed as a deployment or sts", appName)
+	if err != nil {
+		return fmt.Errorf("failed to list deployment, namespace: %s, error: %v", namespace, err)
 	}
+	sts, err := stsAPI(namespace).List(context.TODO(), metaV1.ListOptions{LabelSelector: labels})
+	if err != nil {
+		return fmt.Errorf("failed to list statefulset, namespace: %s, error: %v", namespace, err)
+	}
+	if len(deployments.Items) == 1 {
+		err = SetDeploymentReplication(deployments.Items[0].Name, namespace, replicas)
+		if err != nil {
+			return err
+		}
+	} else if len(sts.Items) == 1 {
+		err = SetStatefulsetReplication(sts.Items[0].Name, namespace, replicas)
+		if err != nil {
+			return err
+		}
+	} else {
+		return fmt.Errorf("app %s is not deployed as a deployment or sts", appName)
+	}
+	return nil
 }
 
 // Adjust the number of replicas in the deployment
-func SetDeploymentReplication(deploymentName string, namespace string, replicas *int32) {
+func SetDeploymentReplication(deploymentName string, namespace string, replicas *int32) error {
 	depAPI := gTestEnv.KubeInt.AppsV1().Deployments
 	var err error
 
@@ -157,7 +183,12 @@ func SetDeploymentReplication(deploymentName string, namespace string, replicas 
 	// when the deployment is changed between Get and Update
 	for attempts := 0; attempts < 10; attempts++ {
 		deployment, err := depAPI(namespace).Get(context.TODO(), deploymentName, metaV1.GetOptions{})
-		Expect(err).ToNot(HaveOccurred())
+		if err != nil {
+			return fmt.Errorf("failed to get deployment, name: %s, namespace: %s, error: %v",
+				deploymentName,
+				namespace,
+				err)
+		}
 		deployment.Spec.Replicas = replicas
 		_, err = depAPI(namespace).Update(context.TODO(), deployment, metaV1.UpdateOptions{})
 		if err == nil {
@@ -166,11 +197,18 @@ func SetDeploymentReplication(deploymentName string, namespace string, replicas 
 		logf.Log.Info("Re-trying update attempt due to error", "error", err)
 		time.Sleep(1 * time.Second)
 	}
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil {
+		return fmt.Errorf("failed to set replication to deployment, name: %s, namespace: %s, replication: %d, error: %v",
+			deploymentName,
+			namespace,
+			*replicas,
+			err)
+	}
+	return nil
 }
 
 // Adjust the number of replicas in the statefulset
-func SetStatefulsetReplication(statefulsetName string, namespace string, replicas *int32) {
+func SetStatefulsetReplication(statefulsetName string, namespace string, replicas *int32) error {
 	stsAPI := gTestEnv.KubeInt.AppsV1().StatefulSets
 	var err error
 
@@ -178,7 +216,12 @@ func SetStatefulsetReplication(statefulsetName string, namespace string, replica
 	// when the deployment is changed between Get and Update
 	for attempts := 0; attempts < 10; attempts++ {
 		sts, err := stsAPI(namespace).Get(context.TODO(), statefulsetName, metaV1.GetOptions{})
-		Expect(err).ToNot(HaveOccurred())
+		if err != nil {
+			return fmt.Errorf("failed to get statefulset, name: %s, namespace: %s, error: %v",
+				statefulsetName,
+				namespace,
+				err)
+		}
 		sts.Spec.Replicas = replicas
 		_, err = stsAPI(namespace).Update(context.TODO(), sts, metaV1.UpdateOptions{})
 		if err == nil {
@@ -187,7 +230,15 @@ func SetStatefulsetReplication(statefulsetName string, namespace string, replica
 		logf.Log.Info("Re-trying update attempt due to error", "error", err)
 		time.Sleep(1 * time.Second)
 	}
-	Expect(err).ToNot(HaveOccurred())
+
+	if err != nil {
+		return fmt.Errorf("failed to set replication to deployment, name: %s, namespace: %s, replication: %d, error: %v",
+			statefulsetName,
+			namespace,
+			*replicas,
+			err)
+	}
+	return nil
 }
 
 // Wait until all instances of the specified pod are absent from the given node
@@ -220,25 +271,34 @@ func WaitForPodAbsentFromNode(podNameRegexp string, namespace string, nodeName s
 }
 
 // Get the execution status of the given pod, or nil if it does not exist
-func getPodStatus(podNameRegexp string, namespace string, nodeName string) *v1.PodPhase {
+func getPodStatus(podNameRegexp string, namespace string, nodeName string) (*v1.PodPhase, error) {
 	var validID = regexp.MustCompile(podNameRegexp)
 	podAPI := gTestEnv.KubeInt.CoreV1().Pods
 	podList, err := podAPI(namespace).List(context.TODO(), metaV1.ListOptions{})
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil {
+		return nil, fmt.Errorf("failed to list pods , namespace: %s, error: %v", namespace, err)
+	}
 	for _, pod := range podList.Items {
 		if pod.Spec.NodeName == nodeName && validID.MatchString(pod.Name) {
-			return &pod.Status.Phase
+			return &pod.Status.Phase, nil
 		}
 	}
-	return nil // pod not found
+	return nil, nil // pod not found
 }
 
 // Wait until the instance of the specified pod is present and in the running
 // state on the given node
 func WaitForPodRunningOnNode(podNameRegexp string, namespace string, nodeName string, timeoutSeconds int) error {
 	for i := 0; i < timeoutSeconds; i++ {
-		stat := getPodStatus(podNameRegexp, namespace, nodeName)
-
+		stat, err := getPodStatus(podNameRegexp, namespace, nodeName)
+		if err != nil {
+			return fmt.Errorf("failed to get pod status, podRegexp: %s, namespace: %s, nodename: %s, error: %v",
+				podNameRegexp,
+				namespace,
+				nodeName,
+				err,
+			)
+		}
 		if stat != nil && *stat == v1.PodRunning {
 			return nil
 		}
@@ -251,8 +311,15 @@ func WaitForPodRunningOnNode(podNameRegexp string, namespace string, nodeName st
 // state on the given node
 func WaitForPodNotRunningOnNode(podNameRegexp string, namespace string, nodeName string, timeoutSeconds int) error {
 	for i := 0; i < timeoutSeconds; i++ {
-		stat := getPodStatus(podNameRegexp, namespace, nodeName)
-
+		stat, err := getPodStatus(podNameRegexp, namespace, nodeName)
+		if err != nil {
+			return fmt.Errorf("failed to get pod status, podRegexp: %s, namespace: %s, nodename: %s, error: %v",
+				podNameRegexp,
+				namespace,
+				nodeName,
+				err,
+			)
+		}
 		if stat == nil || *stat != v1.PodRunning {
 			return nil
 		}
@@ -262,20 +329,27 @@ func WaitForPodNotRunningOnNode(podNameRegexp string, namespace string, nodeName
 }
 
 // returns true if the pod is present on the given node
-func PodPresentOnNode(podNameRegexp string, namespace string, nodeName string) bool {
+func PodPresentOnNode(podNameRegexp string, namespace string, nodeName string) (bool, error) {
 	var validID = regexp.MustCompile(podNameRegexp)
 	podApi := gTestEnv.KubeInt.CoreV1().Pods
 	podList, err := podApi(namespace).List(context.TODO(), metaV1.ListOptions{})
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil {
+		return false, fmt.Errorf("failed to list pod, podRegexp: %s, namespace: %s, nodename: %s, error: %v",
+			podNameRegexp,
+			namespace,
+			nodeName,
+			err,
+		)
+	}
 
 	for _, pod := range podList.Items {
 		if pod.Spec.NodeName == nodeName {
 			if validID.MatchString(pod.Name) {
-				return true
+				return true, nil
 			}
 		}
 	}
-	return false
+	return false, nil
 }
 
 func mayastorReadyPodCount() int {
@@ -538,20 +612,28 @@ func GetPoolUsageInCluster() (uint64, error) {
 
 // CreateConfiguredPools (re)create pools as defined by the configuration.
 // No check is made on the status of pools
-func CreateConfiguredPools() {
-	Expect(len(e2e_config.GetConfig().PoolDevice)).ToNot(BeZero(), "pool device not configured")
+func CreateConfiguredPools() error {
+	if len(e2e_config.GetConfig().PoolDevice) == 0 {
+		return fmt.Errorf("pool device not configured, PoolDevice: %s", e2e_config.GetConfig().PoolDevice)
+	}
 	disks := []string{e2e_config.GetConfig().PoolDevice}
 	// NO check is made on the status of pools
 	nodes, err := GetNodeLocs()
-	Expect(err).ToNot(HaveOccurred(), "failed to get list of nodes")
+	if err != nil {
+		return fmt.Errorf("failed to get list of nodes, error: %v", err)
+	}
+	var errs common.ErrorAccumulator
 	for _, node := range nodes {
 		if node.MayastorNode {
 			poolName := fmt.Sprintf("pool-on-%s", node.NodeName)
 			pool, err := custom_resources.CreateMsPool(poolName, node.NodeName, disks)
-			Expect(err).ToNot(HaveOccurred(), "failed to create pool on %v, disks %v", node, disks)
+			if err != nil {
+				errs.Accumulate(fmt.Errorf("failed to create pool on %v , disks: %s, error: %v", node, disks, err))
+			}
 			logf.Log.Info("Created", "pool", pool)
 		}
 	}
+	return errs.GetError()
 }
 
 // RestoreConfiguredPools (re)create pools as defined by the configuration.
@@ -560,9 +642,15 @@ func CreateConfiguredPools() {
 func RestoreConfiguredPools() error {
 	var err error
 	_, err = DeleteAllPoolFinalizers()
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil {
+		return fmt.Errorf("failed to delete pool finalizers, error; %v", err)
+	}
+
 	deletedAllPools := DeleteAllPools()
-	Expect(deletedAllPools).To(BeTrue())
+	if !deletedAllPools {
+		return fmt.Errorf("failed to delete all pools")
+	}
+
 	const sleepTime = 5
 	pools := []mayastorclient.MayastorPool{}
 	for ix := 1; ix < 120/sleepTime; ix++ {
@@ -575,7 +663,9 @@ func RestoreConfiguredPools() error {
 		}
 		time.Sleep(sleepTime * time.Second)
 	}
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil {
+		return fmt.Errorf("failed to list pools, error; %v", err)
+	}
 
 	for ix := 1; ix < 120/sleepTime && len(pools) != 0; ix++ {
 		err = mayastorclient.DestroyAllPools(GetMayastorNodeIPAddresses())
@@ -588,10 +678,16 @@ func RestoreConfiguredPools() error {
 		}
 		time.Sleep(sleepTime * time.Second)
 	}
-	Expect(err).ToNot(HaveOccurred())
-	Expect(len(pools)).To(Equal(0))
+	if err != nil {
+		return fmt.Errorf("failed to destroy pools, error; %v", err)
+	} else if len(pools) != 0 {
+		return fmt.Errorf("failed to destroy all pools, existing pool: %v,error; %v", pools, err)
+	}
 
-	CreateConfiguredPools()
+	err = CreateConfiguredPools()
+	if err != nil {
+		return err
+	}
 	for ix := 1; ix < 120/sleepTime; ix++ {
 		time.Sleep(sleepTime * time.Second)
 		err := custom_resources.CheckAllMsPoolsAreOnline()
@@ -625,7 +721,9 @@ func WaitPodComplete(podName string, sleepTimeSecs, timeoutSecs int) error {
 		time.Sleep(time.Duration(sleepTimeSecs) * time.Second)
 		podPhase, err = CheckPodCompleted(podName, common.NSDefault)
 		logf.Log.Info("WaitPodComplete got ", "podPhase", podPhase, "error", err)
-		Expect(err).ToNot(HaveOccurred(), fmt.Sprintf("failed to access pod status %s %v", podName, err))
+		if err != nil {
+			return fmt.Errorf("failed to access pod status %s %v", podName, err)
+		}
 		if podPhase == coreV1.PodSucceeded {
 			return nil
 		} else if podPhase == coreV1.PodFailed {
@@ -638,7 +736,9 @@ func WaitPodComplete(podName string, sleepTimeSecs, timeoutSecs int) error {
 // DeleteVolumeAttachmets deletes volume attachments for a node
 func DeleteVolumeAttachments(nodeName string) error {
 	volumeAttachments, err := gTestEnv.KubeInt.StorageV1().VolumeAttachments().List(context.TODO(), metaV1.ListOptions{})
-	Expect(err).ToNot(HaveOccurred(), "failed to list volume attachments")
+	if err != nil {
+		return fmt.Errorf("failed to list volume attachments, error: %v", err)
+	}
 	if len(volumeAttachments.Items) == 0 {
 		return nil
 	}

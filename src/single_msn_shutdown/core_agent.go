@@ -14,13 +14,18 @@ import (
 func (c *shutdownConfig) nonCoreAgentNodeShutdownTest() {
 
 	var conf *appConfig
+	var errs common.ErrorAccumulator
 
 	coreAgentNodeName, err := k8stest.GetCoreAgentNodeName()
 	Expect(err).ToNot(HaveOccurred())
 	Expect(coreAgentNodeName).ToNot(BeEmpty(), "core agent pod not found in running state")
-	k8stest.ApplyNodeSelectorToDeployment("msp-operator", common.NSMayastor(), "kubernetes.io/hostname", coreAgentNodeName)
-	k8stest.ApplyNodeSelectorToDeployment("rest", common.NSMayastor(), "kubernetes.io/hostname", coreAgentNodeName)
-	k8stest.ApplyNodeSelectorToDeployment("csi-controller", common.NSMayastor(), "kubernetes.io/hostname", coreAgentNodeName)
+	for _, deploy := range msDeployment {
+		err = k8stest.ApplyNodeSelectorToDeployment(deploy, common.NSMayastor(), "kubernetes.io/hostname", coreAgentNodeName)
+		if err != nil {
+			errs.Accumulate(err)
+		}
+	}
+	Expect(errs.GetError()).ToNot(HaveOccurred(), "Failed to  apply node selectors to deployment, %v", errs.GetError())
 
 	k8stest.VerifyPodsOnNode([]string{"msp-operator", "rest", "csi-controller"}, coreAgentNodeName, common.NSMayastor())
 
@@ -67,10 +72,13 @@ func (c *shutdownConfig) nonCoreAgentNodeShutdownTest() {
 		config.deletePVC()
 		config.deleteSC()
 	}
-	k8stest.RemoveAllNodeSelectorsFromDeployment("msp-operator", common.NSMayastor())
-	k8stest.RemoveAllNodeSelectorsFromDeployment("rest", common.NSMayastor())
-	k8stest.RemoveAllNodeSelectorsFromDeployment("csi-controller", common.NSMayastor())
-
+	for _, deploy := range msDeployment {
+		err := k8stest.RemoveAllNodeSelectorsFromDeployment(deploy, common.NSMayastor())
+		if err != nil {
+			errs.Accumulate(err)
+		}
+	}
+	Expect(errs.GetError()).ToNot(HaveOccurred(), "Failed to  remove node selectors from deployment, %v", errs.GetError())
 	verifyMayastorComponentStates(c.numMayastorInstances)
 	err = k8stest.RestartMayastor(240, 240, 240)
 	Expect(err).ToNot(HaveOccurred(), "Restart Mayastor pods")
@@ -79,20 +87,28 @@ func (c *shutdownConfig) nonCoreAgentNodeShutdownTest() {
 func (c *shutdownConfig) coreAgentNodeShutdownTest() {
 
 	var conf *appConfig
-
+	var errs common.ErrorAccumulator
 	coreAgentNodeName, err := k8stest.GetCoreAgentNodeName()
 	Expect(err).ToNot(HaveOccurred())
 	Expect(coreAgentNodeName).ToNot(BeEmpty(), "core agent pod not found in running state")
-	k8stest.ApplyNodeSelectorToDeployment("msp-operator", common.NSMayastor(), "kubernetes.io/hostname", coreAgentNodeName)
-	k8stest.ApplyNodeSelectorToDeployment("rest", common.NSMayastor(), "kubernetes.io/hostname", coreAgentNodeName)
-	k8stest.ApplyNodeSelectorToDeployment("csi-controller", common.NSMayastor(), "kubernetes.io/hostname", coreAgentNodeName)
+	for _, deploy := range msDeployment {
+		err = k8stest.ApplyNodeSelectorToDeployment(deploy, common.NSMayastor(), "kubernetes.io/hostname", coreAgentNodeName)
+		if err != nil {
+			errs.Accumulate(err)
+		}
+	}
+	Expect(errs.GetError()).ToNot(HaveOccurred(), "Failed to  apply node selectors to deployment, %v", errs.GetError())
 
 	k8stest.VerifyPodsOnNode([]string{"msp-operator", "rest", "csi-controller"}, coreAgentNodeName, common.NSMayastor())
 
 	verifyMayastorComponentStates(c.numMayastorInstances)
-	k8stest.RemoveAllNodeSelectorsFromDeployment("msp-operator", common.NSMayastor())
-	k8stest.RemoveAllNodeSelectorsFromDeployment("rest", common.NSMayastor())
-	k8stest.RemoveAllNodeSelectorsFromDeployment("csi-controller", common.NSMayastor())
+	for _, deploy := range msDeployment {
+		err := k8stest.RemoveAllNodeSelectorsFromDeployment(deploy, common.NSMayastor())
+		if err != nil {
+			errs.Accumulate(err)
+		}
+	}
+	Expect(errs.GetError()).ToNot(HaveOccurred(), "Failed to  remove node selectors from deployment, %v", errs.GetError())
 
 	// Create SC, PVC and Application Deployment
 	for _, config := range c.config {
