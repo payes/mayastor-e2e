@@ -175,26 +175,6 @@ func AfterSuiteCleanup() {
 	logf.Log.Info("AfterSuiteCleanup")
 }
 
-// CheckMsPoolFinalizers check
-//	1) that finalizers exist for pools with replicas (used size != 0)
-//  2) that finalizers DO NOT EXIST for pools with no replicas (used size == 0)
-func CheckMsPoolFinalizers() error {
-	err := custom_resources.CheckAllMsPoolFinalizers()
-	logf.Log.Info("Checking pool finalizers", "timeout seconds", e2e_config.GetConfig().MoacSyncTimeoutSeconds)
-	const sleepTime = 5
-	t0 := time.Now()
-	for ix := 0; ix < e2e_config.GetConfig().MoacSyncTimeoutSeconds && err != nil; ix += sleepTime {
-		time.Sleep(sleepTime * time.Second)
-		err = custom_resources.CheckAllMsPoolFinalizers()
-	}
-	if err != nil {
-		logf.Log.Info("Checking pool finalizers", "error", err)
-	} else {
-		logf.Log.Info("Checking pool finalizers, done.", "waiting time", time.Since(t0))
-	}
-	return err
-}
-
 func getMspUsage() (uint64, error) {
 	var mspUsage uint64
 	msPools, err := ListMsPools()
@@ -441,15 +421,6 @@ func AfterEachCheck() error {
 	}
 
 	resourceCheckError = ResourceCheck()
-	if resourceCheckError == nil {
-		if resourceCheckError = CheckMsPoolFinalizers(); resourceCheckError != nil {
-			if e2e_config.GetConfig().SelfTest {
-				logf.Log.Info("SelfTesting, ignoring:", "", resourceCheckError)
-				resourceCheckError = nil
-			}
-		}
-	}
-
 	logf.Log.Info("AfterEachCheck", "error", resourceCheckError)
 
 	return resourceCheckError
