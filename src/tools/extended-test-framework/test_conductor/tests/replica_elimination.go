@@ -26,14 +26,14 @@ func checkVolumeReplicasNotZero(ms_ip string, uuid string, seconds int) error {
 	for i := 0; i < seconds; i++ {
 		reps, err = mini_mcp_client.GetVolumeReplicas(ms_ip, uuid)
 		if err != nil {
-			return fmt.Errorf("failed to get replicas, err: %v", err)
+			return fmt.Errorf("failed to get replicas, uuid %s, err: %v", uuid, err)
 		}
 		if reps == 0 {
-			return fmt.Errorf("found zero replicas")
+			return fmt.Errorf("found zero replicas, uuid %s", uuid)
 		}
 		time.Sleep(time.Second)
 	}
-	logf.Log.Info("non-zero replicas after timeout", "replicas", reps, "timeout seconds", seconds)
+	logf.Log.Info("non-zero replicas after timeout", "replicas", reps, "timeout seconds", seconds, "uuid", uuid)
 	return nil
 }
 
@@ -116,7 +116,8 @@ func eliminateVolume(
 			vol_type,
 			args,
 		); err != nil {
-			return fmt.Errorf("failed to deploy e2e-storage-tester pod %s, error: %v", storage_tester_name, err)
+			err = fmt.Errorf("failed to deploy e2e-storage-tester pod %s, error: %v", storage_tester_name, err)
+			break
 		}
 		logf.Log.Info("Created pod.", "pod", storage_tester_name)
 		logf.Log.Info("Waiting for e2e-storage-tester to complete.", "pod", storage_tester_name)
@@ -144,7 +145,8 @@ func eliminateVolume(
 			vol_type,
 			args,
 		); err != nil {
-			return fmt.Errorf("failed to deploy e2e-storage-tester pod %s, error: %v", storage_tester_name, err)
+			err = fmt.Errorf("failed to deploy e2e-storage-tester pod %s, error: %v", storage_tester_name, err)
+			break
 		}
 		logf.Log.Info("Created load pod", "pod", storage_tester_name)
 		//  echo offline | sudo tee /sys/block/sdx/device/state
@@ -204,7 +206,8 @@ func eliminateVolume(
 			vol_type,
 			args,
 		); err != nil {
-			return fmt.Errorf("failed to deploy e2e-storage-tester pod %s, error: %v", storage_tester_name, err)
+			err = fmt.Errorf("failed to deploy e2e-storage-tester pod %s, error: %v", storage_tester_name, err)
+			break
 		}
 		logf.Log.Info("Created pod", "pod", storage_tester_name)
 
@@ -308,9 +311,9 @@ func ReplicaEliminationTest(testConductor *tc.TestConductor) error {
 			WithLocal(true).
 			BuildAndCreate(); err != nil {
 
-			logf.Log.Info("Created storage class failed", "error", err.Error())
+			logf.Log.Info("failed to create storage class", "storage class", sc_name, "error", err.Error())
 
-			return fmt.Errorf("failed to create sc %v", err)
+			return fmt.Errorf("failed to create sc %s %v", sc_name, err)
 		}
 	} else {
 		sc_name = "sc-immed"
@@ -323,9 +326,9 @@ func ReplicaEliminationTest(testConductor *tc.TestConductor) error {
 			WithLocal(false).
 			BuildAndCreate(); err != nil {
 
-			logf.Log.Info("Created storage class failed", "error", err.Error())
+			logf.Log.Info("failed to create storage class", "storage class", sc_name, "error", err.Error())
 
-			return fmt.Errorf("failed to create sc %v", err)
+			return fmt.Errorf("failed to create sc %s %v", sc_name, err)
 		}
 	}
 	logf.Log.Info("Created storage class", "sc", sc_name)
