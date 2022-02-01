@@ -54,6 +54,9 @@ func sendRequestGetResponse(reqType, url string, data interface{}, verbose bool)
 		return "", err
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return "", fmt.Errorf("request returned code %d", resp.StatusCode)
+	}
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
