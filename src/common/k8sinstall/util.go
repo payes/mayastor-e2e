@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"mayastor-e2e/common"
@@ -227,7 +228,9 @@ func installControlPlane() error {
 }
 
 func uninstallControlPlane() error {
-	errors := make(chan error)
+	errors := make(chan error, 1)
+	var wg sync.WaitGroup
+	var errs common.ErrorAccumulator
 	yamlFiles, err := getCPYamlFiles()
 	if err != nil {
 		return err
@@ -238,20 +241,26 @@ func uninstallControlPlane() error {
 	}
 	yamlsDir := locations.GetControlPlaneGeneratedYamlsDir()
 	for _, yf := range yamlFiles {
+		wg.Add(1)
 		// Deletes can stall indefinitely, try to mitigate this
 		// by running the deletes on different threads
 		// this may break the reversal of uninstalls
 		// for now this is good enough
-		go func() {
+		go func(yf string) {
+			time.Sleep(time.Second * 1)
+			defer wg.Done()
 			err = k8stest.KubeCtlDeleteYaml(yf, yamlsDir)
 			if err != nil {
 				errors <- err
 			}
-		}()
-		//go k8stest.KubeCtlDeleteYaml(yf, yamlsDir)
-		time.Sleep(time.Second * 1)
+		}(yf)
 	}
-	return <-errors
+	wg.Wait()
+	close(errors)
+	for err := range errors {
+		errs.Accumulate(err)
+	}
+	return errs.GetError()
 }
 
 // Install mayastor on the cluster under test.
@@ -393,6 +402,9 @@ func deleteNamespace() error {
 // objects, so that we can verify the local deploy yaml files are correct.
 func TeardownMayastor() error {
 	var cleaned bool
+	errors := make(chan error, 1)
+	var wg sync.WaitGroup
+	var errs common.ErrorAccumulator
 	cleanup := e2e_config.GetConfig().Uninstall.Cleanup != 0
 	err := k8stest.CheckAndSetControlPlane()
 	if err != nil {
@@ -466,18 +478,25 @@ func TeardownMayastor() error {
 	}
 
 	// delete in reverse order
-	errors := make(chan error)
 	for i := len(mayastorYamlFiles) - 1; i >= 0; i-- {
 		yf := mayastorYamlFiles[i]
+		wg.Add(1)
 		go func() {
+			time.Sleep(time.Second * 1)
+			defer wg.Done()
 			err = k8stest.KubeCtlDeleteYaml(yf, yamlsDir)
 			if err != nil {
 				errors <- err
 			}
 		}()
 	}
-	if errors != nil {
-		return <-errors
+	wg.Wait()
+	close(errors)
+	for err := range errors {
+		errs.Accumulate(err)
+	}
+	if errs.GetError() != nil {
+		return errs.GetError()
 	}
 
 	{
