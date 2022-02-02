@@ -45,7 +45,7 @@ func EnsureE2EAgent() bool {
 	err = KubeCtlApplyYaml("e2e-agent.yaml", locations.GetE2EAgentPath())
 
 	if err != nil {
-		return ready
+		return false
 	}
 	for ix := 0; ix < count && !ready; ix++ {
 		time.Sleep(time.Duration(sleepTime) * time.Second)

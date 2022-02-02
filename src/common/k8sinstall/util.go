@@ -228,7 +228,6 @@ func installControlPlane() error {
 }
 
 func uninstallControlPlane() error {
-	errors := make(chan error, 1)
 	var wg sync.WaitGroup
 	var errs common.ErrorAccumulator
 	yamlFiles, err := getCPYamlFiles()
@@ -240,6 +239,7 @@ func uninstallControlPlane() error {
 		yamlFiles[i], yamlFiles[j] = yamlFiles[j], yamlFiles[i]
 	}
 	yamlsDir := locations.GetControlPlaneGeneratedYamlsDir()
+	errors := make(chan error, len(yamlFiles))
 	for _, yf := range yamlFiles {
 		wg.Add(1)
 		// Deletes can stall indefinitely, try to mitigate this
@@ -402,7 +402,7 @@ func deleteNamespace() error {
 // objects, so that we can verify the local deploy yaml files are correct.
 func TeardownMayastor() error {
 	var cleaned bool
-	errors := make(chan error, 1)
+	errors := make(chan error, len(mayastorYamlFiles))
 	var wg sync.WaitGroup
 	var errs common.ErrorAccumulator
 	cleanup := e2e_config.GetConfig().Uninstall.Cleanup != 0
