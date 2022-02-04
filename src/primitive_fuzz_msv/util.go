@@ -111,7 +111,8 @@ func (c *PrimitiveMsvFuzzConfig) verifyVolumesDeletion() {
 // deletePVC will delete all pvc
 func (c *PrimitiveMsvFuzzConfig) deletePVC() {
 	for _, pvc := range c.PvcNames {
-		k8stest.RmPVC(pvc, c.ScName, common.NSDefault)
+		err := k8stest.RmPVC(pvc, c.ScName, common.NSDefault)
+		Expect(err).ToNot(HaveOccurred(), "failed to delete pvc %s", pvc)
 	}
 }
 

@@ -35,11 +35,14 @@ func (c *appConfig) deleteSC() {
 
 func (c *appConfig) createPVC() string {
 	// Create the volume with 1 replica
-	return k8stest.MkPVC(c.pvcSize, c.pvcName, c.scName, common.VolFileSystem, common.NSDefault)
+	uuid, err := k8stest.MkPVC(c.pvcSize, c.pvcName, c.scName, common.VolFileSystem, common.NSDefault)
+	Expect(err).ToNot(HaveOccurred(), "failed to create pvc %s", c.pvcName)
+	return uuid
 }
 
 func (c *appConfig) deletePVC() {
-	k8stest.RmPVC(c.pvcName, c.scName, common.NSDefault)
+	err := k8stest.RmPVC(c.pvcName, c.scName, common.NSDefault)
+	Expect(err).ToNot(HaveOccurred(), "failed to delete pvc %s", c.pvcName)
 }
 
 func (c *appConfig) createDeployment() {

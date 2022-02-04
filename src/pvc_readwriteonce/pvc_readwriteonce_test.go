@@ -43,7 +43,8 @@ func testPVC(volName string, protocol common.ShareProto, fsType common.FileSyste
 	Expect(err).ToNot(HaveOccurred(), "Creating storage class %s", scName)
 
 	// create PVC
-	uid := k8stest.MkPVC(pvcSize, volName, scName, common.VolFileSystem, common.NSDefault)
+	uid, err := k8stest.MkPVC(pvcSize, volName, scName, common.VolFileSystem, common.NSDefault)
+	Expect(err).ToNot(HaveOccurred(), "failed to create pvc %s", volName)
 	Expect(uid).ToNot(BeNil(), "Failed to create PVC")
 
 	// list all nodes
@@ -147,8 +148,8 @@ func testPVC(volName string, protocol common.ShareProto, fsType common.FileSyste
 	Expect(err).ToNot(HaveOccurred())
 
 	// Delete the PVC
-	k8stest.RmPVC(volName, scName, common.NSDefault)
-
+	err = k8stest.RmPVC(volName, scName, common.NSDefault)
+	Expect(err).ToNot(HaveOccurred(), "failed to delete pvc %s", volName)
 	err = k8stest.RmStorageClass(scName)
 	Expect(err).ToNot(HaveOccurred(), "Deleting storage class %s", scName)
 }

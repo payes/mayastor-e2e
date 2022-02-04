@@ -8,6 +8,8 @@ import (
 	"mayastor-e2e/common/e2e_config"
 	"mayastor-e2e/common/k8stest"
 
+	. "github.com/onsi/gomega"
+
 	coreV1 "k8s.io/api/core/v1"
 )
 
@@ -23,11 +25,14 @@ type FioRawBlockSoakJob struct {
 }
 
 func (job FioRawBlockSoakJob) makeVolume() {
-	job.volUUID = k8stest.MkPVC(common.DefaultVolumeSizeMb, job.volName, job.scName, common.VolRawBlock, common.NSDefault)
+	var err error
+	job.volUUID, err = k8stest.MkPVC(common.DefaultVolumeSizeMb, job.volName, job.scName, common.VolRawBlock, common.NSDefault)
+	Expect(err).ToNot(HaveOccurred(), "failed to create pvc %s", job.volName)
 }
 
 func (job FioRawBlockSoakJob) removeVolume() {
-	k8stest.RmPVC(job.volName, job.scName, common.NSDefault)
+	err := k8stest.RmPVC(job.volName, job.scName, common.NSDefault)
+	Expect(err).ToNot(HaveOccurred(), "failed to delete pvc %s", job.volName)
 }
 
 func (job FioRawBlockSoakJob) makeTestPod(selector map[string]string) (*coreV1.Pod, error) {

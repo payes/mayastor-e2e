@@ -159,7 +159,8 @@ func validateCorruptionTest(corrupt bool) {
 	volumeName := "pvc-validate-integrity-test"
 
 	// Create the volume
-	uid := k8stest.MkPVC(params.VolMb, volumeName, scName, volumeType, common.NSDefault)
+	uid, err := k8stest.MkPVC(params.VolMb, volumeName, scName, volumeType, common.NSDefault)
+	Expect(err).ToNot(HaveOccurred(), "failed to create pvc %s", volumeName)
 	logf.Log.Info("Volume", "uid", uid)
 
 	// Create the fio Pod, The first time is just to write a verification pattern to the volume
@@ -230,7 +231,8 @@ func validateCorruptionTest(corrupt bool) {
 	Expect(err).ToNot(HaveOccurred())
 
 	// Delete the volume
-	k8stest.RmPVC(volumeName, scName, common.NSDefault)
+	err = k8stest.RmPVC(volumeName, scName, common.NSDefault)
+	Expect(err).ToNot(HaveOccurred(), "failed to delete pvc %s", volumeName)
 
 	err = k8stest.RmStorageClass(scName)
 	Expect(err).ToNot(HaveOccurred(), "Deleting storage class %s", scName)

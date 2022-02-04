@@ -102,7 +102,8 @@ func checkPoolUsedSize(poolName string, usedSize uint64) error {
 // deletePVC will delete all pvc
 func (c *primitiveMaxVolConfig) deletePVC() {
 	for _, pvc := range c.pvcNames {
-		k8stest.RmPVC(pvc, c.scName, common.NSDefault)
+		err := k8stest.RmPVC(pvc, c.scName, common.NSDefault)
+		Expect(err).ToNot(HaveOccurred(), "failed to delete pvc %s", pvc)
 	}
 }
 
@@ -122,7 +123,9 @@ func (c *primitiveMaxVolConfig) verifyVolumesCreation() {
 
 		// Wait for the PVC to be bound.
 		Eventually(func() coreV1.PersistentVolumeClaimPhase {
-			return k8stest.GetPvcStatusPhase(volName, namespace)
+			phase, err := k8stest.GetPvcStatusPhase(volName, namespace)
+			Expect(err).ToNot(HaveOccurred(), "failed to get pvc %s phase", volName)
+			return phase
 		},
 			defTimeoutSecs, // timeout
 			"1s",           // polling interval
@@ -149,7 +152,9 @@ func (c *primitiveMaxVolConfig) verifyVolumesCreation() {
 
 		// Wait for the PV to be bound.
 		Eventually(func() coreV1.PersistentVolumePhase {
-			return k8stest.GetPvStatusPhase(pvc.Spec.VolumeName)
+			phase, err := k8stest.GetPvStatusPhase(pvc.Spec.VolumeName)
+			Expect(err).ToNot(HaveOccurred(), "failed to get pv %s phase", pvc.Spec.VolumeName)
+			return phase
 		},
 			defTimeoutSecs, // timeout
 			"1s",           // polling interval

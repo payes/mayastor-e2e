@@ -54,13 +54,14 @@ func testPvcWaitForFirstConsumerTest(
 	)
 
 	// Create the volume
-	uid := k8stest.MkPVC(
+	uid, err := k8stest.MkPVC(
 		common.LargeClaimSizeMb,
 		volName,
 		scName,
 		volumeType,
 		common.NSDefault,
 	)
+	Expect(err).ToNot(HaveOccurred(), "failed to create pvc %s", volName)
 	logf.Log.Info("Volume", "uid", uid)
 
 	// Confirm the PVC has been created.
@@ -142,7 +143,8 @@ func testPvcWaitForFirstConsumerTest(
 	Expect(err).ToNot(HaveOccurred())
 
 	// Delete the volume
-	k8stest.RmPVC(volName, scName, common.NSDefault)
+	err = k8stest.RmPVC(volName, scName, common.NSDefault)
+	Expect(err).ToNot(HaveOccurred(), "failed to delete pvc %s", volName)
 
 	// Delete storageclass
 	err = k8stest.RmStorageClass(scName)

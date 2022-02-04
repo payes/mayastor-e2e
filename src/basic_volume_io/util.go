@@ -34,7 +34,8 @@ func BasicVolumeIOTest(protocol common.ShareProto, volumeType common.VolumeType,
 	volName := strings.ToLower(fmt.Sprintf("basic-vol-io-repl-%d-%s-%s-%s", common.DefaultReplicaCount, string(protocol), volumeType, mode))
 
 	// Create the volume
-	uid := k8stest.MkPVC(params.VolSizeMb, volName, scName, volumeType, common.NSDefault)
+	uid, err := k8stest.MkPVC(params.VolSizeMb, volName, scName, volumeType, common.NSDefault)
+	Expect(err).ToNot(HaveOccurred(), "failed to create pvc %s", volName)
 	log.Log.Info("Volume", "uid", uid)
 
 	// Create the fio Pod
@@ -95,7 +96,8 @@ func BasicVolumeIOTest(protocol common.ShareProto, volumeType common.VolumeType,
 	Expect(err).ToNot(HaveOccurred())
 
 	// Delete the volume
-	k8stest.RmPVC(volName, scName, common.NSDefault)
+	err = k8stest.RmPVC(volName, scName, common.NSDefault)
+	Expect(err).ToNot(HaveOccurred(), "failed to delete pvc %s", volName)
 
 	err = k8stest.RmStorageClass(scName)
 	Expect(err).ToNot(HaveOccurred(), "Deleting storage class %s", scName)

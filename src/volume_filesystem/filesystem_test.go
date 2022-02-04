@@ -37,8 +37,8 @@ func volumeFilesytemTest(protocol common.ShareProto, volumeType common.VolumeTyp
 	Expect(err).ToNot(HaveOccurred(), "Creating storage class %s", scName)
 
 	// Create PVC
-	k8stest.MkPVC(common.DefaultVolumeSizeMb, volName, scName, volumeType, common.NSDefault)
-
+	_, err = k8stest.MkPVC(common.DefaultVolumeSizeMb, volName, scName, volumeType, common.NSDefault)
+	Expect(err).ToNot(HaveOccurred(), "failed to create pvc %s", volName)
 	// Confirm the PVC has been created.
 	pvc, getPvcErr := k8stest.GetPVC(volName, common.NSDefault)
 	Expect(getPvcErr).To(BeNil(), "PVC creation failed")
@@ -46,7 +46,9 @@ func volumeFilesytemTest(protocol common.ShareProto, volumeType common.VolumeTyp
 
 	// Wait for the PVC to be bound.
 	Eventually(func() coreV1.PersistentVolumeClaimPhase {
-		return k8stest.GetPvcStatusPhase(volName, common.NSDefault)
+		phase, err := k8stest.GetPvcStatusPhase(volName, common.NSDefault)
+		Expect(err).ToNot(HaveOccurred(), "failed to get pvc %s phase", volName)
+		return phase
 	},
 		defTimeoutSecs, // timeout
 		"1s",           // polling interval
@@ -75,7 +77,8 @@ func volumeFilesytemTest(protocol common.ShareProto, volumeType common.VolumeTyp
 	}
 
 	// Delete the volume
-	k8stest.RmPVC(volName, scName, common.NSDefault)
+	err = k8stest.RmPVC(volName, scName, common.NSDefault)
+	Expect(err).ToNot(HaveOccurred(), "failed to delete pvc %s", volName)
 
 	// Delete the storage class
 	err = k8stest.RmStorageClass(scName)

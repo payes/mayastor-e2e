@@ -49,7 +49,8 @@ func multipleVolumeIOTest(replicas int, volumeCount int, protocol common.SharePr
 	// Create the volumes and associated bits
 	for ix := 1; ix <= volumeCount; ix += 1 {
 		volName := fmt.Sprintf("ms-vol-%s-%d", protocol, ix)
-		uid := k8stest.MkPVC(volSize, volName, scName, volumeType, common.NSDefault)
+		uid, err := k8stest.MkPVC(volSize, volName, scName, volumeType, common.NSDefault)
+		Expect(err).ToNot(HaveOccurred(), "failed to create pvc %s", volName)
 		logf.Log.Info("Volume", "uid", uid)
 		volNames = append(volNames, volName)
 
@@ -172,7 +173,8 @@ func multipleVolumeIOTest(replicas int, volumeCount int, protocol common.SharePr
 
 	// Delete the volumes
 	for _, volName := range volNames {
-		k8stest.RmPVC(volName, scName, common.NSDefault)
+		err = k8stest.RmPVC(volName, scName, common.NSDefault)
+		Expect(err).ToNot(HaveOccurred(), "failed to delete pvc %s", volName)
 	}
 
 	err = k8stest.RmStorageClass(scName)

@@ -37,13 +37,15 @@ func (c *pvcConcurrentConfig) deleteSC() {
 // createSerialPVC will create pvc in serial
 func (c *pvcConcurrentConfig) createSerialPVC(pvcName string) {
 	// Create the volumes
-	k8stest.MkPVC(c.pvcSize, pvcName, c.scName, common.VolFileSystem, common.NSDefault)
+	_, err := k8stest.MkPVC(c.pvcSize, pvcName, c.scName, common.VolFileSystem, common.NSDefault)
+	Expect(err).ToNot(HaveOccurred(), "failed to create pvc %s", pvcName)
 }
 
 // deleteSerialPVC will delete pvc in serial
 func (c *pvcConcurrentConfig) deleteSerialPVC(pvcName string) {
 	// Create the volumes
-	k8stest.RmPVC(pvcName, c.scName, common.NSDefault)
+	err := k8stest.RmPVC(pvcName, c.scName, common.NSDefault)
+	Expect(err).ToNot(HaveOccurred(), "failed to delete pvc %s", pvcName)
 }
 
 func (c *pvcConcurrentConfig) verifyVolumesCreation() {
@@ -65,7 +67,9 @@ func (c *pvcConcurrentConfig) verifyVolumesCreation() {
 		allBound = true
 		for ix := 0; ix < len(c.pvcNames); ix++ {
 			volName := c.pvcNames[ix]
-			bound := coreV1.ClaimBound == k8stest.GetPvcStatusPhase(volName, namespace)
+			phase, err := k8stest.GetPvcStatusPhase(volName, namespace)
+			Expect(err).ToNot(HaveOccurred(), "failed to get pvc %s phase", volName)
+			bound := coreV1.ClaimBound == phase
 			allBound = allBound && bound
 			volBindMap[volName] = bound
 		}
@@ -104,7 +108,9 @@ func (c *pvcConcurrentConfig) verifyVolumesCreation() {
 
 		// Wait for the PV to be bound.
 		Eventually(func() coreV1.PersistentVolumePhase {
-			return k8stest.GetPvStatusPhase(pvc.Spec.VolumeName)
+			phase, err := k8stest.GetPvStatusPhase(pvc.Spec.VolumeName)
+			Expect(err).ToNot(HaveOccurred(), "failed to get pv %s phase", pvc.Spec.VolumeName)
+			return phase
 		},
 			defTimeoutSecs, // timeout
 			"1s",           // polling interval

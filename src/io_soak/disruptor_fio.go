@@ -7,6 +7,7 @@ import (
 	"mayastor-e2e/common"
 	"mayastor-e2e/common/e2e_config"
 	"mayastor-e2e/common/k8stest"
+
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	. "github.com/onsi/gomega"
@@ -30,11 +31,14 @@ type FioDisruptorJob struct {
 }
 
 func (job FioDisruptorJob) makeVolume() {
-	job.volUUID = k8stest.MkPVC(common.DefaultVolumeSizeMb, job.volName, job.scName, common.VolRawBlock, NSDisrupt)
+	var err error
+	job.volUUID, err = k8stest.MkPVC(common.DefaultVolumeSizeMb, job.volName, job.scName, common.VolRawBlock, NSDisrupt)
+	Expect(err).ToNot(HaveOccurred(), "failed to create pvc %s", job.volName)
 }
 
 func (job FioDisruptorJob) removeVolume() {
-	k8stest.RmPVC(job.volName, job.scName, NSDisrupt)
+	err := k8stest.RmPVC(job.volName, job.scName, NSDisrupt)
+	Expect(err).ToNot(HaveOccurred(), "failed to delete pvc %s", job.volName)
 }
 
 func (job FioDisruptorJob) makeTestPod(selector map[string]string) (*coreV1.Pod, error) {

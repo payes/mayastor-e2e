@@ -65,13 +65,14 @@ func (job srJob) start(upDn string) srJob {
 	job.status.volName = strings.ToLower(fmt.Sprintf("vol-%s", job.status.scName))
 
 	// Create the volume
-	job.status.volUid = k8stest.MkPVC(
+	job.status.volUid, err = k8stest.MkPVC(
 		volumeSizeMb,
 		job.status.volName,
 		job.status.scName,
 		volumeType,
 		common.NSDefault,
 	)
+	Expect(err).ToNot(HaveOccurred(), "failed to create pvc %s", job.status.volName)
 	logf.Log.Info("Volume created", "name", job.status.volName, "uid", job.status.volUid)
 
 	// Create the fio Pod
@@ -133,8 +134,8 @@ func (job srJob) stop() {
 	Expect(err).ToNot(HaveOccurred())
 
 	// Delete the volume
-	k8stest.RmPVC(job.status.volName, job.status.scName, common.NSDefault)
-
+	err = k8stest.RmPVC(job.status.volName, job.status.scName, common.NSDefault)
+	Expect(err).ToNot(HaveOccurred(), "failed to delete pvc %s", job.status.volName)
 	err = k8stest.RmStorageClass(job.status.scName)
 	Expect(err).ToNot(HaveOccurred(), fmt.Sprintf("Deleting storage class %s", job.status.scName))
 }
