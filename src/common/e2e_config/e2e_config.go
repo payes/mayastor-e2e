@@ -68,10 +68,6 @@ type E2EConfig struct {
 
 	// Default replica count, used by tests which do not have a config section.
 	DefaultReplicaCount int `yaml:"defaultReplicaCount" env-default:"2" env:"e2e_default_replica_count"`
-	// Timeout for MOAC CR state reconciliation in seconds, some CR state is not update promptly for example pool usage
-	// and finalizers. On hcloud the time lag between synchronisation has been observed to be in the order of
-	// a minute.
-	MoacSyncTimeoutSeconds int `yaml:"moacSyncTimeoutSeconds" env-default:"600"`
 	// Restart Mayastor on failure in a prior AfterEach or ResourceCheck
 	BeforeEachCheckAndRestart bool `yaml:"beforeEachCheckAndRestart" env-default:"false"`
 	// Fail  quickly after failure of a prior AfterEach, overrides BeforeEachCheckAndRestart

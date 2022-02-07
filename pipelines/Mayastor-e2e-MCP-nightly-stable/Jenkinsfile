@@ -82,8 +82,8 @@ pipeline {
           }
           e2e_params['e2e_image_tag'] = 'hc1-' + common.GetTestTag()
           build_params = [
-            mayastorBranch : 'release/1.0',
-            mcpBranch : 'release/1.0',
+            mayastorBranch : 'hotfix-v1.0.1',
+            mcpBranch : 'hotfix-v1.0.1',
             test_tag : e2e_params['e2e_image_tag']
             ]
           common.BuildMCPImages(build_params)

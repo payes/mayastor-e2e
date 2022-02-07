@@ -537,7 +537,10 @@ func restartMayastor(restartTOSecs int, readyTOSecs int, poolsTOSecs int) error 
 	// Pool device is not specified so do not re-create the pools
 	if len(e2e_config.GetConfig().PoolDevice) != 0 {
 		_ = DeleteAllPools()
-		CreateConfiguredPools()
+		err = CreateConfiguredPools()
+		if err != nil {
+			return err
+		}
 	}
 
 	const sleepTime = 10

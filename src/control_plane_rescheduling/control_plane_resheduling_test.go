@@ -77,7 +77,8 @@ func controlPlaneReschedulingTest(protocol common.ShareProto, volumeType common.
 		replicas = 0
 		// Scale down control plane components to 0 replica
 		for _, appName := range appNameList {
-			k8stest.SetReplication(appName, e2e_config.GetConfig().Platform.MayastorNamespace, &replicas)
+			err = k8stest.SetReplication(appName, e2e_config.GetConfig().Platform.MayastorNamespace, &replicas)
+			Expect(err).ToNot(HaveOccurred())
 		}
 
 		// After scaling down control plane components wait for 10 Sec.
@@ -102,7 +103,8 @@ func controlPlaneReschedulingTest(protocol common.ShareProto, volumeType common.
 		replicas = 1
 		// Scale up control plane components to 1 replica
 		for _, appName := range appNameList {
-			k8stest.SetReplication(appName, e2e_config.GetConfig().Platform.MayastorNamespace, &replicas)
+			err = k8stest.SetReplication(appName, e2e_config.GetConfig().Platform.MayastorNamespace, &replicas)
+			Expect(err).ToNot(HaveOccurred())
 		}
 	} else {
 		Expect(controlplane.MajorVersion).Should(Equal(1), "unsupported control plane version %d/n", controlplane.MajorVersion())
