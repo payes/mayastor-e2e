@@ -130,8 +130,8 @@ func remotelyProvisionedVolume(replicas int, local bool) {
 	}
 
 	logf.Log.Info("Scheduling consumer pod on", "node", nodeName)
-	k8stest.LabelNode(nodeName, NlNodeSelectorKey, NlNodeSelectorAppValue)
-
+	err = k8stest.LabelNode(nodeName, NlNodeSelectorKey, NlNodeSelectorAppValue)
+	Expect(err).ToNot(HaveOccurred(), "%v", err)
 	volName, uid, scName := makeTestVolume("remote-nexus", replicas, local)
 	logf.Log.Info("", "uid", uid)
 
@@ -177,7 +177,7 @@ func remotelyProvisionedVolume(replicas int, local bool) {
 	Expect(err).ToNot(HaveOccurred(), "failed to delete test pod")
 
 	destroyTestVolume(volName, scName)
-	k8stest.UnlabelNode(nodeName, NlNodeSelectorKey)
+	err = k8stest.UnlabelNode(nodeName, NlNodeSelectorKey)
 	Expect(err).To(BeNil(), "Restoring node labels failed.")
 
 	if deferredAssert {
@@ -320,14 +320,16 @@ var _ = Describe("Nexus location tests", func() {
 		// Check ready to run
 		err := k8stest.BeforeEachCheck()
 		Expect(err).ToNot(HaveOccurred())
-		k8stest.AllowMasterScheduling()
+		err = k8stest.AllowMasterScheduling()
+		Expect(err).ToNot(HaveOccurred(), "%v", err)
 	})
 
 	AfterEach(func() {
 		//Restore node labels, wait for all pools to transition to online.
 		_ = k8stest.EnsureNodeLabels()
-		k8stest.RemoveMasterScheduling()
-		err := k8stest.RestoreConfiguredPools()
+		err := k8stest.RemoveMasterScheduling()
+		Expect(err).ToNot(HaveOccurred(), "%v", err)
+		err = k8stest.RestoreConfiguredPools()
 		Expect(err).ToNot(HaveOccurred(), "Not all pools are online")
 		// Check resource leakage.
 		err = k8stest.AfterEachCheck()

@@ -282,8 +282,9 @@ func createFioPod(volName string) (string, error) {
 // Prevent mayastor pod from running on the given node.
 func suppressMayastorPodOn(nodeName string, timeout int) {
 	logf.Log.Info("suppressing mayastor pod", "node", nodeName)
-	k8stest.UnlabelNode(nodeName, common.MayastorEngineLabel)
-	err := k8stest.WaitForPodNotRunningOnNode(mayastorRegexp, common.NSMayastor(), nodeName, timeout)
+	err := k8stest.UnlabelNode(nodeName, common.MayastorEngineLabel)
+	Expect(err).ToNot(HaveOccurred(), "%v", err)
+	err = k8stest.WaitForPodNotRunningOnNode(mayastorRegexp, common.NSMayastor(), nodeName, timeout)
 	Expect(err).ToNot(HaveOccurred(), "%v", err)
 }
 
@@ -291,8 +292,9 @@ func suppressMayastorPodOn(nodeName string, timeout int) {
 func unsuppressMayastorPodOn(nodeName string, timeout int) {
 	// add the mayastor label to the node
 	logf.Log.Info("restoring mayastor pod", "node", nodeName)
-	k8stest.LabelNode(nodeName, common.MayastorEngineLabel, common.MayastorEngineLabelValue)
-	err := k8stest.WaitForPodRunningOnNode(mayastorRegexp, common.NSMayastor(), nodeName, timeout)
+	err := k8stest.LabelNode(nodeName, common.MayastorEngineLabel, common.MayastorEngineLabelValue)
+	Expect(err).ToNot(HaveOccurred(), "%v", err)
+	err = k8stest.WaitForPodRunningOnNode(mayastorRegexp, common.NSMayastor(), nodeName, timeout)
 	Expect(err).ToNot(HaveOccurred(), "%v", err)
 }
 

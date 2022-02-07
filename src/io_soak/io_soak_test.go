@@ -139,6 +139,7 @@ func IOSoakTest(protocols []common.ShareProto,
 	readyTimeout time.Duration,
 	disruptorCount int,
 	disruptReadyTimeout time.Duration) {
+	var errors common.ErrorAccumulator
 	nodeList, err := k8stest.GetNodeLocs()
 	Expect(err).ToNot(HaveOccurred())
 
@@ -160,9 +161,13 @@ func IOSoakTest(protocols []common.ShareProto,
 
 	for i, node := range nodes {
 		if i%2 == 0 {
-			k8stest.LabelNode(node, NodeSelectorKey, NodeSelectorAppValue)
+			err = k8stest.LabelNode(node, NodeSelectorKey, NodeSelectorAppValue)
+			if err != nil {
+				errors.Accumulate(err)
+			}
 		}
 	}
+	Expect(errors.GetError()).ToNot(HaveOccurred(), "%v", errors.GetError())
 
 	Expect(replicas <= numMayastorNodes).To(BeTrue())
 	logf.Log.Info("IOSoakTest", "jobs", jobCount, "volumes", jobCount, "test pods", jobCount)
@@ -272,9 +277,13 @@ func IOSoakTest(protocols []common.ShareProto,
 
 	for i, node := range nodes {
 		if i%2 == 0 {
-			k8stest.UnlabelNode(node, NodeSelectorKey)
+			err = k8stest.UnlabelNode(node, NodeSelectorKey)
+			if err != nil {
+				errors.Accumulate(err)
+			}
 		}
 	}
+	Expect(errors.GetError()).ToNot(HaveOccurred(), "%v", errors.GetError())
 }
 
 var _ = Describe("Mayastor Volume IO soak test", func() {

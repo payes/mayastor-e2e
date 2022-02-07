@@ -211,8 +211,9 @@ func (env *DisruptionEnv) teardown() {
 func (env *DisruptionEnv) suppressMayastorPodOn(nodeName string, delay int) {
 	time.Sleep(time.Duration(delay) * time.Second)
 	logf.Log.Info("suppressing mayastor pod", "node", nodeName)
-	k8stest.UnlabelNode(nodeName, engineLabel)
-	err := k8stest.WaitForPodNotRunningOnNode(mayastorRegexp, common.NSMayastor(), nodeName, env.podUnscheduleTimeoutSecs)
+	err := k8stest.UnlabelNode(nodeName, engineLabel)
+	Expect(err).ToNot(HaveOccurred(), "%v", err)
+	err = k8stest.WaitForPodNotRunningOnNode(mayastorRegexp, common.NSMayastor(), nodeName, env.podUnscheduleTimeoutSecs)
 	Expect(err).ToNot(HaveOccurred(), "%v", err)
 }
 
@@ -250,8 +251,9 @@ func (env *DisruptionEnv) unsuppressMayastorPodOn(nodeName string, delay int) {
 	// add the mayastor label to the node
 	time.Sleep(time.Duration(delay) * time.Second)
 	logf.Log.Info("restoring mayastor pod", "node", nodeName)
-	k8stest.LabelNode(nodeName, engineLabel, mayastorLabel)
-	err := k8stest.WaitForPodRunningOnNode(mayastorRegexp, common.NSMayastor(), nodeName, env.podRescheduleTimeoutSecs)
+	err := k8stest.LabelNode(nodeName, engineLabel, mayastorLabel)
+	Expect(err).ToNot(HaveOccurred(), "%v", err)
+	err = k8stest.WaitForPodRunningOnNode(mayastorRegexp, common.NSMayastor(), nodeName, env.podRescheduleTimeoutSecs)
 	Expect(err).ToNot(HaveOccurred(), "%v", err)
 }
 
