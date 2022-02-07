@@ -27,13 +27,15 @@ const timoSleepSecs = 10
 // IsPVCDeleted Check for a deleted Persistent Volume Claim,
 // either the object does not exist
 // or the status phase is invalid.
-func IsPVCDeleted(volName string, nameSpace string) bool {
+func IsPVCDeleted(volName string, nameSpace string) (bool, error) {
 	pvc, err := gTestEnv.KubeInt.CoreV1().PersistentVolumeClaims(nameSpace).Get(context.TODO(), volName, metaV1.GetOptions{})
 	if err != nil {
 		// Unfortunately there is no associated error code, so we resort to string comparison
 		if strings.HasPrefix(err.Error(), "persistentvolumeclaims") &&
 			strings.HasSuffix(err.Error(), " not found") {
-			return true
+			return true, nil
+		} else {
+			return false, fmt.Errorf("failed to get pvc %s, namespace: %s, error: %v", volName, nameSpace, err)
 		}
 	}
 	// After the PVC has been deleted it may still accessible, but status phase will be invalid
@@ -43,24 +45,26 @@ func IsPVCDeleted(volName string, nameSpace string) bool {
 			coreV1.ClaimBound,
 			coreV1.ClaimPending,
 			coreV1.ClaimLost:
-			return false
+			return false, nil
 		default:
-			return true
+			return true, nil
 		}
 	}
-	return false
+	return false, nil
 }
 
 // IsPVDeleted Check for a deleted Persistent Volume,
 // either the object does not exist
 // or the status phase is invalid.
-func IsPVDeleted(volName string) bool {
+func IsPVDeleted(volName string) (bool, error) {
 	pv, err := gTestEnv.KubeInt.CoreV1().PersistentVolumes().Get(context.TODO(), volName, metaV1.GetOptions{})
 	if err != nil {
 		// Unfortunately there is no associated error code so we resort to string comparison
 		if strings.HasPrefix(err.Error(), "persistentvolumes") &&
 			strings.HasSuffix(err.Error(), " not found") {
-			return true
+			return true, nil
+		} else {
+			return false, fmt.Errorf("failed to get pv %s, error: %v", volName, err)
 		}
 	}
 
@@ -72,23 +76,23 @@ func IsPVDeleted(volName string) bool {
 			coreV1.VolumeFailed,
 			coreV1.VolumePending,
 			coreV1.VolumeReleased:
-			return false
+			return false, nil
 		default:
-			return true
+			return true, nil
 		}
 	}
 	// After the PV has been deleted it may still accessible, but status phase will be invalid
 	logf.Log.Info("IsPVDeleted", "volume", volName, "status.Phase", pv.Status.Phase)
-	return false
+	return false, nil
 }
 
 // IsPvcBound returns true if a PVC with the given name is bound otherwise false is returned.
-func IsPvcBound(pvcName string, nameSpace string) bool {
+func IsPvcBound(pvcName string, nameSpace string) (bool, error) {
 	phase, err := GetPvcStatusPhase(pvcName, nameSpace)
 	if err != nil {
-		return false
+		return false, err
 	}
-	return phase == coreV1.ClaimBound
+	return phase == coreV1.ClaimBound, nil
 }
 
 // GetPvcStatusPhase Retrieve status phase of a Persistent Volume Claim
@@ -347,15 +351,18 @@ func RmPVC(volName string, scName string, nameSpace string) error {
 	}
 
 	logf.Log.Info("Waiting for PVC to be deleted", "volume", volName, "storageClass", scName)
+	var err error
 	// Wait for the PVC to be deleted.
 	for ix := 0; ix < defTimeoutSecs/timoSleepSecs; ix++ {
 		time.Sleep(timoSleepSecs * time.Second)
-		isDeleted = IsPVCDeleted(volName, nameSpace)
+		isDeleted, err = IsPVCDeleted(volName, nameSpace)
 		if isDeleted {
 			break
 		}
 	}
-	if !isDeleted {
+	if err != nil {
+		return err
+	} else if !isDeleted {
 		return fmt.Errorf("pvc not deleted, pvc: %s, namespace: %s", volName, nameSpace)
 	}
 
@@ -367,7 +374,7 @@ func RmPVC(volName string, scName string, nameSpace string) error {
 		// when pvc is in pending state at that time we will not
 		// get pv name inside pvc spec i.e pvc.Spec.VolumeName
 		if pvc.Spec.VolumeName != "" {
-			isDeleted = IsPVDeleted(pvc.Spec.VolumeName)
+			isDeleted, err = IsPVDeleted(pvc.Spec.VolumeName)
 			if isDeleted {
 				break
 			}
@@ -376,7 +383,9 @@ func RmPVC(volName string, scName string, nameSpace string) error {
 			break
 		}
 	}
-	if !isDeleted {
+	if err != nil {
+		return err
+	} else if !isDeleted {
 		return fmt.Errorf("PV not deleted, pv: %s", pvc.Spec.VolumeName)
 	}
 

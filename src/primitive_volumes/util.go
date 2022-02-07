@@ -132,11 +132,13 @@ func (c *pvcConcurrentConfig) verifyVolumesCreation() {
 // verify deletion of pvc and corresponding msv
 func (c *pvcConcurrentConfig) verifyVolumesDeletion() {
 	for ix := 0; ix < len(c.pvcNames); ix++ {
+		var status bool
 		// Confirm that the PVC has been created
 		Expect(c.deleteErrs[ix]).To(BeNil(), "failed to delete PVC %s", c.pvcNames[ix])
 		// Wait for the PVC to be deleted.
 		Eventually(func() bool {
-			return k8stest.IsPVCDeleted(c.pvcNames[ix], common.NSDefault)
+			status, _ = k8stest.IsPVCDeleted(c.pvcNames[ix], common.NSDefault)
+			return status
 		},
 			defTimeoutSecs, // timeout
 			"1s",           // polling interval
