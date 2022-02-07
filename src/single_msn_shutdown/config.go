@@ -20,6 +20,12 @@ const (
 	fioTimeoutSecs   = 300
 )
 
+var msDeployment = []string{
+	"msp-operator",
+	"rest",
+	"csi-controller",
+}
+
 type appConfig struct {
 	pvcName              string
 	uuid                 string
