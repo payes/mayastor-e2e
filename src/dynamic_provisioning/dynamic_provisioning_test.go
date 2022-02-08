@@ -39,8 +39,8 @@ func dynamicProvisioningTest(protocol common.ShareProto, volumeType common.Volum
 	Expect(err).ToNot(HaveOccurred(), "Creating storage class %s", scName)
 
 	// Create PVC
-	k8stest.MkPVC(common.DefaultVolumeSizeMb, volName, scName, volumeType, common.NSDefault)
-
+	_, err = k8stest.MkPVC(common.DefaultVolumeSizeMb, volName, scName, volumeType, common.NSDefault)
+	Expect(err).ToNot(HaveOccurred(), "failed to create pvc %s", volName)
 	// Create pod
 	fioPodName := "fio-" + volName
 	pod, err := k8stest.CreateFioPod(fioPodName, volName, common.VolFileSystem, common.NSDefault)
@@ -76,8 +76,8 @@ func dynamicProvisioningTest(protocol common.ShareProto, volumeType common.Volum
 	Expect(err).ToNot(HaveOccurred())
 
 	// Delete the volume
-	k8stest.RmPVC(volName, scName, common.NSDefault)
-
+	err = k8stest.RmPVC(volName, scName, common.NSDefault)
+	Expect(err).ToNot(HaveOccurred(), "failed to delete pvc %s", volName)
 	// List nexus in cluster after pod and pvc deletion
 	nexuses, err = k8stest.ListNexusesInCluster()
 	if err != nil {

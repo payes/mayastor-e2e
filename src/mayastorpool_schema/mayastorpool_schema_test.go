@@ -44,7 +44,8 @@ func mayastorPoolSchemaTest(schema string) {
 
 	for _, pool := range pools {
 		if schema == "default" {
-			k8stest.CreateConfiguredPools()
+			err = k8stest.CreateConfiguredPools()
+			Expect(err).ToNot(HaveOccurred(), "failed to create configured pools")
 			break
 		} else {
 			diskPath := make([]string, 1)

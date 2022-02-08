@@ -50,7 +50,8 @@ func controlPlaneReschedulingTest(protocol common.ShareProto, volumeType common.
 	for ix := 1; ix <= e2e_config.GetConfig().ControlPlaneRescheduling.MayastorVolumeCount; ix += 1 {
 		volName := fmt.Sprintf("reshedule-vol-%d", ix)
 		volNames = append(volNames, volName)
-		k8stest.MkPVC(common.DefaultVolumeSizeMb, volName, scName, volumeType, common.NSDefault)
+		_, err := k8stest.MkPVC(common.DefaultVolumeSizeMb, volName, scName, volumeType, common.NSDefault)
+		Expect(err).ToNot(HaveOccurred(), "failed to create pvc %s", volName)
 	}
 
 	// Create pod
@@ -76,7 +77,8 @@ func controlPlaneReschedulingTest(protocol common.ShareProto, volumeType common.
 		replicas = 0
 		// Scale down control plane components to 0 replica
 		for _, appName := range appNameList {
-			k8stest.SetReplication(appName, e2e_config.GetConfig().Platform.MayastorNamespace, &replicas)
+			err = k8stest.SetReplication(appName, e2e_config.GetConfig().Platform.MayastorNamespace, &replicas)
+			Expect(err).ToNot(HaveOccurred())
 		}
 
 		// After scaling down control plane components wait for 10 Sec.
@@ -101,7 +103,8 @@ func controlPlaneReschedulingTest(protocol common.ShareProto, volumeType common.
 		replicas = 1
 		// Scale up control plane components to 1 replica
 		for _, appName := range appNameList {
-			k8stest.SetReplication(appName, e2e_config.GetConfig().Platform.MayastorNamespace, &replicas)
+			err = k8stest.SetReplication(appName, e2e_config.GetConfig().Platform.MayastorNamespace, &replicas)
+			Expect(err).ToNot(HaveOccurred())
 		}
 	} else {
 		Expect(controlplane.MajorVersion).Should(Equal(1), "unsupported control plane version %d/n", controlplane.MajorVersion())
@@ -121,8 +124,8 @@ func controlPlaneReschedulingTest(protocol common.ShareProto, volumeType common.
 		Expect(err).ToNot(HaveOccurred())
 
 		// Delete the volume
-		k8stest.RmPVC(volNames[ix], scName, common.NSDefault)
-
+		err = k8stest.RmPVC(volNames[ix], scName, common.NSDefault)
+		Expect(err).ToNot(HaveOccurred(), "failed to delete pvc %s", volNames[ix])
 	}
 
 	// Delete the storage class

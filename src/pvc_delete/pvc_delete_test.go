@@ -62,7 +62,7 @@ func testPvcDeleteTest(
 	)
 
 	// Create the volume
-	uid := k8stest.MkPVC(
+	uid, err := k8stest.MkPVC(
 		params.VolSizeMb,
 		volName,
 		scName,
@@ -70,7 +70,7 @@ func testPvcDeleteTest(
 		common.NSDefault,
 	)
 	logf.Log.Info("Volume", "uid", uid)
-
+	Expect(err).ToNot(HaveOccurred(), "failed to create pvc %s", volName)
 	// create fio pod
 	fioPodName, err := createFioPod(volName)
 	Expect(err).ToNot(HaveOccurred(), "failed to create fio pod")
@@ -107,8 +107,8 @@ func testPvcDeleteTest(
 	suppressMayastorPodOn(nodeName, params.PodUnscheduleTimeoutSecs)
 
 	// Delete the volume
-	k8stest.RmPVC(volName, scName, common.NSDefault)
-
+	err = k8stest.RmPVC(volName, scName, common.NSDefault)
+	Expect(err).ToNot(HaveOccurred(), "failed to delete pvc %s", volName)
 	// verify that the nexus is removed from the node that previously had a nexus.
 	nexusList, err := mayastorclient.ListNexuses(nexusNodeaddress)
 	Expect(err).ToNot(HaveOccurred(), "failed to fetch nexus list")
@@ -145,13 +145,14 @@ func testPvcDeleteTest(
 	}
 
 	// Create the volume to check orphaned replica behavior
-	uidSec := k8stest.MkPVC(
+	uidSec, err := k8stest.MkPVC(
 		params.VolSizeMb,
 		volName,
 		scName,
 		volumeType,
 		common.NSDefault,
 	)
+	Expect(err).ToNot(HaveOccurred(), "failed to create pvc %s", volName)
 	logf.Log.Info("Volume", "uid", uidSec)
 
 	//check for MayastorVolume CR status
@@ -160,8 +161,8 @@ func testPvcDeleteTest(
 	Expect(msv).ToNot(BeNil(), "failed to get msv")
 
 	// Delete the volume
-	k8stest.RmPVC(volName, scName, common.NSDefault)
-
+	err = k8stest.RmPVC(volName, scName, common.NSDefault)
+	Expect(err).ToNot(HaveOccurred(), "failed to delete pvc %s", volName)
 	// Delete storageclass
 	err = k8stest.RmStorageClass(scName)
 	Expect(err).ToNot(HaveOccurred(), "Deleting storage class %s", scName)

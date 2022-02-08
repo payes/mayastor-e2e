@@ -46,15 +46,16 @@ func makeTestVolume(prefix string, replicas int, local bool) (string, string, st
 		BuildAndCreate()
 	Expect(err).ToNot(HaveOccurred(), "failed to create storage class %s", scName)
 	volName := fmt.Sprintf("vol-%s", scName)
-	uid := k8stest.MkPVC(volSizeMb, volName, scName, volumeType, ns)
+	uid, err := k8stest.MkPVC(volSizeMb, volName, scName, volumeType, ns)
+	Expect(err).ToNot(HaveOccurred(), "failed to create pvc %s", volName)
 	return volName, uid, scName
 }
 
 func destroyTestVolume(volName, scName string) {
 	// Delete the volume
-	k8stest.RmPVC(volName, scName, ns)
-
-	err := k8stest.RmStorageClass(scName)
+	err := k8stest.RmPVC(volName, scName, ns)
+	Expect(err).ToNot(HaveOccurred(), "failed to delete pvc %s", volName)
+	err = k8stest.RmStorageClass(scName)
 	Expect(err).ToNot(HaveOccurred(), "Deleting storage class %s", scName)
 }
 

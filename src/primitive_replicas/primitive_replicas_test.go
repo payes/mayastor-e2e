@@ -265,9 +265,6 @@ var _ = Describe("Mayastor Volume IO test", func() {
 	})
 
 	AfterEach(func() {
-		// TODO workaround for MQ-1536
-		k8stest.WorkaroundForMQ1536()
-
 		// Check resource leakage.
 		err := k8stest.AfterEachCheck()
 		Expect(err).ToNot(HaveOccurred())

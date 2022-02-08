@@ -140,6 +140,7 @@ func (env *DisruptionEnv) suppressSpareNodes() {
 // deploys fio, and records variables needed for the
 // test in the DisruptionEnv structure
 func setup(pvcName string, storageClassName string, fioPodName string) DisruptionEnv {
+	var err error
 	e2eCfg := e2e_config.GetConfig()
 	volMb := e2eCfg.MsPodDisruption.VolMb
 	env := DisruptionEnv{}
@@ -156,14 +157,14 @@ func setup(pvcName string, storageClassName string, fioPodName string) Disruptio
 
 	env.volToDelete = pvcName
 	env.storageClass = storageClassName
-	env.uuid = k8stest.MkPVC(volMb, pvcName, storageClassName, common.VolRawBlock, common.NSDefault)
-
+	env.uuid, err = k8stest.MkPVC(volMb, pvcName, storageClassName, common.VolRawBlock, common.NSDefault)
+	Expect(err).ToNot(HaveOccurred(), "failed to create pvc %s", pvcName)
 	podObj := k8stest.CreateFioPodDef(fioPodName, pvcName, common.VolRawBlock, common.NSDefault)
 	// add node selector to fio pod
 	podObj.Spec.NodeSelector = map[string]string{
 		common.MayastorEngineLabel: common.MayastorEngineLabelValue,
 	}
-	_, err := k8stest.CreatePod(podObj, common.NSDefault)
+	_, err = k8stest.CreatePod(podObj, common.NSDefault)
 	Expect(err).ToNot(HaveOccurred(), "%v", err)
 
 	env.fioPodName = fioPodName
@@ -196,7 +197,8 @@ func (env *DisruptionEnv) teardown() {
 		env.fioPodName = ""
 	}
 	if env.volToDelete != "" {
-		k8stest.RmPVC(env.volToDelete, env.storageClass, common.NSDefault)
+		err := k8stest.RmPVC(env.volToDelete, env.storageClass, common.NSDefault)
+		Expect(err).ToNot(HaveOccurred(), "failed to delete pvc %s", env.volToDelete)
 		env.volToDelete = ""
 	}
 	if env.storageClass != "" {

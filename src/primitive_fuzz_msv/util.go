@@ -69,6 +69,7 @@ func (c *PrimitiveMsvFuzzConfig) createPvcSerial() *PrimitiveMsvFuzzConfig {
 // verify deletion of pvc and corresponding msv
 func (c *PrimitiveMsvFuzzConfig) verifyVolumesDeletion() {
 	for ix := 0; ix < len(c.PvcNames); ix++ {
+		var status bool
 		// Confirm that the PVC has been created
 		Expect(c.DeleteErrs[ix]).To(BeNil(), "failed to delete PVC %s", c.PvcNames[ix])
 
@@ -78,7 +79,8 @@ func (c *PrimitiveMsvFuzzConfig) verifyVolumesDeletion() {
 
 		// Wait for the PVC to be deleted.
 		Eventually(func() bool {
-			return k8stest.IsPVCDeleted(c.PvcNames[ix], common.NSDefault)
+			status, _ = k8stest.IsPVCDeleted(c.PvcNames[ix], common.NSDefault)
+			return status
 		},
 			defTimeoutSecs, // timeout
 			"1s",           // polling interval
@@ -90,7 +92,8 @@ func (c *PrimitiveMsvFuzzConfig) verifyVolumesDeletion() {
 			// when pvc is in pending state at that time we will not
 			// get pv name inside pvc spec i.e pvc.Spec.VolumeName
 			if pvc.Spec.VolumeName != "" {
-				return k8stest.IsPVDeleted(pvc.Spec.VolumeName)
+				status, _ = k8stest.IsPVDeleted(pvc.Spec.VolumeName)
+				return status
 			}
 			return true
 		},
@@ -111,7 +114,8 @@ func (c *PrimitiveMsvFuzzConfig) verifyVolumesDeletion() {
 // deletePVC will delete all pvc
 func (c *PrimitiveMsvFuzzConfig) deletePVC() {
 	for _, pvc := range c.PvcNames {
-		k8stest.RmPVC(pvc, c.ScName, common.NSDefault)
+		err := k8stest.RmPVC(pvc, c.ScName, common.NSDefault)
+		Expect(err).ToNot(HaveOccurred(), "failed to delete pvc %s", pvc)
 	}
 }
 

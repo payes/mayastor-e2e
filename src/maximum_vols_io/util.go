@@ -36,7 +36,8 @@ func (c *maxVolConfig) deleteSC() {
 func (c *maxVolConfig) createPVC() *maxVolConfig {
 	// Create the volumes
 	for _, pvc := range c.pvcNames {
-		uid := k8stest.MkPVC(c.pvcSize, pvc, c.scName, common.VolFileSystem, common.NSDefault)
+		uid, err := k8stest.MkPVC(c.pvcSize, pvc, c.scName, common.VolFileSystem, common.NSDefault)
+		Expect(err).ToNot(HaveOccurred(), "failed to create pvc %s", pvc)
 		c.uuid = append(c.uuid, uid)
 	}
 
@@ -46,7 +47,8 @@ func (c *maxVolConfig) createPVC() *maxVolConfig {
 // deletePVC will delete all pvc
 func (c *maxVolConfig) deletePVC() {
 	for _, pvc := range c.pvcNames {
-		k8stest.RmPVC(pvc, c.scName, common.NSDefault)
+		err := k8stest.RmPVC(pvc, c.scName, common.NSDefault)
+		Expect(err).ToNot(HaveOccurred(), "failed to delete pvc %s", pvc)
 	}
 }
 

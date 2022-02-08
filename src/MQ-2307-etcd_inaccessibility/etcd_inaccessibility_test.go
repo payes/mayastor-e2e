@@ -31,7 +31,8 @@ func (c *inaccessibleEtcdTestConfig) etcdInaccessibilityTest() {
 	//make etcd replicas zero
 	logf.Log.Info("Scaling down etcd sts")
 	var replicas int32 = 0
-	k8stest.SetStatefulsetReplication("mayastor-etcd", e2e_config.GetConfig().Platform.MayastorNamespace, &replicas)
+	err := k8stest.SetStatefulsetReplication("mayastor-etcd", e2e_config.GetConfig().Platform.MayastorNamespace, &replicas)
+	Expect(err).ToNot(HaveOccurred())
 	WaitForEtcdState(false)
 
 	// Wait for the fio Pod to complete
@@ -49,10 +50,11 @@ func (c *inaccessibleEtcdTestConfig) etcdInaccessibilityTest() {
 
 	logf.Log.Info("Scaling up etcd sts")
 	replicas = 1
-	k8stest.SetStatefulsetReplication("mayastor-etcd", e2e_config.GetConfig().Platform.MayastorNamespace, &replicas)
+	err = k8stest.SetStatefulsetReplication("mayastor-etcd", e2e_config.GetConfig().Platform.MayastorNamespace, &replicas)
+	Expect(err).ToNot(HaveOccurred())
 	WaitForEtcdState(true)
 
-	err := k8stest.WaitForMCPPath(defTimeoutSecs)
+	err = k8stest.WaitForMCPPath(defTimeoutSecs)
 	Expect(err).ToNot(HaveOccurred())
 
 	// Delete the fio pod
@@ -75,7 +77,8 @@ func (c *inaccessibleEtcdTestConfig) etcdInaccessibilityWhenReplicaFaulted() {
 	//make etcd replicas zero
 	logf.Log.Info("Scaling down etcd sts")
 	var replicas int32 = 0
-	k8stest.SetStatefulsetReplication("mayastor-etcd", e2e_config.GetConfig().Platform.MayastorNamespace, &replicas)
+	err := k8stest.SetStatefulsetReplication("mayastor-etcd", e2e_config.GetConfig().Platform.MayastorNamespace, &replicas)
+	Expect(err).ToNot(HaveOccurred())
 	WaitForEtcdState(false)
 
 	nodes := GetNonNexusNodes(uuid)
@@ -99,11 +102,11 @@ func (c *inaccessibleEtcdTestConfig) etcdInaccessibilityWhenReplicaFaulted() {
 
 	logf.Log.Info("Scaling up etcd sts")
 	replicas = 1
-	k8stest.SetStatefulsetReplication("mayastor-etcd", e2e_config.GetConfig().Platform.MayastorNamespace, &replicas)
-
+	err = k8stest.SetStatefulsetReplication("mayastor-etcd", e2e_config.GetConfig().Platform.MayastorNamespace, &replicas)
+	Expect(err).ToNot(HaveOccurred())
 	WaitForEtcdState(true)
 
-	err := k8stest.WaitForMCPPath(defTimeoutSecs)
+	err = k8stest.WaitForMCPPath(defTimeoutSecs)
 	Expect(err).ToNot(HaveOccurred())
 
 	// Delete the fio pod
@@ -140,8 +143,9 @@ var _ = Describe("Mayastor Volume IO test", func() {
 			EnablePoolDeviceAtNode(detachedDeviceAtNode, poolDevice)
 		}
 		var replicas int32 = 1
-		k8stest.SetStatefulsetReplication("mayastor-etcd", e2e_config.GetConfig().Platform.MayastorNamespace, &replicas)
-		err := k8stest.WaitForMCPPath(defTimeoutSecs)
+		err := k8stest.SetStatefulsetReplication("mayastor-etcd", e2e_config.GetConfig().Platform.MayastorNamespace, &replicas)
+		Expect(err).ToNot(HaveOccurred())
+		err = k8stest.WaitForMCPPath(defTimeoutSecs)
 		Expect(err).ToNot(HaveOccurred())
 	})
 

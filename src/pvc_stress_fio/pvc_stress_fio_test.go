@@ -41,8 +41,8 @@ func testPVC(volName string, protocol common.ShareProto, runFio bool) {
 	err := k8stest.MkStorageClass(scName, replicaCount, protocol, common.NSDefault)
 	Expect(err).ToNot(HaveOccurred(), "Creating storage class %s", scName)
 
-	_ = k8stest.MkPVC(64, volName, scName, common.VolFileSystem, common.NSDefault)
-
+	_, err = k8stest.MkPVC(64, volName, scName, common.VolFileSystem, common.NSDefault)
+	Expect(err).ToNot(HaveOccurred(), "failed to create pvc %s", volName)
 	if runFio {
 		// Create the fio Pod
 		fioPodName := "fio-" + volName
@@ -68,8 +68,8 @@ func testPVC(volName string, protocol common.ShareProto, runFio bool) {
 	}
 
 	// Delete the PVC
-	k8stest.RmPVC(volName, scName, common.NSDefault)
-
+	err = k8stest.RmPVC(volName, scName, common.NSDefault)
+	Expect(err).ToNot(HaveOccurred(), "failed to delete pvc %s", volName)
 	// cleanup
 	err = k8stest.RmStorageClass(scName)
 	Expect(err).ToNot(HaveOccurred(), "Deleting storage class %s", scName)

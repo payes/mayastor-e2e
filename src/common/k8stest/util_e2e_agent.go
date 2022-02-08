@@ -23,6 +23,10 @@ func e2eReadyPodCount() int {
 // does nothing, otherwise creates the e2e agent namespace and deploys the daemonSet.
 // asserts if creating the namespace fails. This function can be called repeatedly.
 func EnsureE2EAgent() bool {
+	const sleepTime = 5
+	const duration = 60
+	count := (duration + sleepTime - 1) / sleepTime
+	ready := false
 	err := EnsureNamespace(common.NSE2EAgent)
 	gomega.Expect(err).To(gomega.BeNil())
 
@@ -38,12 +42,11 @@ func EnsureE2EAgent() bool {
 		return true
 	}
 
-	KubeCtlApplyYaml("e2e-agent.yaml", locations.GetE2EAgentPath())
+	err = KubeCtlApplyYaml("e2e-agent.yaml", locations.GetE2EAgentPath())
 
-	const sleepTime = 5
-	const duration = 60
-	count := (duration + sleepTime - 1) / sleepTime
-	ready := false
+	if err != nil {
+		return false
+	}
 	for ix := 0; ix < count && !ready; ix++ {
 		time.Sleep(time.Duration(sleepTime) * time.Second)
 		ready = e2eReadyPodCount() == instances

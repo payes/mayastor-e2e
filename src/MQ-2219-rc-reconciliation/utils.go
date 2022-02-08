@@ -55,11 +55,14 @@ func (c *Config) deleteSC() {
 
 func (c *Config) createPVC() string {
 	// Create the volume with 1 replica
-	return k8stest.MkPVC(c.pvcSize, c.pvcName, c.scName, c.volType, common.NSDefault)
+	pvc, err := k8stest.MkPVC(c.pvcSize, c.pvcName, c.scName, c.volType, common.NSDefault)
+	Expect(err).ToNot(HaveOccurred(), "failed to create pvc %s", c.pvcName)
+	return pvc
 }
 
 func (c *Config) deletePVC() {
-	k8stest.RmPVC(c.pvcName, c.scName, common.NSDefault)
+	err := k8stest.RmPVC(c.pvcName, c.scName, common.NSDefault)
+	Expect(err).ToNot(HaveOccurred(), "failed to delete pvc %s", c.pvcName)
 }
 
 func (c *Config) createFioPod(node string) {

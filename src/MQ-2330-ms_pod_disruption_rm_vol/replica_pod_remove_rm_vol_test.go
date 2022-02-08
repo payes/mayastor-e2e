@@ -114,7 +114,8 @@ func (env *DisruptionEnv) teardown() {
 		env.fioPodName = ""
 	}
 	if env.volToDelete != "" {
-		k8stest.RmPVC(env.volToDelete, env.storageClass, common.NSDefault)
+		err = k8stest.RmPVC(env.volToDelete, env.storageClass, common.NSDefault)
+		Expect(err).ToNot(HaveOccurred(), "failed to delete pvc %s", env.volToDelete)
 		env.volToDelete = ""
 	}
 	if env.storageClass != "" {
@@ -179,7 +180,8 @@ func ReplicaLossVolumeDelete(pvcName string, storageClassName string, fioPodName
 
 	volMb := common.DefaultVolumeSizeMb
 
-	env.uuid = k8stest.MkPVC(volMb, pvcName, storageClassName, common.VolRawBlock, common.NSDefault)
+	env.uuid, err = k8stest.MkPVC(volMb, pvcName, storageClassName, common.VolRawBlock, common.NSDefault)
+	Expect(err).ToNot(HaveOccurred(), "failed to create pvc %s", pvcName)
 	env.volToDelete = pvcName
 
 	createFioPod(fioPodName, pvcName, common.VolRawBlock)
@@ -257,8 +259,8 @@ func ReplicaLossVolumeDelete(pvcName string, storageClassName string, fioPodName
 	}
 
 	logf.Log.Info("deleting volume", "name", pvcName)
-	k8stest.RmPVC(pvcName, storageClassName, common.NSDefault)
-
+	err = k8stest.RmPVC(pvcName, storageClassName, common.NSDefault)
+	Expect(err).ToNot(HaveOccurred(), "failed to delete pvc %s", pvcName)
 	// wait for the volume to go
 	Eventually(func() int {
 		volList, err := k8stest.ListMsvs()
