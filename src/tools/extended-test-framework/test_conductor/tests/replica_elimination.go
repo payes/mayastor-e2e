@@ -24,6 +24,7 @@ func checkVolumeReplicasNotZero(ms_ip string, uuid string, seconds int) error {
 	var err error
 
 	for i := 0; i < seconds; i++ {
+		logf.Log.Info("replica check", "replicas", reps, "iteration", i, "uuid", uuid)
 		reps, err = mini_mcp_client.GetVolumeReplicas(ms_ip, uuid)
 		if err != nil {
 			return fmt.Errorf("failed to get replicas, uuid %s, err: %v", uuid, err)
@@ -88,6 +89,7 @@ func eliminateVolume(
 	var uuid string
 	var status string
 	var devs []deviceDescriptor
+	var zeroerr error
 
 	for {
 		// While (test_not_failed) Loop:
@@ -137,7 +139,7 @@ func eliminateVolume(
 
 		storage_tester_name = "e2e-storage-tester-read"
 		// deploy the storage tester to send IO (reads) to trigger the fault
-		args = []string{"./e2e-storage-tester", "-r", "-n", blocksParam, deviceParam}
+		args = []string{"./e2e-storage-tester", "-t", "100", "-r", "-n", blocksParam, deviceParam}
 		if err = k8sclient.DeployStorageTester(
 			storage_tester_image,
 			storage_tester_name,
@@ -165,23 +167,29 @@ func eliminateVolume(
 			break
 		}
 
+		// check that the number of replicas does not go to zero
+		if zeroerr = checkVolumeReplicasNotZero(cpNodeIp, uuid, 200); zeroerr != nil {
+			// don't abort just yet, keep the error and see if we get a verification error as well
+			logf.Log.Info("vol zero error", "error", zeroerr.Error())
+		}
+
 		// wait until the pod completes, it will fail
 		logf.Log.Info("Waiting for e2e-storage-tester to complete.", "pod", storage_tester_name)
 		if err = WaitPodNotRunning(storage_tester_name, timeout); err != nil {
 			break
 		}
+		logf.Log.Info("e2e-storage-tester has completed.", "pod", storage_tester_name)
 		if !k8sclient.IsPodFailed(storage_tester_name, k8sclient.NSDefault) {
 			err = fmt.Errorf("expected pod %s to have failed", storage_tester_name)
 			break
 		}
+
+		// interval to help debugging
+		time.Sleep(time.Duration(10) * time.Second)
+
+		logf.Log.Info("deleting e2e-storage-tester-read")
 		if err = k8sclient.DeletePod(storage_tester_name, k8sclient.NSDefault, podDeletionTimeoutSecs); err != nil {
 			logf.Log.Info("failed to delete e2e-storage-tester", "error", err.Error())
-			break
-		}
-
-		// check that the number of replicas does not go to zero
-		if err = checkVolumeReplicasNotZero(cpNodeIp, uuid, 100); err != nil {
-			logf.Log.Info("vol zero error", "error", err.Error())
 			break
 		}
 
@@ -219,18 +227,22 @@ func eliminateVolume(
 		if err = k8sclient.CheckPodAndDelete(storage_tester_name, k8sclient.NSDefault, podDeletionTimeoutSecs); err != nil {
 			break
 		}
-
+		if zeroerr != nil { // we found zero replicas earlier
+			break
+		}
 		if err = randomSleep(); err != nil {
 			break
 		}
 	}
-	_, _ = restoreDevices(devs) // avoid breaking the node on error
-	_ = k8sclient.DeletePod(storage_tester_name, k8sclient.NSDefault, podDeletionTimeoutSecs)
-
-	if locerr := k8sclient.DeletePVC(pvc_name, k8sclient.NSDefault); locerr != nil {
-		err = CombineErrors(err, fmt.Errorf("Failed to delete pvc %s, error = %v", pvc_name, locerr))
+	if zeroerr != nil {
+		err = CombineErrors(err, zeroerr)
 	}
 
+	_, _ = restoreDevices(devs) // avoid breaking the cluster on error
+
+	if err == nil { // otherwise the pod may exist and we can't delete the PVC
+		err = k8sclient.DeletePVC(pvc_name, k8sclient.NSDefault)
+	}
 	if err != nil {
 		logf.Log.Info("test failed", "error", err)
 	}
@@ -248,7 +260,6 @@ func testVolumeElimination(
 	var errchan = make(chan error, 1)
 	var wg sync.WaitGroup
 
-	//
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
