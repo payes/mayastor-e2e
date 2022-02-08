@@ -1,38 +1,57 @@
 package k8stest
 
 import (
+	"fmt"
+	"mayastor-e2e/common"
 	"mayastor-e2e/common/mayastorclient"
+	"time"
 
-	. "github.com/onsi/gomega"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func WaitForMCPPath(timeout string) {
-	Eventually(func() error {
+func WaitForMCPPath(timeout string) error {
+	var err error
+	timeSec, err := time.ParseDuration(timeout)
+	if err != nil {
+		return fmt.Errorf("failed to parse timeout %s string , error: %v", timeout, err)
+	}
+	for ix := 0; ix < int(timeSec.Seconds())/common.TimeSleepSecs; ix++ {
+		time.Sleep(common.TimeSleepSecs * time.Second)
 		// If this call goes through implies
 		// REST, Core Agent and etcd pods are up and running
-		_, err := ListMsvs()
+		_, err = ListMsvs()
 		if err != nil {
-			logf.Log.Info("Failed t list msvs", "error", err)
+			logf.Log.Info("Failed to list msv", "error", err)
+		} else {
+			break
 		}
-		return err
-	},
-		timeout,
-		"5s",
-	).Should(BeNil())
+	}
+	if err != nil {
+		return fmt.Errorf("one of the rest, core agent or etcd pods are not in running state, error: %v", err)
+	}
+	return nil
 }
 
-func WaitForMayastorSockets(addrs []string, timeout string) {
-	Eventually(func() error {
-		// If this call goes through without an error imples
+func WaitForMayastorSockets(addrs []string, timeout string) error {
+	var err error
+	timeSec, err := time.ParseDuration(timeout)
+	if err != nil {
+		return fmt.Errorf("failed to parse timeout %s string , error: %v", timeout, err)
+	}
+
+	for ix := 0; ix < int(timeSec.Seconds())/common.TimeSleepSecs; ix++ {
+		time.Sleep(common.TimeSleepSecs * time.Second)
+		// If this call goes through without an error implies
 		// the listeners at the pod have started
-		_, err := mayastorclient.ListReplicas(addrs)
+		_, err = mayastorclient.ListReplicas(addrs)
 		if err != nil {
-			logf.Log.Info("Failed to list replicas", "error", err)
+			logf.Log.Info("Failed t list replicas", "address", addrs, "error", err)
+		} else {
+			break
 		}
-		return err
-	},
-		timeout,
-		"5s",
-	).Should(BeNil())
+	}
+	if err != nil {
+		return fmt.Errorf("failed to start listener at the pod, address: %s, error: %v", addrs, err)
+	}
+	return nil
 }

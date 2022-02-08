@@ -5,10 +5,11 @@ import (
 	// volume "github.com/openebs/maya/pkg/kubernetes/volume/v1alpha1"
 
 	"context"
+	"fmt"
 	"mayastor-e2e/common"
 	"mayastor-e2e/common/e2e_config"
+	"time"
 
-	. "github.com/onsi/gomega"
 	errors "github.com/pkg/errors"
 	coreV1 "k8s.io/api/core/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -264,18 +265,23 @@ func ListPod(ns string) (*v1.PodList, error) {
 	return pods, nil
 }
 
-func VerifyPodsOnNode(podLabelsList []string, nodeName string, namespace string) {
+func VerifyPodsOnNode(podLabelsList []string, nodeName string, namespace string) error {
+	var errors common.ErrorAccumulator
 	for _, label := range podLabelsList {
-		Eventually(func() bool {
+		var err error
+
+		for ix := 0; ix < common.Timeout/common.TimeSleepSecs; ix++ {
+			time.Sleep(common.TimeSleepSecs * time.Second)
 			nodeList, err := GetNodeListForPods("app="+label, namespace)
-			if err == nil && len(nodeList) == 1 && nodeList[nodeName] == v1.PodRunning {
-				return true
+			if err != nil {
+				logf.Log.Info("VerifyPodsOnNode", "podLabel", label, "NodList", nodeList, "error", err)
+			} else if len(nodeList) == 1 && nodeList[nodeName] == v1.PodRunning {
+				break
 			}
-			logf.Log.Info("VerifyPodsOnNode", "podLabel", label, "NodList", nodeList, "error", err)
-			return false
-		},
-			300, // timeout
-			5,   // polling interval
-		).Should(Equal(true))
+		}
+		if err != nil {
+			errors.Accumulate(fmt.Errorf("failed to verify pod on node %s, podLabel: %s, error: %v", nodeName, label, err))
+		}
 	}
+	return errors.GetError()
 }

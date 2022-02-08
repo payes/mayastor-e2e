@@ -43,8 +43,10 @@ var _ = Describe("Mayastor single msn shutdown test", func() {
 		if len(poweredOffNode) != 0 {
 			platform := platform.Create()
 			_ = platform.PowerOnNode(poweredOffNode)
-			k8stest.WaitForMCPPath(defWaitTimeout)
-			k8stest.WaitForMayastorSockets(k8stest.GetMayastorNodeIPAddresses(), defWaitTimeout)
+			err := k8stest.WaitForMCPPath(defWaitTimeout)
+			Expect(err).ToNot(HaveOccurred())
+			err = k8stest.WaitForMayastorSockets(k8stest.GetMayastorNodeIPAddresses(), defWaitTimeout)
+			Expect(err).ToNot(HaveOccurred())
 		}
 		// Check resource leakage.
 		err := k8stest.AfterEachCheck()

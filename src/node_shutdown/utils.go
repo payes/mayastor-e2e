@@ -105,7 +105,8 @@ func (c *shutdownConfig) deleteDeployment() {
 }
 
 func (c *shutdownConfig) verifyMayastorComponentStates(numMayastorInstances int) {
-	k8stest.WaitForMCPPath(defWaitTimeout)
+	err := k8stest.WaitForMCPPath(defWaitTimeout)
+	Expect(err).ToNot(HaveOccurred())
 	nodeList, err := k8stest.ListMsns()
 	Expect(err).ToNot(HaveOccurred(), "ListMsNodes")
 	count := 0

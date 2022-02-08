@@ -51,8 +51,10 @@ var _ = Describe("Stale MSP after node power failure test", func() {
 		if len(poweredOffNode) != 0 {
 			platform := platform.Create()
 			_ = platform.PowerOnNode(poweredOffNode)
-			k8stest.WaitForMCPPath(defWaitTimeout)
-			k8stest.WaitForMayastorSockets(k8stest.GetMayastorNodeIPAddresses(), defWaitTimeout)
+			err := k8stest.WaitForMCPPath(defWaitTimeout)
+			Expect(err).ToNot(HaveOccurred())
+			err = k8stest.WaitForMayastorSockets(k8stest.GetMayastorNodeIPAddresses(), defWaitTimeout)
+			Expect(err).ToNot(HaveOccurred())
 		}
 		if controlplane.MajorVersion() == 1 {
 			k8stest.RemoveAllNodeSelectorsFromDeployment("msp-operator", common.NSMayastor())
@@ -97,9 +99,12 @@ func (c *nodepowerfailureConfig) staleMspAfterNodePowerFailureTest() {
 		k8stest.ApplyNodeSelectorToDeployment("msp-operator", common.NSMayastor(), "kubernetes.io/hostname", coreAgentNodeName)
 		k8stest.ApplyNodeSelectorToDeployment("rest", common.NSMayastor(), "kubernetes.io/hostname", coreAgentNodeName)
 		k8stest.ApplyNodeSelectorToDeployment("csi-controller", common.NSMayastor(), "kubernetes.io/hostname", coreAgentNodeName)
-		k8stest.VerifyPodsOnNode([]string{"msp-operator", "rest", "csi-controller"}, coreAgentNodeName, common.NSMayastor())
-		k8stest.WaitForMCPPath(defWaitTimeout)
-		k8stest.WaitForMayastorSockets(k8stest.GetMayastorNodeIPAddresses(), defWaitTimeout)
+		err = k8stest.VerifyPodsOnNode([]string{"msp-operator", "rest", "csi-controller"}, coreAgentNodeName, common.NSMayastor())
+		Expect(err).ToNot(HaveOccurred())
+		err = k8stest.WaitForMCPPath(defWaitTimeout)
+		Expect(err).ToNot(HaveOccurred())
+		err = k8stest.WaitForMayastorSockets(k8stest.GetMayastorNodeIPAddresses(), defWaitTimeout)
+		Expect(err).ToNot(HaveOccurred())
 		ready, err := k8stest.MayastorReady(5, 60)
 		Expect(err).ToNot(HaveOccurred(), "error check mayastor is ready after applying node selectors")
 		Expect(ready).To(BeTrue(), "mayastor is not ready after applying node selectors")
@@ -119,8 +124,8 @@ func (c *nodepowerfailureConfig) staleMspAfterNodePowerFailureTest() {
 	//Power off the node on which test MSP is running
 	poweredOffNode = nodeName
 	Expect(c.platform.PowerOffNode(nodeName)).ToNot(HaveOccurred(), nodeName+" failed to power off")
-	k8stest.WaitForMCPPath(defWaitTimeout)
-
+	err = k8stest.WaitForMCPPath(defWaitTimeout)
+	Expect(err).ToNot(HaveOccurred())
 	//Verify that node is in not ready state
 	verifyNodeNotReady(nodeName)
 
@@ -136,8 +141,10 @@ func (c *nodepowerfailureConfig) staleMspAfterNodePowerFailureTest() {
 	// Power on the node
 	Expect(c.platform.PowerOnNode(nodeName)).ToNot(HaveOccurred(), nodeName+" failed to power on")
 	poweredOffNode = ""
-	k8stest.WaitForMCPPath(defWaitTimeout)
-	k8stest.WaitForMayastorSockets(k8stest.GetMayastorNodeIPAddresses(), defWaitTimeout)
+	err = k8stest.WaitForMCPPath(defWaitTimeout)
+	Expect(err).ToNot(HaveOccurred())
+	err = k8stest.WaitForMayastorSockets(k8stest.GetMayastorNodeIPAddresses(), defWaitTimeout)
+	Expect(err).ToNot(HaveOccurred())
 
 	Eventually(func() bool {
 		isPoolDeleted, err := IsMsPoolDeleted(poolName)
