@@ -97,9 +97,13 @@ func GenerateMayastorYamlFiles() error {
 	imageTag := e2eCfg.ImageTag
 
 	etcdOptions := "etcd.replicaCount=1,etcd.nodeSelector=kubernetes.io/hostname: " + masterNode + ",etcd.tolerations=- key: node-role.kubernetes.io/master"
+	mayastorScriptDir, err := locations.GetMayastorScriptsDir()
+	if err != nil {
+		return err
+	}
 	bashCmd := fmt.Sprintf(
 		"%s/generate-deploy-yamls.sh -s '%s' -o %s -t '%s' %s %s %s test",
-		locations.GetMayastorScriptsDir(),
+		mayastorScriptDir,
 		etcdOptions,
 		locations.GetGeneratedYamlsDir(),
 		imageTag, registryDirective, coresDirective, poolDirectives,
@@ -148,10 +152,13 @@ func GenerateControlPlaneYamlFiles() error {
 		}
 
 		imageTag := e2eCfg.ImageTag
-
+		mcpScriptDir, err := locations.GetControlPlaneScriptsDir()
+		if err != nil {
+			return err
+		}
 		bashCmd := fmt.Sprintf(
 			"%s/generate-deploy-yamls.sh -o %s -t '%s' -s mayastorCP.logLevel=%s %s test",
-			locations.GetControlPlaneScriptsDir(),
+			mcpScriptDir,
 			locations.GetControlPlaneGeneratedYamlsDir(),
 			imageTag, MCPLogLevel, registryDirective,
 		)
@@ -304,8 +311,10 @@ func InstallMayastor() error {
 	yamlsDir := locations.GetGeneratedYamlsDir()
 	logf.Log.Info("", "yamlsDir", yamlsDir)
 
-	k8stest.EnsureE2EAgent()
-
+	_, err = k8stest.EnsureE2EAgent()
+	if err != nil {
+		return err
+	}
 	err = k8stest.MkNamespace(common.NSMayastor())
 	if err != nil {
 		return err

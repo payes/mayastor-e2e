@@ -8,14 +8,14 @@ import (
 	"path"
 
 	"mayastor-e2e/common/e2e_config"
-
-	. "github.com/onsi/gomega"
 )
 
-func locationExists(path string) string {
+func locationExists(path string) (string, error) {
 	_, err := os.Stat(path)
-	Expect(err).To(BeNil(), "%s", err)
-	return path
+	if err != nil {
+		return "", err
+	}
+	return path, nil
 }
 
 // GetBuildInfoFile returns the path to build_info.json if one exists.
@@ -29,11 +29,11 @@ func GetBuildInfoFile() (string, error) {
 	return filePath, err
 }
 
-func GetMayastorScriptsDir() string {
+func GetMayastorScriptsDir() (string, error) {
 	return locationExists(path.Clean(e2e_config.GetConfig().MayastorRootDir + "/scripts"))
 }
 
-func GetControlPlaneScriptsDir() string {
+func GetControlPlaneScriptsDir() (string, error) {
 	return locationExists(path.Clean(e2e_config.GetConfig().MayastorRootDir + "/mcp/scripts"))
 }
 
