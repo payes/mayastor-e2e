@@ -50,7 +50,8 @@ func controlPlaneReschedulingTest(protocol common.ShareProto, volumeType common.
 	for ix := 1; ix <= e2e_config.GetConfig().ControlPlaneRescheduling.MayastorVolumeCount; ix += 1 {
 		volName := fmt.Sprintf("reshedule-vol-%d", ix)
 		volNames = append(volNames, volName)
-		k8stest.MkPVC(common.DefaultVolumeSizeMb, volName, scName, volumeType, common.NSDefault)
+		_, err := k8stest.MkPVC(common.DefaultVolumeSizeMb, volName, scName, volumeType, common.NSDefault)
+		Expect(err).ToNot(HaveOccurred(), "failed to create pvc %s", volName)
 	}
 
 	// Create pod
@@ -123,8 +124,8 @@ func controlPlaneReschedulingTest(protocol common.ShareProto, volumeType common.
 		Expect(err).ToNot(HaveOccurred())
 
 		// Delete the volume
-		k8stest.RmPVC(volNames[ix], scName, common.NSDefault)
-
+		err = k8stest.RmPVC(volNames[ix], scName, common.NSDefault)
+		Expect(err).ToNot(HaveOccurred(), "failed to delete pvc %s", volNames[ix])
 	}
 
 	// Delete the storage class

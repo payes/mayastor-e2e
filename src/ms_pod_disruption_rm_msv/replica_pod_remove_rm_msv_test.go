@@ -114,7 +114,8 @@ func (env *DisruptionEnv) teardown() {
 		env.fioPodName = ""
 	}
 	if env.volToDelete != "" {
-		k8stest.RmPVC(env.volToDelete, env.storageClass, common.NSDefault)
+		err := k8stest.RmPVC(env.volToDelete, env.storageClass, common.NSDefault)
+		Expect(err).ToNot(HaveOccurred(), "failed to delete pvc %s", env.volToDelete)
 		env.volToDelete = ""
 	}
 	if env.storageClass != "" {
@@ -179,8 +180,8 @@ func ReplicaLossVolumeDelete(pvcName string, storageClassName string, fioPodName
 	env.podUnscheduleTimeoutSecs = e2eCfg.MsPodDisruption.PodUnscheduleTimeoutSecs
 	env.podRescheduleTimeoutSecs = e2eCfg.MsPodDisruption.PodRescheduleTimeoutSecs
 
-	env.uuid = k8stest.MkPVC(volMb, pvcName, storageClassName, common.VolRawBlock, common.NSDefault)
-
+	env.uuid, err = k8stest.MkPVC(volMb, pvcName, storageClassName, common.VolRawBlock, common.NSDefault)
+	Expect(err).ToNot(HaveOccurred(), "failed to create pvc %s", pvcName)
 	createFioPod(fioPodName, pvcName, common.VolRawBlock)
 
 	// we need to delete the pod in order to remove the MSV

@@ -27,13 +27,14 @@ func mayastorRebuildTest() {
 	createStorageClass(scName, params.Replicas)
 	// Create a PVC
 	pvcName := strings.ToLower(fmt.Sprintf("msv-rebuild-volume-%d", params.Replicas))
-	uuid := k8stest.MkPVC(common.DefaultVolumeSizeMb, pvcName, scName, common.VolFileSystem, common.NSDefault)
+	uuid, err := k8stest.MkPVC(common.DefaultVolumeSizeMb, pvcName, scName, common.VolFileSystem, common.NSDefault)
+	Expect(err).ToNot(HaveOccurred(), "failed to create pvc %s", pvcName)
 	log.Log.Info("Volume", "uid", uuid)
 
 	fioPodName := "fio-" + pvcName
 
 	// Create fio pod
-	err := createFioPod(fioPodName, pvcName, params.DurationSecs, params.VolSize)
+	err = createFioPod(fioPodName, pvcName, params.DurationSecs, params.VolSize)
 	Expect(err).ToNot(HaveOccurred(), fmt.Sprintf("Creating fio pod %s %v", fioPodName, err))
 
 	// Wait for the fio Pod to transition to running
@@ -121,7 +122,8 @@ func mayastorRebuildTest() {
 	Expect(err).ToNot(HaveOccurred(), "Deleting fio pod")
 
 	// Delete pvc
-	k8stest.RmPVC(pvcName, scName, common.NSDefault)
+	err = k8stest.RmPVC(pvcName, scName, common.NSDefault)
+	Expect(err).ToNot(HaveOccurred(), "failed to delete pvc %s", pvcName)
 	// Delete storage class
 	err = k8stest.RmStorageClass(scName)
 	Expect(err).ToNot(HaveOccurred(), "Deleting storage class %s", scName)

@@ -34,13 +34,16 @@ func (c *fsxExt4StressConfig) deleteSC() {
 
 // createPVCs will create pvc
 func (c *fsxExt4StressConfig) createPVC() *fsxExt4StressConfig {
-	c.uuid = k8stest.MkPVC(c.pvcSize, c.pvcName, c.scName, common.VolRawBlock, common.NSDefault)
+	var err error
+	c.uuid, err = k8stest.MkPVC(c.pvcSize, c.pvcName, c.scName, common.VolRawBlock, common.NSDefault)
+	Expect(err).ToNot(HaveOccurred(), "failed to create pvc %s", c.pvcName)
 	return c
 }
 
 // deletePVC will delete pvc
 func (c *fsxExt4StressConfig) deletePVC() {
-	k8stest.RmPVC(c.pvcName, c.scName, common.NSDefault)
+	err := k8stest.RmPVC(c.pvcName, c.scName, common.NSDefault)
+	Expect(err).ToNot(HaveOccurred(), "failed to delete pvc %s", c.pvcName)
 }
 
 // createFsx will create fsx pod and run fsx
@@ -229,7 +232,9 @@ func (c *fsxExt4StressConfig) verifyMsvStatus() {
 
 	// Wait for the PVC to be bound.
 	Eventually(func() coreV1.PersistentVolumeClaimPhase {
-		return k8stest.GetPvcStatusPhase(volName, namespace)
+		phase, err := k8stest.GetPvcStatusPhase(volName, namespace)
+		Expect(err).ToNot(HaveOccurred(), "failed to get pvc %s phase", volName)
+		return phase
 	},
 		defTimeoutSecs, // timeout
 		"1s",           // polling interval
@@ -255,7 +260,9 @@ func (c *fsxExt4StressConfig) verifyMsvStatus() {
 
 	// Wait for the PV to be bound.
 	Eventually(func() coreV1.PersistentVolumePhase {
-		return k8stest.GetPvStatusPhase(pvc.Spec.VolumeName)
+		phase, err := k8stest.GetPvStatusPhase(pvc.Spec.VolumeName)
+		Expect(err).ToNot(HaveOccurred(), "failed to get pv %s phase", pvc.Spec.VolumeName)
+		return phase
 	},
 		defTimeoutSecs, // timeout
 		"1s",           // polling interval

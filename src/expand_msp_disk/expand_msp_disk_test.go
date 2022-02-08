@@ -90,8 +90,8 @@ func diskPartitioningTest(protocol common.ShareProto, volumeType common.VolumeTy
 	Expect(err).To(BeNil(), "Storage class creation failed")
 
 	// Create PVC
-	k8stest.MkPVC(common.DefaultVolumeSizeMb, volName, scName, volumeType, common.NSDefault)
-
+	_, err = k8stest.MkPVC(common.DefaultVolumeSizeMb, volName, scName, volumeType, common.NSDefault)
+	Expect(err).ToNot(HaveOccurred(), "failed to create pvc %s", volName)
 	// Create fio-pod
 	fioPodName := fmt.Sprintf("fio-%s", volName)
 	err = createFioPod(fioPodName, volName, expandMspDisk.Duration, expandMspDisk.VolSizeMb)
@@ -154,8 +154,8 @@ func diskPartitioningTest(protocol common.ShareProto, volumeType common.VolumeTy
 	Expect(err).ToNot(HaveOccurred())
 
 	// Delete the volume
-	k8stest.RmPVC(volName, scName, common.NSDefault)
-
+	err = k8stest.RmPVC(volName, scName, common.NSDefault)
+	Expect(err).ToNot(HaveOccurred(), "failed to delete pvc %s", volName)
 	// Delete the storage class
 	err = k8stest.RmStorageClass(scName)
 	Expect(err).ToNot(HaveOccurred(), "Deleting storage class %s", scName)

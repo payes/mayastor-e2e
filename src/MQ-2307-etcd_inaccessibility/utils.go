@@ -83,11 +83,14 @@ func (c *inaccessibleEtcdTestConfig) deleteSC() {
 }
 
 func (c *inaccessibleEtcdTestConfig) createPVC() string {
-	return k8stest.MkPVC(c.pvcSize, c.pvcName, c.scName, c.volType, common.NSDefault)
+	pvc, err := k8stest.MkPVC(c.pvcSize, c.pvcName, c.scName, c.volType, common.NSDefault)
+	Expect(err).ToNot(HaveOccurred(), "failed to create pvc %s", c.pvcName)
+	return pvc
 }
 
 func (c *inaccessibleEtcdTestConfig) deletePVC() {
-	k8stest.RmPVC(c.pvcName, c.scName, common.NSDefault)
+	err := k8stest.RmPVC(c.pvcName, c.scName, common.NSDefault)
+	Expect(err).ToNot(HaveOccurred(), "failed to delete pvc %s", c.pvcName)
 }
 
 func (c *inaccessibleEtcdTestConfig) createFioPod() {
