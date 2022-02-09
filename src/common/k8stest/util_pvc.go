@@ -189,8 +189,9 @@ func MkPVC(volSizeMb int, volName string, scName string, volType common.VolumeTy
 
 	// Wait for the PVC to be bound.
 	for ix := 0; ix < defTimeoutSecs/timoSleepSecs; ix++ {
+		var pvcPhase coreV1.PersistentVolumeClaimPhase
 		time.Sleep(timoSleepSecs * time.Second)
-		pvcPhase, err := GetPvcStatusPhase(volName, nameSpace)
+		pvcPhase, err = GetPvcStatusPhase(volName, nameSpace)
 		if err == nil && pvcPhase == coreV1.ClaimBound {
 			break
 		}
@@ -208,9 +209,10 @@ func MkPVC(volSizeMb int, volName string, scName string, volType common.VolumeTy
 	}
 
 	// Wait for the PV to be provisioned
+	var pv *coreV1.PersistentVolume
 	for ix := 0; ix < defTimeoutSecs/timoSleepSecs; ix++ {
 		time.Sleep(timoSleepSecs * time.Second)
-		pv, err := gTestEnv.KubeInt.CoreV1().PersistentVolumes().Get(context.TODO(), pvc.Spec.VolumeName, metaV1.GetOptions{})
+		pv, err = gTestEnv.KubeInt.CoreV1().PersistentVolumes().Get(context.TODO(), pvc.Spec.VolumeName, metaV1.GetOptions{})
 		if err == nil && pv != nil {
 			break
 		}
@@ -221,8 +223,9 @@ func MkPVC(volSizeMb int, volName string, scName string, volType common.VolumeTy
 
 	// Wait for the PV to be bound.
 	for ix := 0; ix < defTimeoutSecs/timoSleepSecs; ix++ {
+		var pvPhase coreV1.PersistentVolumePhase
 		time.Sleep(timoSleepSecs * time.Second)
-		pvPhase, err := GetPvStatusPhase(volName)
+		pvPhase, err = GetPvStatusPhase(pv.Name)
 		if err == nil && pvPhase == coreV1.VolumeBound {
 			break
 		}
@@ -233,8 +236,9 @@ func MkPVC(volSizeMb int, volName string, scName string, volType common.VolumeTy
 
 	// Wait for the PV to be provisioned
 	for ix := 0; ix < defTimeoutSecs/timoSleepSecs; ix++ {
+		var msv *common.MayastorVolume
 		time.Sleep(timoSleepSecs * time.Second)
-		msv, err := GetMSV(string(pvc.ObjectMeta.UID))
+		msv, err = GetMSV(string(pvc.ObjectMeta.UID))
 		if err == nil && msv != nil {
 			break
 		}
