@@ -271,8 +271,9 @@ func ListPod(ns string) (*v1.PodList, error) {
 func VerifyPodsOnNode(podLabelsList []string, nodeName string, namespace string) error {
 	for _, label := range podLabelsList {
 		var err error
+		var nodeList map[string]v1.PodPhase
 		for ix := 0; ix < timeout/timeSleepSecs; ix++ {
-			nodeList, err := GetNodeListForPods("app="+label, namespace)
+			nodeList, err = GetNodeListForPods("app="+label, namespace)
 			if err != nil {
 				logf.Log.Info("VerifyPodsOnNode", "podLabel", label, "NodList", nodeList, "error", err)
 			} else if len(nodeList) == 1 && nodeList[nodeName] == v1.PodRunning {
