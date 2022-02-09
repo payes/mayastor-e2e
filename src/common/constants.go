@@ -51,7 +51,3 @@ const FsxBlockFileName = "/dev/sdm"
 // Mayastor kubectl-plugin plugin details
 const KubectlMayastorPlugin = "kubectl-mayastor"
 const PluginPort = "30011"
-
-// timeout and sleep time in seconds
-const Timeout = 300      // timeout in seconds
-const TimeSleepSecs = 10 // sleep time in seconds

@@ -22,6 +22,9 @@ const (
 	// k8sNodeLabelKeyHostname is the label key used by Kubernetes
 	// to store the hostname on the node resource.
 	K8sNodeLabelKeyHostname = "kubernetes.io/hostname"
+	// timeout and sleep time in seconds
+	timeout       = 300 // timeout in seconds
+	timeSleepSecs = 10  // sleep time in seconds
 )
 
 type Pod struct {
@@ -266,22 +269,20 @@ func ListPod(ns string) (*v1.PodList, error) {
 }
 
 func VerifyPodsOnNode(podLabelsList []string, nodeName string, namespace string) error {
-	var errors common.ErrorAccumulator
 	for _, label := range podLabelsList {
 		var err error
-
-		for ix := 0; ix < common.Timeout/common.TimeSleepSecs; ix++ {
-			time.Sleep(common.TimeSleepSecs * time.Second)
+		for ix := 0; ix < timeout/timeSleepSecs; ix++ {
 			nodeList, err := GetNodeListForPods("app="+label, namespace)
 			if err != nil {
 				logf.Log.Info("VerifyPodsOnNode", "podLabel", label, "NodList", nodeList, "error", err)
 			} else if len(nodeList) == 1 && nodeList[nodeName] == v1.PodRunning {
 				break
 			}
+			time.Sleep(timeSleepSecs * time.Second)
 		}
 		if err != nil {
-			errors.Accumulate(fmt.Errorf("failed to verify pod on node %s, podLabel: %s, error: %v", nodeName, label, err))
+			return fmt.Errorf("failed to verify pod on node %s, podLabel: %s, error: %v", nodeName, label, err)
 		}
 	}
-	return errors.GetError()
+	return nil
 }
