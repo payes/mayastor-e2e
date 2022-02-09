@@ -128,6 +128,7 @@ func CheckMSVwithGrpc(ms_ips []string) error {
 
 		case MCP_NEXUS_FAULTED:
 			logf.Log.Info("Faulted nexus detected", "uuid", nexus.Uuid)
+			// a nexus may exist after the PVC is gone. Check that the nexus is not an orphan
 			exists, vol_uuid, err := checkPVCexistsViaNexusUuid(ms_ips[0], nexus.Uuid)
 			if err != nil {
 				return fmt.Errorf("failed to check PVC exists for nexus %s, error: %v", nexus.Uuid, err)

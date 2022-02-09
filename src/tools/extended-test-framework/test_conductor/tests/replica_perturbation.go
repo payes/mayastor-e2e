@@ -33,7 +33,7 @@ func setReplicas(ms_ip string, uuid string, replicas int) error {
 		return fmt.Errorf("failed to set replicas to %d, err: %v", replicas, err)
 	}
 	for i := 0; i < 100; i++ {
-		reps, err := mini_mcp_client.GetVolumeReplicas(ms_ip, uuid)
+		reps, err := mini_mcp_client.GetVolumeReplicaCount(ms_ip, uuid)
 		if err != nil {
 			return fmt.Errorf("failed to get replicas, err: %v", err)
 		}

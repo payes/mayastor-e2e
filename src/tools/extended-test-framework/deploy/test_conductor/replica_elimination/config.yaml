@@ -10,4 +10,5 @@ replicaElimination:
   volumeSizeMb: 512
   fsvolume: 0
   localvolume: 0
+  blocksToWrite: 50000
 

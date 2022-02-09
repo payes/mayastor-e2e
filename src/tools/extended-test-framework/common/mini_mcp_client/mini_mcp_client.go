@@ -92,14 +92,20 @@ func GetVolumes(serverAddr string) ([]SparseVolume, error) {
 }
 
 // GetVolumeStatus gets the volume status of the given volume
-func GetVolumeStatus(serverAddr string, uuid string) (string, error) {
+func GetVolume(serverAddr string, uuid string) (SparseVolume, error) {
 	var vol SparseVolume
 	url := "http://" + serverAddr + ":" + RestPort + "/v0/volumes/" + uuid
 	resp, err := sendRequest("GET", url, nil)
 	if err != nil {
-		return "", err
+		return vol, err
 	}
 	err = json.Unmarshal([]byte(resp), &vol)
+	return vol, err
+}
+
+// GetVolumeStatus gets the volume status of the given volume
+func GetVolumeStatus(serverAddr string, uuid string) (string, error) {
+	vol, err := GetVolume(serverAddr, uuid)
 	if err != nil {
 		return "", err
 	}
@@ -114,7 +120,7 @@ func SetVolumeReplicas(serverAddr string, volumeid string, replicas int) error {
 }
 
 // GetVolumeReplicas get the number of replicas for the volume by counting the children
-func GetVolumeReplicas(serverAddr string, uuid string) (int, error) {
+func GetVolumeReplicaCount(serverAddr string, uuid string) (int, error) {
 	var vol SparseVolume
 	url := "http://" + serverAddr + ":" + RestPort + "/v0/volumes/" + uuid
 	resp, err := sendRequest("GET", url, nil)

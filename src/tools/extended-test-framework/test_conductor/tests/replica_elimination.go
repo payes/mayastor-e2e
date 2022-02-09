@@ -3,10 +3,10 @@ package tests
 import (
 	"fmt"
 	"mayastor-e2e/tools/extended-test-framework/common/k8sclient"
-	"mayastor-e2e/tools/extended-test-framework/common/mini_mcp_client"
 	"sync"
 	"time"
 
+	mayastorGrpc "mayastor-e2e/common/mayastorclient/protobuf"
 	tc "mayastor-e2e/tools/extended-test-framework/test_conductor/tc"
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -16,25 +16,55 @@ import (
 
 const storage_tester_image = "ci-registry.mayastor-ci.mayadata.io/mayadata/e2e-storage-tester:latest"
 
-// checkVolumeReplicasNotZero poll the control plane for the number of replicas
+// checkUsableVolumeReplicas poll the mayastor pods for the replicas
 // in the given volume for the given number of seconds.
-// Return with error if the count is zero within that time.
-func checkVolumeReplicasNotZero(ms_ip string, uuid string, seconds int) error {
-	var reps = 0
-	var err error
+// Return with error if the count is zero within that time or if
+// all of the replicas are faulted.
+func checkUsableVolumeReplicas(ms_node_ips []string, uuid string, seconds int) error {
 
 	for i := 0; i < seconds; i++ {
-		logf.Log.Info("replica check", "replicas", reps, "iteration", i, "uuid", uuid)
-		reps, err = mini_mcp_client.GetVolumeReplicas(ms_ip, uuid)
+		nexuses, err := k8sclient.GetNexuses(ms_node_ips)
 		if err != nil {
-			return fmt.Errorf("failed to get replicas, uuid %s, err: %v", uuid, err)
+			return fmt.Errorf("failed to get nexuses, uuid %s, err: %v", uuid, err)
 		}
-		if reps == 0 {
-			return fmt.Errorf("found zero replicas, uuid %s", uuid)
+		if len(nexuses) == 0 {
+			return fmt.Errorf("no nexuses found, uuid %s", uuid)
+		} else if len(nexuses) != 1 {
+			// there could be an orphaned nexus
+			logf.Log.Info("unexpected number of nexuses", "count", len(nexuses))
+		}
+		var foundnexus bool = false
+		for _, nexus := range nexuses {
+			// the uuid forms the last 36 chars of the uri
+			extractedUuid := nexus.DeviceUri
+			extractedUuid = extractedUuid[len(extractedUuid)-36:]
+			if uuid == extractedUuid {
+				foundnexus = true
+				logf.Log.Info("found nexus", "uuid", nexus.Uuid, "uri", nexus.DeviceUri)
+				if len(nexus.Children) == 0 {
+					return fmt.Errorf("no nexus children found, uuid %s", uuid)
+				}
+				var allfaulted bool = true
+				for _, replica := range nexus.Children {
+					logf.Log.Info("replica check", "replica state", replica.State)
+					if replica.State != mayastorGrpc.ChildState_CHILD_FAULTED {
+						allfaulted = false
+						break
+					}
+				}
+				if allfaulted {
+					return fmt.Errorf("all %d children are faulted, uuid %s", len(nexuses[0].Children), uuid)
+				}
+				logf.Log.Info("replica check", "replicas", len(nexus.Children), "iteration", i, "uuid", uuid)
+				break
+			}
+		}
+		if !foundnexus {
+			return fmt.Errorf("could not find nexus with uuid %s", uuid)
 		}
 		time.Sleep(time.Second)
 	}
-	logf.Log.Info("non-zero replicas after timeout", "replicas", reps, "timeout seconds", seconds, "uuid", uuid)
+	logf.Log.Info("replicas still valid after timeout", "timeout seconds", seconds, "uuid", uuid)
 	return nil
 }
 
@@ -139,7 +169,7 @@ func eliminateVolume(
 
 		storage_tester_name = "e2e-storage-tester-read"
 		// deploy the storage tester to send IO (reads) to trigger the fault
-		args = []string{"./e2e-storage-tester", "-t", "100", "-r", "-n", blocksParam, deviceParam}
+		args = []string{"./e2e-storage-tester", "-t", "150", "-r", "-n", blocksParam, deviceParam}
 		if err = k8sclient.DeployStorageTester(
 			storage_tester_image,
 			storage_tester_name,
@@ -168,12 +198,18 @@ func eliminateVolume(
 		}
 
 		// check that the number of replicas does not go to zero
-		if zeroerr = checkVolumeReplicasNotZero(cpNodeIp, uuid, 200); zeroerr != nil {
+		if zeroerr = checkUsableVolumeReplicas(msNodeIps, uuid, 100); zeroerr != nil {
 			// don't abort just yet, keep the error and see if we get a verification error as well
 			logf.Log.Info("vol zero error", "error", zeroerr.Error())
 		}
 
-		// wait until the pod completes, it will fail
+		if !k8sclient.IsPodRunning(storage_tester_name, k8sclient.NSDefault) {
+			err = fmt.Errorf("expected pod %s to still be running", storage_tester_name)
+			break
+		}
+		logf.Log.Info("e2e-storage-tester is still running.", "pod", storage_tester_name)
+
+		// wait until the pod fails
 		logf.Log.Info("Waiting for e2e-storage-tester to complete.", "pod", storage_tester_name)
 		if err = WaitPodNotRunning(storage_tester_name, timeout); err != nil {
 			break
@@ -183,10 +219,6 @@ func eliminateVolume(
 			err = fmt.Errorf("expected pod %s to have failed", storage_tester_name)
 			break
 		}
-
-		// interval to help debugging
-		time.Sleep(time.Duration(10) * time.Second)
-
 		logf.Log.Info("deleting e2e-storage-tester-read")
 		if err = k8sclient.DeletePod(storage_tester_name, k8sclient.NSDefault, podDeletionTimeoutSecs); err != nil {
 			logf.Log.Info("failed to delete e2e-storage-tester", "error", err.Error())

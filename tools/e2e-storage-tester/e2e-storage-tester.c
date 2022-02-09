@@ -1,5 +1,6 @@
 #define _GNU_SOURCE
 
+#include <assert.h>
 #include <fcntl.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -7,6 +8,14 @@
 #include <string.h>
 #include <sys/types.h>
 #include <unistd.h>
+
+#define BLOCKSIZE (4096)
+#define ALIGNMENT BLOCKSIZE
+
+typedef enum {
+    EREAD,
+    EWRITE
+} EOPERATION;
 
 void help(const char *error_message, const char * param) {
 	const char * usage_message =
@@ -26,24 +35,18 @@ void help(const char *error_message, const char * param) {
     exit(-1);
 }
 
+const size_t BLOCKNOLENGTH = 8;
 void blockPattern(int blockNumber, char * buffer, int bytes)
 {
-    for (int i = 0; i < bytes; i++) {
-        buffer[i] = 0;
-    }
-    for (int i = 0; i < 8; i++) {
+    assert(bytes >= BLOCKNOLENGTH && buffer != NULL && bytes <= BLOCKSIZE);
+
+    for (int i = 0; i < BLOCKNOLENGTH; i++) {
         buffer[i] = (char)(blockNumber % 256);
         blockNumber /= 256;
     }
+    memset(&(buffer[BLOCKNOLENGTH]), 0, bytes - BLOCKNOLENGTH);
 }
 
-#define BLOCKSIZE (4096)
-#define ALIGNMENT BLOCKSIZE
-
-typedef enum {
-    EREAD,
-    EWRITE
-} EOPERATION;
 
 char pattern_buffer[BLOCKSIZE] __attribute__((__aligned__(ALIGNMENT)));
 char read_buffer[BLOCKSIZE] __attribute__((__aligned__(ALIGNMENT)));
@@ -52,11 +55,12 @@ int ioAttempt(
     int fd,
     char * buffer,
     EOPERATION op,
-    int bytes,
     int block_no,
     int retryIntervalSecs,
     int retryTimeoutSecs)
 {
+    assert(buffer != NULL);
+
     int err = 0;
     int expiredSecs = 0;
     const char * action_text = "";
@@ -71,7 +75,7 @@ int ioAttempt(
     {
         err = lseek(fd, (int64_t)(block_no * BLOCKSIZE), 0);
         if (err < 0) {
-            fprintf(stderr, " could not seek at block %d\n", block_no);
+            fprintf(stderr, "could not seek at block %d\n", block_no);
         } else {
             int64_t num_bytes;
             if (op == EWRITE) {
@@ -80,7 +84,7 @@ int ioAttempt(
                 num_bytes = read(fd, buffer, BLOCKSIZE);
             }
             if (num_bytes != BLOCKSIZE) {
-                fprintf(stderr, " could not %s at block %d, wanted %d, got %ld\n", action_text, block_no, BLOCKSIZE, num_bytes);
+                fprintf(stderr, "could not %s at block %d, wanted %d, got %ld\n", action_text, block_no, BLOCKSIZE, num_bytes);
                 fprintf(stderr, "attempted seconds %d vs timeout %d\n", expiredSecs, retryTimeoutSecs);
                 err = -1;
             } else {
@@ -88,7 +92,7 @@ int ioAttempt(
                 break;
             }
         }
-        if (expiredSecs > retryTimeoutSecs) {
+        if (expiredSecs >= retryTimeoutSecs) {
             break;
         }
         sleep(retryIntervalSecs);
@@ -99,6 +103,7 @@ int ioAttempt(
 
 int compare(char * buffer1, char * buffer2, int bytes)
 {
+    assert(buffer1 != NULL && buffer2 != NULL && bytes <= BLOCKSIZE);
     if (!memcmp(buffer1, buffer2, bytes)) {
         return 0;
     }
@@ -111,15 +116,24 @@ int compare(char * buffer1, char * buffer2, int bytes)
     return 1;
 }
 
+int progress(int tenpercentdone, int blocksdone, int blocks)
+{
+    while ((blocksdone * 10)/blocks > tenpercentdone) {
+        tenpercentdone++;
+        fprintf(stderr, "%d%%\n", tenpercentdone * 10);
+    }
+    return tenpercentdone;
+}
+
 int main(int argc, char ** argv)
 {
-    fprintf(stderr, "e2e-storage-tester 0.3, args:");
+    fprintf(stderr, "e2e-storage-tester 0.4, args:");
     for (int i = 1; i < argc; i++) {
         fprintf(stderr, " %s", argv[i]);
     }
     fprintf(stderr, "\n");
 
-    char *device = "";
+    const char * device = "";
     bool b_read = false;
     bool b_write = false;
     bool verify = false;
@@ -188,26 +202,21 @@ int main(int argc, char ** argv)
             fprintf(stderr, "could not open %s\n", device);
             exit(-1);
         }
-        fprintf(stderr, "writing  :");
-        int percentdone = 0;
+        fprintf(stderr, "writing:\n");
+        int tenpercentdone = 0;
         for (blocksdone = 0; blocksdone < blocks; blocksdone++) {
             err = ioAttempt(
                 fd,
                 pattern_buffer,
                 EWRITE,
-                BLOCKSIZE,
                 blocksdone,
                 timeoutInterval,
                 timeoutSecs);
             if (err != 0) {
                 break;
             }
-            while ((blocksdone * 100)/blocks > percentdone) {
-                fprintf(stderr, "=");
-                percentdone++;
-            }
+            tenpercentdone = progress(tenpercentdone, blocksdone, blocks);
         }
-        fprintf(stderr, "\n");
         close(fd);
         if (err < 0) {
             fprintf(stderr, "write failure\n");
@@ -221,11 +230,11 @@ int main(int argc, char ** argv)
             exit(-1);
         }
         if (verify == true) {
-            fprintf(stderr, "verifying:");
+            fprintf(stderr, "verifying:\n");
         } else {
-            fprintf(stderr, "reading  :");
+            fprintf(stderr, "reading:\n");
         }
-        int percentdone = 0;
+        int tenpercentdone = 0;
         for (blocksdone = 0; blocksdone < blocks; blocksdone++) {
             err = lseek(fd, (int64_t)(blocksdone * BLOCKSIZE), 0);
             if (err < 0) {
@@ -236,7 +245,6 @@ int main(int argc, char ** argv)
                 fd,
                 read_buffer,
                 EREAD,
-                BLOCKSIZE,
                 blocksdone,
                 timeoutInterval,
                 timeoutSecs);
@@ -252,12 +260,8 @@ int main(int argc, char ** argv)
                     break;
                 }
             }
-            while ((blocksdone * 100)/blocks > percentdone) {
-                fprintf(stderr, "=");
-                percentdone++;
-            }
+            tenpercentdone = progress(tenpercentdone, blocksdone, blocks);
         }
-        fprintf(stderr, "\n");
         close(fd);
 
         if (err < 0) {
