@@ -164,8 +164,9 @@ func verifyReplicaOnNodes(uuid string, nodes []string) bool {
 func suppressMayastorPodOn(nodeName string, delay int) {
 	time.Sleep(time.Duration(delay) * time.Second)
 	logf.Log.Info("suppressing mayastor pod", "node", nodeName)
-	k8stest.UnlabelNode(nodeName, engineLabel)
-	err := k8stest.WaitForPodNotRunningOnNode(mayastorRegexp, common.NSMayastor(), nodeName, 60)
+	err := k8stest.UnlabelNode(nodeName, engineLabel)
+	Expect(err).ToNot(HaveOccurred(), "%v", err)
+	err = k8stest.WaitForPodNotRunningOnNode(mayastorRegexp, common.NSMayastor(), nodeName, 60)
 	Expect(err).ToNot(HaveOccurred(), "%v", err)
 }
 
@@ -175,8 +176,9 @@ func unSuppressMayastorPodOn(nodeName string, delay int) {
 	// add the mayastor label to the node
 	time.Sleep(time.Duration(delay) * time.Second)
 	logf.Log.Info("restoring mayastor pod", "node", nodeName)
-	k8stest.LabelNode(nodeName, engineLabel, mayastorLabel)
-	err := k8stest.WaitForPodRunningOnNode(mayastorRegexp, common.NSMayastor(), nodeName, 60)
+	err := k8stest.LabelNode(nodeName, engineLabel, mayastorLabel)
+	Expect(err).ToNot(HaveOccurred(), "%v", err)
+	err = k8stest.WaitForPodRunningOnNode(mayastorRegexp, common.NSMayastor(), nodeName, 60)
 	Expect(err).ToNot(HaveOccurred(), "%v", err)
 }
 

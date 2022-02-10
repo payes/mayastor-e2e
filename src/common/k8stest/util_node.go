@@ -8,8 +8,6 @@ import (
 	"mayastor-e2e/common"
 	"os/exec"
 
-	. "github.com/onsi/gomega"
-
 	coreV1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -128,30 +126,38 @@ func GetMayastorNodeNames() ([]string, error) {
 // LabelNode add a label to a node
 // label is a string in the form "key=value"
 // function still succeeds if label already present
-func LabelNode(nodename string, label string, value string) {
+func LabelNode(nodename string, label string, value string) error {
 	// TODO remove dependency on kubectl
 	labelAssign := fmt.Sprintf("%s=%s", label, value)
 	cmd := exec.Command("kubectl", "label", "node", nodename, labelAssign, "--overwrite=true")
 	cmd.Dir = ""
 	_, err := cmd.CombinedOutput()
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil {
+		return fmt.Errorf("failed to label node %s, label: %s, error: %v", nodename, labelAssign, err)
+	}
+	return nil
 }
 
 // UnlabelNode remove a label from a node
 // function still succeeds if label not present
-func UnlabelNode(nodename string, label string) {
+func UnlabelNode(nodename string, label string) error {
 	// TODO remove dependency on kubectl
 	cmd := exec.Command("kubectl", "label", "node", nodename, label+"-")
 	cmd.Dir = ""
 	_, err := cmd.CombinedOutput()
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil {
+		return fmt.Errorf("failed to remove label from node %s, label: %s, error: %v", nodename, label, err)
+	}
+	return nil
 }
 
 // AllowMasterScheduling removed NoSchedule toleration from master node
-func AllowMasterScheduling() {
+func AllowMasterScheduling() error {
 	var masterNode string
 	nodes, err := GetNodeLocs()
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil {
+		return fmt.Errorf("failed to get nodes, error: %v", err)
+	}
 
 	for _, node := range nodes {
 		if node.MasterNode {
@@ -163,14 +169,19 @@ func AllowMasterScheduling() {
 	cmd := exec.Command("kubectl", "taint", "node", masterNode, "node-role.kubernetes.io/master:NoSchedule"+"-")
 	cmd.Dir = ""
 	_, err = cmd.CombinedOutput()
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil {
+		return fmt.Errorf("failed to remove  no schedule toleration from master node %s, error: %v", masterNode, err)
+	}
+	return nil
 }
 
 // RemoveMasterScheduling adds NoSchedule taint to master node
-func RemoveMasterScheduling() {
+func RemoveMasterScheduling() error {
 	var masterNode string
 	nodes, err := GetNodeLocs()
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil {
+		return fmt.Errorf("failed to get nodes, error: %v", err)
+	}
 
 	for _, node := range nodes {
 		if node.MasterNode {
@@ -182,22 +193,29 @@ func RemoveMasterScheduling() {
 	cmd := exec.Command("kubectl", "taint", "node", masterNode, "node-role.kubernetes.io/master:NoSchedule")
 	cmd.Dir = ""
 	_, err = cmd.CombinedOutput()
-	Expect(err).ToNot(HaveOccurred())
+	if err != nil {
+		return fmt.Errorf("failed to add  no schedule toleration to master node %s, error: %v", masterNode, err)
+	}
+	return nil
 }
 
 // EnsureNodeLabels  add the label openebs.io/engine=mayastor to  all worker nodes so that K8s runs mayastor on them
 // returns error is accessing the list of nodes fails.
 func EnsureNodeLabels() error {
+	var errors common.ErrorAccumulator
 	nodes, err := GetNodeLocs()
 	if err != nil {
 		return err
 	}
 	for _, node := range nodes {
 		if !node.MasterNode {
-			LabelNode(node.NodeName, common.MayastorEngineLabel, common.MayastorEngineLabelValue)
+			err = LabelNode(node.NodeName, common.MayastorEngineLabel, common.MayastorEngineLabelValue)
+			if err != nil {
+				errors.Accumulate(err)
+			}
 		}
 	}
-	return nil
+	return errors.GetError()
 }
 
 func AreNodesReady() (bool, error) {

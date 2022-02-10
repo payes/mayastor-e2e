@@ -108,7 +108,8 @@ func (c *appConfig) deleteDeployment() {
 }
 
 func verifyMayastorComponentStates(numMayastorInstances int) {
-	k8stest.WaitForMCPPath(defWaitTimeout)
+	err := k8stest.WaitForMCPPath(defWaitTimeout)
+	Expect(err).ToNot(HaveOccurred())
 	// TODO Enable this once issue is fixed in Mayastor
 	/*
 		nodeList, err := crds.ListNodes()

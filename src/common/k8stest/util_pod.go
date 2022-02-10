@@ -5,10 +5,11 @@ import (
 	// volume "github.com/openebs/maya/pkg/kubernetes/volume/v1alpha1"
 
 	"context"
+	"fmt"
 	"mayastor-e2e/common"
 	"mayastor-e2e/common/e2e_config"
+	"time"
 
-	. "github.com/onsi/gomega"
 	errors "github.com/pkg/errors"
 	coreV1 "k8s.io/api/core/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -21,6 +22,9 @@ const (
 	// k8sNodeLabelKeyHostname is the label key used by Kubernetes
 	// to store the hostname on the node resource.
 	K8sNodeLabelKeyHostname = "kubernetes.io/hostname"
+	// timeout and sleep time in seconds
+	timeout       = 300 // timeout in seconds
+	timeSleepSecs = 10  // sleep time in seconds
 )
 
 type Pod struct {
@@ -264,18 +268,22 @@ func ListPod(ns string) (*v1.PodList, error) {
 	return pods, nil
 }
 
-func VerifyPodsOnNode(podLabelsList []string, nodeName string, namespace string) {
+func VerifyPodsOnNode(podLabelsList []string, nodeName string, namespace string) error {
 	for _, label := range podLabelsList {
-		Eventually(func() bool {
-			nodeList, err := GetNodeListForPods("app="+label, namespace)
-			if err == nil && len(nodeList) == 1 && nodeList[nodeName] == v1.PodRunning {
-				return true
+		var err error
+		var nodeList map[string]v1.PodPhase
+		for ix := 0; ix < timeout/timeSleepSecs; ix++ {
+			nodeList, err = GetNodeListForPods("app="+label, namespace)
+			if err != nil {
+				logf.Log.Info("VerifyPodsOnNode", "podLabel", label, "NodList", nodeList, "error", err)
+			} else if len(nodeList) == 1 && nodeList[nodeName] == v1.PodRunning {
+				break
 			}
-			logf.Log.Info("VerifyPodsOnNode", "podLabel", label, "NodList", nodeList, "error", err)
-			return false
-		},
-			300, // timeout
-			5,   // polling interval
-		).Should(Equal(true))
+			time.Sleep(timeSleepSecs * time.Second)
+		}
+		if err != nil {
+			return fmt.Errorf("failed to verify pod on node %s, podLabel: %s, error: %v", nodeName, label, err)
+		}
 	}
+	return nil
 }

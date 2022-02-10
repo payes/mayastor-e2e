@@ -54,7 +54,8 @@ func (c *inaccessibleEtcdTestConfig) etcdInaccessibilityTest() {
 	Expect(err).ToNot(HaveOccurred())
 	WaitForEtcdState(true)
 
-	k8stest.WaitForMCPPath(defTimeoutSecs)
+	err = k8stest.WaitForMCPPath(defTimeoutSecs)
+	Expect(err).ToNot(HaveOccurred())
 
 	// Delete the fio pod
 	err = k8stest.DeletePod(c.podName, common.NSDefault)
@@ -105,7 +106,8 @@ func (c *inaccessibleEtcdTestConfig) etcdInaccessibilityWhenReplicaFaulted() {
 	Expect(err).ToNot(HaveOccurred())
 	WaitForEtcdState(true)
 
-	k8stest.WaitForMCPPath(defTimeoutSecs)
+	err = k8stest.WaitForMCPPath(defTimeoutSecs)
+	Expect(err).ToNot(HaveOccurred())
 
 	// Delete the fio pod
 	err = k8stest.DeletePod(c.podName, common.NSDefault)
@@ -143,7 +145,8 @@ var _ = Describe("Mayastor Volume IO test", func() {
 		var replicas int32 = 1
 		err := k8stest.SetStatefulsetReplication("mayastor-etcd", e2e_config.GetConfig().Platform.MayastorNamespace, &replicas)
 		Expect(err).ToNot(HaveOccurred())
-		k8stest.WaitForMCPPath(defTimeoutSecs)
+		err = k8stest.WaitForMCPPath(defTimeoutSecs)
+		Expect(err).ToNot(HaveOccurred())
 	})
 
 	It("should verify data consistency when etcd is brought down", func() {

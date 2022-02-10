@@ -27,7 +27,8 @@ func (c *shutdownConfig) nonCoreAgentNodeShutdownTest() {
 	}
 	Expect(errs.GetError()).ToNot(HaveOccurred(), "Failed to  apply node selectors to deployment, %v", errs.GetError())
 
-	k8stest.VerifyPodsOnNode([]string{"msp-operator", "rest", "csi-controller"}, coreAgentNodeName, common.NSMayastor())
+	err = k8stest.VerifyPodsOnNode([]string{"msp-operator", "rest", "csi-controller"}, coreAgentNodeName, common.NSMayastor())
+	Expect(err).ToNot(HaveOccurred())
 
 	verifyMayastorComponentStates(c.numMayastorInstances)
 
@@ -64,8 +65,10 @@ func (c *shutdownConfig) nonCoreAgentNodeShutdownTest() {
 	Expect(c.platform.PowerOnNode(conf.nodeName)).ToNot(HaveOccurred(), "PowerOnNode")
 	poweredOffNode = ""
 	verifyNodesReady()
-	k8stest.WaitForMCPPath(defWaitTimeout)
-	k8stest.WaitForMayastorSockets(k8stest.GetMayastorNodeIPAddresses(), defWaitTimeout)
+	err = k8stest.WaitForMCPPath(defWaitTimeout)
+	Expect(err).ToNot(HaveOccurred())
+	err = k8stest.WaitForMayastorSockets(k8stest.GetMayastorNodeIPAddresses(), defWaitTimeout)
+	Expect(err).ToNot(HaveOccurred())
 	// Delete deployment, PVC and SC
 	for _, config := range c.config {
 		config.deleteDeployment()
@@ -99,7 +102,8 @@ func (c *shutdownConfig) coreAgentNodeShutdownTest() {
 	}
 	Expect(errs.GetError()).ToNot(HaveOccurred(), "Failed to  apply node selectors to deployment, %v", errs.GetError())
 
-	k8stest.VerifyPodsOnNode([]string{"msp-operator", "rest", "csi-controller"}, coreAgentNodeName, common.NSMayastor())
+	err = k8stest.VerifyPodsOnNode([]string{"msp-operator", "rest", "csi-controller"}, coreAgentNodeName, common.NSMayastor())
+	Expect(err).ToNot(HaveOccurred())
 
 	verifyMayastorComponentStates(c.numMayastorInstances)
 	for _, deploy := range msDeployment {
@@ -141,7 +145,8 @@ func (c *shutdownConfig) coreAgentNodeShutdownTest() {
 	// After 5 mins [(2(Earlier)+4(now)], core agent will be scheduled to some other node
 	logf.Log.Info("Sleeping for 4 more mins... for core agent to be scheduled on a different node")
 	time.Sleep(4 * time.Minute)
-	k8stest.WaitForMCPPath(defWaitTimeout)
+	err = k8stest.WaitForMCPPath(defWaitTimeout)
+	Expect(err).ToNot(HaveOccurred())
 
 	verifyMayastorComponentStates(c.numMayastorInstances - 1)
 	for _, config := range c.config {
@@ -156,8 +161,10 @@ func (c *shutdownConfig) coreAgentNodeShutdownTest() {
 	poweredOffNode = ""
 	verifyNodesReady()
 
-	k8stest.WaitForMCPPath(defWaitTimeout)
-	k8stest.WaitForMayastorSockets(k8stest.GetMayastorNodeIPAddresses(), defWaitTimeout)
+	err = k8stest.WaitForMCPPath(defWaitTimeout)
+	Expect(err).ToNot(HaveOccurred())
+	err = k8stest.WaitForMayastorSockets(k8stest.GetMayastorNodeIPAddresses(), defWaitTimeout)
+	Expect(err).ToNot(HaveOccurred())
 
 	// Delete deployment, PVC and SC
 	for _, config := range c.config {

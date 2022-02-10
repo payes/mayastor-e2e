@@ -131,8 +131,10 @@ func primitiveMspDeletionTest() {
 	err = k8stest.RestartMayastorPods(params.MayastorRestartTimeout)
 	Expect(err).ToNot(HaveOccurred(), "Restart Mayastor pods")
 
-	k8stest.WaitForMCPPath(defWaitTimeout)
-	k8stest.WaitForMayastorSockets(k8stest.GetMayastorNodeIPAddresses(), defWaitTimeout)
+	err = k8stest.WaitForMCPPath(defWaitTimeout)
+	Expect(err).ToNot(HaveOccurred(), "some of the control plane componenets are not ready")
+	err = k8stest.WaitForMayastorSockets(k8stest.GetMayastorNodeIPAddresses(), defWaitTimeout)
+	Expect(err).ToNot(HaveOccurred(), "failed to start socket to mayastor pod")
 
 	// Create mayastorpools
 	Eventually(func() error {

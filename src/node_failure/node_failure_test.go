@@ -186,8 +186,10 @@ func (c *failureConfig) RebootDesiredNodes(uuid string) {
 		Expect(c.platform.PowerOnNode(nexusNode)).ToNot(HaveOccurred(), "Failed to PowerOnNode %s for RebootNexusNode test", nexusNode)
 
 	}
-	k8stest.WaitForMCPPath(defWaitTimeout)
-	k8stest.WaitForMayastorSockets(k8stest.GetMayastorNodeIPAddresses(), defWaitTimeout)
+	err := k8stest.WaitForMCPPath(defWaitTimeout)
+	Expect(err).ToNot(HaveOccurred())
+	err = k8stest.WaitForMayastorSockets(k8stest.GetMayastorNodeIPAddresses(), defWaitTimeout)
+	Expect(err).ToNot(HaveOccurred())
 }
 
 func (c *failureConfig) verifyMayastorComponentStates(numMayastorInstances int) {
