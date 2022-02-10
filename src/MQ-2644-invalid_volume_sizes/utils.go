@@ -90,7 +90,8 @@ func (c *pvcConfig) pvcInvalidSizeTest() {
 func (c *pvcConfig) pvcNormalFioTest() {
 	c.createStorageClass()
 
-	pvcUuid := k8stest.MkPVC(c.pvcSizeMB, c.pvcName, c.scName, c.volType, common.NSDefault)
+	pvcUuid, err := k8stest.MkPVC(c.pvcSizeMB, c.pvcName, c.scName, c.volType, common.NSDefault)
+	Expect(err).ToNot(HaveOccurred())
 	logf.Log.Info("Creating PVC", "name", c.pvcName, "volume size", c.pvcSizeMB, "pvc uuid", pvcUuid)
 }
 
@@ -187,7 +188,8 @@ func (c *pvcConfig) runAndDeleteFio() {
 
 func cleanUp() {
 	for _, name := range testNames {
-		k8stest.RmPVC(name+"-pvc", name+"-sc", common.NSDefault)
+		err := k8stest.RmPVC(name+"-pvc", name+"-sc", common.NSDefault)
+		Expect(err).ToNot(HaveOccurred())
 		deleteSC(name + "-sc")
 	}
 }
