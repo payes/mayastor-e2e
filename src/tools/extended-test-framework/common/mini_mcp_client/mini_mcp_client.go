@@ -91,7 +91,7 @@ func GetVolumes(serverAddr string) ([]SparseVolume, error) {
 	return vollist, err
 }
 
-// GetVolumeStatus gets the volume status of the given volume
+// GetVolume gets the given volume
 func GetVolume(serverAddr string, uuid string) (SparseVolume, error) {
 	var vol SparseVolume
 	url := "http://" + serverAddr + ":" + RestPort + "/v0/volumes/" + uuid

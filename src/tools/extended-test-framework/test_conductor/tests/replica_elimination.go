@@ -23,6 +23,14 @@ const storage_tester_image = "ci-registry.mayastor-ci.mayadata.io/mayadata/e2e-s
 func checkUsableVolumeReplicas(ms_node_ips []string, uuid string, seconds int) error {
 
 	for i := 0; i < seconds; i++ {
+		// for debugging
+		status, volerr := getVolumeStatus(ms_node_ips[0], uuid)
+		if volerr != nil {
+			logf.Log.Info("Could not get volume status", "error", volerr.Error())
+		} else {
+			logf.Log.Info("Volume status", "status", status)
+		}
+
 		nexuses, err := k8sclient.GetNexuses(ms_node_ips)
 		if err != nil {
 			return fmt.Errorf("failed to get nexuses, uuid %s, err: %v", uuid, err)
@@ -154,10 +162,11 @@ func eliminateVolume(
 		logf.Log.Info("Created pod.", "pod", storage_tester_name)
 		logf.Log.Info("Waiting for e2e-storage-tester to complete.", "pod", storage_tester_name)
 
-		// wait until the pod completes with a success state
+		// wait until the pod completes
 		if err = WaitPodNotRunning(storage_tester_name, timeout); err != nil {
 			break
 		}
+		// this will fail if the pod has finished with an error
 		if err = k8sclient.CheckPodAndDelete(storage_tester_name, k8sclient.NSDefault, podDeletionTimeoutSecs); err != nil {
 			break
 		}
@@ -181,7 +190,7 @@ func eliminateVolume(
 			break
 		}
 		logf.Log.Info("Created load pod", "pod", storage_tester_name)
-		//  echo offline | sudo tee /sys/block/sdx/device/state
+
 		//  Wait for MSV state to become degraded
 		if err = waitForVolumeStatus(cpNodeIp, uuid, MCP_MSV_DEGRADED); err != nil {
 			break
@@ -197,7 +206,7 @@ func eliminateVolume(
 			break
 		}
 
-		// check that the number of replicas does not go to zero
+		// check that the number of replicas does not go to zero and are not all faulted
 		if zeroerr = checkUsableVolumeReplicas(msNodeIps, uuid, 100); zeroerr != nil {
 			// don't abort just yet, keep the error and see if we get a verification error as well
 			logf.Log.Info("vol zero error", "error", zeroerr.Error())
@@ -209,12 +218,13 @@ func eliminateVolume(
 		}
 		logf.Log.Info("e2e-storage-tester is still running.", "pod", storage_tester_name)
 
-		// wait until the pod fails
+		// wait until the pod finishes
 		logf.Log.Info("Waiting for e2e-storage-tester to complete.", "pod", storage_tester_name)
 		if err = WaitPodNotRunning(storage_tester_name, timeout); err != nil {
 			break
 		}
 		logf.Log.Info("e2e-storage-tester has completed.", "pod", storage_tester_name)
+		// it should have failed due to I/O errors
 		if !k8sclient.IsPodFailed(storage_tester_name, k8sclient.NSDefault) {
 			err = fmt.Errorf("expected pod %s to have failed", storage_tester_name)
 			break
@@ -256,10 +266,11 @@ func eliminateVolume(
 		if err = WaitPodNotRunning(storage_tester_name, timeout); err != nil {
 			break
 		}
+		// this will fail if the pod has finished with an error
 		if err = k8sclient.CheckPodAndDelete(storage_tester_name, k8sclient.NSDefault, podDeletionTimeoutSecs); err != nil {
 			break
 		}
-		if zeroerr != nil { // we found zero replicas earlier
+		if zeroerr != nil { // we found zero or all-faulted replicas earlier
 			break
 		}
 		if err = randomSleep(); err != nil {
