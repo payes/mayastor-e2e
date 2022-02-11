@@ -78,7 +78,7 @@ pipeline {
         )
         choice(
             name: 'NODE_TYPE',
-            choices: ['cpx21', 'cx21', 'cx31', 'cpx31', 'cx41', 'cpx41', 'cx51', 'cpx51'],
+            choices: ['cpx31', 'cpx21', 'cx21', 'cx31', 'cx41', 'cpx41', 'cx51', 'cpx51'],
             description: '''
                 WARNING: nodes must be compatible with selected environment. CPX*, CX* are hetzner nodes (see <a href="https://www.hetzner.com/cloud">hetzner cloud</a>). t3.* i3.* are AWS nodes.
                 <table>
