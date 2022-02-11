@@ -22,7 +22,6 @@ import (
 )
 
 const defTimeoutSecs = 360
-const timoSleepSecs = 10
 
 // IsPVCDeleted Check for a deleted Persistent Volume Claim,
 // either the object does not exist
@@ -134,9 +133,12 @@ func GetPvStatusPhase(volname string) (phase coreV1.PersistentVolumePhase, err e
 //	2. The associated PV is created and its status transitions bound
 //	3. The associated MV is created and has a State "healthy"
 func MkPVC(volSizeMb int, volName string, scName string, volType common.VolumeType, nameSpace string) (string, error) {
+	const timoSleepSecs = 1
 	logf.Log.Info("Creating", "volume", volName, "storageClass", scName, "volume type", volType)
 	volSizeMbStr := fmt.Sprintf("%dMi", volSizeMb)
 	var err error
+
+	t0 := time.Now()
 	// PVC create options
 	createOpts := &coreV1.PersistentVolumeClaim{
 		ObjectMeta: metaV1.ObjectMeta{
@@ -190,11 +192,11 @@ func MkPVC(volSizeMb int, volName string, scName string, volType common.VolumeTy
 	// Wait for the PVC to be bound.
 	for ix := 0; ix < defTimeoutSecs/timoSleepSecs; ix++ {
 		var pvcPhase coreV1.PersistentVolumeClaimPhase
-		time.Sleep(timoSleepSecs * time.Second)
 		pvcPhase, err = GetPvcStatusPhase(volName, nameSpace)
 		if err == nil && pvcPhase == coreV1.ClaimBound {
 			break
 		}
+		time.Sleep(timoSleepSecs * time.Second)
 	}
 	if err != nil {
 		return "", fmt.Errorf("failed to get pvc status, pvc: %s, namespace:  %s, error: %v", volName, nameSpace, err)
@@ -211,11 +213,11 @@ func MkPVC(volSizeMb int, volName string, scName string, volType common.VolumeTy
 	// Wait for the PV to be provisioned
 	var pv *coreV1.PersistentVolume
 	for ix := 0; ix < defTimeoutSecs/timoSleepSecs; ix++ {
-		time.Sleep(timoSleepSecs * time.Second)
 		pv, err = gTestEnv.KubeInt.CoreV1().PersistentVolumes().Get(context.TODO(), pvc.Spec.VolumeName, metaV1.GetOptions{})
 		if err == nil && pv != nil {
 			break
 		}
+		time.Sleep(timoSleepSecs * time.Second)
 	}
 	if err != nil {
 		return "", fmt.Errorf("failed to get pv, pv: %s, error: %v", pvc.Spec.VolumeName, err)
@@ -224,11 +226,11 @@ func MkPVC(volSizeMb int, volName string, scName string, volType common.VolumeTy
 	// Wait for the PV to be bound.
 	for ix := 0; ix < defTimeoutSecs/timoSleepSecs; ix++ {
 		var pvPhase coreV1.PersistentVolumePhase
-		time.Sleep(timoSleepSecs * time.Second)
 		pvPhase, err = GetPvStatusPhase(pv.Name)
 		if err == nil && pvPhase == coreV1.VolumeBound {
 			break
 		}
+		time.Sleep(timoSleepSecs * time.Second)
 	}
 	if err != nil {
 		return "", fmt.Errorf("failed to get pv status, pv: %s, error: %v", pvc.Spec.VolumeName, err)
@@ -237,11 +239,11 @@ func MkPVC(volSizeMb int, volName string, scName string, volType common.VolumeTy
 	// Wait for the PV to be provisioned
 	for ix := 0; ix < defTimeoutSecs/timoSleepSecs; ix++ {
 		var msv *common.MayastorVolume
-		time.Sleep(timoSleepSecs * time.Second)
 		msv, err = GetMSV(string(pvc.ObjectMeta.UID))
 		if err == nil && msv != nil {
 			break
 		}
+		time.Sleep(timoSleepSecs * time.Second)
 	}
 	if err != nil {
 		return "", fmt.Errorf("failed to get mayastor volume, uuid: %s, error: %v", pvc.ObjectMeta.UID, err)
@@ -252,7 +254,7 @@ func MkPVC(volSizeMb int, volName string, scName string, volType common.VolumeTy
 		return "", fmt.Errorf("msv consistency check failed, msv uuid: %s, error: %v", string(pvc.ObjectMeta.UID), err)
 	}
 
-	logf.Log.Info("Created", "volume", volName, "uuid", pvc.ObjectMeta.UID, "storageClass", scName, "volume type", volType)
+	logf.Log.Info("Created", "volume", volName, "uuid", pvc.ObjectMeta.UID, "storageClass", scName, "volume type", volType, "elapsed time", time.Since(t0))
 	return string(pvc.ObjectMeta.UID), nil
 }
 
@@ -334,6 +336,7 @@ func MsvConsistencyCheck(uuid string) error {
 //	2. The associated PV is deleted
 //  3. The associated MV is deleted
 func RmPVC(volName string, scName string, nameSpace string) error {
+	const timoSleepSecs = 1
 	logf.Log.Info("Removing volume", "volume", volName, "storageClass", scName)
 	var isDeleted bool
 
@@ -358,11 +361,11 @@ func RmPVC(volName string, scName string, nameSpace string) error {
 	var err error
 	// Wait for the PVC to be deleted.
 	for ix := 0; ix < defTimeoutSecs/timoSleepSecs; ix++ {
-		time.Sleep(timoSleepSecs * time.Second)
 		isDeleted, err = IsPVCDeleted(volName, nameSpace)
 		if isDeleted {
 			break
 		}
+		time.Sleep(timoSleepSecs * time.Second)
 	}
 	if err != nil {
 		return err
@@ -373,7 +376,6 @@ func RmPVC(volName string, scName string, nameSpace string) error {
 	// Wait for the PV to be deleted.
 	logf.Log.Info("Waiting for PV to be deleted", "volume", volName, "storageClass", scName)
 	for ix := 0; ix < defTimeoutSecs/timoSleepSecs; ix++ {
-		time.Sleep(timoSleepSecs * time.Second)
 		// This check is required here because it will check for pv name
 		// when pvc is in pending state at that time we will not
 		// get pv name inside pvc spec i.e pvc.Spec.VolumeName
@@ -386,6 +388,7 @@ func RmPVC(volName string, scName string, nameSpace string) error {
 			isDeleted = true
 			break
 		}
+		time.Sleep(timoSleepSecs * time.Second)
 	}
 	if err != nil {
 		return err
@@ -395,11 +398,11 @@ func RmPVC(volName string, scName string, nameSpace string) error {
 
 	// Wait for the MSV to be deleted.
 	for ix := 0; ix < defTimeoutSecs/timoSleepSecs; ix++ {
-		time.Sleep(timoSleepSecs * time.Second)
 		isDeleted = IsMsvDeleted(string(pvc.ObjectMeta.UID))
 		if isDeleted {
 			break
 		}
+		time.Sleep(timoSleepSecs * time.Second)
 	}
 	if !isDeleted {
 		return fmt.Errorf("mayastor volume not deleted, msv: %s", pvc.ObjectMeta.UID)
