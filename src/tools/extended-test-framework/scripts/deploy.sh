@@ -129,9 +129,19 @@ if [ "${OPERATION}" == "delete" ]; then
   kubectl delete -f ${DEPLOYDIR}/test_director/test_director.yaml
   kubectl delete pod -n mayastor-e2e test-conductor
   kubectl delete -f ${DEPLOYDIR}/test_conductor/test_conductor.yaml
+  kubectl delete -f ${DEPLOYDIR}/log_monitor/log_monitor.yaml
   kubectl delete -f ${DEPLOYDIR}/test_namespace.yaml
+  kubectl delete -f ${DEPLOYDIR}/log_monitor/fluentd.yaml
+  kubectl delete -f ${DEPLOYDIR}/log_monitor/fluentd_rbac.yaml
+  kubectl delete -f ${DEPLOYDIR}/log_monitor/fluentd_configmap.yaml
+  kubectl delete -f ${DEPLOYDIR}/log_monitor/fluentd_namespace.yaml
 else
   kubectl create -f ${DEPLOYDIR}/test_namespace.yaml
+  kubectl create -f ${DEPLOYDIR}/log_monitor/fluentd_namespace.yaml
+  kubectl create -f ${DEPLOYDIR}/log_monitor/fluentd_configmap.yaml
+  kubectl create -f ${DEPLOYDIR}/log_monitor/fluentd_rbac.yaml
+  kubectl create -f ${DEPLOYDIR}/log_monitor/fluentd.yaml
+  kubectl create -f ${DEPLOYDIR}/log_monitor/log_monitor.yaml
 
   tmpfile=$(mktemp /tmp/tmp.XXXX)
   PLAN=${PLANARG} envsubst < ${DEPLOYDIR}/test_director/config.yaml.template > $tmpfile

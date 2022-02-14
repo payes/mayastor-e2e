@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"strings"
+	"test-director/config"
 	"test-director/connectors"
 	"test-director/models"
 	"time"
@@ -25,6 +26,7 @@ type EventInterface interface {
 
 type EventCache struct {
 	client *cache.Cache
+	cfg    *config.ServerConfig
 }
 
 func (r *EventCache) GetAll() []*models.Event {
@@ -50,9 +52,10 @@ func (r *EventCache) Set(key string, data models.Event) error {
 	if err != nil {
 		return err
 	}
-	if *data.Class == models.EventClassEnumFAIL {
-		tr := runInterface.Get(*data.SourceInstance)
-		tr.Status = models.TestRunStatusEnumFAILED
+
+	var tr *models.TestRun
+	if *data.Class != models.EventClassEnumINFO {
+		tr = runInterface.Get(*data.SourceInstance)
 		if tr.Data != "" {
 			tr.Data += ": "
 		}
@@ -61,19 +64,23 @@ func (r *EventCache) Set(key string, data models.Event) error {
 		if err != nil {
 			return err
 		}
+	}
+	if *data.Class == models.EventClassEnumFAIL && *data.SourceClass != models.EventSourceClassEnumLogDashMonitor {
+		tr.Status = models.TestRunStatusEnumFAILED
 		UpdateTestRun(tr)
 	}
 	// -1 means that the item never expires
 	r.client.Set(key, b, -1)
-	sendSlackNotification(&data.EventSpec)
+	if r.cfg.SlackNotification {
+		sendSlackNotification(&data.EventSpec)
+	}
 	return nil
 }
 
-func InitEventCache() {
-	s := slackWebHook[:len(slackWebHook)-10]
-	log.Infof("Slack webhook is initialized with %s", s)
+func InitEventCache(cfg *config.ServerConfig) {
 	eventInterface = &EventCache{
 		client: cache.New(-1, 0),
+		cfg:    cfg,
 	}
 }
 
