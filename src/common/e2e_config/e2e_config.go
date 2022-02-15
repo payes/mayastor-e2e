@@ -269,6 +269,11 @@ type E2EConfig struct {
 		VolumeMultiplier int `yaml:"volumeMultiplier" env-default:"110"`
 		DelayTime        int `yaml:"delayTime" env-default:"10"`
 	} `yaml:"pvcCreateDelete"`
+	ScIscsiValidation struct {
+		VolMb               int    `yaml:"volMb" env-default:"1024"`
+		Replicas            int    `yaml:"replicas" env-default:"1"`
+		UnsupportedProtocol string `yaml:"unsupportedProtocol" env-default:"iSCSI"`
+	} `yaml:"scIscsiValidation"`
 }
 
 var once sync.Once
