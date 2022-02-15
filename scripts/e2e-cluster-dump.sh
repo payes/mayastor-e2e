@@ -224,11 +224,11 @@ function getSystemCmdOutputs {
         nodes=$(kubectl get nodes -o jsonpath='{ $.items[*].status.addresses[?(@.type=="InternalIP")].address }')
         for node in $nodes
         do
-                curl --connect-timeout 5 -XPOST http://$node:10012/exec -H "Content-Type: application/json" -d '{"cmd": "nvme list -o json"}' >& "$dest/$node-nvme-list"
-                curl --connect-timeout 5 -XPOST http://$node:10012/exec -H "Content-Type: application/json" -d '{"cmd": "findmnt -J"}' >& "$dest/$node-findmnt"
-                curl --connect-timeout 5 -XPOST http://$node:10012/exec -H "Content-Type: application/json" -d '{"cmd": "lsblk -J"}' >& "$dest/$node-lsblk"
-                curl --connect-timeout 5 -XPOST http://$node:10012/exec -H "Content-Type: application/json" -d '{"cmd": "cat /host/var/log/syslog"}' >& "$dest/$node-syslog"
-                curl --connect-timeout 5 -XPOST http://$node:10012/exec -H "Content-Type: application/json" -d '{"cmd": "dmesg"}'  >& "$dest/$node-dmesg"
+                timeout -s 9 30 curl --connect-timeout 5 -XPOST http://$node:10012/exec -H "Content-Type: application/json" -d '{"cmd": "nvme list -o json"}' >& "$dest/$node-nvme-list"
+                timeout -s 9 30 curl --connect-timeout 5 -XPOST http://$node:10012/exec -H "Content-Type: application/json" -d '{"cmd": "findmnt -J"}' >& "$dest/$node-findmnt"
+                timeout -s 9 30 curl --connect-timeout 5 -XPOST http://$node:10012/exec -H "Content-Type: application/json" -d '{"cmd": "lsblk -J"}' >& "$dest/$node-lsblk"
+                timeout -s 9 120 curl --connect-timeout 5 -XPOST http://$node:10012/exec -H "Content-Type: application/json" -d '{"cmd": "cat /host/var/log/syslog"}' >& "$dest/$node-syslog"
+                timeout -s 9 120 curl --connect-timeout 5 -XPOST http://$node:10012/exec -H "Content-Type: application/json" -d '{"cmd": "dmesg"}'  >& "$dest/$node-dmesg"
         done
 }
 
