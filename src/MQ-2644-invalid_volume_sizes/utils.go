@@ -186,10 +186,9 @@ func (c *pvcConfig) runAndDeleteFio() {
 	Expect(err).ToNot(HaveOccurred())
 }
 
-func cleanUp() {
-	for _, name := range testNames {
+func cleanUp(names ...string) {
+	for _, name := range names {
 		err := k8stest.RmPVC(name+"-pvc", name+"-sc", common.NSDefault)
 		Expect(err).ToNot(HaveOccurred())
-		deleteSC(name + "-sc")
 	}
 }
