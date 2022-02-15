@@ -150,3 +150,10 @@ func ControlDevice(serverAddr string, device string, state string) (string, erro
 	}
 	return sendRequestGetResponse("POST", url, data, false)
 }
+
+// KillMayastor use kill -9 against the mayastor
+func KillMayastor(serverAddr string) (string, error) {
+	logf.Log.Info("Killing Mayastor", "addr", serverAddr)
+	url := "http://" + serverAddr + ":" + RestPort + "/killmayastor"
+	return sendRequestGetResponse("POST", url, nil, true)
+}
