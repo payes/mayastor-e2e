@@ -43,13 +43,13 @@ var _ = Describe("Test invalid volume sizes", func() {
 	It("should verify to not create pvc with negative size", func() {
 		c := generatePvc("negative-size", 3, -1000)
 		c.pvcZeroOrNegativeSizeTest()
-		deleteSC(c.testName)
+		deleteSC(c.scName)
 	})
 
 	It("should verify to not create pvc with zero size", func() {
 		c := generatePvc("zero-size", 3, 0)
 		c.pvcZeroOrNegativeSizeTest()
-		deleteSC(c.testName)
+		deleteSC(c.scName)
 	})
 
 	It("should verify to not create pvc bigger than pool", func() {
