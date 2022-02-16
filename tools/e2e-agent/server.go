@@ -58,6 +58,7 @@ func handleRequests() {
 	router.HandleFunc("/createFaultyDevice", createFaultyDevice).Methods("POST")
 	router.HandleFunc("/exec", execCmd).Methods("POST")
 	router.HandleFunc("/devicecontrol", controlDevice).Methods("POST")
+	router.HandleFunc("/killmayastor", killMayastor).Methods("POST")
 	log.Fatal(http.ListenAndServe(podIP+":"+restPort, router))
 }
 
@@ -207,6 +208,23 @@ func controlDevice(w http.ResponseWriter, r *http.Request) {
 	cmdStr := "bash"
 	params[0] = "-c"
 	params[1] = "echo " + device.State + " > /host/sys/block/" + device.Device + "/device/state"
+
+	cmd := exec.Command(cmdStr, params...)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		w.WriteHeader(InternalServerErrorCode)
+		fmt.Fprint(w, err.Error())
+		return
+	}
+	fmt.Fprint(w, string(output))
+}
+
+func killMayastor(w http.ResponseWriter, r *http.Request) {
+	params := make([]string, 2)
+
+	cmdStr := "bash"
+	params[0] = "-c"
+	params[1] = "MS=$(pidof mayastor) && kill -9 $MS"
 
 	cmd := exec.Command(cmdStr, params...)
 	output, err := cmd.CombinedOutput()
