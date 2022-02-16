@@ -1,6 +1,19 @@
+/***
+ This program is a simple I/O tester with functionality to retry a failed
+ I/O operation until a timeout expires.
+ It writes and/or reads 4096 bytes at a time, starting at offset 0, using
+ direct I/O and can write and verify a predictable byte pattern in each
+ 4096 byte block. If both writing and reading/verifying, it writes the
+ patterns first and then reads/verifies the same data.
+ The total number of blocks accessed by the last operation is written to
+ stdout at the end of the test.
+ See  help() for a description of the parameters.
+***/
+
 #define _GNU_SOURCE
 
 #include <assert.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -21,10 +34,10 @@ void help(const char *error_message, const char * param) {
 	const char * usage_message =
     "usage: e2e-storage-tester <options> <device>\n"
     "\t -r read\n"
-    "\t -t seconds allowed for retried I/O attempts (default 50, <0 means do not retry)\n"
+    "\t -t <value> seconds allowed for retried I/O attempts (default 50, 0 means do not retry)\n"
     "\t -v validate\n"
     "\t -w write\n"
-    "\t -n number of blocks (default 1)\n";
+    "\t -n <value> number of blocks (default 1)\n";
     if (param[0] != '\0') {
         fprintf(stderr, "error with parameter %s: ", param);
     }
@@ -35,6 +48,7 @@ void help(const char *error_message, const char * param) {
     exit(-1);
 }
 
+/* write a predictable pattern to the block that depends on the block location */
 const size_t BLOCKNOLENGTH = 8;
 void blockPattern(int blockNumber, char * buffer, int bytes)
 {
@@ -47,10 +61,10 @@ void blockPattern(int blockNumber, char * buffer, int bytes)
     memset(&(buffer[BLOCKNOLENGTH]), 0, bytes - BLOCKNOLENGTH);
 }
 
-
 char pattern_buffer[BLOCKSIZE] __attribute__((__aligned__(ALIGNMENT)));
 char read_buffer[BLOCKSIZE] __attribute__((__aligned__(ALIGNMENT)));
 
+/* attempt to read or write a block, with retries allowed up to a given timeout */
 int ioAttempt(
     int fd,
     char * buffer,
@@ -62,7 +76,7 @@ int ioAttempt(
     assert(buffer != NULL);
 
     int err = 0;
-    int expiredSecs = 0;
+    int elapsedSecs = 0;
     const char * action_text = "";
 
     if (op == EWRITE) {
@@ -75,7 +89,7 @@ int ioAttempt(
     {
         err = lseek(fd, (int64_t)(block_no * BLOCKSIZE), 0);
         if (err < 0) {
-            fprintf(stderr, "could not seek at block %d\n", block_no);
+            fprintf(stderr, " could not seek at block %d, error: %s\n", block_no, strerror(errno));
         } else {
             int64_t num_bytes;
             if (op == EWRITE) {
@@ -84,24 +98,25 @@ int ioAttempt(
                 num_bytes = read(fd, buffer, BLOCKSIZE);
             }
             if (num_bytes != BLOCKSIZE) {
-                fprintf(stderr, "could not %s at block %d, wanted %d, got %ld\n", action_text, block_no, BLOCKSIZE, num_bytes);
-                fprintf(stderr, "attempted seconds %d vs timeout %d\n", expiredSecs, retryTimeoutSecs);
+                fprintf(stderr, "could not %s at block %d, wanted %d, got %ld, error: %s\n", action_text, block_no, BLOCKSIZE, num_bytes, strerror(errno));
+                fprintf(stderr, "attempted seconds %d vs timeout %d\n", elapsedSecs, retryTimeoutSecs);
                 err = -1;
             } else {
                 err = 0;
                 break;
             }
         }
-        if (expiredSecs >= retryTimeoutSecs) {
+        if (elapsedSecs >= retryTimeoutSecs) {
             break;
         }
         sleep(retryIntervalSecs);
-        expiredSecs += retryIntervalSecs;
+        elapsedSecs += retryIntervalSecs;
     }
     return err;
 }
 
-int compare(char * buffer1, char * buffer2, int bytes)
+/* compare the contents of the buffers and print out any differences*/
+int compare(const char * buffer1, const char * buffer2, int bytes)
 {
     assert(buffer1 != NULL && buffer2 != NULL && bytes <= BLOCKSIZE);
     if (!memcmp(buffer1, buffer2, bytes)) {
@@ -116,6 +131,7 @@ int compare(char * buffer1, char * buffer2, int bytes)
     return 1;
 }
 
+/* write the progress of the test in percent to stderr */
 int progress(int tenpercentdone, int blocksdone, int blocks)
 {
     while ((blocksdone * 10)/blocks > tenpercentdone) {
@@ -155,7 +171,7 @@ int main(int argc, char ** argv)
                         }
                         i++;
                         blocks = atoi(argv[i]);
-                        if (blocks == 0) {
+                        if (blocks <= 0) {
                             help("invalid block count", argv[i]);
                         }
                     break;
@@ -164,8 +180,9 @@ int main(int argc, char ** argv)
                             help("timeout not specified", "");
                         }
                         i++;
-                        timeoutSecs = atoi(argv[i]);
-                        if (timeoutSecs == 0) {
+                        char * endptr;
+                        timeoutSecs = strtol(argv[i], &endptr, 10);
+                        if (endptr == argv[i] || timeoutSecs < 0) {
                             help("invalid timeout", argv[i]);
                         }
                     break;
@@ -199,7 +216,7 @@ int main(int argc, char ** argv)
         fd = open(device, O_WRONLY | O_DIRECT);
 
         if (fd < 0) {
-            fprintf(stderr, "could not open %s\n", device);
+            fprintf(stderr, "could not open %s, error: %s\n", device, strerror(errno));
             exit(-1);
         }
         fprintf(stderr, "writing:\n");
@@ -226,7 +243,7 @@ int main(int argc, char ** argv)
         fd = open(device, O_RDONLY | O_DIRECT);
 
         if (fd < 0) {
-            fprintf(stderr, "could not open %s\n", device);
+            fprintf(stderr, "could not open %s, error: %s\n", device, strerror(errno));
             exit(-1);
         }
         if (verify == true) {
@@ -238,7 +255,7 @@ int main(int argc, char ** argv)
         for (blocksdone = 0; blocksdone < blocks; blocksdone++) {
             err = lseek(fd, (int64_t)(blocksdone * BLOCKSIZE), 0);
             if (err < 0) {
-                fprintf(stderr, "could not seek to block %d\n", blocksdone);
+                fprintf(stderr, "could not seek to block %d, error: %s\n", blocksdone, strerror(errno));
                 break;
             }
             err = ioAttempt(
