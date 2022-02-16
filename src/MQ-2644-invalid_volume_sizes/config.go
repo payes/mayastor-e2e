@@ -1,7 +1,6 @@
 package MQ_2644_invalid_volume_sizes
 
 import (
-	"fmt"
 	storageV1 "k8s.io/api/storage/v1"
 	"mayastor-e2e/common"
 	"mayastor-e2e/common/e2e_config"
@@ -10,8 +9,6 @@ import (
 const (
 	defTimeoutSecs = 3600
 )
-
-var testNames []string
 
 type pvcConfig struct {
 	protocol       common.ShareProto
@@ -25,6 +22,7 @@ type pvcConfig struct {
 	pvcSizeMB      int
 	volumeCount    int
 	delayTime      int
+	testName       string
 }
 
 func generatePvc(testName string, replicas int, volSizeMB int) *pvcConfig {
@@ -38,10 +36,10 @@ func generatePvc(testName string, replicas int, volSizeMB int) *pvcConfig {
 		iterations:     params.Iterations,
 		replicas:       replicas,
 		scName:         testName + "-sc",
+		pvcName:        testName + "-pvc",
 		delayTime:      3,
 		volumeCount:    1,
+		testName:       testName,
 	}
-	c.pvcName = fmt.Sprintf("%s-pvc", testName)
-	testNames = append(testNames, testName)
 	return c
 }
