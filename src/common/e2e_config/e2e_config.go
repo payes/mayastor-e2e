@@ -272,7 +272,7 @@ type E2EConfig struct {
 	ScIscsiValidation struct {
 		VolMb               int    `yaml:"volMb" env-default:"1024"`
 		Replicas            int    `yaml:"replicas" env-default:"1"`
-		UnsupportedProtocol string `yaml:"unsupportedProtocol" env-default:"iSCSI"`
+		UnsupportedProtocol string `yaml:"unsupportedProtocol" env-default:"iscsi"`
 	} `yaml:"scIscsiValidation"`
 }
 

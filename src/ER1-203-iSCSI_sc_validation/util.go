@@ -21,7 +21,6 @@ func (c *ScIscsiValidationConfig) ScIscsiValidation() {
 	c.createPvc()
 	c.verifyVolumeCreationErrors()
 	c.deletePVC()
-	c.verifyVolumesDeletion()
 	c.deleteSc()
 }
 
@@ -72,42 +71,6 @@ func (c *ScIscsiValidationConfig) createPvc() *ScIscsiValidationConfig {
 	c.Uuid = string(pvc.UID)
 	c.PvName = pvc.Spec.VolumeName
 	return c
-}
-
-// verify deletion of pvc and corresponding msv
-func (c *ScIscsiValidationConfig) verifyVolumesDeletion() {
-	var status bool
-
-	// Wait for the PVC to be deleted.
-	Eventually(func() bool {
-		status, _ = k8stest.IsPVCDeleted(c.PvcName, common.NSDefault)
-		return status
-	},
-		defTimeoutSecs, // timeout
-		"1s",           // polling interval
-	).Should(Equal(true))
-
-	// Wait for the PV to be deleted.
-	Eventually(func() bool {
-		// This check is required here because it will check for pv name
-		// when pvc is in pending state at that time we will not
-		// get pv name inside pvc spec i.e pvc.Spec.VolumeName
-		if c.PvName != "" {
-			status, _ = k8stest.IsPVDeleted(c.PvName)
-			return status
-		}
-		return true
-	},
-		"360s", // timeout
-		"1s",   // polling interval
-	).Should(Equal(true))
-	// Wait for the MSV to be deleted.
-	Eventually(func() bool {
-		return k8stest.IsMsvDeleted(c.Uuid)
-	},
-		"360s", // timeout
-		"1s",   // polling interval
-	).Should(Equal(true))
 }
 
 // deletePVC will delete all pvc
