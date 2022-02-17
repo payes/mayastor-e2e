@@ -22,7 +22,8 @@ Options:
   --plan <test plan ID>  specify the test plan to receive the test runs
   --secure-file-path	 file path for k8s sealed secrets
   --test <name>          test_conductor test to run, steady_state, non_steady_state,
-                         non_steady_state_multi_vols, or replica_perturbation
+                         non_steady_state_multi_vols, replica_perturbation
+                         or replica_elimination
 or
   --remove               remove instead of deploy
 Examples:
@@ -64,7 +65,7 @@ while [ "$#" -gt 0 ]; do
     -t|--test)
       shift
       case $1 in
-            steady_state|non_steady_state|non_steady_state_multi_vols|replica_perturbation)
+            steady_state|non_steady_state|non_steady_state_multi_vols|replica_perturbation|replica_elimination)
                 TESTARG=$1
                 ;;
             *)

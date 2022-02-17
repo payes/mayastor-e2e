@@ -3,7 +3,6 @@ package tests
 import (
 	"fmt"
 	e2eagent "mayastor-e2e/common/e2e-agent"
-	"mayastor-e2e/tools/extended-test-framework/common/custom_resources"
 	"mayastor-e2e/tools/extended-test-framework/common/k8sclient"
 	"mayastor-e2e/tools/extended-test-framework/common/mini_mcp_client"
 	"strings"
@@ -16,37 +15,6 @@ import (
 
 	storageV1 "k8s.io/api/storage/v1"
 )
-
-const testName = "replica-perturbation"
-
-func getOnlyVolume(ms_ip string) (string, string, error) {
-	uuid, status, err := mini_mcp_client.GetOnlyVolume(ms_ip)
-	return uuid, status, err
-}
-
-func getVolumeStatus(ms_ip string, uuid string) (string, error) {
-	status, err := mini_mcp_client.GetVolumeStatus(ms_ip, uuid)
-	return status, err
-}
-
-func waitForVolumeStatus(ms_ip string, uuid string, wantedState string) error {
-	for i := 0; ; i++ {
-		state, err := getVolumeStatus(ms_ip, uuid)
-		if err != nil {
-			return fmt.Errorf("failed to get nexus state, error: %v", err)
-		}
-		if state == wantedState {
-			break
-		}
-		if i == 100 {
-			return fmt.Errorf("timed out waiting for nexus to be %s", wantedState)
-		}
-		logf.Log.Info("volume not ready", "current state", state, "wanted state", wantedState)
-		time.Sleep(10 * time.Second)
-	}
-	logf.Log.Info("volume now in wanted state", "state", wantedState)
-	return nil
-}
 
 func checkDeviceState(nodeIp string, poolDevice string, state string) error {
 	cmd := "cat /sys/block/" + poolDevice + "/device/state"
@@ -65,7 +33,7 @@ func setReplicas(ms_ip string, uuid string, replicas int) error {
 		return fmt.Errorf("failed to set replicas to %d, err: %v", replicas, err)
 	}
 	for i := 0; i < 100; i++ {
-		reps, err := mini_mcp_client.GetVolumeReplicas(ms_ip, uuid)
+		reps, err := mini_mcp_client.GetVolumeReplicaCount(ms_ip, uuid)
 		if err != nil {
 			return fmt.Errorf("failed to get replicas, err: %v", err)
 		}
@@ -78,92 +46,6 @@ func setReplicas(ms_ip string, uuid string, replicas int) error {
 	return fmt.Errorf("failed to set replicas to %d, timed out", replicas)
 }
 
-func offlineDevice(index int, nodecount int) (string, string, error) {
-	var err error
-	var nodeIp string
-	var poolDevice string
-
-	// list the pools
-	pools, err := custom_resources.ListMsPools()
-	if err != nil {
-		return nodeIp, poolDevice, fmt.Errorf("failed to list pools, err: %v", err)
-	}
-	if len(pools) < nodecount {
-		return nodeIp, poolDevice, fmt.Errorf("Expected %d ips, found %d", nodecount, len(pools))
-	}
-	for _, pool := range pools {
-		logf.Log.Info("pool", "name", pool.Name, "device", pool.Spec.Disks[0])
-	}
-
-	// get the node IPs
-	locs, err := k8sclient.GetNodeLocs()
-	if err != nil {
-		return nodeIp, poolDevice, fmt.Errorf("MSV grpc check failed to get nodes, err: %s", err.Error())
-	}
-	if len(locs) < nodecount {
-		return nodeIp, poolDevice, fmt.Errorf("Expected %d ips, found %d", nodecount, len(locs))
-	}
-	pool := pools[index]
-
-	for _, node := range locs {
-		if node.NodeName == pool.Spec.Node {
-			nodeIp = node.IPAddress
-			if len(pool.Spec.Disks) != 1 {
-				return nodeIp, poolDevice, fmt.Errorf("Unexpected number of disks, expected 1 found %d", len(pool.Spec.Disks))
-			}
-			poolDevice = pool.Spec.Disks[0]
-			if !strings.HasPrefix(poolDevice, "/dev/") {
-				return nodeIp, poolDevice, fmt.Errorf("Unexpected device path %s", poolDevice)
-			}
-			poolDevice = poolDevice[5:]
-			break
-		}
-	}
-	if nodeIp == "" {
-		return nodeIp, poolDevice, fmt.Errorf("Could not find node for pool %s", pool.Name)
-	}
-	// we need the IP address of a node and its pool
-	// a pool has spec.node, so we can find the node name
-	// GetNodeLocs includes the node name as well as the IPs
-
-	res, err := e2eagent.ControlDevice(nodeIp, poolDevice, "offline")
-	if err != nil {
-		return nodeIp, poolDevice, err
-	}
-	if err = checkDeviceState(nodeIp, poolDevice, "offline"); err != nil {
-		return nodeIp, poolDevice, err
-	}
-	logf.Log.Info("offline device succeeded", "device", poolDevice, "node", nodeIp, "response", res)
-
-	return nodeIp, poolDevice, err
-}
-
-func onlineDevice(nodeIp string, poolDevice string) error {
-	var err error
-
-	res, err := e2eagent.ControlDevice(nodeIp, poolDevice, "running")
-	if err != nil {
-		return err
-	}
-	if err = checkDeviceState(nodeIp, poolDevice, "running"); err != nil {
-		return err
-	}
-	logf.Log.Info("online device succeeded", "device", poolDevice, "response", res)
-	return err
-}
-
-func randomSleep() error {
-	sleepMinutesSet := []int{2, 5, 10, 30}
-	idx, err := EtfwRandom(uint32(len(sleepMinutesSet)))
-	if err != nil {
-		return err
-	}
-	sleepMins := sleepMinutesSet[idx]
-	logf.Log.Info("sleeping", "minutes", sleepMins)
-	time.Sleep(time.Duration(sleepMins) * time.Minute)
-	return err
-}
-
 func perturbVolume(
 	testConductor *tc.TestConductor,
 	sc_name string,
@@ -173,6 +55,7 @@ func perturbVolume(
 	var err error
 	var suffix string
 	const podDeletionTimeoutSecs = 120
+	const testName = "replica-perturbation"
 
 	msNodeIps, err := k8sclient.GetMayastorNodeIPs()
 	if err != nil {
@@ -230,11 +113,11 @@ func perturbVolume(
 		return fmt.Errorf("failed to inform workload monitor of %s, error: %v", fio_name, err)
 	}
 
-	var offlinedNodeIp string
 	var uuid string
 	var status string
 	var poolToAffect int
-	var poolDevice string
+	var devs []deviceDescriptor
+
 	for {
 		// While (test_not_failed) Loop:
 		if time.Now().After(endTime) {
@@ -255,16 +138,20 @@ func perturbVolume(
 		if testConductor.Config.ReplicaPerturbation.OfflineDeviceTest != 0 {
 			//  Select one Disk Pool (at “random”) as a victim
 			//  The selection algorithm used should feature a randomising element.
+
+			logf.Log.Info("======== offline single device test ========")
+
 			if poolToAffect, err = EtfwRandom(uint32(testConductor.Config.Msnodes)); err != nil {
 				break
 			}
 
-			logf.Log.Info("about to down a pool", "index", poolToAffect)
+			logf.Log.Info("about to offline a device", "index", poolToAffect)
 
 			//  Offline disk backing the pool
-			if offlinedNodeIp, poolDevice, err = offlineDevice(poolToAffect, testConductor.Config.Msnodes); err != nil {
+			if devs, err = offlineDevice(poolToAffect, testConductor.Config.Msnodes, devs); err != nil {
 				break
 			}
+
 			//  echo offline | sudo tee /sys/block/sdx/device/state
 			//  Wait for MSV state to become degraded
 			if err = waitForVolumeStatus(cpNodeIp, uuid, MCP_MSV_DEGRADED); err != nil {
@@ -272,11 +159,9 @@ func perturbVolume(
 			}
 
 			//  Online disk backing the pool
-			if err = onlineDevice(offlinedNodeIp, poolDevice); err != nil {
-				err = fmt.Errorf("failed to online device, error: %v", err)
+			if devs, err = restoreDevices(devs); err != nil {
 				break
 			}
-			offlinedNodeIp = ""
 			//  Wait for MSV state to become healthy
 			if err = waitForVolumeStatus(cpNodeIp, uuid, MCP_MSV_ONLINE); err != nil {
 				break
@@ -288,12 +173,14 @@ func perturbVolume(
 
 		if testConductor.Config.ReplicaPerturbation.OfflineDevAndReplicasTest != 0 {
 
+			logf.Log.Info("======== offline device and reduce replicas ========")
+
 			if poolToAffect, err = EtfwRandom(uint32(testConductor.Config.Msnodes)); err != nil {
 				break
 			}
 
-			// offline a pool
-			if offlinedNodeIp, poolDevice, err = offlineDevice(poolToAffect, testConductor.Config.Msnodes); err != nil {
+			// offline a device
+			if devs, err = offlineDevice(poolToAffect, testConductor.Config.Msnodes, devs); err != nil {
 				break
 			}
 
@@ -322,12 +209,10 @@ func perturbVolume(
 				break
 			}
 
-			// online the pool
-			if err = onlineDevice(offlinedNodeIp, poolDevice); err != nil {
-				err = fmt.Errorf("failed to online device, error: %v", err)
+			// online the device
+			if devs, err = restoreDevices(devs); err != nil {
 				break
 			}
-			offlinedNodeIp = ""
 
 			//  Wait for MSV state = healthy
 			if err = waitForVolumeStatus(cpNodeIp, uuid, MCP_MSV_ONLINE); err != nil {
@@ -338,9 +223,8 @@ func perturbVolume(
 			}
 		}
 	}
-	if offlinedNodeIp != "" {
-		_ = onlineDevice(offlinedNodeIp, poolDevice) // avoid breaking the node
-	}
+	_, _ = restoreDevices(devs) // avoid breaking the node on error
+
 	if locerr := tc.DeleteWorkload(testConductor.WorkloadMonitorClient, fio_name, k8sclient.NSDefault); locerr != nil {
 		err = CombineErrors(err, fmt.Errorf("Failed to delete application workloads, err %v", locerr))
 	}
