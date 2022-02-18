@@ -24,7 +24,7 @@ For example:
      xray_client_secret: MGT3YmIyNmY2OWU4NQ==
      slack_web_hook: aHRy9o29rcy5zbGckpy=
      jira_api_token: WlRjBiM0pBYldGNVlXUmhkR0VTFNGRjRTMW80Yl
-     #key: base64-value
+     #key: base64-value (all these values should be visible in our password manager or ask your colleagues)
    ```
 5. Further to generate encrypted sealed secret yaml file run command `kubeseal --format=yaml < <path-to-k8s-secret-file-step-4> > master.yaml`
 6. We have everything to build a cluster with secrets
