@@ -26,7 +26,7 @@ For example:
      jira_api_token: WlRjBiM0pBYldGNVlXUmhkR0VTFNGRjRTMW80Yl
      #key: base64-value (all these values should be visible in our password manager or ask your colleagues)
    ```
-5. Further to generate encrypted sealed secret yaml file run command `kubeseal --format=yaml < <path-to-k8s-secret-file-step-4> > selaed_secrets.yaml`
+5. Further to generate encrypted sealed secret yaml file run command `kubeseal --format=yaml < <path-to-k8s-secret-file-step-4> > sealed_secrets.yaml`
 6. We have everything to build a cluster with secrets
 
 ## Deployment
