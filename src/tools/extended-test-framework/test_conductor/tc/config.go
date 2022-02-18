@@ -55,6 +55,13 @@ type ExtendedTestConfig struct {
 		OfflineDeviceTest         int `yaml:"offlineDeviceTest" env-default:"0"`
 		OfflineDevAndReplicasTest int `yaml:"offlineDevAndReplicasTest" env-default:"0"`
 	} `yaml:"replicaPerturbation"`
+
+	SteadyStateExp struct {
+		Replicas        int `yaml:"replicas" env-default:"2"`
+		ThinkTime       int `yaml:"thinkTime" env-default:"500000"`
+		ThinkTimeBlocks int `yaml:"thinkTimeBlocks" env-default:"1000"`
+		VolumeSizeMb    int `yaml:"volumeSizeMb" env-default:"64"`
+	} `yaml:"steadyStateExp"`
 }
 
 var once sync.Once

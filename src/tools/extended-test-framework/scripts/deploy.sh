@@ -64,7 +64,7 @@ while [ "$#" -gt 0 ]; do
     -t|--test)
       shift
       case $1 in
-            steady_state|non_steady_state|non_steady_state_multi_vols|replica_perturbation)
+            steady_state|non_steady_state|non_steady_state_multi_vols|replica_perturbation|steady_state_exp)
                 TESTARG=$1
                 ;;
             *)
@@ -131,15 +131,15 @@ if [ "${OPERATION}" == "delete" ]; then
   kubectl delete -f ${DEPLOYDIR}/test_conductor/test_conductor.yaml
   kubectl delete -f ${DEPLOYDIR}/test_namespace.yaml
 else
-  kubectl create -f ${DEPLOYDIR}/test_namespace.yaml
+  # kubectl create -f ${DEPLOYDIR}/test_namespace.yaml
 
   tmpfile=$(mktemp /tmp/tmp.XXXX)
   PLAN=${PLANARG} envsubst < ${DEPLOYDIR}/test_director/config.yaml.template > $tmpfile
   kubectl create configmap td-config -n mayastor-e2e --from-file=config-local.yaml=${tmpfile}
   rm ${tmpfile}
-  kubectl create -f ${PATHARG}
-  kubectl create -f ${DEPLOYDIR}/test_director/controller.yaml
-  kubectl create -f ${DEPLOYDIR}/test_director/test_director_sealed_secret.yaml
+  # kubectl create -f ${PATHARG}
+  # kubectl create -f ${DEPLOYDIR}/test_director/controller.yaml
+  # kubectl create -f ${DEPLOYDIR}/test_director/test_director_sealed_secret.yaml
   kubectl create -f ${DEPLOYDIR}/test_director/test_director.yaml
 
   kubectl create configmap tc-config -n mayastor-e2e --from-file=${DEPLOYDIR}/test_conductor/${TESTARG}/config.yaml

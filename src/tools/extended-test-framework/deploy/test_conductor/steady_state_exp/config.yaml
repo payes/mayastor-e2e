@@ -1,0 +1,11 @@
+testName: "steady-state-exp"
+test: "MQ-EXP"
+e2eFioImage: ci-registry.mayastor-ci.mayadata.io/mayadata/e2e-fio
+msnodes: 3
+duration: 14d
+sendEvent: 1
+sendXrayTest: 0
+steadyState:
+  replicas: 2
+  volumeSizeMb: 9000
+
