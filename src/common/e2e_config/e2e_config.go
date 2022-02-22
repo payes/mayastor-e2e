@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
-	"runtime"
 	"strings"
 	"sync"
 
@@ -290,9 +289,9 @@ func GetConfig() E2EConfig {
 		if !haveE2ERootDir {
 			// try to work out the root directory of the mayastor-e2e repo so
 			// that configuration file loading will work
-			_, filename, _, ok := runtime.Caller(0)
-			if ok {
-				comps := strings.Split(filename, "/")
+			cwd, err := os.Getwd()
+			if err == nil {
+				comps := strings.Split(cwd, "/")
 				for ix, comp := range comps {
 					// Expect mayastor-e2e/src/...
 					if comp == "mayastor-e2e" && len(comps[ix:]) > 2 && comps[ix+1] == "src" {
