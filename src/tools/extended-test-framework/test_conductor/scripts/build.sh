@@ -1,12 +1,44 @@
 #!/usr/bin/env bash
 
-set -e pipefail
+set -euo pipefail
 
-ETFWTAG="latest"
+TAG="latest"
+
+help() {
+  cat <<EOF
+Usage: $0 [OPTIONS]
+
+Options:
+  --tag <name> 		tag to assign to built images
+Examples:
+  $0 --tag my_custom_tag
+EOF
+}
+
+# Parse arguments
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    -t|--tag)
+      shift
+      echo "building with tag $1"
+      TAG="$1"
+      ;;
+    -h)
+      help
+      exit 0
+      ;;
+    *)
+      echo "unrecognized parameter"
+      help
+      exit 1
+      ;;
+  esac
+  shift
+done
+
 
 build_img () {
 	APP=$1
-	TAG=$2
 	REGISTRY="ci-registry.mayastor-ci.mayadata.io"
 
 	mkdir -p ../docker
@@ -14,8 +46,8 @@ build_img () {
 	cp ../cmd/${APP}/${APP} .
 	cp ../cmd/${APP}/Dockerfile .
 
-	docker build -t ${REGISTRY}/mayadata/${APP}:${ETFWTAG} .
-	docker push ${REGISTRY}/mayadata/${APP}:${ETFWTAG}
+	docker build -t ${REGISTRY}/mayadata/${APP}:${TAG} .
+	docker push ${REGISTRY}/mayadata/${APP}:${TAG}
 
 	rm -Rf *
 	popd
@@ -27,7 +59,7 @@ build () {
 
 	pushd ../cmd/$1 && CGO_ENABLED=0 go build -a -installsuffix cgo && popd
 
-	build_img $1 $2
+	build_img $1
 }
 
 SCRIPT_DIR=$(dirname "$0")

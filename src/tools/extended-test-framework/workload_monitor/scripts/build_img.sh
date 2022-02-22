@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
 
-set -eux pipefail
+set -euo pipefail
 
 REGISTRY="ci-registry.mayastor-ci.mayadata.io"
 TAG="latest"
 APP="workload_monitor"
+
+if (( $# == 1 )); then
+        TAG=$1
+fi
 
 SCRIPT_DIR=$(dirname "$0")
 cd ${SCRIPT_DIR}
