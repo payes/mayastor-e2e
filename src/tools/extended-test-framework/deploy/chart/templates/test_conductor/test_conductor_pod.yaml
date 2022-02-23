@@ -8,19 +8,19 @@ metadata:
 spec:
   containers:
     - name: test-conductor
-      image: ci-registry.mayastor-ci.mayadata.io/mayadata/test_conductor_${TEST}:latest
+      image: {{ .Values.registry }}mayadata/test_conductor_{{ .Values.test }}:{{ .Values.tag }}
       imagePullPolicy: Always
       args:
-        - "/test_conductor_${TEST}"
+        - "/test_conductor_{{ .Values.test }}"
       env:
       - name: DURATION
-        value: ${DURATION}
+        value: {{ .Values.duration }}
       - name: RUNNAME
-        value: "${RUNNAME}"
+        value: "{{ .Values.name }}"
       - name: SENDXRAYTEST
-        value: "${SENDXRAYTEST}"
+        value: "{{ .Values.sendxraytest }}"
       - name: SENDEVENT
-        value: "${SENDEVENT}"
+        value: "{{ .Values.sendevent }}"
       ports:
         - containerPort: 8080
           protocol: "TCP"

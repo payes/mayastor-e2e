@@ -1,0 +1,61 @@
+kind: Pod
+apiVersion: v1
+metadata:
+  name: test-director
+  namespace: mayastor-e2e
+  labels:
+    app: test-director
+spec:
+  containers:
+    - name: test-director
+      image: {{ .Values.registry }}mayadata/test_director:{{ .Values.tag }}
+      imagePullPolicy: Always
+      args:
+        - "/test_director"
+      env:
+      - name: PORT
+        value: "8080"
+      - name: HOST
+        valueFrom:
+          fieldRef:
+            fieldPath: status.podIP
+      - name: XRAY_CLIENT_ID
+        valueFrom:
+          secretKeyRef:
+            name: test-director-secret
+            key: xray_client_id
+      - name: XRAY_CLIENT_SECRET
+        valueFrom:
+          secretKeyRef:
+            name: test-director-secret
+            key: xray_client_secret
+      - name: JIRA_API_TOKEN
+        valueFrom:
+          secretKeyRef:
+            name: test-director-secret
+            key: jira_api_token
+      - name: SLACK_WEB_HOOK
+        valueFrom:
+          secretKeyRef:
+            name: test-director-secret
+            key: slack_web_hook
+      ports:
+      - containerPort: 8080
+        protocol: "TCP"
+        name: test-dir
+      volumeMounts:
+      - name: td-config
+        mountPath: "/config/config-local.yaml"
+        subPath: "config-local.yaml"
+        readOnly: true
+  tolerations:
+  - key: openebs.io/role
+    value: mayastor-e2e
+    operator: "Equal"
+    effect: "NoExecute"
+  volumes:
+    - name: td-config
+      configMap:
+        name: td-config
+  restartPolicy: Never
+

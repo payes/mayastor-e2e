@@ -1,0 +1,13 @@
+# Default values for etfw.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+duration: 14d
+name: default
+plan: ""
+registry: ci-registry.mayastor-ci.mayadata.io/
+sendxraytest: 0
+sendevent: 0
+test: ""
+tag: latest
+

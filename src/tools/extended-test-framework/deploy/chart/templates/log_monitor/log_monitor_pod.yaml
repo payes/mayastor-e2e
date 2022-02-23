@@ -1,0 +1,13 @@
+kind: Pod
+apiVersion: v1
+metadata:
+  name: log-monitor
+  namespace: mayastor-e2e
+  labels:
+    app: log-monitor
+spec:
+  serviceAccountName: log-monitor
+  containers:
+    - name: log-monitor
+      image: {{ .Values.registry }}mayadata/log_monitor:{{ .Values.tag }}
+      imagePullPolicy: Always
