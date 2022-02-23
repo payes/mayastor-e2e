@@ -2,7 +2,8 @@
 
 set -e pipefail
 
-ETFWTAG="latest"
+#ETFWTAG="latest"
+ETFWTAG="exp"
 
 build_img () {
 	APP=$1

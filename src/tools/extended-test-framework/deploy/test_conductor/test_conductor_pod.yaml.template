@@ -8,7 +8,7 @@ metadata:
 spec:
   containers:
     - name: test-conductor
-      image: ci-registry.mayastor-ci.mayadata.io/mayadata/test_conductor_${TEST}:latest
+      image: ci-registry.mayastor-ci.mayadata.io/mayadata/test_conductor_${TEST}:exp
       imagePullPolicy: Always
       args:
         - "/test_conductor_${TEST}"
