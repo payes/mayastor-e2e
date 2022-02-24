@@ -2,7 +2,6 @@ package tests
 
 import (
 	"fmt"
-	"mayastor-e2e/common/k8stest"
 	"mayastor-e2e/common/mayastorclient"
 	"mayastor-e2e/tools/extended-test-framework/common/custom_resources"
 	"mayastor-e2e/tools/extended-test-framework/common/custom_resources/api/types/v1alpha1"
@@ -23,8 +22,6 @@ func PrimitivePoolDeletionTest(testConductor *tc.TestConductor) error {
 	if err = SendTestRunToDo(testConductor); err != nil {
 		return fmt.Errorf("failed to inform test director of test creation, error: %v", err)
 	}
-
-	duration, err := GetDuration(testConductor.Config.Duration)
 	if err != nil {
 		return fmt.Errorf("failed to parse duration %v", err)
 	}
@@ -44,10 +41,6 @@ func PrimitivePoolDeletionTest(testConductor *tc.TestConductor) error {
 			return err
 		}
 	}
-
-	// allow the test to run
-	logf.Log.Info("Running test", "duration (s)", duration.Seconds())
-	combinederr = MonitorCRs(testConductor, duration, "")
 
 	if err = tc.DeleteWorkloads(testConductor.WorkloadMonitorClient); err != nil {
 		logf.Log.Info("failed to delete all registered workloads", "error", err)
@@ -81,11 +74,12 @@ func primitivePoolDeletion(testConductor *tc.TestConductor) error {
 		}
 		var nodeAddrs []string
 		nodeAddrs = append(nodeAddrs, node.IPAddress)
+		// list mayastor pool via gRPC
 		mayastorPools, err := mayastorclient.ListPools(nodeAddrs)
 		if err != nil {
 			return fmt.Errorf("failed to list mayastor pools via gRPC, node: %v, error: %v", nodeAddrs, err)
 		}
-
+		//create replica on every pool via gRPC
 		for _, mayastorPool := range mayastorPools {
 			if err = mayastorclient.CreateReplica(node.IPAddress,
 				string(replicaUuid),
@@ -96,30 +90,37 @@ func primitivePoolDeletion(testConductor *tc.TestConductor) error {
 			replicaCount++
 		}
 	}
+
 	timeoutSec, err := time.ParseDuration(params.ReplicasTimeoutSecs)
 	if err != nil {
 		return fmt.Errorf("failed to parse timeout %s string , error: %v", params.ReplicasTimeoutSecs, err)
 	}
+	//
+	var replicas []mayastorclient.MayastorReplica
 	for ix := 0; ix < int(timeoutSec.Seconds())/sleepTimeSec; ix++ {
-		var replicas []mayastorclient.MayastorReplica
 		replicas, err = k8sclient.ListReplicasInCluster()
 		if err != nil {
-			logf.Log.Info("Failed to list msv", "error", err)
+			logf.Log.Info("Failed to list replicas in cluster", "error", err)
 		} else if len(replicas) == replicaCount {
 			break
 		}
 		time.Sleep(sleepTimeSec * time.Second)
 	}
 	if err != nil {
-		return fmt.Errorf("failed to match replica count to %d, error: %v", replicaCount, err)
+		return fmt.Errorf("failed to list replicas in cluster, error: %v", err)
+	} else if len(replicas) != replicaCount {
+		return fmt.Errorf("failed to match replica count,Expected Count: %d, Actual count: %d, error: %v",
+			replicaCount,
+			len(replicas),
+			err)
 	}
 
 	timeoutSec, err = time.ParseDuration(params.PoolUsageTimeoutSecs)
 	if err != nil {
 		return fmt.Errorf("failed to parse timeout %s string , error: %v", params.PoolUsageTimeoutSecs, err)
 	}
+	var poolUsage uint64
 	for ix := 0; ix < int(timeoutSec.Seconds())/sleepTimeSec; ix++ {
-		var poolUsage uint64
 		poolUsage, err = k8sclient.GetPoolUsageInCluster()
 		if err != nil {
 			logf.Log.Info("Failed to get pool usage", "error", err)
@@ -130,6 +131,11 @@ func primitivePoolDeletion(testConductor *tc.TestConductor) error {
 	}
 	if err != nil {
 		return fmt.Errorf("failed to get mayastor pool usage in cluster, error: %v", err)
+	} else if poolUsage != 0 {
+		return fmt.Errorf("failed to match pool usage,Expected pool usage: %d, Actual pool usage: %d, error: %v",
+			0,
+			poolUsage,
+			err)
 	}
 
 	timeoutSec, err = time.ParseDuration(params.PoolDeleteTimeoutSecs)
@@ -159,8 +165,8 @@ func primitivePoolDeletion(testConductor *tc.TestConductor) error {
 	if err != nil {
 		return fmt.Errorf("failed to parse timeout %s string , error: %v", params.PoolUsageTimeoutSecs, err)
 	}
+	var msp []v1alpha1.MayastorPool
 	for ix := 0; ix < int(timeoutSec.Seconds())/sleepTimeSec; ix++ {
-		var msp []v1alpha1.MayastorPool
 		msp, err = custom_resources.ListMsPools()
 		if err != nil {
 			logf.Log.Info("Failed to list pools", "error", err)
@@ -171,18 +177,29 @@ func primitivePoolDeletion(testConductor *tc.TestConductor) error {
 	}
 	if err != nil {
 		return fmt.Errorf("failed to list mayastor pools in cluster, error: %v", err)
+	} else if len(msp) != 0 {
+		return fmt.Errorf("failed to match mayastor pools in cluster, Expected count: %d, Actual count: %d, error: %v",
+			0,
+			len(msp),
+			err)
 	}
 
 	// Restart mayastor pods
-	err = k8stest.RestartMayastorPods(params.MayastorRestartTimeout)
+	err = k8sclient.RestartMayastorPods(params.MayastorRestartTimeout)
 	if err != nil {
 		return fmt.Errorf("failed to restart mayastor pods, error: %v", err)
 	}
-	err = k8stest.WaitForMCPPath(params.DefTimeoutSecs)
+	err = k8sclient.WaitForMCPPath(params.DefTimeoutSecs)
 	if err != nil {
 		return fmt.Errorf("failed to start mayastor control plane components, error: %v", err)
 	}
-	err = k8stest.WaitForMayastorSockets(k8stest.GetMayastorNodeIPAddresses(), params.DefTimeoutSecs)
+	ms_ips, err := k8sclient.GetMayastorNodeIPs()
+	if err != nil {
+		return fmt.Errorf("failed to get mayastor nodes ip, error: %v", err)
+	} else if len(ms_ips) == 0 {
+		return fmt.Errorf("no mayastor nodes found")
+	}
+	err = k8sclient.WaitForMayastorSockets(ms_ips, params.DefTimeoutSecs)
 	if err != nil {
 		return fmt.Errorf("failed to start socket to mayastor pod, error: %v", err)
 	}
@@ -216,7 +233,6 @@ func primitivePoolDeletion(testConductor *tc.TestConductor) error {
 		return fmt.Errorf("failed to parse timeout %s string , error: %v", params.PoolUsageTimeoutSecs, err)
 	}
 	for ix := 0; ix < int(timeoutSec.Seconds())/sleepTimeSec; ix++ {
-		var poolUsage uint64
 		poolUsage, err = k8sclient.GetPoolUsageInCluster()
 		if err != nil {
 			logf.Log.Info("Failed to get pool usage", "error", err)
@@ -227,6 +243,11 @@ func primitivePoolDeletion(testConductor *tc.TestConductor) error {
 	}
 	if err != nil {
 		return fmt.Errorf("failed to match mayastor pool usage to 0, error: %v", err)
+	} else if poolUsage != 0 {
+		return fmt.Errorf("failed to match pool usage,Expected pool usage: %d, Actual pool usage: %d, error: %v",
+			0,
+			poolUsage,
+			err)
 	}
 
 	timeoutSec, err = time.ParseDuration(params.ReplicasTimeoutSecs)
@@ -234,7 +255,6 @@ func primitivePoolDeletion(testConductor *tc.TestConductor) error {
 		return fmt.Errorf("failed to parse timeout %s string , error: %v", params.ReplicasTimeoutSecs, err)
 	}
 	for ix := 0; ix < int(timeoutSec.Seconds())/sleepTimeSec; ix++ {
-		var replicas []mayastorclient.MayastorReplica
 		replicas, err = k8sclient.ListReplicasInCluster()
 		if err != nil {
 			logf.Log.Info("Failed to list msv", "error", err)
@@ -245,6 +265,11 @@ func primitivePoolDeletion(testConductor *tc.TestConductor) error {
 	}
 	if err != nil {
 		return fmt.Errorf("failed to match replica count to 0, error: %v", err)
+	} else if len(replicas) != 0 {
+		return fmt.Errorf("failed to match replica count,Expected Count: %d, Actual count: %d, error: %v",
+			0,
+			len(replicas),
+			err)
 	}
 
 	msps, err := custom_resources.ListMsPools()

@@ -6,6 +6,8 @@ import (
 
 	"context"
 	"fmt"
+	"mayastor-e2e/tools/extended-test-framework/common"
+	"strings"
 	"time"
 
 	errors "github.com/pkg/errors"
@@ -432,4 +434,90 @@ func WaitForPodReady(podName string, namespace string) (*v1.Pod, error) {
 			}
 		}
 	}
+}
+
+// RestartMayastorPods shortcut to reinstalling mayastor, especially useful on platforms
+// like volterra, for example calling this function after patching the installation to
+// use different mayastor images, should allow us to have reasonable confidence that
+// mayastor has been restarted with those images.
+// Deletes all mayastor pods except for mayastor etcd pods,
+// then waits upto specified time for new pods to be provisioned
+// Simply deleting the pods and then waiting for daemonset ready checks do not work due to k8s latencies,
+// for example it has been observed the mayastor-csi pods are deemed ready
+// because they enter terminating state after we've checked for readiness
+// Caller must perform readiness checks after calling this function.
+func RestartMayastorPods(timeoutSecs int) error {
+	var err error
+	podApi := gKubeInt.CoreV1().Pods
+
+	podNames, err := listMayastorPods(nil)
+	if err != nil {
+		return err
+	}
+
+	logf.Log.Info("Restarting", "pods", podNames)
+	now := time.Now()
+	time.Sleep(1 * time.Second)
+	for _, podName := range podNames {
+		delErr := podApi(common.NSMayastor()).Delete(context.TODO(), podName, metaV1.DeleteOptions{})
+		if delErr != nil {
+			logf.Log.Info("Failed to delete", "pod", podName, "error", delErr)
+			err = delErr
+		} else {
+			logf.Log.Info("Deleted", "pod", podName)
+		}
+	}
+
+	if err != nil {
+		return err
+	}
+	var newPodNames []string
+	const sleepTime = 10
+	// Wait (with timeout) for all pods to have restarted
+	logf.Log.Info("Waiting for all pods to restart", "timeoutSecs", timeoutSecs)
+	for ix := 1; ix < (timeoutSecs+sleepTime-1)/sleepTime; ix++ {
+		time.Sleep(sleepTime * time.Second)
+		newPodNames, err = listMayastorPods(&now)
+		if err == nil {
+			logf.Log.Info("Restarted", "pods", newPodNames)
+			if len(newPodNames) >= len(podNames) {
+				logf.Log.Info("All pods have been restarted.")
+				return nil
+			}
+		}
+	}
+	logf.Log.Info("Restart pods failed", "oldpods", podNames, "newpods", newPodNames)
+	return fmt.Errorf("restart failed incomplete error=%v", err)
+}
+
+// List mayastor pod names, conditionally
+//  1) No timestamp - all mayastor pods
+//	2) With timestamp - all mayastor pods created after the timestamp which are Running.
+func listMayastorPods(timestamp *time.Time) ([]string, error) {
+	var podNames []string
+	podApi := gKubeInt.CoreV1().Pods
+	pods, err := podApi(common.NSMayastor()).List(context.TODO(), metaV1.ListOptions{})
+	if err != nil {
+		return podNames, err
+	}
+	for _, pod := range pods.Items {
+		if strings.HasPrefix(pod.Name, "mayastor-etcd") {
+			continue
+		}
+		// If timestamp != nil, then we return the list of pods which are both
+		//	1. running
+		//  2. created after the timestamp
+
+		if timestamp != nil {
+			if pod.Status.Phase != v1.PodRunning {
+				continue
+			}
+			cs := pod.GetCreationTimestamp()
+			if !cs.After(*timestamp) {
+				continue
+			}
+		}
+		podNames = append(podNames, pod.Name)
+	}
+	return podNames, nil
 }
