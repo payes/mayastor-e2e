@@ -2,8 +2,7 @@
 
 set -e pipefail
 
-#ETFWTAG="latest"
-ETFWTAG="exp"
+ETFWTAG="latest"
 
 build_img () {
 	APP=$1
@@ -38,6 +37,6 @@ pushd ${SCRIPT_DIR}
 build test_conductor_steady_state
 build test_conductor_non_steady_state
 build test_conductor_replica_perturbation
-build test_conductor_steady_state_exp
+build test_primitive_pool_deletion
 
 popd

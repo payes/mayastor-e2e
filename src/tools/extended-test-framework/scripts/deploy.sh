@@ -64,7 +64,7 @@ while [ "$#" -gt 0 ]; do
     -t|--test)
       shift
       case $1 in
-            steady_state|non_steady_state|non_steady_state_multi_vols|replica_perturbation|steady_state_exp)
+            steady_state|non_steady_state|non_steady_state_multi_vols|replica_perturbation|primitive_pool_deletion)
                 TESTARG=$1
                 ;;
             *)
