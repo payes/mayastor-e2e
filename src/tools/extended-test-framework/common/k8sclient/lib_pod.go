@@ -40,6 +40,14 @@ func IsPodRunning(podName string, nameSpace string) bool {
 	return pod.Status.Phase == v1.PodRunning
 }
 
+func IsPodFailed(podName string, nameSpace string) bool {
+	pod, err := gKubeInt.CoreV1().Pods(nameSpace).Get(context.TODO(), podName, metaV1.GetOptions{})
+	if err != nil {
+		return false
+	}
+	return pod.Status.Phase == v1.PodFailed
+}
+
 // NewPodBuilder returns new instance of Builder
 func NewPodBuilder() *PodBuilder {
 	return &PodBuilder{pod: &Pod{object: &corev1.Pod{}}}

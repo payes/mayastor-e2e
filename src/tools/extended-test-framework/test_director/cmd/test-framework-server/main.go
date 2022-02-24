@@ -34,13 +34,18 @@ func main() {
 		log.Fatalf("ParseConfig: %v", err)
 	}
 	logger.InitLogger(&cfg.Logger)
+	if os.Getenv("SLACK_NOTIFICATION") != "" {
+		cfg.Server.SlackNotification = false
+	} else {
+		cfg.Server.SlackNotification = true
+	}
 
 	swaggerSpec, err := loads.Embedded(restapi.SwaggerJSON, restapi.FlatSwaggerJSON)
 	if err != nil {
 		log.Fatalln(err)
 	}
 
-	handlers.InitEventCache()
+	handlers.InitEventCache(&cfg.Server)
 	handlers.InitTestPlanCache(&cfg.Server)
 	handlers.InitTestRunCache()
 

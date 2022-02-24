@@ -14,19 +14,28 @@ import (
 
 const gConfigFile = "/config.yaml"
 
+type ReplicaElimination struct {
+	FsVolume      int    `yaml:"fsvolume" env-default:"0"`
+	LocalVolume   int    `yaml:"localvolume" env-default:"0"`
+	Replicas      int    `yaml:"replicas" env-default:"3"`
+	Timeout       string `yaml:"timeout" env-default:"15m"`
+	VolumeSizeMb  int    `yaml:"volumeSizeMb" env-default:"512"`
+	BlocksToWrite int    `yaml:"blocksToWrite" env-default:"100000"`
+}
+
 // E2EConfig is a application configuration structure
 type ExtendedTestConfig struct {
 	RunName  string `yaml:"RunName" env-default:"unnamed" env:"RUNNAME"` // human-readable test instance name for logging
 	TestName string `yaml:"testName" env-default:"default"`              // selected test to run
 
 	// FIXME: handle empty poolDevice
-	PoolDevice   string `yaml:"poolDevice" env:"e2e_pool_device"`
-	E2eFioImage  string `yaml:"e2eFioImage" env-default:"mayadata/e2e-fio" env:"e2e_fio_image"`
-	XrayTestID   string `yaml:"test" env:"e2e_test"`
-	Msnodes      int    `yaml:"msnodes" env-default:"3" env:"e2e_msnodes"`
 	Duration     string `yaml:"duration" env-default:"60m" env:"DURATION"`
-	SendXrayTest int    `yaml:"sendXrayTest" env-default:"1" env:"SENDXRAYTEST"`
+	E2eFioImage  string `yaml:"e2eFioImage" env-default:"mayadata/e2e-fio" env:"e2e_fio_image"`
+	Msnodes      int    `yaml:"msnodes" env-default:"3" env:"e2e_msnodes"`
+	PoolDevice   string `yaml:"poolDevice" env:"e2e_pool_device"`
 	SendEvent    int    `yaml:"sendEvent" env-default:"1" env:"SENDEVENT"`
+	SendXrayTest int    `yaml:"sendXrayTest" env-default:"1" env:"SENDXRAYTEST"`
+	XrayTestID   string `yaml:"test" env:"e2e_test"`
 
 	// Individual Test parameters
 	SteadyState struct {
@@ -39,21 +48,21 @@ type ExtendedTestConfig struct {
 	NonSteadyState struct {
 		ConcurrentVols  int    `yaml:"concurrentvols" env-default:"1"`
 		Replicas        int    `yaml:"replicas" env-default:"2"`
-		Timeout         string `yaml:"timeout" env-default:"5m"`
 		ThinkTime       int    `yaml:"thinkTime" env-default:"500000"`
 		ThinkTimeBlocks int    `yaml:"thinkTimeBlocks" env-default:"1000"`
+		Timeout         string `yaml:"timeout" env-default:"5m"`
 		VolumeSizeMb    int    `yaml:"volumeSizeMb" env-default:"64"`
 	} `yaml:"nonSteadyState"`
 
 	ReplicaPerturbation struct {
-		Replicas                  int `yaml:"replicas" env-default:"3"`
-		ThinkTime                 int `yaml:"thinkTime" env-default:"500000"`
-		ThinkTimeBlocks           int `yaml:"thinkTimeBlocks" env-default:"1000"`
-		VolumeSizeMb              int `yaml:"volumeSizeMb" env-default:"512"`
 		FsVolume                  int `yaml:"fsvolume" env-default:"0"`
 		LocalVolume               int `yaml:"localvolume" env-default:"0"`
 		OfflineDeviceTest         int `yaml:"offlineDeviceTest" env-default:"0"`
 		OfflineDevAndReplicasTest int `yaml:"offlineDevAndReplicasTest" env-default:"0"`
+		Replicas                  int `yaml:"replicas" env-default:"3"`
+		ThinkTime                 int `yaml:"thinkTime" env-default:"500000"`
+		ThinkTimeBlocks           int `yaml:"thinkTimeBlocks" env-default:"1000"`
+		VolumeSizeMb              int `yaml:"volumeSizeMb" env-default:"512"`
 	} `yaml:"replicaPerturbation"`
 
 	PrimitivePoolDeletion struct {
@@ -67,6 +76,8 @@ type ExtendedTestConfig struct {
 		PoolListTimeoutSecs    string `yaml:"poolListTimeoutSecs" env-default:"360s"`
 		MayastorRestartTimeout int    `yaml:"mayastorRestartTimeout" env-default:"240"`
 	} `yaml:"primitivePoolDeletion"`
+
+	ReplicaElimination ReplicaElimination `yaml:"replicaElimination"`
 }
 
 var once sync.Once

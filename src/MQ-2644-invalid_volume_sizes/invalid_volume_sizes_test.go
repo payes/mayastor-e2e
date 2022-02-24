@@ -41,38 +41,33 @@ var _ = Describe("Test invalid volume sizes", func() {
 	})
 
 	It("should verify to not create pvc with negative size", func() {
-		testNames = nil
 		c := generatePvc("negative-size", 3, -1000)
 		c.pvcZeroOrNegativeSizeTest()
-		cleanUp()
+		deleteSC(c.scName)
 	})
 
 	It("should verify to not create pvc with zero size", func() {
-		testNames = nil
 		c := generatePvc("zero-size", 3, 0)
 		c.pvcZeroOrNegativeSizeTest()
-		cleanUp()
+		deleteSC(c.scName)
 	})
 
 	It("should verify to not create pvc bigger than pool", func() {
-		testNames = nil
 		c := generatePvc("bigger-than-pool", 3, 11000)
 		c.pvcInvalidSizeTest()
-		cleanUp()
+		cleanUp(c.testName)
 	})
 
 	It("should verify to not create pvc without enough space left all pools", func() {
-		testNames = nil
 		c := generatePvc("normal-size", 3, 8000)
 		c.pvcNormalFioTest()
 		c2 := generatePvc("bigger-than-remaining", 3, 8000)
 		c2.pvcInvalidSizeTest()
 		c.runAndDeleteFio()
-		cleanUp()
+		cleanUp(c.testName, c2.testName)
 	})
 
 	It("should verify to not create pvc without enough space left in one pool", func() {
-		testNames = nil
 		c := generatePvc("normal-size-3-replicas", 3, 1000)
 		c.pvcNormalFioTest()
 		c2 := generatePvc("normal-size-1-replica", 1, 5000)
@@ -81,6 +76,6 @@ var _ = Describe("Test invalid volume sizes", func() {
 		c3.pvcInvalidSizeTest()
 		c.runAndDeleteFio()
 		c2.runAndDeleteFio()
-		cleanUp()
+		cleanUp(c.testName, c2.testName, c3.testName)
 	})
 })

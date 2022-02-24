@@ -136,6 +136,11 @@ func primitiveMspDeletionTest() {
 	err = k8stest.WaitForMayastorSockets(k8stest.GetMayastorNodeIPAddresses(), defWaitTimeout)
 	Expect(err).ToNot(HaveOccurred(), "failed to start socket to mayastor pod")
 
+	// wait for mayastor nodes to be ready
+	nodeReady, err := k8stest.MayastorNodeReady(5, 180)
+	Expect(err).ToNot(HaveOccurred(), "%v", err)
+	Expect(nodeReady).To(Equal(true), "All mayastor instances are not online")
+
 	// Create mayastorpools
 	Eventually(func() error {
 		for _, pool := range pools {
