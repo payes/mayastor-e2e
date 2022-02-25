@@ -1,11 +1,5 @@
 #!/usr/bin/env groovy
 
-def job_params = [
-    [ $class: 'StringParameterValue',   name: "mayastorBranch",     value: "develop" ],
-    [ $class: 'StringParameterValue',   name: "mcpBranch",          value: "develop" ],
-    [ $class: 'BooleanParameterValue',  name: "build_images",       value: true ],
-]
-
 
 def Common() {
     def common = load "./pipelines/common2/common.groovy"
@@ -30,16 +24,17 @@ pipeline {
       cron(cron_schedule)
     }
     stages {
-        stage('build') {
+        stage('build image') {
             steps {
                 script {
-                   image_tag = 'develop-' + Common().GetTestTag()
-                   job_params.add([
-                        $class: 'StringParameterValue',
-                        name: "image_tag",
-                        value: image_tag
-                    ])
-                   build(
+                    image_tag = 'develop-' + Common().GetTestTag()
+                    def job_params = [
+                        [ $class: 'StringParameterValue',   name: "mayastorBranch",     value: "develop" ],
+                        [ $class: 'StringParameterValue',   name: "mcpBranch",          value: "develop" ],
+                        [ $class: 'BooleanParameterValue',  name: "build_images",       value: true ],
+                        [ $class: 'StringParameterValue',  name: "image_tag",    value: image_tag ]
+                    ]
+                    build(
                        job: "generic-system-test/develop",
                        propagate: true,
                        wait: true,
@@ -48,10 +43,57 @@ pipeline {
                 }
             }
         }
-        stage('k8s-1.21') {
+        stage('test image on k8s-1.21') {
             steps {
                 script {
                     println("image tag is ${image_tag}")
+                    def job_params = [
+                        [ $class: 'BooleanParameterValue', name: "build_images", value: false ],
+                        [ $class: 'StringParameterValue',  name: "image_tag",    value: image_tag ]
+                    ]
+                    // FIXME: change weekly to develop
+                    build(
+                       job: "ubuntu20-04-lts-k8s-1.21/weekly",
+                       propagate: false,
+                       wait: true,
+                       parameters: job_params
+                   )
+                }
+            }
+        }
+        stage('test image on k8s-1.22') {
+            steps {
+                script {
+                    println("image tag is ${image_tag}")
+                    def job_params = [
+                        [ $class: 'BooleanParameterValue', name: "build_images", value: false ],
+                        [ $class: 'StringParameterValue',  name: "image_tag",    value: image_tag ]
+                    ]
+                    // FIXME: change weekly to develop
+                    build(
+                       job: "ubuntu20-04-lts-k8s-1.22/weekly",
+                       propagate: false,
+                       wait: true,
+                       parameters: job_params
+                   )
+                }
+            }
+        }
+        stage('test image on k8s-1.23') {
+            steps {
+                script {
+                    println("image tag is ${image_tag}")
+                    def job_params = [
+                        [ $class: 'BooleanParameterValue', name: "build_images", value: false ],
+                        [ $class: 'StringParameterValue',  name: "image_tag",    value: image_tag ]
+                    ]
+                    // FIXME: change weekly to develop
+                    build(
+                       job: "ubuntu20-04-lts-k8s-1.23/weekly",
+                       propagate: false,
+                       wait: true,
+                       parameters: job_params
+                   )
                 }
             }
         }
