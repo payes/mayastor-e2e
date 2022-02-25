@@ -85,7 +85,7 @@ func primitivePoolDeletion(testConductor *tc.TestConductor) error {
 				string(replicaUuid),
 				uint64(params.ReplicaSize),
 				mayastorPool.Name); err != nil {
-				return fmt.Errorf("failed to create pool %s via gRPC, error: %v", mayastorPool.Name, err)
+				return fmt.Errorf("failed to create replica with uuid %s via gRPC, error: %v", string(replicaUuid), err)
 			}
 			replicaCount++
 		}
@@ -95,7 +95,6 @@ func primitivePoolDeletion(testConductor *tc.TestConductor) error {
 	if err != nil {
 		return fmt.Errorf("failed to parse timeout %s string , error: %v", params.ReplicasTimeoutSecs, err)
 	}
-	//
 	var replicas []mayastorclient.MayastorReplica
 	for ix := 0; ix < int(timeoutSec.Seconds())/sleepTimeSec; ix++ {
 		replicas, err = k8sclient.ListReplicasInCluster()
@@ -124,6 +123,54 @@ func primitivePoolDeletion(testConductor *tc.TestConductor) error {
 		poolUsage, err = k8sclient.GetPoolUsageInCluster()
 		if err != nil {
 			logf.Log.Info("Failed to get pool usage", "error", err)
+		} else if poolUsage != 0 {
+			break
+		}
+		time.Sleep(sleepTimeSec * time.Second)
+	}
+	if err != nil {
+		return fmt.Errorf("failed to get mayastor pool usage in cluster, error: %v", err)
+	} else if poolUsage == 0 {
+		return fmt.Errorf("failed to match pool usage,Expected pool usage: >=0, Actual pool usage: %d, error: %v",
+			poolUsage,
+			err)
+	}
+
+	// Remove replicas from cluster if exist
+	err = k8sclient.RmReplicasInCluster()
+	if err != nil {
+		return fmt.Errorf("failed to remove replicas from cluster , error: %v", err)
+	}
+	timeoutSec, err = time.ParseDuration(params.ReplicasTimeoutSecs)
+	if err != nil {
+		return fmt.Errorf("failed to parse timeout %s string , error: %v", params.ReplicasTimeoutSecs, err)
+	}
+	for ix := 0; ix < int(timeoutSec.Seconds())/sleepTimeSec; ix++ {
+		replicas, err = k8sclient.ListReplicasInCluster()
+		if err != nil {
+			logf.Log.Info("Failed to list replicas in cluster", "error", err)
+		} else if len(replicas) == 0 {
+			break
+		}
+		time.Sleep(sleepTimeSec * time.Second)
+	}
+	if err != nil {
+		return fmt.Errorf("failed to list replicas in cluster, error: %v", err)
+	} else if len(replicas) != 0 {
+		return fmt.Errorf("failed to match replica count,Expected Count: %d, Actual count: %d, error: %v",
+			0,
+			len(replicas),
+			err)
+	}
+
+	timeoutSec, err = time.ParseDuration(params.PoolUsageTimeoutSecs)
+	if err != nil {
+		return fmt.Errorf("failed to parse timeout %s string , error: %v", params.PoolUsageTimeoutSecs, err)
+	}
+	for ix := 0; ix < int(timeoutSec.Seconds())/sleepTimeSec; ix++ {
+		poolUsage, err = k8sclient.GetPoolUsageInCluster()
+		if err != nil {
+			logf.Log.Info("Failed to get pool usage", "error", err)
 		} else if poolUsage == 0 {
 			break
 		}
@@ -132,8 +179,7 @@ func primitivePoolDeletion(testConductor *tc.TestConductor) error {
 	if err != nil {
 		return fmt.Errorf("failed to get mayastor pool usage in cluster, error: %v", err)
 	} else if poolUsage != 0 {
-		return fmt.Errorf("failed to match pool usage,Expected pool usage: %d, Actual pool usage: %d, error: %v",
-			0,
+		return fmt.Errorf("failed to match pool usage,Expected pool usage: 0, Actual pool usage: %d, error: %v",
 			poolUsage,
 			err)
 	}
