@@ -428,6 +428,26 @@ func restoreDevices(devs []deviceDescriptor) ([]deviceDescriptor, error) {
 	return devs, nil
 }
 
+func RunTests(testConductor *tc.TestConductor) {
+	var err error
+	logf.Log.Info("selecting", "test", testConductor.Config.TestName)
+	switch testConductor.Config.TestName {
+	case "steady_state":
+		err = SteadyStateTest(testConductor)
+	case "non_steady_state":
+		err = NonSteadyStateTest(testConductor)
+	case "primitive_pool_deletion":
+		err = PrimitivePoolDeletionTest(testConductor)
+	case "replica_perturbation":
+		err = ReplicaPerturbationTest(testConductor)
+	case "replica_elimination":
+		err = ReplicaEliminationTest(testConductor)
+	default:
+		err = fmt.Errorf("Unknown test: %s", testConductor.Config.TestName)
+	}
+	SendTestRunFinished(testConductor, err)
+}
+
 func waitForVolumeStatus(ms_ip string, uuid string, wantedState string) error {
 	for i := 0; ; i++ {
 		state, err := getVolumeStatus(ms_ip, uuid)

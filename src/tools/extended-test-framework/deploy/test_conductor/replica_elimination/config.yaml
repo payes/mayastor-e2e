@@ -1,4 +1,4 @@
-testName: "replica-elimination"
+testName: "replica_elimination"
 test: "MQ-2746"
 e2eFioImage: ci-registry.mayastor-ci.mayadata.io/mayadata/e2e-fio
 msnodes: 3

@@ -1,4 +1,4 @@
-testName: "non-steady-state-multi-vols"
+testName: "non_steady_state"
 test: "MQ-2395"
 e2eFioImage: ci-registry.mayastor-ci.mayadata.io/mayadata/e2e-fio
 msnodes: 3

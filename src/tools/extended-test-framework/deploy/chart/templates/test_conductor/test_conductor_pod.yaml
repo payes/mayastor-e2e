@@ -8,10 +8,10 @@ metadata:
 spec:
   containers:
     - name: test-conductor
-      image: {{ .Values.registry }}mayadata/test_conductor_{{ .Values.test }}:{{ .Values.tag }}
+      image: {{ .Values.registry }}mayadata/test_conductor:{{ .Values.tag }}
       imagePullPolicy: Always
       args:
-        - "/test_conductor_{{ .Values.test }}"
+        - "/test_conductor"
       env:
       - name: DURATION
         value: {{ .Values.duration }}

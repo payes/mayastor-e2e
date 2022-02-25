@@ -19,8 +19,5 @@ func main() {
 		logf.Log.Info("failed to create test conductor", "error", err)
 		os.Exit(1)
 	}
-
-	test_err := tests.ReplicaPerturbationTest(testConductor)
-
-	tests.SendTestRunFinished(testConductor, test_err)
+	tests.RunTests(testConductor)
 }

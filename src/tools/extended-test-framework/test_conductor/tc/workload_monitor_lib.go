@@ -3,6 +3,7 @@ package tc
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -40,17 +41,26 @@ func AddWorkload(
 	workload_params.Rid = strfmt.UUID(tcpod.ObjectMeta.UID)
 	workload_params.Wid = strfmt.UUID(pod.ObjectMeta.UID)
 	workload_params.Body = &workload_spec
-	pPutWorkloadOk, err := client.WorkloadMonitor.PutWorkloadByRegistrant(workload_params)
 
-	if err != nil {
-		return fmt.Errorf("failed to put workload %v %v\n", err, pPutWorkloadOk)
-	} else {
-		logf.Log.Info("put workload",
-			"name", string(pPutWorkloadOk.Payload.Name),
-			"namespace", pPutWorkloadOk.Payload.Namespace,
-			"wid", pPutWorkloadOk.Payload.ID)
+	for i := 0; i < 5; i++ {
+		pPutWorkloadOk, err2 := client.WorkloadMonitor.PutWorkloadByRegistrant(workload_params)
+		err = err2
+		if err != nil {
+			logf.Log.Info("failed to put workload",
+				"error", err.Error(),
+				"name", string(pPutWorkloadOk.Payload.Name),
+				"namespace", pPutWorkloadOk.Payload.Namespace,
+				"wid", pPutWorkloadOk.Payload.ID)
+		} else {
+			logf.Log.Info("put workload",
+				"name", string(pPutWorkloadOk.Payload.Name),
+				"namespace", pPutWorkloadOk.Payload.Namespace,
+				"wid", pPutWorkloadOk.Payload.ID)
+			break
+		}
+		time.Sleep(10 * time.Second)
 	}
-	return nil
+	return err
 }
 
 func AddCommonWorkloads(client *client.Etfw, violations []models.WorkloadViolationEnum) error {
@@ -82,19 +92,27 @@ func AddCommonWorkloads(client *client.Etfw, violations []models.WorkloadViolati
 			workload_params.Rid = strfmt.UUID(tcpod.ObjectMeta.UID)
 			workload_params.Wid = strfmt.UUID(pod.ObjectMeta.UID)
 			workload_params.Body = &workload_spec
-			pPutWorkloadOk, err := client.WorkloadMonitor.PutWorkloadByRegistrant(workload_params)
-
-			if err != nil {
-				return fmt.Errorf("failed to put workload %v %v\n", err, pPutWorkloadOk)
-			} else {
-				logf.Log.Info("put workload",
-					"name", string(pPutWorkloadOk.Payload.Name),
-					"namespace", pPutWorkloadOk.Payload.Namespace,
-					"wid", pPutWorkloadOk.Payload.ID)
+			for i := 0; i < 5; i++ {
+				pPutWorkloadOk, err2 := client.WorkloadMonitor.PutWorkloadByRegistrant(workload_params)
+				err = err2
+				if err != nil {
+					logf.Log.Info("failed to put workload",
+						"error", err.Error(),
+						"name", string(pPutWorkloadOk.Payload.Name),
+						"namespace", pPutWorkloadOk.Payload.Namespace,
+						"wid", pPutWorkloadOk.Payload.ID)
+				} else {
+					logf.Log.Info("put workload",
+						"name", string(pPutWorkloadOk.Payload.Name),
+						"namespace", pPutWorkloadOk.Payload.Namespace,
+						"wid", pPutWorkloadOk.Payload.ID)
+					break
+				}
+				time.Sleep(10 * time.Second)
 			}
 		}
 	}
-	return nil
+	return err
 }
 
 func DeleteWorkload(client *client.Etfw, name string, namespace string) error {
