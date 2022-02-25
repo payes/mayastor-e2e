@@ -24,12 +24,8 @@ pipeline {
         stage('RunTestJob') {
             steps {
                 script {
-                    job_params = Ubuntu().GetDefaultJobParameters()
-                    job_params.add([
-                        [ $class: 'StringParameterValue',   name: "kubernetes_version", value: "1.22.3" ],
-                        [ $class: 'BooleanParameterValue',  name: "build_images",       value: params.build_images ],
-                        [ $class: 'StringParameterValue',   name: "image_tag",          value: params.image_tag ],
-                    ])
+                    // k8s version, build_images flag, image_tag
+                    job_params = Ubuntu().GetDefaultJobParameters( "1.22.3", params.build_images, params.image_tag)
                     Common().RunTestJob(job_params, "develop")
                 }
             }
