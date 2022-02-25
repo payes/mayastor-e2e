@@ -1,0 +1,59 @@
+#!/usr/bin/env groovy
+
+def job_params = [
+    [ $class: 'StringParameterValue',   name: "mayastorBranch",     value: "develop" ],
+    [ $class: 'StringParameterValue',   name: "mcpBranch",          value: "develop" ],
+    [ $class: 'BooleanParameterValue',  name: "build_images",       value: true ],
+]
+
+
+def Common() {
+    def common = load "./pipelines/common2/common.groovy"
+    return common
+}
+
+def image_tag = ""
+
+//The five time-and-date fields are as follows:
+//minute (0-59), hour (0-23, 0 = midnight), day (1-31), month (1-12), weekday (0-6, 0 = Sunday).
+// Daily => Monday to Friday. On Saturday and Sunday this pipeline will be
+// invoked by the weekend pipeline.
+String cron_schedule = "H 0 * * 6,0"
+
+pipeline {
+    agent any
+    options {
+      timeout(time: 12, unit: 'HOURS')
+      buildDiscarder(logRotator(numToKeepStr: '365', artifactNumToKeepStr: '365'))
+    }
+    triggers {
+      cron(cron_schedule)
+    }
+    stages {
+        stage('build') {
+            steps {
+                script {
+                   image_tag = 'develop-' + Common().GetTestTag()
+                   job_params.add([
+                        $class: 'StringParameterValue',
+                        name: "image_tag",
+                        value: image_tag
+                    ])
+                   build(
+                       job: "generic-system-test/develop",
+                       propagate: true,
+                       wait: true,
+                       parameters: job_params
+                   )
+                }
+            }
+        }
+        stage('k8s-1.21') {
+            steps {
+                script {
+                    println("image tag is ${image_tag}")
+                }
+            }
+        }
+    }
+}

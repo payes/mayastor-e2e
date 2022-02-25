@@ -1,0 +1,38 @@
+#!/usr/bin/env groovy
+
+def Common() {
+    def common = load "./pipelines/common2/common.groovy"
+    return common
+}
+
+def Ubuntu() {
+    def ubuntu = load "./pipelines/ubuntu-20.04-lts/ubuntu.groovy"
+    return ubuntu
+}
+
+pipeline {
+    agent any
+    options {
+      timeout(time: 7, unit: 'HOURS')
+      buildDiscarder(logRotator(numToKeepStr: '365', artifactNumToKeepStr: '365'))
+    }
+    parameters {
+        booleanParam(defaultValue: false, name: 'build_images', description: 'build images and then test.')
+        string(defaultValue: '', name: 'image_tag', trim: true, description: 'image tag, auto-generated if build_images is set and this field is empty')
+    }
+    stages {
+        stage('RunTestJob') {
+            steps {
+                script {
+                    job_params = Ubuntu().GetDefaultJobParameters()
+                    job_params.add([
+                        [ $class: 'StringParameterValue',   name: "kubernetes_version", value: "1.21.8" ],
+                        [ $class: 'BooleanParameterValue',  name: "build_images",       value: params.build_images ],
+                        [ $class: 'StringParameterValue',   name: "image_tag",          value: params.image_tag ],
+                    ])
+                    Common().RunTestJob(job_params, "develop")
+                }
+            }
+        }
+    }
+}
