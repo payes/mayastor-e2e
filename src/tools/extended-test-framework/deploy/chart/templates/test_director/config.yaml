@@ -1,7 +1,7 @@
 server:
   AppVersion: 1.0.0
   Mode: Development
-  DefaultTestPlan: ${PLAN}
+  DefaultTestPlan: {{ .Values.plan }}
 
 logger:
   ReportCaller: false

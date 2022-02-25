@@ -1,3 +1,4 @@
+---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -38,16 +39,3 @@ subjects:
     name: log-monitor
     namespace: mayastor-e2e
 ---
-kind: Pod
-apiVersion: v1
-metadata:
-  name: log-monitor
-  namespace: mayastor-e2e
-  labels:
-    app: log-monitor
-spec:
-  serviceAccountName: log-monitor
-  containers:
-    - name: log-monitor
-      image: ci-registry.mayastor-ci.mayadata.io/mayadata/log_monitor:latest
-      imagePullPolicy: Always

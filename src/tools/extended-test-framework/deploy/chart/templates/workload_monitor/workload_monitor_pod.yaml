@@ -1,0 +1,32 @@
+kind: Pod
+apiVersion: v1
+metadata:
+  name: workload-monitor
+  namespace: mayastor-e2e
+  labels:
+    app: workload-monitor
+spec:
+  containers:
+    - name: workload-monitor
+      image: {{ .Values.registry }}mayadata/workload_monitor:{{ .Values.tag }}
+      args:
+        - "/workload_monitor"
+      env:
+      - name: PORT
+        value: "8080"
+      - name: HOST
+        valueFrom:
+          fieldRef:
+            fieldPath: status.podIP
+      ports:
+        - containerPort: 8080
+          protocol: "TCP"
+          name: test-monitor
+  tolerations:
+  - key: openebs.io/role
+    value: mayastor-e2e
+    operator: "Equal"
+    effect: "NoExecute"
+  restartPolicy: Never
+  serviceAccountName: workload-monitor-sa
+
