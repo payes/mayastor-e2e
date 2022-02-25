@@ -57,13 +57,6 @@ basicVolumeIO:
 multiVolumesPodIO:
   replicas: 1
   volumeSizeMb: 64
-maximumVolsIO:
-  # 4 volumes
-  volMb: 64
-  volumeCountPerPod: 2
-  podCount: 2
-  duration: 30s
-  timeout:  600s
 pvcReadWriteOnce:
   # timeout units are seconds
   fioTimeout: 20

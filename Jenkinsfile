@@ -97,11 +97,6 @@ pipeline {
               script {
                 common = load "./pipelines/common/common.groovy"
                 common.DestroyCluster(e2e_destroy_cluster_job, k8s_job)
-                if (xray_send_report == true) {
-                  // xray_send_report alters the report artifacts
-                  // so should run after archiveArtifacts and junit
-                  common.SendXrayReport(xray_self_ci_testplan, e2e_image_tag, e2e_reports_dir)
-                }
               }
             }// always
           }//post

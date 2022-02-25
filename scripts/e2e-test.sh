@@ -279,7 +279,6 @@ else
     coveragedir="$coveragedir/$session"
 fi
 
-
 if [ -z "$mayastor_root_dir" ]; then
     mkdir -p "$sessiondir"
     export mayastor_root_dir="$ARTIFACTSDIR/install-bundle/$tag"
@@ -353,6 +352,8 @@ mkdir -p "$sessiondir"
 mkdir -p "$reportsdir"
 mkdir -p "$logsdir"
 
+kubectl get nodes -o yaml > "$reportsdir/k8s_nodes.yaml"
+
 test_failed=0
 
 # Generate gRPC server and client code from mayastor.proto file
@@ -365,7 +366,7 @@ if [ -n "$grpc_code_gen" -a "$grpc_code_gen"="true" ]; then
   echo "Command to execute in nix shell: $cmd"
   nix-shell --run "$cmd" ./ci.nix
   # Copy mayastor_grpc.pb.go and mayastor.pb.go to /src/common/mayastorclient/protobuf
-  cp "$path/mayastor_grpc.pb.go" "$path/mayastor.pb.go" ./src/common/mayastorclient/protobuf 
+  cp "$path/mayastor_grpc.pb.go" "$path/mayastor.pb.go" ./src/common/mayastorclient/protobuf
 fi
 
 # Generate CR client code from mayastorpoolcrd.yaml file
@@ -378,6 +379,7 @@ if [ -n "$crd_code_gen" -a "$crd_code_gen"="true" ]; then
 fi
 
 # Run go test in directory specified as $1 (relative path)
+# maximum test runtime is 120 minutes
 function runGoTest {
     pushd "$TESTDIR"
     echo "Running go test in $PWD/\"$1\""
@@ -388,7 +390,8 @@ function runGoTest {
     fi
 
     cd "$1"
-    if ! go test -v . -ginkgo.v -ginkgo.progress -timeout 0; then
+    # timeout test run after 3 hours
+    if ! go test -v . -ginkgo.v -ginkgo.progress -timeout 120m; then
         popd
         return 1
     fi

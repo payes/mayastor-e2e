@@ -1,0 +1,562 @@
+#!/usr/bin/env groovy
+
+import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.TimeUnit
+
+// On-demand E2E infra configuration
+// https://mayadata.atlassian.net/wiki/spaces/MS/pages/247332965/Test+infrastructure#On-Demand-E2E-K8S-Clusters
+
+
+def e2e_params = [
+    // Tests Queue
+    tests_queue : [] as LinkedBlockingQueue,
+    // Failed Tests Queue
+    failed_tests_queue : [] as LinkedBlockingQueue,
+    // Passed Tests Queue
+    passed_tests_queue : [] as LinkedBlockingQueue,
+    // Artifacts stash name queue
+    artefacts_stash_queue : [] as LinkedBlockingQueue,
+    // Junit stash name queue
+    junit_stash_queue : [] as LinkedBlockingQueue,
+
+    // Jenkins job to build cluster
+    e2e_build_cluster_job : 'k8s-build-cluster',
+    // Jenkins job to destroy cluster
+    e2e_destroy_cluster_job : 'k8s-destroy-cluster',
+    // Environment to run e2e test in (job param of e2e_build_cluster_job)
+    e2e_environment : "hcloud-kubeadm",
+    //Kubernetes version
+    kubernetes_version : '',
+
+    // Mayastor image tag - image tag for testing.
+    e2e_image_tag : '',
+
+    // reports directory
+    e2e_reports_dir : 'artifacts/reports/',
+    // Test profile
+    e2e_test_profile : '',
+    // Alternatively list of tests separated by spaces
+    e2e_tests : '',
+
+    // Xray: send report
+    xray_send_report : false,
+    // Xray: test plan
+    xray_test_plan : '',
+
+    dockerhub_tag: '',
+
+    mayastorBranch: '',
+    mcpBranch: '',
+
+    mayastorCommitOrTag: '',
+    mcpCommitOrTag: '',
+
+    build_flags: ''
+]
+
+def max_parallel_stages = 0
+
+// Environment to run e2e test in (job param of $e2e_build_cluster_job)
+def e2e_environment = e2e_params['e2e_environment']
+
+def Common() {
+    def common = load "./pipelines/common2/common.groovy"
+    return common
+}
+
+pipeline {
+  agent none
+  options {
+    timeout(time: 23, unit: 'HOURS')
+    buildDiscarder(logRotator(numToKeepStr: '100', artifactNumToKeepStr: '20'))
+  }
+  parameters {
+    booleanParam(defaultValue: false, name: 'build_images', description: 'build mayastor images, one of mayastorBranch or mayastorCommitOrTag and one of mcpBranch or mcpCommitOrTag must be set.')
+    booleanParam(defaultValue: false, name: 'coverage', description: 'if true, builds are coverage enabled and the coverage stage is run')
+    string(defaultValue: "", name: 'build_prefix', trim: true, description: 'prefix for auto-generated image tags')
+    string(defaultValue: '', name: 'image_tag', trim: true, description: 'image tag, auto-generated if build_images is set and this field is empty')
+    string(defaultValue: e2e_params["mayastorBranch"], name: 'mayastorBranch', trim: true, description: 'mayastor source branch')
+    string(defaultValue: e2e_params["mayastorCommitOrTag"], name: 'mayastorCommitOrTag', trim: true, description: 'mayastor source branch git commit id or tag, if empty branch HEAD is used.')
+    string(defaultValue: e2e_params["mcpBranch"], name: 'mcpBranch', trim: true, description: 'mayastor control plane source branch')
+    string(defaultValue: e2e_params["mcpCommitOrTag"], name: 'mcpCommitOrTag', trim: true, description: 'mayastor control plane source branch git commit id or tag, if empty branch HEAD is used.')
+    string(defaultValue: e2e_params["kubernetes_version"], name: 'kubernetes_version', trim: true, description: 'kubernetes version')
+    choice(choices: ['hcloud'], name: 'test_platform', description: 'test platform')
+    choice(choices: ['1','2','3','4', '5', '6', '7', '8', '9', '10'], name: 'parallelism', description: 'number of parallel testing stages')
+    string(defaultValue: '', name: 'test_profile', description: 'test profile')
+    string(defaultValue: '', name: 'list_of_tests', description: 'explicit list of tests, separated by spaces. Do not use if test_profile is set')
+    booleanParam(defaultValue: false, name: 'xray_send_report', description: 'send xray_report')
+    string(defaultValue: e2e_params["xray_test_plan"], name: 'xray_test_plan', trim: true, description: 'name of the testplan in xray for e.g. MQ-2184')
+    booleanParam(defaultValue: false, name: 'push2dockerhub', description: 'push images to dockerhub')
+    string(defaultValue: e2e_params["dockerhub_tag"], name: 'dockerhub_tag', trim: true, description: 'tag for push images to dockerhub')
+    booleanParam(defaultValue: false, name: 'xrayhtmlreport', description: 'if true, run xray html report stage')
+  }
+  stages {
+    stage('validate parameters') {
+      agent any
+      steps {
+        script {
+            common = Common()
+            e2e_params['e2e_image_tag'] = params.image_tag
+            if (params.image_tag == '' && params.build_images == true) {
+                if ( params.build_prefix != "") {
+                    e2e_params['e2e_image_tag'] = params.build_prefix + '-' + common.GetTestTag()
+                } else {
+                    e2e_params['e2e_image_tag'] = common.GetTestTag()
+                }
+            }
+            if (params.coverage == true) {
+                e2e_params['build_flags'] = e2e_params['build_flags'] + '--coverage'
+            }
+
+            if (params.test_profile != '' && params.list_of_tests != '') {
+                error('Unhandled: both test_profile and list_of_tests are set')
+            }
+
+            e2e_params['e2e_tests'] = params.list_of_tests
+            e2e_params['e2e_test_profile'] = params.test_profile
+            e2e_params['mayastorBranch'] = params.mayastorBranch
+            e2e_params['mayastorCommitOrTag'] = params.mayastorCommitOrTag
+            e2e_params['mcpBranch'] = params.mcpBranch
+            e2e_params['mcpCommitOrTag'] = params.mcpCommitOrTag
+            e2e_params['dockerhub_tag'] = params.dockerhub_tag
+            e2e_params['xray_send_report'] = params.xray_send_report
+            e2e_params['xray_test_plan'] = params.xray_test_plan
+            e2e_params['kubernetes_version'] = params.kubernetes_version
+            e2e_params['test_platform'] = test_platform
+
+            if (e2e_params['xray_test_plan'] == "" &&  params.xrayhtmlreport == true ) {
+                // no xray test plan for html report to off
+                params.xrayhtmlreport = false
+                println "xray test plan is not set: xray html report was disabled"
+            }
+            common.PrettyPrintMap("params", params)
+            common.PrettyPrintMap("e2e_params", e2e_params)
+
+            // Checks
+            if (e2e_params['e2e_image_tag'] == "" ) {
+                error("Unknown build for test, one of build_image or image_tag must be set")
+            }
+
+            // KISS: only push images to dockerhub built as part of this job
+            if (params.build_images == false && params.push2dockerhub == true) {
+                println("Will not publish images to dockerhub not built as part of this job")
+                params.push2dockerhub = false
+            }
+            // can only push images to dockerhub if publish tag is specified
+            if (params.push2dockerhub == true && e2e_params['dockerhub_tag'] == "" ) {
+                error("Cannot push to docker hub with empty dockerhub_tag")
+            }
+            // publish tag is specified but no publish action
+            if (params.dockerhub_tag != "" && params.push2dockerhub == false) {
+                error('dockerhub tag specified but push2dockerhub is false')
+            }
+
+            // can only build mayastor if branch/commit/tag is specified
+            if (params.build_images == true
+                    && e2e_params['mayastorBranch'] == ""
+                    && e2e_params['mayastorCommitOrTag'] == "" ) {
+                    error("Cannot build mayastor with empty mayastorBranch and mayastorCommitOrTag")
+            }
+            // can only build mayastor control plane if branch/commit/tag is specified
+            if (params.build_images == true
+                    && e2e_params['mcpBranch'] == ""
+                    && e2e_params["mcpCommitOrTag"] == "" ) {
+                    error("Cannot build mayastor control plane with empty mcpBranch and mcpCommitOrTag")
+            }
+
+            // kubernetes version must be specified if running tests
+            if ((params.test_profile != "" || params.list_of_tests != "" )
+                    && e2e_params['kubernetes_version'] == "" ) {
+                error("kubernetes_version must be set")
+            }
+            // can only send xray report if xray test plan is specified
+            if (e2e_params["xray_send_report"] == true && e2e_params['xray_test_plan'] == "" ) {
+                error("Cannot send xray report with empty xray_test_plan")
+            }
+
+            max_parallel_stages = params.parallelism.toInteger()
+            // Make it easy to find the tag of image tag
+            println("Image tag is ${e2e_params['e2e_image_tag']}")
+        }
+      }
+    }
+    stage('build docker images') {
+      agent { label 'nixos-mayastor' }
+      when {
+            expression { return params.build_images == true; }
+      }
+      steps {
+        script {
+          // Common functions use e2e_image-tag so set that up
+          // as the test tag
+          e2e_params['test_tag'] = e2e_params['e2e_image_tag']
+          Common().BuildImages2(e2e_params)
+        }
+      }
+      post {
+        // Always remove all docker images because they are usually used just once
+        // and underlaying pkgs are already cached by nix so they can be easily
+        // recreated.
+        always {
+          sh 'docker image prune --all --force'
+        }
+      }
+    }//stage build docker images
+    stage('push images to Docker Hub') {
+      agent { label 'nixos-mayastor' }
+      when {
+            expression { params.push2dockerhub == true }
+      }
+      steps {
+          println("push images to docker with tag ${dockerhub_tag}")
+        catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+            script{
+                def src_tag = e2e_params['e2e_image_tag']
+                def dockerhub_tag = e2e_params['dockerhub_tag']
+                withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
+                    sh 'echo $PASSWORD | docker login -u $USERNAME --password-stdin'
+                }
+                sh "./scripts/re-tag-images.sh --src-tag ${src_tag} --alias-tag ${dockerhub_tag} --registry dockerhub"
+            }
+        }
+      }
+      post {
+          always {
+              catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                sh 'docker logout'
+                sh 'docker image prune --all --force'
+              }
+          }
+      }
+    }//stage 'push images'
+    stage('build tests queue')  {
+        agent { label 'nixos' }
+        steps {
+            script {
+                Common().PopulateTestQueue(e2e_params)
+                if (e2e_params['tests_queue'].size() < max_parallel_stages) {
+                    max_parallel_stages = e2e_params['tests_queue'].size()
+                    println("max_parallel_stages=${max_parallel_stages}")
+                }
+            }
+        }
+    }
+    stage('test') {
+        parallel {
+            stage('part1') {
+                agent { label 'nixos' }
+                environment {
+                    KUBECONFIG = "${env.WORKSPACE}/${e2e_environment}/modules/k8s/secrets/admin.conf"
+                    RUN_UUID = UUID.randomUUID().toString()
+                }
+                when {
+                    expression { return 1 <= max_parallel_stages }
+                }
+                steps {
+                    script {
+                            Common().RunParallelStage(e2e_params)
+                    }
+                }
+                post {
+                    always {
+                        script {
+                            Common().PostParallelStage(e2e_params, "${RUN_UUID}")
+                        }
+                    }
+                }//post
+            }//stage 'part1'
+
+            stage('part2') {
+                agent { label 'nixos' }
+                environment {
+                    KUBECONFIG = "${env.WORKSPACE}/${e2e_environment}/modules/k8s/secrets/admin.conf"
+                    RUN_UUID = UUID.randomUUID().toString()
+                }
+                when {
+                    expression { return 2 <= max_parallel_stages }
+                }
+                steps {
+                    script {
+                            Common().RunParallelStage(e2e_params)
+                    }
+                }
+                post {
+                    always {
+                        script {
+                            Common().PostParallelStage(e2e_params, "${RUN_UUID}")
+                        }
+                    }
+                }//post
+            }//stage 'part2'
+
+            stage('part3') {
+                agent { label 'nixos' }
+                environment {
+                    KUBECONFIG = "${env.WORKSPACE}/${e2e_environment}/modules/k8s/secrets/admin.conf"
+                    RUN_UUID = UUID.randomUUID().toString()
+                }
+                when {
+                    expression { return 3 <= max_parallel_stages }
+                }
+                steps {
+                    script {
+                            Common().RunParallelStage(e2e_params)
+                    }
+                }
+                post {
+                    always {
+                        script {
+                            Common().PostParallelStage(e2e_params, "${RUN_UUID}")
+                        }
+                    }
+                }//post
+            }//stage 'part3'
+
+            stage('part4') {
+                agent { label 'nixos' }
+                environment {
+                    KUBECONFIG = "${env.WORKSPACE}/${e2e_environment}/modules/k8s/secrets/admin.conf"
+                    RUN_UUID = UUID.randomUUID().toString()
+                }
+                when {
+                    expression { return 4 <= max_parallel_stages }
+                }
+                steps {
+                    script {
+                            Common().RunParallelStage(e2e_params)
+                    }
+                }
+                post {
+                    always {
+                        script {
+                            Common().PostParallelStage(e2e_params, "${RUN_UUID}")
+                        }
+                    }
+                }//post
+            }//stage 'part4'
+
+            stage('part5') {
+                agent { label 'nixos' }
+                environment {
+                    KUBECONFIG = "${env.WORKSPACE}/${e2e_environment}/modules/k8s/secrets/admin.conf"
+                    RUN_UUID = UUID.randomUUID().toString()
+                }
+                when {
+                    expression { return 5 <= max_parallel_stages }
+                }
+                steps {
+                    script {
+                            Common().RunParallelStage(e2e_params)
+                    }
+                }
+                post {
+                    always {
+                        script {
+                            Common().PostParallelStage(e2e_params, "${RUN_UUID}")
+                        }
+                    }
+                }//post
+            }//stage 'part5'
+
+            stage('part6') {
+                agent { label 'nixos' }
+                environment {
+                    KUBECONFIG = "${env.WORKSPACE}/${e2e_environment}/modules/k8s/secrets/admin.conf"
+                    RUN_UUID = UUID.randomUUID().toString()
+                }
+                when {
+                    expression { return 6 <= max_parallel_stages }
+                }
+                steps {
+                    script {
+                            Common().RunParallelStage(e2e_params)
+                    }
+                }
+                post {
+                    always {
+                        script {
+                            Common().PostParallelStage(e2e_params, "${RUN_UUID}")
+                        }
+                    }
+                }//post
+            }//stage 'part6'
+
+            stage('part7') {
+                agent { label 'nixos' }
+                environment {
+                    KUBECONFIG = "${env.WORKSPACE}/${e2e_environment}/modules/k8s/secrets/admin.conf"
+                    RUN_UUID = UUID.randomUUID().toString()
+                }
+                when {
+                    expression { return 7 <= max_parallel_stages }
+                }
+                steps {
+                    script {
+                            Common().RunParallelStage(e2e_params)
+                    }
+                }
+                post {
+                    always {
+                        script {
+                            Common().PostParallelStage(e2e_params, "${RUN_UUID}")
+                        }
+                    }
+                }//post
+            }//stage 'part7'
+
+            stage('part8') {
+                agent { label 'nixos' }
+                environment {
+                    KUBECONFIG = "${env.WORKSPACE}/${e2e_environment}/modules/k8s/secrets/admin.conf"
+                    RUN_UUID = UUID.randomUUID().toString()
+                }
+                when {
+                    expression { return 8 <= max_parallel_stages }
+                }
+                steps {
+                    script {
+                            Common().RunParallelStage(e2e_params)
+                    }
+                }
+                post {
+                    always {
+                        script {
+                            Common().PostParallelStage(e2e_params, "${RUN_UUID}")
+                        }
+                    }
+                }//post
+            }//stage 'part8'
+
+            stage('part9') {
+                agent { label 'nixos' }
+                environment {
+                    KUBECONFIG = "${env.WORKSPACE}/${e2e_environment}/modules/k8s/secrets/admin.conf"
+                    RUN_UUID = UUID.randomUUID().toString()
+                }
+                when {
+                    expression { return 9 <= max_parallel_stages }
+                }
+                steps {
+                    script {
+                            Common().RunParallelStage(e2e_params)
+                    }
+                }
+                post {
+                    always {
+                        script {
+                            Common().PostParallelStage(e2e_params, "${RUN_UUID}")
+                        }
+                    }
+                }//post
+            }//stage 'part9'
+
+            stage('part10') {
+                agent { label 'nixos' }
+                environment {
+                    KUBECONFIG = "${env.WORKSPACE}/${e2e_environment}/modules/k8s/secrets/admin.conf"
+                    RUN_UUID = UUID.randomUUID().toString()
+                }
+                when {
+                    expression { return 10 <= max_parallel_stages }
+                }
+                steps {
+                    script {
+                            Common().RunParallelStage(e2e_params)
+                    }
+                }
+                post {
+                    always {
+                        script {
+                            Common().PostParallelStage(e2e_params, "${RUN_UUID}")
+                        }
+                    }
+                }//post
+            }//stage 'part10'
+
+        }//parallel
+    }
+    stage('coverage report') {
+        agent { label 'nixos' }
+        when {
+            expression { return params.coverage == true; }
+        }
+        steps {
+            script{
+                Common().CoverageReport(e2e_params)
+            }
+        }
+    }//coverage report
+    stage('handle junit results'){
+        agent { label 'nixos' }
+        steps {
+            catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                script{
+                    Common().ParallelJunit(e2e_params)
+                }
+            }
+        }
+    }
+    stage('xray html report'){
+        agent { label 'nixos' }
+        when {
+            expression { return params.xrayhtmlreport == true; }
+        }
+        steps {
+            catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                script {
+                    def xray_test_plan = e2e_params['xray_test_plan']
+                    def xray_project = xray_test_plan.split('-')[0]
+                    withCredentials([string(credentialsId: 'XRAY_CLIENT_ID', variable: 'XRAY_CLIENT_ID')]) {
+                        withCredentials([string(credentialsId: 'XRAY_CLIENT_SECRET', variable: 'XRAY_CLIENT_SECRET')]) {
+                        cmd = "./scripts/xray-report.py --collect ${xray_test_plan} --project ${xray_project}"
+                        sh "nix-shell --run '${cmd}'"
+                        }
+                    }
+                    def files = sh(script: "find artifacts/ -type f", returnStdout: true).split()
+                    if (files.size() != 0) {
+                        def artefacts_stash_queue = e2e_params['artefacts_stash_queue']
+                        def stash_name = "xray-report"
+                        stash includes: 'artifacts/**/**', name: stash_name
+                        artefacts_stash_queue.add(stash_name)
+                    } else {
+                        println "no files to archive"
+                    }
+                } //script
+            } // catchError
+        } // steps
+    }
+    stage('archive artifacts'){
+        agent { label 'nixos' }
+        steps {
+            script{
+                Common().ParallelArchiveArtefacts(e2e_params)
+            }
+        }
+    }
+    stage('tests summary'){
+        steps {
+            script{
+                def passed_tests_queue = e2e_params['passed_tests_queue']
+                def failed_tests_queue = e2e_params['failed_tests_queue']
+
+                if (passed_tests_queue.size() > 0) {
+                    m = "The following tests passed:\n"
+                    passed_tests_queue.each {
+                        m += "\t${it}\n"
+                    }
+                    println(m)
+                }
+
+                if (failed_tests_queue.size() > 0) {
+                    m = "The following tests failed:\n"
+                    failed_tests_queue.each {
+                        m += "\t${it}\n"
+                    }
+                    println(m)
+                    error("The following tests failed: " + failed_tests_queue)
+                }
+            }
+        }
+    }
+  }//stages
+}//pipeline
