@@ -29,9 +29,9 @@ pipeline {
                 script {
                     image_tag = 'develop-' + Common().GetTestTag()
                     def job_params = [
-                        [ $class: 'StringParameterValue',   name: "mayastorBranch",     value: "develop" ],
-                        [ $class: 'StringParameterValue',   name: "mcpBranch",          value: "develop" ],
-                        [ $class: 'BooleanParameterValue',  name: "build_images",       value: true ],
+                        [ $class: 'StringParameterValue',  name: "mayastorBranch",     value: "develop" ],
+                        [ $class: 'StringParameterValue',  name: "mcpBranch",          value: "develop" ],
+                        [ $class: 'BooleanParameterValue', name: "build_images",       value: true ],
                         [ $class: 'StringParameterValue',  name: "image_tag",    value: image_tag ]
                     ]
                     build(
@@ -46,7 +46,6 @@ pipeline {
         stage('test image on k8s-1.21') {
             steps {
                 script {
-                    println("image tag is ${image_tag}")
                     def job_params = [
                         [ $class: 'BooleanParameterValue', name: "build_images", value: false ],
                         [ $class: 'StringParameterValue',  name: "image_tag",    value: image_tag ]
@@ -64,7 +63,6 @@ pipeline {
         stage('test image on k8s-1.22') {
             steps {
                 script {
-                    println("image tag is ${image_tag}")
                     def job_params = [
                         [ $class: 'BooleanParameterValue', name: "build_images", value: false ],
                         [ $class: 'StringParameterValue',  name: "image_tag",    value: image_tag ]
@@ -82,7 +80,6 @@ pipeline {
         stage('test image on k8s-1.23') {
             steps {
                 script {
-                    println("image tag is ${image_tag}")
                     def job_params = [
                         [ $class: 'BooleanParameterValue', name: "build_images", value: false ],
                         [ $class: 'StringParameterValue',  name: "image_tag",    value: image_tag ]
