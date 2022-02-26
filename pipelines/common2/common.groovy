@@ -778,14 +778,14 @@ def RunTestJob(job_params, job_branch) {
 
    try {
        def testlist = readFile(file: 'artifacts/tests.txt')
-       testlist = tmp.trim()
+       testlist.trim()
 
        if (testlist != "[]") {
            // Processing passed_tests.txt is not critical
            try {
                def passed = readFile(file: 'artifacts/passed_tests.txt')
-           passed.trim()
-                   println("Passed: ${passed}")
+               passed.trim()
+               println("Passed: ${passed}")
            } catch(err) {
                println("Failed to read artifacts/passed_tests.txt : $err")
            }
