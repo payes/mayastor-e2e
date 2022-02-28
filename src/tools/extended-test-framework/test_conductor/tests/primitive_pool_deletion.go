@@ -52,9 +52,30 @@ func PrimitivePoolDeletionTest(testConductor *tc.TestConductor) error {
 
 func primitivePoolDeletion(testConductor *tc.TestConductor) error {
 	logf.Log.Info("Primitive Mayastor Pool Deletion Test")
-	//var combinederr error
-	// List pools in the cluster
+	// parse all timeouts values
 	params := testConductor.Config.PrimitivePoolDeletion
+	replicasTimeout, err := time.ParseDuration(params.ReplicasTimeoutSecs)
+	if err != nil {
+		return fmt.Errorf("failed to parse replica timeout %s string , error: %v", params.ReplicasTimeoutSecs, err)
+	}
+	poolUsageTimeout, err := time.ParseDuration(params.PoolUsageTimeoutSecs)
+	if err != nil {
+		return fmt.Errorf("failed to parse pool usage timeout %s string , error: %v", params.PoolUsageTimeoutSecs, err)
+	}
+	poolDeletionTimeout, err := time.ParseDuration(params.PoolDeleteTimeoutSecs)
+	if err != nil {
+		return fmt.Errorf("failed to parse pool deletion timeout %s string , error: %v", params.PoolDeleteTimeoutSecs, err)
+	}
+	poolListTimeout, err := time.ParseDuration(params.PoolListTimeoutSecs)
+	if err != nil {
+		return fmt.Errorf("failed to parse pool list timeout %s string , error: %v", params.PoolUsageTimeoutSecs, err)
+	}
+	poolCreationTimeout, err := time.ParseDuration(params.PoolCreateTimeoutSecs)
+	if err != nil {
+		return fmt.Errorf("failed to parse pool creation timeout %s string , error: %v", params.PoolCreateTimeoutSecs, err)
+	}
+
+	// List pools in the cluster
 	pools, err := custom_resources.ListMsPools()
 	if err != nil {
 		return fmt.Errorf("failed to list mayastor pools via CRD, error: %v", err)
@@ -91,12 +112,8 @@ func primitivePoolDeletion(testConductor *tc.TestConductor) error {
 		}
 	}
 
-	timeoutSec, err := time.ParseDuration(params.ReplicasTimeoutSecs)
-	if err != nil {
-		return fmt.Errorf("failed to parse timeout %s string , error: %v", params.ReplicasTimeoutSecs, err)
-	}
 	var replicas []mayastorclient.MayastorReplica
-	for ix := 0; ix < int(timeoutSec.Seconds())/sleepTimeSec; ix++ {
+	for ix := 0; ix < int(replicasTimeout.Seconds())/sleepTimeSec; ix++ {
 		replicas, err = k8sclient.ListReplicasInCluster()
 		if err != nil {
 			logf.Log.Info("Failed to list replicas in cluster", "error", err)
@@ -114,12 +131,8 @@ func primitivePoolDeletion(testConductor *tc.TestConductor) error {
 			err)
 	}
 
-	timeoutSec, err = time.ParseDuration(params.PoolUsageTimeoutSecs)
-	if err != nil {
-		return fmt.Errorf("failed to parse timeout %s string , error: %v", params.PoolUsageTimeoutSecs, err)
-	}
 	var poolUsage uint64
-	for ix := 0; ix < int(timeoutSec.Seconds())/sleepTimeSec; ix++ {
+	for ix := 0; ix < int(poolUsageTimeout.Seconds())/sleepTimeSec; ix++ {
 		poolUsage, err = k8sclient.GetPoolUsageInCluster()
 		if err != nil {
 			logf.Log.Info("Failed to get pool usage", "error", err)
@@ -141,11 +154,8 @@ func primitivePoolDeletion(testConductor *tc.TestConductor) error {
 	if err != nil {
 		return fmt.Errorf("failed to remove replicas from cluster , error: %v", err)
 	}
-	timeoutSec, err = time.ParseDuration(params.ReplicasTimeoutSecs)
-	if err != nil {
-		return fmt.Errorf("failed to parse timeout %s string , error: %v", params.ReplicasTimeoutSecs, err)
-	}
-	for ix := 0; ix < int(timeoutSec.Seconds())/sleepTimeSec; ix++ {
+
+	for ix := 0; ix < int(replicasTimeout.Seconds())/sleepTimeSec; ix++ {
 		replicas, err = k8sclient.ListReplicasInCluster()
 		if err != nil {
 			logf.Log.Info("Failed to list replicas in cluster", "error", err)
@@ -163,11 +173,7 @@ func primitivePoolDeletion(testConductor *tc.TestConductor) error {
 			err)
 	}
 
-	timeoutSec, err = time.ParseDuration(params.PoolUsageTimeoutSecs)
-	if err != nil {
-		return fmt.Errorf("failed to parse timeout %s string , error: %v", params.PoolUsageTimeoutSecs, err)
-	}
-	for ix := 0; ix < int(timeoutSec.Seconds())/sleepTimeSec; ix++ {
+	for ix := 0; ix < int(poolUsageTimeout.Seconds())/sleepTimeSec; ix++ {
 		poolUsage, err = k8sclient.GetPoolUsageInCluster()
 		if err != nil {
 			logf.Log.Info("Failed to get pool usage", "error", err)
@@ -184,12 +190,8 @@ func primitivePoolDeletion(testConductor *tc.TestConductor) error {
 			err)
 	}
 
-	timeoutSec, err = time.ParseDuration(params.PoolDeleteTimeoutSecs)
-	if err != nil {
-		return fmt.Errorf("failed to parse timeout %s string , error: %v", params.PoolDeleteTimeoutSecs, err)
-	}
 	var combinederr error
-	for ix := 0; ix < int(timeoutSec.Seconds())/sleepTimeSec; ix++ {
+	for ix := 0; ix < int(poolDeletionTimeout.Seconds())/sleepTimeSec; ix++ {
 		for _, pool := range pools {
 			err = custom_resources.DeleteMsPool(pool.Name)
 			if err != nil {
@@ -207,12 +209,8 @@ func primitivePoolDeletion(testConductor *tc.TestConductor) error {
 		return fmt.Errorf("failed to delete mayastor pools, error: %v", combinederr)
 	}
 
-	timeoutSec, err = time.ParseDuration(params.PoolListTimeoutSecs)
-	if err != nil {
-		return fmt.Errorf("failed to parse timeout %s string , error: %v", params.PoolUsageTimeoutSecs, err)
-	}
 	var msp []v1alpha1.MayastorPool
-	for ix := 0; ix < int(timeoutSec.Seconds())/sleepTimeSec; ix++ {
+	for ix := 0; ix < int(poolListTimeout.Seconds())/sleepTimeSec; ix++ {
 		msp, err = custom_resources.ListMsPools()
 		if err != nil {
 			logf.Log.Info("Failed to list pools", "error", err)
@@ -250,11 +248,7 @@ func primitivePoolDeletion(testConductor *tc.TestConductor) error {
 		return fmt.Errorf("failed to start socket to mayastor pod, error: %v", err)
 	}
 
-	timeoutSec, err = time.ParseDuration(params.PoolCreateTimeoutSecs)
-	if err != nil {
-		return fmt.Errorf("failed to parse timeout %s string , error: %v", params.PoolCreateTimeoutSecs, err)
-	}
-	for ix := 0; ix < int(timeoutSec.Seconds())/sleepTimeSec; ix++ {
+	for ix := 0; ix < int(poolCreationTimeout.Seconds())/sleepTimeSec; ix++ {
 		for _, pool := range pools {
 			_, err = custom_resources.CreateMsPool(pool.Name, pool.Spec.Node, pool.Spec.Disks)
 			if err != nil {
@@ -274,11 +268,7 @@ func primitivePoolDeletion(testConductor *tc.TestConductor) error {
 
 	time.Sleep(60 * time.Second)
 
-	timeoutSec, err = time.ParseDuration(params.PoolUsageTimeoutSecs)
-	if err != nil {
-		return fmt.Errorf("failed to parse timeout %s string , error: %v", params.PoolUsageTimeoutSecs, err)
-	}
-	for ix := 0; ix < int(timeoutSec.Seconds())/sleepTimeSec; ix++ {
+	for ix := 0; ix < int(poolUsageTimeout.Seconds())/sleepTimeSec; ix++ {
 		poolUsage, err = k8sclient.GetPoolUsageInCluster()
 		if err != nil {
 			logf.Log.Info("Failed to get pool usage", "error", err)
@@ -296,11 +286,7 @@ func primitivePoolDeletion(testConductor *tc.TestConductor) error {
 			err)
 	}
 
-	timeoutSec, err = time.ParseDuration(params.ReplicasTimeoutSecs)
-	if err != nil {
-		return fmt.Errorf("failed to parse timeout %s string , error: %v", params.ReplicasTimeoutSecs, err)
-	}
-	for ix := 0; ix < int(timeoutSec.Seconds())/sleepTimeSec; ix++ {
+	for ix := 0; ix < int(replicasTimeout.Seconds())/sleepTimeSec; ix++ {
 		replicas, err = k8sclient.ListReplicasInCluster()
 		if err != nil {
 			logf.Log.Info("Failed to list msv", "error", err)
