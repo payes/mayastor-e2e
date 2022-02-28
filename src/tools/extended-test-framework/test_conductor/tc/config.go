@@ -65,6 +65,18 @@ type ExtendedTestConfig struct {
 		VolumeSizeMb              int `yaml:"volumeSizeMb" env-default:"512"`
 	} `yaml:"replicaPerturbation"`
 
+	PrimitivePoolDeletion struct {
+		Iterations             int    `yaml:"iterations" env-default:"100"`
+		ReplicaSize            int    `yaml:"replicaSize" env-default:"10000000"`
+		DefTimeoutSecs         string `yaml:"defTimeoutSecs" env-default:"300s"`
+		ReplicasTimeoutSecs    string `yaml:"replicasTimeoutSecs" env-default:"30s"`
+		PoolUsageTimeoutSecs   string `yaml:"poolUsageTimeoutSecs" env-default:"30s"`
+		PoolDeleteTimeoutSecs  string `yaml:"poolDeleteTimeoutSecs" env-default:"40s"`
+		PoolCreateTimeoutSecs  string `yaml:"poolCreateTimeoutSecs" env-default:"20s"`
+		PoolListTimeoutSecs    string `yaml:"poolListTimeoutSecs" env-default:"360s"`
+		MayastorRestartTimeout int    `yaml:"mayastorRestartTimeout" env-default:"240"`
+	} `yaml:"primitivePoolDeletion"`
+
 	ReplicaElimination ReplicaElimination `yaml:"replicaElimination"`
 }
 

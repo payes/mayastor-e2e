@@ -13,6 +13,7 @@ import (
 
 	"mayastor-e2e/tools/extended-test-framework/common/custom_resources"
 	v1alpha1Api "mayastor-e2e/tools/extended-test-framework/common/custom_resources/api/types/v1alpha1"
+	"mayastor-e2e/tools/extended-test-framework/common/mini_mcp_client"
 
 	coreV1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
@@ -222,4 +223,37 @@ func GetNexuses(nodeIPs []string) ([]mayastorclient.MayastorNexus, error) {
 		return nexuses, fmt.Errorf("failed to list nexuses via gRPC, %v", err)
 	}
 	return nexuses, err
+}
+
+func WaitForMCPPath(timeout string) error {
+	var err error
+	timeoutSec, err := time.ParseDuration(timeout)
+	const sleepTimeSec = 10 // sleep time in second
+	if err != nil {
+		return fmt.Errorf("failed to parse timeout %s string , error: %v", timeout, err)
+	}
+	ms_ips, err := GetMayastorNodeIPs()
+	if err != nil {
+		return fmt.Errorf("failed to get mayastor nodes IP, err: %s", err)
+	} else if len(ms_ips) == 0 {
+		return fmt.Errorf("No mayastor nodes found")
+	}
+	for ix := 0; ix < int(timeoutSec.Seconds())/sleepTimeSec; ix++ {
+		// If this call goes through implies
+		// REST, Core Agent and etcd pods are up and running
+		_, err = mini_mcp_client.GetVolumes(ms_ips[0])
+		if err != nil {
+			return fmt.Errorf("failed to get volumes, error: %v", err)
+		}
+		if err != nil {
+			logf.Log.Info("Failed to list msv", "error", err)
+		} else {
+			break
+		}
+		time.Sleep(sleepTimeSec * time.Second)
+	}
+	if err != nil {
+		return fmt.Errorf("one of the rest, core agent or etcd pods are not in running state, error: %v", err)
+	}
+	return nil
 }

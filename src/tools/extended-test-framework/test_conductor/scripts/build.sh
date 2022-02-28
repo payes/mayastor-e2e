@@ -70,4 +70,6 @@ build test_conductor_steady_state
 build test_conductor_non_steady_state
 build test_conductor_replica_perturbation
 build test_conductor_replica_elimination
+build test_conductor_primitive_pool_deletion
+
 popd

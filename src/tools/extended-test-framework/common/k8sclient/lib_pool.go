@@ -2,6 +2,7 @@ package k8sclient
 
 import (
 	"fmt"
+	"mayastor-e2e/common/mayastorclient"
 	"mayastor-e2e/tools/extended-test-framework/common/custom_resources"
 	"time"
 
@@ -67,4 +68,25 @@ func CreatePools(poolDevice string) error {
 		return fmt.Errorf("timed out waiting for pools to be online: %v", err)
 	}
 	return nil
+}
+
+// GetPoolUsageInCluster use mayastorclient to enumerate the set of pools and sum up the pool usage in the cluster
+func GetPoolUsageInCluster() (uint64, error) {
+	var poolUsage uint64
+	pools, err := ListPoolsInCluster()
+	if err == nil {
+		for _, pool := range pools {
+			poolUsage += pool.Used
+		}
+	}
+	return poolUsage, err
+}
+
+// ListPoolsInCluster use mayastorclient to enumerate the set of mayastor pools present in the cluster
+func ListPoolsInCluster() ([]mayastorclient.MayastorPool, error) {
+	nodeAddrs, err := GetMayastorNodeIPs()
+	if err == nil {
+		return mayastorclient.ListPools(nodeAddrs)
+	}
+	return []mayastorclient.MayastorPool{}, err
 }

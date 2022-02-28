@@ -1,0 +1,21 @@
+testName: "primitive_pool_deletion"
+test: "MQ-EXP"
+e2eFioImage: ci-registry.mayastor-ci.mayadata.io/mayadata/e2e-fio
+msnodes: 3
+duration: 14d
+sendEvent: 1
+sendXrayTest: 1
+primitivePoolDeletion:
+  iterations: 100
+  replicaSize: 10000000
+  defTimeoutSecs: 300s
+  replicasTimeoutSecs: 30s
+  poolUsageTimeoutSecs: 30s
+  poolDeleteTimeoutSecs: 40s
+  poolCreateTimeoutSecs: 20s
+  poolListTimeoutSecs: 360s
+  mayastorRestartTimeout: 240
+
+
+
+
