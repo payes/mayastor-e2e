@@ -25,8 +25,8 @@ pipeline {
             steps {
                 script {
                     // k8s version, build_images flag, image_tag
-                    job_params = Ubuntu().GetDefaultJobParameters( "1.23.1", params.build_images, params.image_tag)
-                   Common().RunTestJob(job_params, "develop")
+                    def job_params = Ubuntu().GetDefaultJobParameters( "1.23.1", params.build_images, params.image_tag)
+                    Common().RunTestJob(job_params, "develop")
                 }
             }
         }
