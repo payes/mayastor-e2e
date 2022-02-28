@@ -43,8 +43,8 @@ func AddWorkload(
 	workload_params.Body = &workload_spec
 
 	for i := 0; i < 5; i++ {
-		pPutWorkloadOk, err2 := client.WorkloadMonitor.PutWorkloadByRegistrant(workload_params)
-		err = err2
+		var pPutWorkloadOk *workload_monitor.PutWorkloadByRegistrantOK
+		pPutWorkloadOk, err = client.WorkloadMonitor.PutWorkloadByRegistrant(workload_params)
 		if err != nil {
 			logf.Log.Info("failed to put workload",
 				"error", err.Error(),
@@ -93,8 +93,8 @@ func AddCommonWorkloads(client *client.Etfw, violations []models.WorkloadViolati
 			workload_params.Wid = strfmt.UUID(pod.ObjectMeta.UID)
 			workload_params.Body = &workload_spec
 			for i := 0; i < 5; i++ {
-				pPutWorkloadOk, err2 := client.WorkloadMonitor.PutWorkloadByRegistrant(workload_params)
-				err = err2
+				var pPutWorkloadOk *workload_monitor.PutWorkloadByRegistrantOK
+				pPutWorkloadOk, err = client.WorkloadMonitor.PutWorkloadByRegistrant(workload_params)
 				if err != nil {
 					logf.Log.Info("failed to put workload",
 						"error", err.Error(),
