@@ -50,9 +50,8 @@ pipeline {
                         [ $class: 'BooleanParameterValue', name: "build_images", value: false ],
                         [ $class: 'StringParameterValue',  name: "image_tag",    value: image_tag ]
                     ]
-                    // FIXME: change weekly to develop
                     build(
-                       job: "ubuntu20-04-lts-k8s-1.21/weekly",
+                       job: "ubuntu20-04-lts-k8s-1.21/develop",
                        propagate: false,
                        wait: true,
                        parameters: job_params
@@ -67,9 +66,8 @@ pipeline {
                         [ $class: 'BooleanParameterValue', name: "build_images", value: false ],
                         [ $class: 'StringParameterValue',  name: "image_tag",    value: image_tag ]
                     ]
-                    // FIXME: change weekly to develop
                     build(
-                       job: "ubuntu20-04-lts-k8s-1.22/weekly",
+                       job: "ubuntu20-04-lts-k8s-1.22/develop",
                        propagate: false,
                        wait: true,
                        parameters: job_params
@@ -84,9 +82,8 @@ pipeline {
                         [ $class: 'BooleanParameterValue', name: "build_images", value: false ],
                         [ $class: 'StringParameterValue',  name: "image_tag",    value: image_tag ]
                     ]
-                    // FIXME: change weekly to develop
                     build(
-                       job: "ubuntu20-04-lts-k8s-1.23/weekly",
+                       job: "ubuntu20-04-lts-k8s-1.23/develop",
                        propagate: false,
                        wait: true,
                        parameters: job_params
