@@ -119,12 +119,6 @@ if [ -z ${OPERATION} ]; then
   fi
 fi
 
-if [ "${TESTARG}" == "non_steady_state_multi_vols" ]; then
-	IMAGEARG="non_steady_state"
-else
-	IMAGEARG=${TESTARG}
-fi
-
 SCRIPTDIR=$(dirname "$(realpath "$0")")
 DEPLOYDIR="${SCRIPTDIR}/../deploy/"
 
@@ -135,7 +129,6 @@ deploy_test_conductor() {
 	  --set name="${RUNNAMEARG}" \
 	  --set sendxraytest=${SENDXRAYTESTARG} \
 	  --set sendevent=${SENDEVENTARG} \
-	  --set test=${IMAGEARG} \
 	  --set tag=${TAG} \
 	  -s templates/test_conductor/test_conductor_pod.yaml > ./test_conductor/test_conductor_pod.yaml
   kubectl create -f ./test_conductor/test_conductor.yaml
@@ -191,7 +184,7 @@ undeploy_log_monitor() {
 }
 
 deploy_workload_monitor() {
-  helm template chart -f ./chart/values.yaml --set tag=${TAG} \
+  helm template chart --set tag=${TAG} \
           -s templates/workload_monitor/workload_monitor_pod.yaml > ./workload_monitor/workload_monitor_pod.yaml
   kubectl create -f ./workload_monitor/workload_monitor.yaml
   kubectl create -f ./workload_monitor/workload_monitor_pod.yaml

@@ -11,7 +11,7 @@ import (
 )
 
 func SteadyStateTest(testConductor *tc.TestConductor) error {
-	var testName = testConductor.Config.TestName
+	var testName = "steady-state"
 	var err error
 	var combinederr error
 

@@ -155,7 +155,7 @@ func testVolumes(
 }
 
 func NonSteadyStateTest(testConductor *tc.TestConductor) error {
-	var testName = testConductor.Config.TestName
+	var testName = "non-steady-state"
 	var combinederr error
 	var err error
 
