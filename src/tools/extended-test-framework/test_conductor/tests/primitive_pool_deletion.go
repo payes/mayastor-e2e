@@ -30,21 +30,10 @@ func PrimitivePoolDeletionTest(testConductor *tc.TestConductor) error {
 		return fmt.Errorf("failed to inform test director of test start, error: %v", err)
 	}
 
-	if err = tc.AddCommonWorkloads(
-		testConductor.WorkloadMonitorClient,
-		violations); err != nil {
-		return fmt.Errorf("failed add common workloads, error: %v", err)
-	}
-
 	for ix := 0; ix < testConductor.Config.PrimitivePoolDeletion.Iterations; ix++ {
 		if err = primitivePoolDeletion(testConductor); err != nil {
 			return err
 		}
-	}
-
-	if err = tc.DeleteWorkloads(testConductor.WorkloadMonitorClient); err != nil {
-		logf.Log.Info("failed to delete all registered workloads", "error", err)
-		combinederr = fmt.Errorf("%v: failed to delete all registered workloads, error: %v", combinederr, err)
 	}
 
 	return combinederr
