@@ -23,6 +23,19 @@ type ReplicaElimination struct {
 	BlocksToWrite int    `yaml:"blocksToWrite" env-default:"100000"`
 }
 
+type ReplicaPerturbation struct {
+	FsVolume                  int `yaml:"fsvolume" env-default:"0"`
+	LocalVolume               int `yaml:"localvolume" env-default:"0"`
+	OfflineDeviceTest         int `yaml:"offlineDeviceTest" env-default:"0"`
+	ReplicasTest              int `yaml:"replicasTest" env-default:"0"`
+	OfflineDevAndReplicasTest int `yaml:"offlineDevAndReplicasTest" env-default:"0"`
+	Replicas                  int `yaml:"replicas" env-default:"3"`
+	ThinkTime                 int `yaml:"thinkTime" env-default:"500000"`
+	ThinkTimeBlocks           int `yaml:"thinkTimeBlocks" env-default:"1000"`
+	VolumeSizeMb              int `yaml:"volumeSizeMb" env-default:"512"`
+	RandomSleep               int `yaml:"randomSleep" env-default:"0"`
+}
+
 // E2EConfig is a application configuration structure
 type ExtendedTestConfig struct {
 	RunName  string `yaml:"RunName" env-default:"unnamed" env:"RUNNAME"` // human-readable test instance name for logging
@@ -54,17 +67,6 @@ type ExtendedTestConfig struct {
 		VolumeSizeMb    int    `yaml:"volumeSizeMb" env-default:"64"`
 	} `yaml:"nonSteadyState"`
 
-	ReplicaPerturbation struct {
-		FsVolume                  int `yaml:"fsvolume" env-default:"0"`
-		LocalVolume               int `yaml:"localvolume" env-default:"0"`
-		OfflineDeviceTest         int `yaml:"offlineDeviceTest" env-default:"0"`
-		OfflineDevAndReplicasTest int `yaml:"offlineDevAndReplicasTest" env-default:"0"`
-		Replicas                  int `yaml:"replicas" env-default:"3"`
-		ThinkTime                 int `yaml:"thinkTime" env-default:"500000"`
-		ThinkTimeBlocks           int `yaml:"thinkTimeBlocks" env-default:"1000"`
-		VolumeSizeMb              int `yaml:"volumeSizeMb" env-default:"512"`
-	} `yaml:"replicaPerturbation"`
-
 	PrimitivePoolDeletion struct {
 		Iterations             int    `yaml:"iterations" env-default:"100"`
 		ReplicaSize            int    `yaml:"replicaSize" env-default:"10000000"`
@@ -77,7 +79,8 @@ type ExtendedTestConfig struct {
 		MayastorRestartTimeout int    `yaml:"mayastorRestartTimeout" env-default:"240"`
 	} `yaml:"primitivePoolDeletion"`
 
-	ReplicaElimination ReplicaElimination `yaml:"replicaElimination"`
+	ReplicaElimination  ReplicaElimination  `yaml:"replicaElimination"`
+	ReplicaPerturbation ReplicaPerturbation `yaml:"replicaPerturbation"`
 }
 
 var once sync.Once

@@ -129,7 +129,7 @@ type E2EConfig struct {
 		Timeout              string `yaml:"timeout" env-default:"1800s"`
 	} `yaml:"multiVolumesPodIO"`
 	MsPodDisruption struct {
-		VolMb                    int `yaml:"volMb" env-default:"4096"`
+		VolMb                    int `yaml:"volMb" env-default:"1000"`
 		RemoveThinkTime          int `yaml:"removeThinkTime" env-default:"10"`
 		RepairThinkTime          int `yaml:"repairThinkTime" env-default:"30"`
 		ThinkTimeBlocks          int `yaml:"thinkTimeBlocks" env-default:"10"`

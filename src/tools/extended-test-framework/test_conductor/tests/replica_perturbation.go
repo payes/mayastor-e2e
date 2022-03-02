@@ -28,20 +28,35 @@ func checkDeviceState(nodeIp string, poolDevice string, state string) error {
 }
 
 func setReplicas(ms_ip string, uuid string, replicas int) error {
-	err := mini_mcp_client.SetVolumeReplicas(ms_ip, uuid, replicas)
+	return setReplicasRetry(ms_ip, uuid, replicas, 1)
+}
+
+func setReplicasRetry(ms_ip string, uuid string, replicas int, retries int) error {
+	var err error
+	var resp string
+	logf.Log.Info("SetVolumeReplicas", "replicas", replicas)
+	for i := 0; i < retries; i++ {
+		resp, err = mini_mcp_client.SetVolumeReplicas(ms_ip, uuid, replicas)
+		if err == nil {
+			break
+		} else {
+			logf.Log.Info("failed to set replicas", "error", err.Error())
+		}
+		time.Sleep(10 * time.Second)
+	}
 	if err != nil {
-		return fmt.Errorf("failed to set replicas to %d, err: %v", replicas, err)
+		return fmt.Errorf("failed to set replicas to %d, err: %v, response %v", replicas, err, resp)
 	}
 	for i := 0; i < 100; i++ {
 		reps, err := mini_mcp_client.GetVolumeReplicaCount(ms_ip, uuid)
 		if err != nil {
-			return fmt.Errorf("failed to get replicas, err: %v", err)
+			return fmt.Errorf("failed to get replicas, err: %v, response %v", err, resp)
 		}
 		logf.Log.Info("set volume replicas", "wanted replicas", replicas, "got replicas", reps)
 		if reps == replicas {
 			return nil
 		}
-		time.Sleep(time.Second)
+		time.Sleep(10 * time.Second)
 	}
 	return fmt.Errorf("failed to set replicas to %d, timed out", replicas)
 }
@@ -56,6 +71,7 @@ func perturbVolume(
 	var suffix string
 	const podDeletionTimeoutSecs = 120
 	const testName = "replica-perturbation"
+	var config = testConductor.Config.ReplicaPerturbation
 
 	msNodeIps, err := k8sclient.GetMayastorNodeIPs()
 	if err != nil {
@@ -67,7 +83,7 @@ func perturbVolume(
 	var cpNodeIp = msNodeIps[0]
 
 	vol_type := k8sclient.VolRawBlock // golang has no ternary operator
-	if testConductor.Config.ReplicaPerturbation.FsVolume != 0 {
+	if config.FsVolume != 0 {
 		vol_type = k8sclient.VolFileSystem
 		suffix = "fs"
 	} else {
@@ -79,7 +95,7 @@ func perturbVolume(
 
 	// create PVC
 	msv_uid, err := k8sclient.MkPVC(
-		testConductor.Config.ReplicaPerturbation.VolumeSizeMb,
+		config.VolumeSizeMb,
 		pvc_name,
 		sc_name,
 		vol_type,
@@ -96,10 +112,10 @@ func perturbVolume(
 		fio_name,
 		pvc_name,
 		vol_type,
-		testConductor.Config.ReplicaPerturbation.VolumeSizeMb,
+		config.VolumeSizeMb,
 		1000000,
-		testConductor.Config.ReplicaPerturbation.ThinkTime,
-		testConductor.Config.ReplicaPerturbation.ThinkTimeBlocks,
+		config.ThinkTime,
+		config.ThinkTimeBlocks,
 	); err != nil {
 		return fmt.Errorf("failed to deploy pod %s, error: %v", fio_name, err)
 	}
@@ -135,11 +151,11 @@ func perturbVolume(
 			break
 		}
 
-		if testConductor.Config.ReplicaPerturbation.OfflineDeviceTest != 0 {
+		if config.OfflineDeviceTest != 0 {
 			//  Select one Disk Pool (at “random”) as a victim
 			//  The selection algorithm used should feature a randomising element.
 
-			logf.Log.Info("======== offline single device test ========")
+			logf.Log.Info("==== test 1: offline / online single device ====")
 
 			if poolToAffect, err = EtfwRandom(uint32(testConductor.Config.Msnodes)); err != nil {
 				break
@@ -166,14 +182,49 @@ func perturbVolume(
 			if err = waitForVolumeStatus(cpNodeIp, uuid, MCP_MSV_ONLINE); err != nil {
 				break
 			}
-			if err = randomSleep(); err != nil {
-				break
+			if config.RandomSleep == 1 {
+				if err = randomSleep(); err != nil {
+					break
+				}
 			}
 		}
 
-		if testConductor.Config.ReplicaPerturbation.OfflineDevAndReplicasTest != 0 {
+		if config.ReplicasTest != 0 {
+			logf.Log.Info("==== test 2: change replicas ====")
 
-			logf.Log.Info("======== offline device and reduce replicas ========")
+			//  Edit MSV replica count (decrement, from 3 to 2)
+			if err = setReplicas(cpNodeIp, uuid, 2); err != nil {
+				break
+			}
+
+			//  Wait for MSV state = healthy
+			if err = waitForVolumeStatus(cpNodeIp, uuid, MCP_MSV_ONLINE); err != nil {
+				break
+			}
+
+			//  Edit MSV replica count (increment, from 2 to 3)
+			if err = setReplicas(cpNodeIp, uuid, 3); err != nil {
+				break
+			}
+
+			//  Wait for MSV state = degraded
+			if err = waitForVolumeStatus(cpNodeIp, uuid, MCP_MSV_DEGRADED); err != nil {
+				break
+			}
+
+			//  Wait for MSV state = healthy
+			if err = waitForVolumeStatus(cpNodeIp, uuid, MCP_MSV_ONLINE); err != nil {
+				break
+			}
+			if config.RandomSleep == 1 {
+				if err = randomSleep(); err != nil {
+					break
+				}
+			}
+		}
+
+		if config.OfflineDevAndReplicasTest != 0 {
+			logf.Log.Info("==== test 3: offline/online device and change replicas ====")
 
 			if poolToAffect, err = EtfwRandom(uint32(testConductor.Config.Msnodes)); err != nil {
 				break
@@ -201,12 +252,8 @@ func perturbVolume(
 
 			//  Edit MSV replica count (increment, from 2 to 3)
 			if err = setReplicas(cpNodeIp, uuid, 3); err != nil {
-				break
-			}
-
-			//  Wait for MSV state = degraded
-			if err = waitForVolumeStatus(cpNodeIp, uuid, MCP_MSV_DEGRADED); err != nil {
-				break
+				// this is expected to fail
+				logf.Log.Info("failed to increase replica count", "error", err.Error())
 			}
 
 			// online the device
@@ -214,14 +261,26 @@ func perturbVolume(
 				break
 			}
 
+			//  Edit MSV replica count (increment, from 2 to 3)
+			//  Will retry until a replica is available
+			if err = setReplicasRetry(cpNodeIp, uuid, 3, 10); err != nil {
+				logf.Log.Info("failed to increase replica count", "error", err.Error())
+				break
+			}
+
 			//  Wait for MSV state = healthy
 			if err = waitForVolumeStatus(cpNodeIp, uuid, MCP_MSV_ONLINE); err != nil {
 				break
 			}
-			if err = randomSleep(); err != nil {
-				break
+			if config.RandomSleep == 1 {
+				if err = randomSleep(); err != nil {
+					break
+				}
 			}
 		}
+	}
+	if err != nil {
+		logf.Log.Info("test failed", "error", err)
 	}
 	_, _ = restoreDevices(devs) // avoid breaking the node on error
 
@@ -233,10 +292,6 @@ func perturbVolume(
 	}
 	if locerr := k8sclient.DeletePVC(pvc_name, k8sclient.NSDefault); locerr != nil {
 		err = CombineErrors(err, fmt.Errorf("Failed to delete pvc %s, error = %v", pvc_name, locerr))
-	}
-
-	if err != nil {
-		logf.Log.Info("test failed", "error", err)
 	}
 	return err
 }
@@ -272,6 +327,7 @@ func testVolumePerturbation(
 func ReplicaPerturbationTest(testConductor *tc.TestConductor) error {
 	var combinederr error
 	var err error
+	var config = testConductor.Config.ReplicaPerturbation
 
 	if err = SendTestRunToDo(testConductor); err != nil {
 		return fmt.Errorf("failed to inform test director of test start, error: %v", err)
@@ -296,7 +352,7 @@ func ReplicaPerturbationTest(testConductor *tc.TestConductor) error {
 	}
 
 	// create storage classes
-	if testConductor.Config.ReplicaPerturbation.LocalVolume != 0 {
+	if config.LocalVolume != 0 {
 		sc_name = "sc-local-wait"
 		if err = k8sclient.NewScBuilder().
 			WithName(sc_name).
@@ -315,7 +371,7 @@ func ReplicaPerturbationTest(testConductor *tc.TestConductor) error {
 		sc_name = "sc-immed"
 		if err = k8sclient.NewScBuilder().
 			WithName(sc_name).
-			WithReplicas(testConductor.Config.ReplicaPerturbation.Replicas).
+			WithReplicas(config.Replicas).
 			WithProtocol(protocol).
 			WithNamespace(k8sclient.NSDefault).
 			WithVolumeBindingMode(storageV1.VolumeBindingImmediate).
