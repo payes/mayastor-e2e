@@ -5,12 +5,12 @@ import (
 	"mayastor-e2e/common/e2e_config"
 )
 
-var nsMayastor = e2e_config.GetConfig().Platform.MayastorNamespace
+var nsMayastor = e2e_config.GetConfig().Product.Namespace
 var fioImage = e2e_config.GetConfig().E2eFioImage
 var fsxImage = e2e_config.GetConfig().E2eFsxImage
 var registry = e2e_config.GetConfig().Registry
 
-// NSMayastor return the name of the namespace in which Mayastor is installed
+// NSMayastor return the name of the namespace in which Mayastor/Bolt is installed
 func NSMayastor() string {
 	return nsMayastor
 }

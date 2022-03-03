@@ -31,7 +31,12 @@ func controlPlaneReschedulingTest(protocol common.ShareProto, volumeType common.
 	scName := fmt.Sprintf("reshedule-sc-%s", protocol)
 	var volNames []string
 	var fioPodNames []string
-	var appNameList = []string{"csi-controller", "msp-operator", "rest", "core-agents"}
+	var appNameList = []string{
+		e2e_config.GetConfig().Product.ControlPlaneCsiController,
+		e2e_config.GetConfig().Product.ControlPlanePoolOperator,
+		e2e_config.GetConfig().Product.ControlPlaneRestServer,
+		e2e_config.GetConfig().Product.ControlPlaneAgent,
+	}
 	var replicas int32
 
 	// Create storage class

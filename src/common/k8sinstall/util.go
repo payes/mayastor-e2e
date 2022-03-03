@@ -30,10 +30,10 @@ const MCPLogLevel = "debug"
 
 // mayastor install yaml files names
 var mayastorYamlFiles = []string{
-	"etcd",
-	"nats-deployment.yaml",
-	"csi-daemonset.yaml",
-	"mayastor-daemonset.yaml",
+	e2e_config.GetConfig().Product.EtcdYaml,
+	e2e_config.GetConfig().Product.NatsDeploymentYaml,
+	e2e_config.GetConfig().Product.CsiDaemonsetYaml,
+	e2e_config.GetConfig().Product.DaemonsetYaml,
 }
 
 // postFixInstallation post fix installation yaml files for coverage and debug if required

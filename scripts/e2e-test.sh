@@ -6,7 +6,7 @@ SCRIPTDIR=$(dirname "$(realpath "$0")")
 E2EROOT=$(realpath "$SCRIPTDIR/..")
 TESTDIR=$(realpath "$SCRIPTDIR/../src")
 ARTIFACTSDIR=$(realpath "$SCRIPTDIR/../artifacts")
-#reportsdir=$(realpath "$SCRIPTDIR/..")
+CONFIGSDIR=$(realpath "$SCRIPTDIR/../configurations/products/")
 
 # removed: pvc_stress_fio temporarily mayastor bugs
 
@@ -62,6 +62,7 @@ Options:
   --loki_run_id <Loki run id>  ID string, for use when sending Loki markers
   --loki_test_label <Loki custom test label> Test label value, for use when sending Loki markers
   --device <path>           Device path to use for storage pools.
+  --prodcut                 Product which needs to be validated against e2e
   --registry <host[:port]>  Registry to pull the mayastor images from. (default: "ci-registry.mayastor-ci.mayadata.io")
                             'dockerhub' means use DockerHub
   --tests <list of tests>   Lists of tests to run, delimited by spaces (default: "$tests")
@@ -237,6 +238,10 @@ while [ "$#" -gt 0 ]; do
         shift
         platform_config_file="$1"
         ;;
+    -p|--product)
+        shift
+        product="$1"
+        ;;
     --session)
         shift
         session="$1"
@@ -308,6 +313,14 @@ if [ -z "$device" ]; then
   exit $EXITV_MISSING_OPTION
 fi
 export e2e_pool_device=$device
+
+if [ -z "$product" ]; then
+  echo "Product (Mayastor/Bolt) must be specified"
+  help
+  exit $EXITV_MISSING_OPTION
+fi
+
+export e2e_product_config_yaml="$CONFIGSDIR/${product}.yaml"
 
 if [ -n "$tag" ]; then
   export e2e_image_tag="$tag"
@@ -447,6 +460,7 @@ echo "    loki_run_id=$loki_run_id"
 echo "    loki_test_label=$loki_test_label"
 echo "    e2e_root_dir=$e2e_root_dir"
 echo "    e2e_pool_device=$e2e_pool_device"
+echo "    e2e_product_config_yaml=$e2e_product_config_yaml"
 echo "    e2e_image_tag=$e2e_image_tag"
 echo "    e2e_docker_registry=$e2e_docker_registry"
 echo "    e2e_reports_dir=$e2e_reports_dir"

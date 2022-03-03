@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"mayastor-e2e/common"
+	"mayastor-e2e/common/e2e_config"
 	"os/exec"
 
 	coreV1 "k8s.io/api/core/v1"
@@ -209,7 +210,9 @@ func EnsureNodeLabels() error {
 	}
 	for _, node := range nodes {
 		if !node.MasterNode {
-			err = LabelNode(node.NodeName, common.MayastorEngineLabel, common.MayastorEngineLabelValue)
+			err = LabelNode(node.NodeName,
+				e2e_config.GetConfig().Product.EngineLabel,
+				e2e_config.GetConfig().Product.EngineLabelValue)
 			if err != nil {
 				errors.Accumulate(err)
 			}

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"mayastor-e2e/common"
+	"mayastor-e2e/common/e2e_config"
 	"net/http"
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -28,7 +28,10 @@ func getMayastorCpReplica(replicaUuid string, address []string) (mayastorCpRepli
 	var jsonResponse []byte
 	var err error
 	for _, addr := range address {
-		url := fmt.Sprintf("http://%s:%s/v0/replicas/%s", addr, common.PluginPort, replicaUuid)
+		url := fmt.Sprintf("http://%s:%s/v0/replicas/%s",
+			addr,
+			e2e_config.GetConfig().Product.KubectlPluginPort,
+			replicaUuid)
 		req, err := http.NewRequest("GET", url, nil)
 		if err != nil {
 			logf.Log.Info("Error in GET request", "node IP", addr, "url", url, "error", err)
