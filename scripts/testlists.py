@@ -22,16 +22,31 @@ def main(args):
         if args.install or args.uninstall:
             raise RuntimeError(
                 'Incompatible options --iu with --install or --uninstall')
+
+    def macro_profile(profiles):
+        tmp = set()
+        for profile in profiles:
+            if list_defs['testprofiles'][profile] is not None:
+                tmp |= set(list_defs['testprofiles'][profile])
+        return list(tmp)
+
     with open(args.listdef, mode='r', encoding='UTF-8') as f_p:
         contents = f_p.read()
         list_defs = yaml.safe_load(contents)
         durations = list_defs['metadata']['recorded_durations']
+        for k, val in list_defs['macro-profiles'].items():
+            list_defs['testprofiles'][k] = macro_profile(val)
+        list_defs['testprofiles']['ALL'] = macro_profile(sorted(
+            list_defs['testprofiles'].keys()))
+
         tests = list_defs['testprofiles'][args.profile]
 
         if args.sort_alpha:
             tests = sorted(tests)
         if args.sort_duration:
-            tests = sorted(tests, key=lambda x:durations.get(x,0), reverse=True)
+            tests = sorted(tests)
+            tests = sorted(
+                tests, key=lambda x: durations.get(x, 0), reverse=True)
 
         if args.install_uninstall:
             tests = [f'install,{tst},uninstall' for tst in tests]
@@ -78,7 +93,5 @@ if __name__ == '__main__':
 
     parser.add_argument('--outputfile', dest='outputfile', default=None,
                         help='outputfile')
-
-
 
     main(parser.parse_args())

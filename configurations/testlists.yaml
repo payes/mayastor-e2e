@@ -1,5 +1,17 @@
-testprofiles:
+# test profiles composed of other test profiles
+macro-profiles:
   regression:
+    - staging
+    - stable
+    - failing
+  # aliases
+  selfci:
+    - self-ci
+  self_ci:
+    - self-ci
+testprofiles:
+  # set of tests that are known to pass
+  stable:
     - basic_volume_io
     - control_plane_rescheduling
     - csi,resource_check
@@ -8,14 +20,9 @@ testprofiles:
     - io_soak
     - maximum_vols_io
     - mayastorpool_schema
-    - MQ-1498-primitive_device_retirement
     - MQ-1783-fsx_ext4_stress
-    - MQ-2219-rc-reconciliation
-    - MQ-2307-etcd_inaccessibility
     - MQ-2330-ms_pod_disruption_rm_vol
-    - MQ-2632-pvc_create_delete
     - MQ-2644-invalid_volume_sizes
-    - ms_pod_disruption
     - ms_pod_disruption_no_io
     - ms_pod_restart
     - ms_pool_delete
@@ -25,10 +32,7 @@ testprofiles:
     - node_failure
     - node_shutdown
     - pool_modify
-    - primitive_data_integrity
-    - primitive_fault_injection
     - primitive_fuzz_msv
-    - primitive_msp_deletion
     - primitive_msp_state
     - primitive_msp_stress
     - primitive_replicas
@@ -38,20 +42,32 @@ testprofiles:
     - pvc_stress_fio
     - pvc_waitforfirstconsumer
     - single_msn_shutdown
-    - stale_msp_after_node_power_failure
     - synchronous_replication
     - volume_filesystem
-  smoke-test:
-    - ER1-170-CI_smoke_test
-  minimal:
-    - resource_check
-  basic:
-    - basic_volume_io
-    - csi,resource_check
-  hf1:
+  # set of tests that do not pass regularly
+  staging:
+    - MQ-1498-primitive_device_retirement
+    - MQ-2219-rc-reconciliation
+    - MQ-2307-etcd_inaccessibility
+    - MQ-2632-pvc_create_delete
+    - ms_pod_disruption
     - primitive_data_integrity
     - primitive_fault_injection
     - primitive_msp_deletion
+    - stale_msp_after_node_power_failure
+  # set of tests that fail for known bug
+  failing:
+  # minimal functional test install + uninstall implied
+  smoke-test:
+    - ER1-170-CI_smoke_test
+  # minimal test install + uninstall implied
+  minimal:
+    - resource_check
+  # basic volume and CSI testing
+  basic:
+    - basic_volume_io
+    - csi,resource_check
+  # system test CI, tests run for e2e bors merge
   self-ci:
     - basic_volume_io
     - csi,resource_check
