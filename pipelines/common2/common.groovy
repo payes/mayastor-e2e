@@ -13,10 +13,10 @@ def unwrap(Map params, key) {
 def GetProductSettings (datacore_bolt) {
     if (datacore_bolt == true) {
         return [
-            dataplane_dir: "bolt-data-plane",
-            dataplane_repo_url: "https://github.com/datacoresoftware/bolt-data-plane-test",
-            controlplane_dir: "bolt-control-plane",
-            controlplane_repo_url: "https://github.com/datacoresoftware/bolt-control-plane-test",
+            dataplane_dir: "bolt-data-plane-2",
+            dataplane_repo_url: "https://github.com/datacoresoftware/bolt-data-plane-test-2",
+            controlplane_dir: "bolt-control-plane-2",
+            controlplane_repo_url: "https://github.com/datacoresoftware/bolt-control-plane-test-2",
             github_credentials: 'github-datacore-pw',
         ]
     }
@@ -65,10 +65,20 @@ def CheckoutRepo(branch, relativeTargetDir, url, credentials) {
     $class: 'GitSCM',
     branches: [[name: "*/${branch}"]],
     doGenerateSubmoduleConfigurations: false,
-    extensions: [[
-        $class: 'RelativeTargetDirectory',
-        relativeTargetDir: relativeTargetDir
-      ]],
+    extensions: [
+        [
+            $class: 'RelativeTargetDirectory',
+            relativeTargetDir: relativeTargetDir
+        ],
+        [
+            $class: 'SubmoduleOption',
+            disableSubmodules: false,
+            parentCredentials: true,
+            recursiveSubmodules: true,
+            reference: '',
+            trackingSubmodules: false
+        ]
+    ],
     submoduleCfg: [],
     userRemoteConfigs: [[
         url: url,
@@ -135,9 +145,10 @@ def BuildImages2(Map params) {
   // stages.
   sh "cd ${dataplane_dir} && ./scripts/reclaim-space.sh 10"
   if (dataplaneCommitOrTag?.trim()) {
-      sh "cd ${dataplane_dir} && git checkout ${dataplaneCommitOrTag}"
+    // FIXME: handle in CheckoutDataPlane
+    error("CommitOrTag functionality is broken")
+//      sh "cd ${dataplane_dir} && git checkout ${dataplaneCommitOrTag}"
   }
-  sh "cd ${dataplane_dir} && git submodule update --init --recursive"
   sh "cd ${dataplane_dir} && git status"
 
   // Build images (REGISTRY is set in jenkin's global configuration).
@@ -149,9 +160,10 @@ def BuildImages2(Map params) {
   // Build mayastor control plane
   CheckoutControlPlane(params)
   if (controlplaneCommitOrTag?.trim()) {
-      sh "cd ${controlplane_dir} && git checkout ${controlplaneCommitOrTag}"
+    // FIXME: handle in CheckoutDataPlane
+    error("CommitOrTag functionality is broken")
+//      sh "cd ${controlplane_dir} && git checkout ${controlplaneCommitOrTag}"
   }
-  sh "cd ${controlplane_dir} && git submodule update --init --recursive"
   sh "cd ${controlplane_dir} && git status"
   sh "cd ${controlplane_dir} && ./scripts/release.sh $build_flags --registry \"${env.REGISTRY}\" --alias-tag \"$test_tag\" "
 
