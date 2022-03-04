@@ -518,7 +518,7 @@ func TeardownMayastor() error {
 			defer wg.Done()
 			yamlFilepath := filepath.Join(yamlsDir, yf)
 			if _, err = os.Stat(yamlFilepath); errors.Is(err, os.ErrNotExist) {
-				logf.Log.Info("pass")
+				err = nil
 			} else {
 				err = k8stest.KubeCtlDeleteYaml(yf, yamlsDir)
 			}
