@@ -121,6 +121,16 @@ type E2EConfig struct {
 		// FsVolSizeMb Units are MiB
 		FsVolSizeMb int `yaml:"fsVolSizeMb" env-default:"450"`
 	} `yaml:"basicVolumeIO"`
+	CISmokeTest struct {
+		// FioTimeout is in seconds
+		FioTimeout int `yaml:"fioTimeout" env-default:"300"`
+		// FsVolSizeMb Units are MiB
+		FsVolSizeMb int `yaml:"fsVolSizeMb" env-default:"1350"`
+		// Replicas to use
+		ReplicaCount int `yaml:"replicas" env-default:"2"`
+		// VolSizeMb Units are MiB
+		VolSizeMb int `yaml:"volSizeMb" env-default:"1500"`
+	} `yaml:"ciSmokeTest"`
 	MultipleVolumesPodIO struct {
 		VolumeSizeMb         int    `yaml:"volumeSizeMb" env-default:"500"`
 		VolumeCount          int    `yaml:"volumeCount" env-default:"6"`

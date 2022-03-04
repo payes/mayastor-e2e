@@ -42,7 +42,7 @@ testprofiles:
     - synchronous_replication
     - volume_filesystem
   smoke-test:
-    - resource_check
+    - ER1-170-CI_smoke_test
   minimal:
     - resource_check
   basic:
