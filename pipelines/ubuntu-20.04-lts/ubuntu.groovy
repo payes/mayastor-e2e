@@ -1,6 +1,6 @@
 #!/usr/bin/env groovy
 
-def GetDefaultJobParameters (k8sv, build_images, image_tag ) {
+def GetDefaultJobParameters (k8sv, build_images, image_tag, datacore_bolt ) {
     return [
             [ $class: 'StringParameterValue',  name: "build_prefix",       value: "develop" ],
             [ $class: 'StringParameterValue',  name: "dataplaneBranch",    value: "develop" ],
@@ -11,7 +11,8 @@ def GetDefaultJobParameters (k8sv, build_images, image_tag ) {
             [ $class: 'StringParameterValue',  name: "parallelism",        value: "10" ],
             [ $class: 'StringParameterValue',   name: "kubernetes_version", value: k8sv ],
             [ $class: 'BooleanParameterValue',  name: "build_images",       value: build_images ],
-            [ $class: 'StringParameterValue',   name: "image_tag",          value: image_tag ]
+            [ $class: 'StringParameterValue',   name: "image_tag",          value: image_tag ],
+            [ $class: 'BooleanParameterValue',  name: "datacore_bolt",      value: datacore_bolt ],
     ]
 }
 
