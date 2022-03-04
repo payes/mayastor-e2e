@@ -342,6 +342,7 @@ func InstallMayastor() error {
 	for _, yaml := range mayastorYamlFiles {
 		yamlFilepath := filepath.Join(yamlsDir, yaml)
 		if _, err = os.Stat(yamlFilepath); errors.Is(err, os.ErrNotExist) {
+			logf.Log.Info("file not found", "yaml file", yaml)
 			continue
 		}
 		err = k8stest.KubeCtlApplyYaml(yaml, yamlsDir)
@@ -518,6 +519,7 @@ func TeardownMayastor() error {
 			defer wg.Done()
 			yamlFilepath := filepath.Join(yamlsDir, yf)
 			if _, err = os.Stat(yamlFilepath); errors.Is(err, os.ErrNotExist) {
+				logf.Log.Info("file not found", "yaml file", yf)
 				err = nil
 			} else {
 				err = k8stest.KubeCtlDeleteYaml(yf, yamlsDir)
