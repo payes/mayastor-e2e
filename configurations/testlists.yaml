@@ -62,6 +62,41 @@ testprofiles:
     - pvc_waitforfirstconsumer
     - pvc_readwriteonce
     - volume_filesystem
+  stable:
+    # list of tests that are known to pass
+    - basic_volume_io
+    - control_plane_rescheduling
+    - csi,resource_check
+    - dynamic_provisioning
+    - expand_msp_disk
+    - io_soak
+    - maximum_vols_io
+    - mayastorpool_schema
+    - MQ-1498-primitive_device_retirement
+    - MQ-1783-fsx_ext4_stress
+    - MQ-2330-ms_pod_disruption_rm_vol
+    - MQ-2644-invalid_volume_sizes
+    - ms_pod_disruption_no_io
+    - ms_pod_restart
+    - ms_pool_delete
+    - msv_rebuild
+    - multiple_vols_pod_io
+    - nexus_location
+    - node_failure
+    - node_shutdown
+    - pool_modify
+    - primitive_fuzz_msv
+    - primitive_msp_state
+    - primitive_msp_stress
+    - primitive_replicas
+    - primitive_volumes
+    - pvc_delete
+    - pvc_readwriteonce
+    - pvc_stress_fio
+    - pvc_waitforfirstconsumer
+    - single_msn_shutdown
+    - synchronous_replication
+    - volume_filesystem
 metadata:
   recorded_durations:
     basic_volume_io: 7
