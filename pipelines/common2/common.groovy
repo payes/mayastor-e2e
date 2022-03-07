@@ -56,16 +56,24 @@ def GetLokiRunId() {
   return job_base_name + "-" + env.BRANCH_NAME + "-" + env.BUILD_NUMBER
 }
 
-def CheckoutRepo(branch, relativeTargetDir, url, credentials) {
+def CheckoutRepo(branch, relativeTargetDir, url, credentials, commitOrTag) {
   sh """
     rm -rf ${relativeTargetDir}
     """
-
+  bct = "*/${branch}"
+  if ( commitOrTag != "" ) {
+    bct = commitOrTag
+  }
+  println("branches name = $bct")
   checkout([
     $class: 'GitSCM',
-    branches: [[name: "*/${branch}"]],
+    branches: [[name: "${bct}"]],
     doGenerateSubmoduleConfigurations: false,
     extensions: [
+        [
+            $class: 'CloneOption',
+            noTags: false,
+        ],
         [
             $class: 'RelativeTargetDirectory',
             relativeTargetDir: relativeTargetDir
@@ -93,8 +101,9 @@ def CheckoutE2E(params) {
   def relativeTargetDir = unwrap(params,'e2e_dir')
   def url = unwrap(params,'e2e_repo_url')
   def credentials = unwrap(params,'github_credentials')
+  def commitOrTag = unwrap(params, 'e2eCommitOrTag')
 
-  CheckoutRepo(branch, relativeTargetDir, url, credentials)
+  CheckoutRepo(branch, relativeTargetDir, url, credentials, commitOrTag)
 }
 
 // Checks out the specified branch of the data plane repo
@@ -103,8 +112,9 @@ def CheckoutDataPlane(params) {
   def relativeTargetDir = unwrap(params,'dataplane_dir')
   def url = unwrap(params,'dataplane_repo_url')
   def credentials = unwrap(params,'github_credentials')
+  def commitOrTag = unwrap(params, 'dataplaneCommitOrTag')
 
-  CheckoutRepo(branch, relativeTargetDir, url, credentials)
+  CheckoutRepo(branch, relativeTargetDir, url, credentials, commitOrTag)
 }
 
 // Checks out the specified branch of the control plane repo
@@ -113,8 +123,9 @@ def CheckoutControlPlane(params) {
   def relativeTargetDir = unwrap(params,'controlplane_dir')
   def url = unwrap(params,'controlplane_repo_url')
   def credentials = unwrap(params,'github_credentials')
+  def commitOrTag = unwrap(params, 'controlplaneCommitOrTag')
 
-  CheckoutRepo(branch, relativeTargetDir, url, credentials)
+  CheckoutRepo(branch, relativeTargetDir, url, credentials, commitOrTag)
 }
 
 def GetTestTag() {
@@ -144,11 +155,6 @@ def BuildImages2(Map params) {
   // test the free space here rather than repeating the same code in all
   // stages.
   sh "cd ${dataplane_dir} && ./scripts/reclaim-space.sh 10"
-  if (dataplaneCommitOrTag?.trim()) {
-    // FIXME: handle in CheckoutDataPlane
-    error("CommitOrTag functionality is broken")
-//      sh "cd ${dataplane_dir} && git checkout ${dataplaneCommitOrTag}"
-  }
   sh "cd ${dataplane_dir} && git status"
 
   // Build images (REGISTRY is set in jenkin's global configuration).
@@ -159,11 +165,6 @@ def BuildImages2(Map params) {
 
   // Build mayastor control plane
   CheckoutControlPlane(params)
-  if (controlplaneCommitOrTag?.trim()) {
-    // FIXME: handle in CheckoutDataPlane
-    error("CommitOrTag functionality is broken")
-//      sh "cd ${controlplane_dir} && git checkout ${controlplaneCommitOrTag}"
-  }
   sh "cd ${controlplane_dir} && git status"
   sh "cd ${controlplane_dir} && ./scripts/release.sh $build_flags --registry \"${env.REGISTRY}\" --alias-tag \"$test_tag\" "
 
@@ -811,7 +812,9 @@ def RunTestJob(job_params, job_branch) {
     """
 
    def built = build(
-       job: "generic-system-test/${job_branch}",
+//FIXME: Temporary for testing {
+        job: "bolt-poc-e2e-branch-generic-system-test/bolt-poc-2",
+//       job: "generic-system-test/${job_branch}",
        propagate: false,
        wait: true,
        parameters: job_params
