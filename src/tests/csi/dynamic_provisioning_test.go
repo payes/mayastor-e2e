@@ -21,8 +21,8 @@ import (
 	"strings"
 
 	"mayastor-e2e/common/e2e_config"
-	"mayastor-e2e/csi/driver"
-	"mayastor-e2e/csi/testsuites"
+	"mayastor-e2e/tests/csi/driver"
+	"mayastor-e2e/tests/csi/testsuites"
 
 	"github.com/onsi/ginkgo"
 	v1 "k8s.io/api/core/v1"

@@ -17,30 +17,25 @@ limitations under the License.
 package testsuites
 
 import (
-	"fmt"
-
 	"github.com/onsi/ginkgo"
-	"github.com/onsi/gomega"
 	v1 "k8s.io/api/core/v1"
 	clientset "k8s.io/client-go/kubernetes"
-	"k8s.io/kubernetes/test/e2e/framework"
-	"mayastor-e2e/csi/driver"
+	"mayastor-e2e/tests/csi/driver"
 )
 
-// DynamicallyProvisionedReadOnlyVolumeTest will provision required StorageClass(es), PVC(s) and Pod(s)
+// DynamicallyProvisionedPodWithMultiplePVsTest will provision
+// one pod with multiple PVs
 // Waiting for the PV provisioner to create a new PV
-// Testing that the Pod(s) cannot write to the volume when mounted
-type DynamicallyProvisionedReadOnlyVolumeTest struct {
+// Testing if the Pod(s) Cmd is run with a 0 exit code
+type DynamicallyProvisionedPodWithMultiplePVsTest struct {
 	CSIDriver              driver.DynamicPVTestDriver
 	Pods                   []PodDetails
 	StorageClassParameters map[string]string
 }
 
-func (t *DynamicallyProvisionedReadOnlyVolumeTest) Run(client clientset.Interface, namespace *v1.Namespace) {
+func (t *DynamicallyProvisionedPodWithMultiplePVsTest) Run(client clientset.Interface, namespace *v1.Namespace) {
 	for _, pod := range t.Pods {
-		expectedReadOnlyLog := "Read-only file system"
-
-		tpod, cleanup := pod.SetupWithDynamicVolumes(client, namespace, t.CSIDriver, t.StorageClassParameters)
+		tpod, cleanup := pod.SetupWithDynamicMultipleVolumes(client, namespace, t.CSIDriver, t.StorageClassParameters)
 		// defer must be called here for resources not get removed before using them
 		for i := range cleanup {
 			defer cleanup[i]()
@@ -49,11 +44,7 @@ func (t *DynamicallyProvisionedReadOnlyVolumeTest) Run(client clientset.Interfac
 		ginkgo.By("deploying the pod")
 		tpod.Create()
 		defer tpod.Cleanup()
-		ginkgo.By("checking that the pods command exits with an error")
-		tpod.WaitForFailure()
-		ginkgo.By("checking that pod logs contain expected message")
-		body, err := tpod.Logs()
-		framework.ExpectNoError(err, fmt.Sprintf("Error getting logs for pod %s: %v", tpod.pod.Name, err))
-		gomega.Expect(string(body)).To(gomega.ContainSubstring(expectedReadOnlyLog))
+		ginkgo.By("checking that the pods command exits with no error")
+		tpod.WaitForSuccess()
 	}
 }
