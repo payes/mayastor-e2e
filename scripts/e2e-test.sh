@@ -62,7 +62,7 @@ Options:
   --loki_run_id <Loki run id>  ID string, for use when sending Loki markers
   --loki_test_label <Loki custom test label> Test label value, for use when sending Loki markers
   --device <path>           Device path to use for storage pools.
-  --prodcut                 Product which needs to be validated against e2e
+  --product                 Product which needs to be validated against e2e
   --registry <host[:port]>  Registry to pull the mayastor images from. (default: "ci-registry.mayastor-ci.mayadata.io")
                             'dockerhub' means use DockerHub
   --tests <list of tests>   Lists of tests to run, delimited by spaces (default: "$tests")

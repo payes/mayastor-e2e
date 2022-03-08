@@ -98,7 +98,7 @@ pipeline {
               abs_e2e_reports_dir = "${env.WORKSPACE}/${e2e_reports_dir}"
               sh "mkdir -p ${abs_e2e_reports_dir}"
 
-              def cmd = "./scripts/${e2e_script} --device /dev/sdb --tag \"${params.image_tag}\" --loki_run_id \"${loki_run_id}\" --loki_test_label \"custom\" --reportsdir \"${abs_e2e_reports_dir}\" --session \"custom\" "
+              def cmd = "./scripts/${e2e_script} --device /dev/sdb --tag \"${params.image_tag}\" --loki_run_id \"${loki_run_id}\" --loki_test_label \"custom\" --reportsdir \"${abs_e2e_reports_dir}\" --session \"custom\" --product \"mayastor\" "
 
               if (params.use_ci_registry == true) {
                 cmd = cmd + " --registry \"" + env.REGISTRY + "\""
