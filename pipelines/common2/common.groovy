@@ -812,9 +812,7 @@ def RunTestJob(job_params, job_branch) {
     """
 
    def built = build(
-//FIXME: Temporary for testing {
-        job: "bolt-poc-e2e-branch-generic-system-test/bolt-poc-2",
-//       job: "generic-system-test/${job_branch}",
+       job: "generic-system-test/${job_branch}",
        propagate: false,
        wait: true,
        parameters: job_params
