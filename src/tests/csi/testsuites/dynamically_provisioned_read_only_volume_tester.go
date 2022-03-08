@@ -17,29 +17,30 @@ limitations under the License.
 package testsuites
 
 import (
+	"fmt"
+	"mayastor-e2e/tests/csi/driver"
+
 	"github.com/onsi/ginkgo"
+	"github.com/onsi/gomega"
 	v1 "k8s.io/api/core/v1"
 	clientset "k8s.io/client-go/kubernetes"
-	"mayastor-e2e/csi/driver"
+	"k8s.io/kubernetes/test/e2e/framework"
 )
 
-// DynamicallyProvisionedCollocatedPodTest will provision required StorageClass(es), PVC(s) and Pod(s)
+// DynamicallyProvisionedReadOnlyVolumeTest will provision required StorageClass(es), PVC(s) and Pod(s)
 // Waiting for the PV provisioner to create a new PV
-// Testing if multiple Pod(s) can write simultaneously
-type DynamicallyProvisionedCollocatedPodTest struct {
+// Testing that the Pod(s) cannot write to the volume when mounted
+type DynamicallyProvisionedReadOnlyVolumeTest struct {
 	CSIDriver              driver.DynamicPVTestDriver
 	Pods                   []PodDetails
-	ColocatePods           bool
 	StorageClassParameters map[string]string
 }
 
-func (t *DynamicallyProvisionedCollocatedPodTest) Run(client clientset.Interface, namespace *v1.Namespace) {
-	nodeName := ""
+func (t *DynamicallyProvisionedReadOnlyVolumeTest) Run(client clientset.Interface, namespace *v1.Namespace) {
 	for _, pod := range t.Pods {
+		expectedReadOnlyLog := "Read-only file system"
+
 		tpod, cleanup := pod.SetupWithDynamicVolumes(client, namespace, t.CSIDriver, t.StorageClassParameters)
-		if t.ColocatePods && nodeName != "" {
-			tpod.SetNodeSelector(map[string]string{"name": nodeName})
-		}
 		// defer must be called here for resources not get removed before using them
 		for i := range cleanup {
 			defer cleanup[i]()
@@ -48,10 +49,11 @@ func (t *DynamicallyProvisionedCollocatedPodTest) Run(client clientset.Interface
 		ginkgo.By("deploying the pod")
 		tpod.Create()
 		defer tpod.Cleanup()
-
-		ginkgo.By("checking that the pod is running")
-		tpod.WaitForRunning()
-		nodeName = tpod.pod.Spec.NodeName
+		ginkgo.By("checking that the pods command exits with an error")
+		tpod.WaitForFailure()
+		ginkgo.By("checking that pod logs contain expected message")
+		body, err := tpod.Logs()
+		framework.ExpectNoError(err, fmt.Sprintf("Error getting logs for pod %s: %v", tpod.pod.Name, err))
+		gomega.Expect(string(body)).To(gomega.ContainSubstring(expectedReadOnlyLog))
 	}
-
 }

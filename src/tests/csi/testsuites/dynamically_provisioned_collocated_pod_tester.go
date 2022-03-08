@@ -20,22 +20,26 @@ import (
 	"github.com/onsi/ginkgo"
 	v1 "k8s.io/api/core/v1"
 	clientset "k8s.io/client-go/kubernetes"
-	"mayastor-e2e/csi/driver"
+	"mayastor-e2e/tests/csi/driver"
 )
 
-// DynamicallyProvisionedPodWithMultiplePVsTest will provision
-// one pod with multiple PVs
+// DynamicallyProvisionedCollocatedPodTest will provision required StorageClass(es), PVC(s) and Pod(s)
 // Waiting for the PV provisioner to create a new PV
-// Testing if the Pod(s) Cmd is run with a 0 exit code
-type DynamicallyProvisionedPodWithMultiplePVsTest struct {
+// Testing if multiple Pod(s) can write simultaneously
+type DynamicallyProvisionedCollocatedPodTest struct {
 	CSIDriver              driver.DynamicPVTestDriver
 	Pods                   []PodDetails
+	ColocatePods           bool
 	StorageClassParameters map[string]string
 }
 
-func (t *DynamicallyProvisionedPodWithMultiplePVsTest) Run(client clientset.Interface, namespace *v1.Namespace) {
+func (t *DynamicallyProvisionedCollocatedPodTest) Run(client clientset.Interface, namespace *v1.Namespace) {
+	nodeName := ""
 	for _, pod := range t.Pods {
-		tpod, cleanup := pod.SetupWithDynamicMultipleVolumes(client, namespace, t.CSIDriver, t.StorageClassParameters)
+		tpod, cleanup := pod.SetupWithDynamicVolumes(client, namespace, t.CSIDriver, t.StorageClassParameters)
+		if t.ColocatePods && nodeName != "" {
+			tpod.SetNodeSelector(map[string]string{"name": nodeName})
+		}
 		// defer must be called here for resources not get removed before using them
 		for i := range cleanup {
 			defer cleanup[i]()
@@ -44,7 +48,10 @@ func (t *DynamicallyProvisionedPodWithMultiplePVsTest) Run(client clientset.Inte
 		ginkgo.By("deploying the pod")
 		tpod.Create()
 		defer tpod.Cleanup()
-		ginkgo.By("checking that the pods command exits with no error")
-		tpod.WaitForSuccess()
+
+		ginkgo.By("checking that the pod is running")
+		tpod.WaitForRunning()
+		nodeName = tpod.pod.Spec.NodeName
 	}
+
 }

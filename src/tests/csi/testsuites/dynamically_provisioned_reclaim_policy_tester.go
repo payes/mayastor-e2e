@@ -17,7 +17,7 @@ limitations under the License.
 package testsuites
 
 import (
-	"mayastor-e2e/csi/driver"
+	"mayastor-e2e/tests/csi/driver"
 
 	v1 "k8s.io/api/core/v1"
 	clientset "k8s.io/client-go/kubernetes"

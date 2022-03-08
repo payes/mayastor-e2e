@@ -15,8 +15,8 @@ EXITV_OK=0
 EXITV_INVALID_OPTION=1
 EXITV_MISSING_OPTION=2
 EXITV_FAILED=4
-EXITV_FILE_MISMATCH=5
-EXITV_CRD_GO_GEN=6
+#EXITV_FILE_MISMATCH=5
+#EXITV_CRD_GO_GEN=6
 EXITV_VERSION_MISMATCH=7
 EXITV_MISSING_KUBECTL_PLUGIN=8
 EXITV_FAILED_CLUSTER_OK=255
@@ -357,7 +357,7 @@ kubectl get nodes -o yaml > "$reportsdir/k8s_nodes.yaml"
 test_failed=0
 
 # Generate gRPC server and client code from mayastor.proto file
-if [ -n "$grpc_code_gen" -a "$grpc_code_gen"="true" ]; then
+if [ -n "$grpc_code_gen" ] && [ "$grpc_code_gen" == "true" ]; then
   echo "Generating gRPC client and server code: $PWD"
   #Update mayastor.proto file with option go_package = "github.com/openebs/mayastor-api/protobuf";
   path="$mayastor_root_dir/rpc/mayastor-api/protobuf"
@@ -370,7 +370,7 @@ if [ -n "$grpc_code_gen" -a "$grpc_code_gen"="true" ]; then
 fi
 
 # Generate CR client code from mayastorpoolcrd.yaml file
-if [ -n "$crd_code_gen" -a "$crd_code_gen"="true" ]; then
+if [ -n "$crd_code_gen" ] && [ "$crd_code_gen" == "true" ]; then
   echo "Generating CR client code: $PWD"
   path="$mayastor_root_dir/mcp/chart/templates/mayastorpoolcrd.yaml"
   cmd="./scripts/genGoCrdTypes.py $path"
@@ -474,7 +474,7 @@ fi
 for testname in $tests; do
   # defer uninstall till after other tests have been run.
   if [ "$testname" != "uninstall" ] ;  then
-      if ! runGoTest "$testname" ; then
+      if ! runGoTest "tests/$testname" ; then
           echo "Test \"$testname\" FAILED!"
           test_failed=1
           emitLogs "$testname"
@@ -488,11 +488,11 @@ for testname in $tests; do
               elif [ "$on_fail" == "reinstall" ] ; then
                   echo "Attempting to continue by cleaning up and re-installing........"
                   runGoTest "tools/cleanup"
-                  if ! runGoTest "uninstall"; then
+                  if ! runGoTest "tests/uninstall"; then
                       echo "uninstall failed, abandoning attempt to continue"
                       exit $EXITV_FAILED
                   fi
-                  if ! runGoTest "install"; then
+                  if ! runGoTest "tests/install"; then
                       echo "(re)install failed, abandoning attempt to continue"
                       exit $EXITV_FAILED
                   fi
@@ -515,7 +515,7 @@ fi
 
 # Always run uninstall test if specified
 if contains "$tests" "uninstall" ; then
-    if ! runGoTest "uninstall" ; then
+    if ! runGoTest "tests/uninstall" ; then
         echo "Test \"uninstall\" FAILED!"
         test_failed=1
         emitLogs "uninstall"
