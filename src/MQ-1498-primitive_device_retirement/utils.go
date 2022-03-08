@@ -137,7 +137,7 @@ func (c *primitiveDeviceRetirementConfig) PrimitiveDataIntegrity() {
 	Expect(len(replicas)).To(Equal(1), "Expected to find 1 replica")
 	uri := replicas[0].Uri
 	logf.Log.Info("uri", "uri", uri)
-	firstchecksum, err := k8stest.ChecksumReplica(c.replicaIPs[0], c.replicaIPs[0], uri)
+	firstchecksum, err := k8stest.ChecksumReplica(c.replicaIPs[0], c.replicaIPs[0], uri, 60)
 	Expect(err).ToNot(HaveOccurred(), "%v", err)
 
 	// checksum second replica
@@ -146,7 +146,7 @@ func (c *primitiveDeviceRetirementConfig) PrimitiveDataIntegrity() {
 	Expect(len(replicas)).To(Equal(1), "Expected to find 1 replica")
 	uri = replicas[0].Uri
 	logf.Log.Info("uri", "uri", uri)
-	secondchecksum, err := k8stest.ChecksumReplica(c.replicaIPs[1], c.replicaIPs[1], uri)
+	secondchecksum, err := k8stest.ChecksumReplica(c.replicaIPs[1], c.replicaIPs[1], uri, 60)
 	Expect(err).ToNot(HaveOccurred(), "%v", err)
 
 	// verify that they match

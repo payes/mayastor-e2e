@@ -195,7 +195,7 @@ func deleteFaultyDisk(node string) {
 	Expect(err).ToNot(HaveOccurred())
 	table := "dmsetup delete " + e2e_config.GetConfig().PoolDevice
 	err = agent.CreateFaultyDevice(*addr, e2e_config.GetConfig().PoolDevice, table)
-	Expect(err).ToNot(HaveOccurred(), "Failed to create faulty disk on node %s: ", addr)
+	Expect(err).ToNot(HaveOccurred(), "Failed to delete faulty disk on node %s: ", addr)
 }
 
 func CreateFaultyPoolOnNode(spareNode string) {
@@ -210,7 +210,7 @@ func CreateFaultyPoolOnNode(spareNode string) {
 func DeleteFaultyPoolOnNode(spareNode string) {
 
 	poolName := "spare-faulty-pool"
-	logf.Log.Info("Creating msp", "poolName", poolName)
+	logf.Log.Info("Deleting msp", "poolName", poolName)
 	err := custom_resources.DeleteMsPool(poolName)
 	Expect(err).To(BeNil(), "Failed to delete pool")
 	deleteFaultyDisk(spareNode)
