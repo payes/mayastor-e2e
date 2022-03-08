@@ -320,7 +320,13 @@ if [ -z "$product" ]; then
   exit $EXITV_MISSING_OPTION
 fi
 
-export e2e_product_config_yaml="$CONFIGSDIR/${product}.yaml"
+if [ -e "$CONFIGSDIR/${product}.yaml" ]; then
+    export e2e_product_config_yaml="$CONFIGSDIR/${product}.yaml"
+else
+    echo "Failed to locate product config file $CONFIGSDIR/${product}.yaml"
+    help
+    ecit $EXITV_FILE_MISMATCH
+fi
 
 if [ -n "$tag" ]; then
   export e2e_image_tag="$tag"

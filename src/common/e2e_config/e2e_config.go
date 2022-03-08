@@ -412,12 +412,12 @@ func GetConfig() E2EConfig {
 				panic(fmt.Sprintf("%v", err))
 			}
 		}
-		prodctConfigFile := os.Getenv("e2e_product_config_yaml")
-		if prodctConfigFile == "" {
+		productConfigFile := os.Getenv("e2e_product_config_yaml")
+		if productConfigFile == "" {
 			fmt.Println("Product configuration file not specified")
 			fmt.Println("Use environment variable \"e2e_product_config_yaml\" to specify product configuration.")
 		} else {
-			var productCfg string = path.Clean(prodctConfigFile)
+			var productCfg string = path.Clean(productConfigFile)
 			info, err = os.Stat(productCfg)
 			if os.IsNotExist(err) {
 				panic(fmt.Sprintf("%v file not not found", productCfg))
