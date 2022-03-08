@@ -29,9 +29,10 @@ pipeline {
     }
     stages {
         stage('build image') {
+            agent { label 'nixos' }
             steps {
                 script {
-                    image_tag = 'develop-' + Common().GetTestTag()
+                    image_tag = 'bolt-develop-' + Common().GetTestTag()
                     def job_params = [
                         [ $class: 'StringParameterValue',  name: "dataplaneBranch",         value: params.dataplaneBranch ],
                         [ $class: 'StringParameterValue',  name: "dataplaneCommitOrTag",    value: params.dataplaneCommitOrTag ],
@@ -53,7 +54,7 @@ pipeline {
             }
         }
         stage('smoke test') {
-            agent { label 'nixos-mayastor' }
+            agent { label 'nixos' }
             steps {
                 script {
                     echo "smoke test"
@@ -74,7 +75,7 @@ pipeline {
             }
         }
         stage('publish product') {
-            agent { label 'nixos-mayastor' }
+            agent { label 'nixos' }
             when {
                 expression { return params.publishImages == true; }
             }
