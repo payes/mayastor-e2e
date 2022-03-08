@@ -373,13 +373,20 @@ def RunOneTestPerCluster(e2e_test, loki_run_id, params) {
     def e2e_dir = unwrap(params,'e2e_dir')
     def kubernetes_version = unwrap(params,'kubernetes_version')
     def test_platform = unwrap(params,'test_platform')
+    def datacore_bolt = unwrap(params, 'datacore_bolt')
 
     def failed_tests=""
     def k8s_job=""
+    def product_key=""
     def testset = "install ${e2e_test} uninstall"
 
     if (kubernetes_version == "" || kubernetes_version == null) {
         error("kubernetes version is not specified")
+    }
+    if (datacore_bolt == true) {
+        product_key = "bolt"
+    } else {
+        product_key = "mayastor"
     }
 
     println("RunOneTestPerCluster ${e2e_test}")
@@ -422,7 +429,7 @@ def RunOneTestPerCluster(e2e_test, loki_run_id, params) {
         nix-shell --run './scripts/get_cluster_env.py --platform "${test_platform}" --oxray  "${envs_txt_file}" --oyaml "${envs_yaml_file}"'
     """
 
-    def cmd = "cd ${e2e_dir} && ./scripts/e2e-test.sh --device /dev/sdb --tag \"${e2e_image_tag}\"  --onfail stop --tests \"${testset}\" --loki_run_id \"${loki_run_id}\" --loki_test_label \"${e2e_test}\" --reportsdir \"${env.WORKSPACE}/${e2e_reports_dir}\" --registry \"${env.REGISTRY}\" --session \"${session_id}\" --ssh_identity \"${env.WORKSPACE}/${e2e_environment}/id_rsa\" "
+    def cmd = "cd ${e2e_dir} && ./scripts/e2e-test.sh --device /dev/sdb --tag \"${e2e_image_tag}\"  --onfail stop --tests \"${testset}\" --loki_run_id \"${loki_run_id}\" --loki_test_label \"${e2e_test}\" --reportsdir \"${env.WORKSPACE}/${e2e_reports_dir}\" --registry \"${env.REGISTRY}\" --session \"${session_id}\" --ssh_identity \"${env.WORKSPACE}/${e2e_environment}/id_rsa\" --product \"${product_key}\" "
     withCredentials([
       usernamePassword(credentialsId: 'GRAFANA_API', usernameVariable: 'grafana_api_user', passwordVariable: 'grafana_api_pw'),
       string(credentialsId: 'HCLOUD_TOKEN', variable: 'HCLOUD_TOKEN')
