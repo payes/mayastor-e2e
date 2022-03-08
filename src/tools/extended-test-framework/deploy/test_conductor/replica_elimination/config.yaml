@@ -7,8 +7,10 @@ sendEvent: 1
 sendXrayTest: 1
 replicaElimination:
   replicas: 3
-  volumeSizeMb: 512
+  volumeSizeMb: 128
   fsvolume: 0
   localvolume: 0
-  blocksToWrite: 50000
+  killmayastor: 1
+  blocksToWrite: 20000
+  randomSleep: 0
 
