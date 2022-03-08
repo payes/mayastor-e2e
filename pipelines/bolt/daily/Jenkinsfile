@@ -32,7 +32,7 @@ pipeline {
                         [ $class: 'StringParameterValue',  name: "dataplaneBranch",    value: "develop" ],
                         [ $class: 'StringParameterValue',  name: "controlplaneBranch", value: "develop" ],
                         [ $class: 'BooleanParameterValue', name: "build_images",       value: true ],
-                        [ $class: 'StringParameterValue',  name: "image_tag",          value: image_tag ]
+                        [ $class: 'StringParameterValue',  name: "image_tag",          value: image_tag ],
                         [ $class: 'BooleanParameterValue', name: "datacore_bolt",      value: datacore_bolt ],
                     ]
                     build(
@@ -49,7 +49,7 @@ pipeline {
                 script {
                     def job_params = [
                         [ $class: 'BooleanParameterValue', name: "build_images",  value: false ],
-                        [ $class: 'StringParameterValue',  name: "image_tag",     value: image_tag ]
+                        [ $class: 'StringParameterValue',  name: "image_tag",     value: image_tag ],
                         [ $class: 'BooleanParameterValue', name: "datacore_bolt", value: datacore_bolt ],
                     ]
                     build(
