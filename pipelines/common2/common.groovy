@@ -13,10 +13,10 @@ def unwrap(Map params, key) {
 def GetProductSettings (datacore_bolt) {
     if (datacore_bolt == true) {
         return [
-            dataplane_dir: "bolt-data-plane-2",
-            dataplane_repo_url: "https://github.com/datacoresoftware/bolt-data-plane-test-2",
-            controlplane_dir: "bolt-control-plane-2",
-            controlplane_repo_url: "https://github.com/datacoresoftware/bolt-control-plane-test-2",
+            dataplane_dir: "bolt-data-plane",
+            dataplane_repo_url: "https://github.com/datacoresoftware/bolt-data-plane",
+            controlplane_dir: "bolt-control-plane",
+            controlplane_repo_url: "https://github.com/datacoresoftware/bolt-control-plane",
             github_credentials: 'github-datacore-pw',
         ]
     }
