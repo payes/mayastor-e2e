@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
+#include <time.h>
 #include <unistd.h>
 
 #define BLOCKSIZE (4096)
@@ -33,11 +34,12 @@ typedef enum {
 void help(const char *error_message, const char * param) {
 	const char * usage_message =
     "usage: e2e-storage-tester <options> <device>\n"
+    "\t -d <value> number of seconds to run test\n"
+    "\t -n <value> number of blocks (default 1)\n"
     "\t -r read\n"
     "\t -t <value> seconds allowed for retried I/O attempts (default 50, 0 means do not retry)\n"
     "\t -v validate\n"
-    "\t -w write\n"
-    "\t -n <value> number of blocks (default 1)\n";
+    "\t -w write\n";
     if (param[0] != '\0') {
         fprintf(stderr, "error with parameter %s: ", param);
     }
@@ -143,7 +145,7 @@ int progress(int tenpercentdone, int blocksdone, int blocks)
 
 int main(int argc, char ** argv)
 {
-    fprintf(stderr, "e2e-storage-tester 0.4, args:");
+    fprintf(stderr, "e2e-storage-tester 0.5, args:");
     for (int i = 1; i < argc; i++) {
         fprintf(stderr, " %s", argv[i]);
     }
@@ -155,6 +157,7 @@ int main(int argc, char ** argv)
     bool verify = false;
     int blocksdone = 0;
     int blocks = 1;
+    time_t duration_secs = 0;
     int timeoutSecs = 50;
     int timeoutInterval = 5;
     int err = 0;
@@ -165,6 +168,16 @@ int main(int argc, char ** argv)
             if (strlen(argv[i]) > 1) {
                 switch (argv[i][1]) {
                     case 'h': help("","");      break;
+                    case 'd':
+                        if (i+1 >= argc) {
+                            help("duration not specified", "");
+                        }
+                        i++;
+                        duration_secs = atoi(argv[i]);
+                        if (duration_secs <= 0) {
+                            help("invalid duration", argv[i]);
+                        }
+                    break;
                     case 'n':
                         if (i+1 >= argc) {
                             help("no of blocks not specified", "");
@@ -211,78 +224,83 @@ int main(int argc, char ** argv)
     }
 
     int fd;
+    time_t end_seconds = time(NULL) + duration_secs;
+    while ( true ) {
+        if (b_write == true) {
+            fd = open(device, O_WRONLY | O_DIRECT);
 
-    if (b_write == true) {
-        fd = open(device, O_WRONLY | O_DIRECT);
-
-        if (fd < 0) {
-            fprintf(stderr, "could not open %s, error: %s\n", device, strerror(errno));
-            exit(-1);
-        }
-        fprintf(stderr, "writing:\n");
-        int tenpercentdone = 0;
-        for (blocksdone = 0; blocksdone < blocks; blocksdone++) {
-            err = ioAttempt(
-                fd,
-                pattern_buffer,
-                EWRITE,
-                blocksdone,
-                timeoutInterval,
-                timeoutSecs);
-            if (err != 0) {
-                break;
+            if (fd < 0) {
+                fprintf(stderr, "could not open %s, error: %s\n", device, strerror(errno));
+                exit(-1);
             }
-            tenpercentdone = progress(tenpercentdone, blocksdone, blocks);
-        }
-        close(fd);
-        if (err < 0) {
-            fprintf(stderr, "write failure\n");
-        }
-    }
-    if (verify == true || b_read == true) {
-        fd = open(device, O_RDONLY | O_DIRECT);
-
-        if (fd < 0) {
-            fprintf(stderr, "could not open %s, error: %s\n", device, strerror(errno));
-            exit(-1);
-        }
-        if (verify == true) {
-            fprintf(stderr, "verifying:\n");
-        } else {
-            fprintf(stderr, "reading:\n");
-        }
-        int tenpercentdone = 0;
-        for (blocksdone = 0; blocksdone < blocks; blocksdone++) {
-            err = lseek(fd, (int64_t)(blocksdone * BLOCKSIZE), 0);
-            if (err < 0) {
-                fprintf(stderr, "could not seek to block %d, error: %s\n", blocksdone, strerror(errno));
-                break;
-            }
-            err = ioAttempt(
-                fd,
-                read_buffer,
-                EREAD,
-                blocksdone,
-                timeoutInterval,
-                timeoutSecs);
-            if (err < 0) {
-                break;
-            }
-            if (verify == true) {
-                blockPattern(blocksdone, pattern_buffer, BLOCKSIZE);
-                int res = compare(read_buffer, pattern_buffer, BLOCKSIZE);
-                if (res != 0) {
-                    fprintf(stderr, "buffers mismatch at block %d\n", blocksdone);
-                    err = -1;
+            fprintf(stderr, "writing:\n");
+            int tenpercentdone = 0;
+            for (blocksdone = 0; blocksdone < blocks; blocksdone++) {
+                err = ioAttempt(
+                    fd,
+                    pattern_buffer,
+                    EWRITE,
+                    blocksdone,
+                    timeoutInterval,
+                    timeoutSecs);
+                if (err != 0) {
                     break;
                 }
+                tenpercentdone = progress(tenpercentdone, blocksdone, blocks);
             }
-            tenpercentdone = progress(tenpercentdone, blocksdone, blocks);
+            close(fd);
+            if (err < 0) {
+                fprintf(stderr, "write failure\n");
+            }
         }
-        close(fd);
+        if (verify == true || b_read == true) {
+            fd = open(device, O_RDONLY | O_DIRECT);
 
-        if (err < 0) {
-            fprintf(stderr, "read failure\n");
+            if (fd < 0) {
+                fprintf(stderr, "could not open %s, error: %s\n", device, strerror(errno));
+                exit(-1);
+            }
+            if (verify == true) {
+                fprintf(stderr, "verifying:\n");
+            } else {
+                fprintf(stderr, "reading:\n");
+            }
+            int tenpercentdone = 0;
+            for (blocksdone = 0; blocksdone < blocks; blocksdone++) {
+                err = lseek(fd, (int64_t)(blocksdone * BLOCKSIZE), 0);
+                if (err < 0) {
+                    fprintf(stderr, "could not seek to block %d, error: %s\n", blocksdone, strerror(errno));
+                    break;
+                }
+                err = ioAttempt(
+                    fd,
+                    read_buffer,
+                    EREAD,
+                    blocksdone,
+                    timeoutInterval,
+                    timeoutSecs);
+                if (err < 0) {
+                    break;
+                }
+                if (verify == true) {
+                    blockPattern(blocksdone, pattern_buffer, BLOCKSIZE);
+                    int res = compare(read_buffer, pattern_buffer, BLOCKSIZE);
+                    if (res != 0) {
+                        fprintf(stderr, "buffers mismatch at block %d\n", blocksdone);
+                        err = -1;
+                        break;
+                    }
+                }
+                tenpercentdone = progress(tenpercentdone, blocksdone, blocks);
+            }
+            close(fd);
+
+            if (err < 0) {
+                fprintf(stderr, "read failure\n");
+            }
+        }
+        if (time(NULL) >= end_seconds) {
+            break;
         }
     }
     fprintf(stdout, "%d", blocksdone);

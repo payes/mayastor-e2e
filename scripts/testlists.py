@@ -11,7 +11,6 @@ Optionally
     - return a list which starts with install and ends with uninstall
 """
 
-import os
 import yaml
 
 
@@ -52,11 +51,10 @@ if __name__ == '__main__':
     from argparse import ArgumentParser
     parser = ArgumentParser()
     parser.add_argument('--lists', dest='listdef',
-                        default=os.path.abspath(os.path.join(os.path.dirname(
-                            os.path.realpath(__file__)),
-                            '../configurations/testlists.yaml')),
+                        default=None,
+                        required=True,
                         help='list definitions')
-    parser.add_argument('--profile', dest='profile', default=None,
+    parser.add_argument('--profile', dest='profile', default=None, required=True,
                         help='profile')
 
     parser.add_argument('--install', dest='install', action='store_true',

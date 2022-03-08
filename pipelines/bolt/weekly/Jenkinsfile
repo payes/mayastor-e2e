@@ -1,17 +1,19 @@
 #!/usr/bin/env groovy
 
+
 def Common() {
     def common = load "./pipelines/common2/common.groovy"
     return common
 }
 
 def image_tag = ""
+def datacore_bolt = true
 
 //The five time-and-date fields are as follows:
 //minute (0-59), hour (0-23, 0 = midnight), day (1-31), month (1-12), weekday (0-6, 0 = Sunday).
 // Daily => Monday to Friday. On Saturday and Sunday this pipeline will be
 // invoked by the weekend pipeline.
-String cron_schedule = "H 0 * * 1-5"
+String cron_schedule = "H 0 * * 6,0"
 
 pipeline {
     agent any
@@ -32,6 +34,7 @@ pipeline {
                         [ $class: 'StringParameterValue',  name: "controlplaneBranch", value: "develop" ],
                         [ $class: 'BooleanParameterValue', name: "build_images",       value: true ],
                         [ $class: 'StringParameterValue',  name: "image_tag",          value: image_tag ]
+                        [ $class: 'BooleanParameterValue', name: "datacore_bolt",      value: datacore_bolt ],
                     ]
                     build(
                        job: "generic-system-test/develop",
@@ -46,11 +49,46 @@ pipeline {
             steps {
                 script {
                     def job_params = [
-                        [ $class: 'BooleanParameterValue', name: "build_images", value: false ],
-                        [ $class: 'StringParameterValue',  name: "image_tag",    value: image_tag ]
+                        [ $class: 'BooleanParameterValue', name: "build_images",  value: false ],
+                        [ $class: 'StringParameterValue',  name: "image_tag",     value: image_tag ]
+                        [ $class: 'BooleanParameterValue', name: "datacore_bolt", value: datacore_bolt ],
                     ]
                     build(
                        job: "ubuntu20-04-lts-k8s-1.21/develop",
+                       propagate: false,
+                       wait: true,
+                       parameters: job_params
+                   )
+                }
+            }
+        }
+        stage('test image on k8s-1.22') {
+            steps {
+                script {
+                    def job_params = [
+                        [ $class: 'BooleanParameterValue', name: "build_images",  value: false ],
+                        [ $class: 'StringParameterValue',  name: "image_tag",     value: image_tag ]
+                        [ $class: 'BooleanParameterValue', name: "datacore_bolt", value: datacore_bolt ],
+                    ]
+                    build(
+                       job: "ubuntu20-04-lts-k8s-1.22/develop",
+                       propagate: false,
+                       wait: true,
+                       parameters: job_params
+                   )
+                }
+            }
+        }
+        stage('test image on k8s-1.23') {
+            steps {
+                script {
+                    def job_params = [
+                        [ $class: 'BooleanParameterValue', name: "build_images",  value: false ],
+                        [ $class: 'StringParameterValue',  name: "image_tag",     value: image_tag ]
+                        [ $class: 'BooleanParameterValue', name: "datacore_bolt", value: datacore_bolt ],
+                    ]
+                    build(
+                       job: "ubuntu20-04-lts-k8s-1.23/develop",
                        propagate: false,
                        wait: true,
                        parameters: job_params

@@ -331,6 +331,34 @@ func EtfwRandom(valrange uint32) (int, error) {
 	return int(h.Sum32() % valrange), err
 }
 
+func killMayastor(index int, nodecount int) error {
+	// get the node IPs
+	// list the pools
+	pools, err := custom_resources.ListMsPools()
+	if err != nil {
+		return fmt.Errorf("failed to list pools, err: %v", err)
+	}
+	if len(pools) < nodecount {
+		return fmt.Errorf("Expected %d ips, found %d", nodecount, len(pools))
+	}
+	locs, err := k8sclient.GetNodeLocs()
+	if err != nil {
+		return fmt.Errorf("MSV grpc check failed to get nodes, err: %s", err.Error())
+	}
+	if len(locs) < nodecount {
+		return fmt.Errorf("Expected %d ips, found %d", nodecount, len(locs))
+	}
+	pool := pools[index]
+
+	for _, node := range locs {
+		if node.NodeName == pool.Spec.Node {
+			_, err = e2eagent.KillMayastor(node.IPAddress)
+			return err
+		}
+	}
+	return fmt.Errorf("Failed to find mayastor node")
+}
+
 func offlineDevice(index int, nodecount int, devs []deviceDescriptor) ([]deviceDescriptor, error) {
 	var err error
 	var nodeIp string
@@ -450,20 +478,47 @@ func RunTests(testConductor *tc.TestConductor) {
 
 func waitForVolumeStatus(ms_ip string, uuid string, wantedState string) error {
 	for i := 0; ; i++ {
+		reps, err := mini_mcp_client.GetVolumeReplicaCount(ms_ip, uuid)
+		if err != nil {
+			return fmt.Errorf("failed to get volume replicas, error: %v", err)
+		}
+		if reps > 0 {
+			state, err := getVolumeStatus(ms_ip, uuid)
+			if err != nil {
+				return fmt.Errorf("failed to get volume state, error: %v", err)
+			}
+			if state == wantedState {
+				break
+			}
+			logf.Log.Info("volume not ready", "current state", state, "wanted state", wantedState)
+			if i == 100 {
+				return fmt.Errorf("timed out waiting for nexus to be %s", wantedState)
+			}
+		} else {
+			logf.Log.Info("volume has no replicas")
+		}
+		time.Sleep(10 * time.Second)
+	}
+	logf.Log.Info("volume now in wanted state", "state", wantedState)
+	return nil
+}
+
+func waitForVolumeNotOnline(ms_ip string, uuid string) error {
+	for i := 0; ; i++ {
 		state, err := getVolumeStatus(ms_ip, uuid)
 		if err != nil {
 			return fmt.Errorf("failed to get nexus state, error: %v", err)
 		}
-		if state == wantedState {
+		if state != MCP_MSV_ONLINE {
+			logf.Log.Info("volume now not online", "state", state)
 			break
 		}
 		if i == 100 {
-			return fmt.Errorf("timed out waiting for nexus to be %s", wantedState)
+			return fmt.Errorf("timed out waiting for nexus to be not online")
 		}
-		logf.Log.Info("volume not ready", "current state", state, "wanted state", wantedState)
+		logf.Log.Info("volume not ready", "current state", state)
 		time.Sleep(10 * time.Second)
 	}
-	logf.Log.Info("volume now in wanted state", "state", wantedState)
 	return nil
 }
 

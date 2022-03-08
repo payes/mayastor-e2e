@@ -2,9 +2,11 @@ package k8sinstall
 
 import (
 	"fmt"
+	"github.com/pkg/errors"
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -263,7 +265,7 @@ func uninstallControlPlane() error {
 		yamlFiles[i], yamlFiles[j] = yamlFiles[j], yamlFiles[i]
 	}
 	yamlsDir := locations.GetControlPlaneGeneratedYamlsDir()
-	errors := make(chan error, len(yamlFiles))
+	errorsCh := make(chan error, len(yamlFiles))
 	for _, yf := range yamlFiles {
 		wg.Add(1)
 		// Deletes can stall indefinitely, try to mitigate this
@@ -275,13 +277,13 @@ func uninstallControlPlane() error {
 			defer wg.Done()
 			err = k8stest.KubeCtlDeleteYaml(yf, yamlsDir)
 			if err != nil {
-				errors <- err
+				errorsCh <- err
 			}
 		}(yf)
 	}
 	wg.Wait()
-	close(errors)
-	for err := range errors {
+	close(errorsCh)
+	for err := range errorsCh {
 		errs.Accumulate(err)
 	}
 	return errs.GetError()
@@ -338,6 +340,11 @@ func InstallMayastor() error {
 	}
 
 	for _, yaml := range mayastorYamlFiles {
+		yamlFilepath := filepath.Join(yamlsDir, yaml)
+		if _, err = os.Stat(yamlFilepath); errors.Is(err, os.ErrNotExist) {
+			logf.Log.Info("file not found", "yaml file", yaml)
+			continue
+		}
 		err = k8stest.KubeCtlApplyYaml(yaml, yamlsDir)
 		if err != nil {
 			errs.Accumulate(err)
@@ -428,7 +435,7 @@ func deleteNamespace() error {
 // objects, so that we can verify the local deploy yaml files are correct.
 func TeardownMayastor() error {
 	var cleaned bool
-	errors := make(chan error, len(mayastorYamlFiles))
+	errorsCh := make(chan error, len(mayastorYamlFiles))
 	var wg sync.WaitGroup
 	var errs common.ErrorAccumulator
 	cleanup := e2e_config.GetConfig().Uninstall.Cleanup != 0
@@ -510,15 +517,21 @@ func TeardownMayastor() error {
 		go func() {
 			time.Sleep(time.Second * 1)
 			defer wg.Done()
-			err = k8stest.KubeCtlDeleteYaml(yf, yamlsDir)
+			yamlFilepath := filepath.Join(yamlsDir, yf)
+			if _, err = os.Stat(yamlFilepath); errors.Is(err, os.ErrNotExist) {
+				logf.Log.Info("file not found", "yaml file", yf)
+				err = nil
+			} else {
+				err = k8stest.KubeCtlDeleteYaml(yf, yamlsDir)
+			}
 			if err != nil {
-				errors <- err
+				errorsCh <- err
 			}
 		}()
 	}
 	wg.Wait()
-	close(errors)
-	for err := range errors {
+	close(errorsCh)
+	for err := range errorsCh {
 		errs.Accumulate(err)
 	}
 	if errs.GetError() != nil {

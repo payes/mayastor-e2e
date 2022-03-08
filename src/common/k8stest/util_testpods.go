@@ -449,6 +449,7 @@ func RestartMayastorPods(timeoutSecs int) error {
 	return fmt.Errorf("restart failed incomplete error=%v", err)
 }
 
+/*
 func collectNatsPodNames() ([]string, error) {
 	var podNames []string
 	podApi := gTestEnv.KubeInt.CoreV1().Pods
@@ -507,6 +508,7 @@ func RestartNatsPods(timeoutSecs int) error {
 	}
 	return fmt.Errorf("restart failed in some nebulous way! ")
 }
+*/
 
 func restartMayastor(restartTOSecs int, readyTOSecs int, poolsTOSecs int) error {
 	var err error

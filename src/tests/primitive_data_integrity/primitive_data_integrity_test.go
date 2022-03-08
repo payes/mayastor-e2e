@@ -190,7 +190,7 @@ func (env *IntegrityEnv) PrimitiveDataIntegrity() {
 	Expect(len(replicas)).To(Equal(1), "Expected to find 1 replica")
 	uri := replicas[0].Uri
 	logf.Log.Info("uri", "uri", uri)
-	firstchecksum, err := k8stest.ChecksumReplica(env.replicaIPs[0], env.replicaIPs[0], uri)
+	firstchecksum, err := k8stest.ChecksumReplica(env.replicaIPs[0], env.replicaIPs[0], uri, 60)
 	Expect(err).ToNot(HaveOccurred(), "%v", err)
 
 	// the second replica
@@ -199,7 +199,7 @@ func (env *IntegrityEnv) PrimitiveDataIntegrity() {
 	Expect(len(replicas)).To(Equal(1), "Expected to find 1 replica")
 	uri = replicas[0].Uri
 	logf.Log.Info("uri", "uri", uri)
-	secondchecksum, err := k8stest.ChecksumReplica(env.replicaIPs[1], env.replicaIPs[1], uri)
+	secondchecksum, err := k8stest.ChecksumReplica(env.replicaIPs[1], env.replicaIPs[1], uri, 60)
 	Expect(err).ToNot(HaveOccurred(), "%v", err)
 
 	// verify that they match

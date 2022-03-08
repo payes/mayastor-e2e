@@ -2,7 +2,6 @@ package tc
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -16,6 +15,7 @@ import (
 	"mayastor-e2e/tools/extended-test-framework/common/k8sclient"
 
 	"github.com/go-openapi/strfmt"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 func AddWorkload(
@@ -48,9 +48,8 @@ func AddWorkload(
 		if err != nil {
 			logf.Log.Info("failed to put workload",
 				"error", err.Error(),
-				"name", string(pPutWorkloadOk.Payload.Name),
-				"namespace", pPutWorkloadOk.Payload.Namespace,
-				"wid", pPutWorkloadOk.Payload.ID)
+				"name", name,
+				"namespace", namespace)
 		} else {
 			logf.Log.Info("put workload",
 				"name", string(pPutWorkloadOk.Payload.Name),
@@ -63,7 +62,19 @@ func AddWorkload(
 	return err
 }
 
-func AddCommonWorkloads(client *client.Etfw, violations []models.WorkloadViolationEnum) error {
+func AddCommonWorkloads(
+	client *client.Etfw,
+	violations []models.WorkloadViolationEnum,
+) error {
+	return AddCommonWorkloadsWithExclusions(client, violations, []string{})
+}
+
+func AddCommonWorkloadsWithExclusions(
+	client *client.Etfw,
+	violations []models.WorkloadViolationEnum,
+	exclusions []string) error {
+
+	const namespace = "mayastor"
 
 	tcpod, err := k8sclient.GetPod("test-conductor", common.EtfwNamespace)
 	if err != nil {
@@ -78,38 +89,61 @@ func AddCommonWorkloads(client *client.Etfw, violations []models.WorkloadViolati
 		return fmt.Errorf("failed to inform workload monitor of test-conductor, error: %v", err)
 	}
 
-	podlist, err := k8sclient.GetPodsInNamespace("mayastor")
+	err = AddNamespaceWorkloads(client, tcpod.ObjectMeta.UID, violations, namespace, exclusions)
 	if err != nil {
-		return fmt.Errorf("failed to get pods in mayastor namespace, error: %v\n", err)
+		return fmt.Errorf("failed to add pods in namespace %s, error: %v\n", namespace, err)
+	}
+	return err
+}
+
+func AddNamespaceWorkloads(
+	client *client.Etfw,
+	requester_uuid types.UID,
+	violations []models.WorkloadViolationEnum,
+	namespace string,
+	exclusion_labels []string) error {
+
+	podlist, err := k8sclient.GetPodsInNamespace(namespace)
+	if err != nil {
+		return fmt.Errorf("failed to get pods in namespace %s, error: %v\n", namespace, err)
 	}
 
 	for _, pod := range podlist.Items {
-		if !strings.HasPrefix(pod.ObjectMeta.Name, "msp-operator-") {
-			workload_spec := models.WorkloadSpec{}
-			workload_spec.Violations = violations
-			workload_params := workload_monitor.NewPutWorkloadByRegistrantParams()
-
-			workload_params.Rid = strfmt.UUID(tcpod.ObjectMeta.UID)
-			workload_params.Wid = strfmt.UUID(pod.ObjectMeta.UID)
-			workload_params.Body = &workload_spec
-			for i := 0; i < 5; i++ {
-				var pPutWorkloadOk *workload_monitor.PutWorkloadByRegistrantOK
-				pPutWorkloadOk, err = client.WorkloadMonitor.PutWorkloadByRegistrant(workload_params)
-				if err != nil {
-					logf.Log.Info("failed to put workload",
-						"error", err.Error(),
-						"name", string(pPutWorkloadOk.Payload.Name),
-						"namespace", pPutWorkloadOk.Payload.Namespace,
-						"wid", pPutWorkloadOk.Payload.ID)
-				} else {
-					logf.Log.Info("put workload",
-						"name", string(pPutWorkloadOk.Payload.Name),
-						"namespace", pPutWorkloadOk.Payload.Namespace,
-						"wid", pPutWorkloadOk.Payload.ID)
-					break
-				}
-				time.Sleep(10 * time.Second)
+		var skip bool
+		for _, label := range exclusion_labels {
+			value, ok := pod.ObjectMeta.Labels["app"]
+			if ok && value == label {
+				skip = true
+				break
 			}
+		}
+		if skip {
+			continue
+		}
+		workload_spec := models.WorkloadSpec{}
+		workload_spec.Violations = violations
+		workload_params := workload_monitor.NewPutWorkloadByRegistrantParams()
+
+		workload_params.Rid = strfmt.UUID(requester_uuid)
+		workload_params.Wid = strfmt.UUID(pod.ObjectMeta.UID)
+		workload_params.Body = &workload_spec
+		for i := 0; i < 5; i++ {
+			var pPutWorkloadOk *workload_monitor.PutWorkloadByRegistrantOK
+			pPutWorkloadOk, err = client.WorkloadMonitor.PutWorkloadByRegistrant(workload_params)
+			if err != nil {
+				logf.Log.Info("failed to put workload",
+					"error", err.Error(),
+					"name", string(pPutWorkloadOk.Payload.Name),
+					"namespace", pPutWorkloadOk.Payload.Namespace,
+					"wid", pPutWorkloadOk.Payload.ID)
+			} else {
+				logf.Log.Info("put workload",
+					"name", string(pPutWorkloadOk.Payload.Name),
+					"namespace", pPutWorkloadOk.Payload.Namespace,
+					"wid", pPutWorkloadOk.Payload.ID)
+				break
+			}
+			time.Sleep(10 * time.Second)
 		}
 	}
 	return err
