@@ -327,7 +327,7 @@ if [ -z "$device" ]; then
 fi
 export e2e_pool_device=$device
 
-if [ -z "$product" ]; then
+if [ -z "$product_key" ]; then
   echo "Product [mayastor/bolt] must be specified"
   help
   exit $EXITV_MISSING_OPTION
