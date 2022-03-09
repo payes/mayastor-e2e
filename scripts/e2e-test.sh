@@ -95,8 +95,9 @@ Options:
   --crd_code_gen <true|false>
                             On true, custom resource clinet code will be generated
                             On false, custom resource clinet code will not be generated
+  --product                  Product key [mayastor, bolt]
 Examples:
-  $0 --device /dev/nvme0n1 --registry 127.0.0.1:5000 --tag a80ce0c
+  $0 --device /dev/nvme0n1 --registry 127.0.0.1:5000 --tag a80ce0c --product bolt
 EOF
 }
 
@@ -258,6 +259,21 @@ while [ "$#" -gt 0 ]; do
                     ;;
             esac
         ;;
+    --product)
+      shift
+      case $1 in
+          mayastor)
+             product="$1"
+             ;;
+          bolt)
+             product="$1"
+             ;;
+          *)
+              echo "Unknown product: $1"
+              exit 1
+              ;;
+      esac
+      ;;
     *)
       echo "Unknown option: $1"
       help
@@ -269,6 +285,11 @@ done
 
 export loki_run_id="$loki_run_id" # can be empty string
 export loki_test_label="$loki_test_label"
+
+if [ -z "$product" ]; then
+    echo "defaulting product to mayastor"
+    product="mayastor"
+fi
 
 if [ -z "$session" ]; then
     sessiondir="$ARTIFACTSDIR"
@@ -283,7 +304,7 @@ if [ -z "$mayastor_root_dir" ]; then
     mkdir -p "$sessiondir"
     export mayastor_root_dir="$ARTIFACTSDIR/install-bundle/$tag"
     mkdir -p "$mayastor_root_dir"
-    if ! "$SCRIPTDIR/extract-install-image.sh" --alias-tag "$tag" --installroot "$mayastor_root_dir"
+    if ! "$SCRIPTDIR/extract-install-image.sh" --alias-tag "$tag" --installroot "$mayastor_root_dir" --product "$product"
     then
         echo "Unable to extract install files for $tag"
         exit $EXITV_INVALID_OPTION

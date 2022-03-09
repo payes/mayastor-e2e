@@ -2,8 +2,7 @@
 
 set -euo pipefail
 
-RESTFUL_IMAGES="mayastor mayastor-csi mayastor-client install-images mcp-core mcp-rest mcp-csi-controller mcp-msp-operator"
-
+SCRIPTDIR=$(dirname "$(realpath "$0")")
 REGISTRY="ci-registry.mayastor-ci.mayadata.io"
 DESTINATION_REGISTRY="$REGISTRY"
 SRC_TAG=""
@@ -11,7 +10,7 @@ ALIAS_TAG=""
 
 help() {
   cat <<EOF
-Usage: $(basename $0) [OPTIONS]
+Usage: $(basename "$0") [OPTIONS]
 
 Options:
   -h, --help                 Display this text.
@@ -21,7 +20,7 @@ Options:
   --alias-tag                Tag to give CI image
 
 Examples:
-  $(basename $0) --registry 127.0.0.1:5000 --src-tag 755c435fdb0a --alias-tag customized-tag
+  $(basename "$0") --registry 127.0.0.1:5000 --src-tag 755c435fdb0a --alias-tag customized-tag
 EOF
 }
 
@@ -52,18 +51,17 @@ while [ "$#" -gt 0 ]; do
       shift
       case $1 in
           mayastor)
-              regroot='mayadata'
-              RESTFUL_IMAGES="mayastor mayastor-csi-node mayastor-client install-images mayastor-core mayastor-rest mayastor-csi-controller mayastor-msp-operator"
-             ;;
+              registry_subdir='mayadata'
+              ;;
           bolt)
-             regroot='datacore'
-             RESTFUL_IMAGES="bolt bolt-csi-node bolt-client install-images bolt-core bolt-rest bolt-csi-controller bolt-msp-operator"
-             ;;
+              registry_subdir='datacore'
+              ;;
           *)
               echo "Unknown product: $1"
               exit 1
               ;;
       esac
+      product="$1"
       shift
       ;;
     *)
@@ -85,22 +83,37 @@ if [ -z "$ALIAS_TAG" ] ; then
     exit 1
 fi
 
-
-images=$RESTFUL_IMAGES
+# extract the install bundle - and collect the names of mayadata/datacore images
+# from helm chart yaml files.
+# convert lines like
+#   {{ .Values.mayastorCP.registry }}datacore/bolt-rest:{{ .Values.mayastorCP.tag }}
+# to
+#   bolt-rest
+tmpdir=$(mktemp -d)
+"$SCRIPTDIR/extract-install-image.sh" --alias-tag "$SRC_TAG" --installroot "$tmpdir" --product "$product"
+images=$(find "$tmpdir" -type f -name '*.yaml' -print0 \
+    | xargs -0 grep -w image \
+    | grep -w -e datacore -e mayadata \
+    | sed  \
+    -e 's#.*datacore/##' \
+    -e 's#.*mayadata/##' \
+    -e 's#:{{.*##' \
+)
+rm -rf "$tmpdir"
 
 for name in $images; do
-  input_image="${REGISTRY}/$regroot/${name}:${SRC_TAG}"
+  input_image="${REGISTRY}/$registry_subdir/${name}:${SRC_TAG}"
 
   docker pull "${input_image}"
 
   if [ "$DESTINATION_REGISTRY" == "dockerhub" ]; then
-    output_image="$regroot/${name}:${ALIAS_TAG}"
+    output_image="$registry_subdir/${name}:${ALIAS_TAG}"
     # do not upload install-images to dockerhub
     if [ "$name" == "install-images" ]; then
         continue
     fi
   else
-    output_image="${DESTINATION_REGISTRY}/$regroot/${name}:${ALIAS_TAG}"
+    output_image="${DESTINATION_REGISTRY}/$registry_subdir/${name}:${ALIAS_TAG}"
   fi
 
   docker tag "${input_image}" "${output_image}"

@@ -60,10 +60,10 @@ while [ "$#" -gt 0 ]; do
       shift
       case $1 in
           mayastor)
-             regroot='mayadata'
+             registry_subdir='mayadata'
              ;;
           bolt)
-             regroot='datacore'
+             registry_subdir='datacore'
              ;;
           *)
               echo "Unknown product: $1"
@@ -89,7 +89,7 @@ if [ -z "$INSTALLROOT" ] ; then
     help
 fi
 
-image=${REGISTRY}/$regroot/install-images:${TAG}
+image=${REGISTRY}/$registry_subdir/install-images:${TAG}
 docker pull "${image}"
 
 # if the install bundle directory exists, we should

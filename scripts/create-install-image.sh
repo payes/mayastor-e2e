@@ -90,10 +90,10 @@ while [ "$#" -gt 0 ]; do
       shift
       case $1 in
           mayastor)
-             regroot='mayadata'
+             registry_subdir='mayadata'
              ;;
           bolt)
-             regroot='datacore'
+             registry_subdir='datacore'
              ;;
           *)
               echo "Unknown product: $1"
@@ -119,7 +119,7 @@ if [ -z "$MCP_DIR" ]; then
     exit 127
 fi
 
-image="$regroot/install-images:${OUTPUT_TAG}"
+image="$registry_subdir/install-images:${OUTPUT_TAG}"
 reg_image="${REGISTRY}/${image}"
 
 DockerfileTxt="FROM scratch
