@@ -48,6 +48,7 @@ profile_test_list=""
 ssh_identity=""
 grpc_code_gen=
 crd_code_gen=
+product_key=""
 
 declare -A profiles
 # List and Sequence of tests.
@@ -62,7 +63,7 @@ Options:
   --loki_run_id <Loki run id>  ID string, for use when sending Loki markers
   --loki_test_label <Loki custom test label> Test label value, for use when sending Loki markers
   --device <path>           Device path to use for storage pools.
-  --product                 Product which needs to be validated against e2e
+  --product                 Product key [mayastor, bolt]
   --registry <host[:port]>  Registry to pull the mayastor images from. (default: "ci-registry.mayastor-ci.mayadata.io")
                             'dockerhub' means use DockerHub
   --tests <list of tests>   Lists of tests to run, delimited by spaces (default: "$tests")
@@ -240,7 +241,19 @@ while [ "$#" -gt 0 ]; do
         ;;
     -p|--product)
         shift
-        product="$1"
+            case "$1" in
+                mayastor)
+                    product_key=$1
+                    ;;
+                bolt)
+                    product_key=$1
+                    ;;
+                *)
+                    echo "Unknown product: $1"
+                    help
+                    exit $EXITV_INVALID_OPTION
+                    ;;
+            esac
         ;;
     --session)
         shift
@@ -315,17 +328,17 @@ fi
 export e2e_pool_device=$device
 
 if [ -z "$product" ]; then
-  echo "Product (Mayastor/Bolt) must be specified"
+  echo "Product [mayastor/bolt] must be specified"
   help
   exit $EXITV_MISSING_OPTION
 fi
 
-if [ -e "$CONFIGSDIR/${product}.yaml" ]; then
-    export e2e_product_config_yaml="$CONFIGSDIR/${product}.yaml"
+if [ -e "$CONFIGSDIR/${product_key}.yaml" ]; then
+    export e2e_product_config_yaml="$CONFIGSDIR/${product_key}.yaml"
 else
-    echo "Failed to locate product config file $CONFIGSDIR/${product}.yaml"
+    echo "Failed to locate product config file $CONFIGSDIR/${product_key}.yaml"
     help
-    ecit $EXITV_FILE_MISMATCH
+    exit $EXITV_FILE_MISMATCH
 fi
 
 if [ -n "$tag" ]; then
