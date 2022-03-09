@@ -5,7 +5,7 @@ import (
 	"mayastor-e2e/common/e2e_config"
 )
 
-var nsMayastor = e2e_config.GetConfig().Product.Namespace
+var nsMayastor = e2e_config.GetConfig().Product.ProductNamespace
 var fioImage = e2e_config.GetConfig().E2eFioImage
 var fsxImage = e2e_config.GetConfig().E2eFsxImage
 var registry = e2e_config.GetConfig().Registry

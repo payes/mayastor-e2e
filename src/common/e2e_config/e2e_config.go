@@ -34,8 +34,8 @@ type E2EConfig struct {
 		FilteredMayastorPodCheck int `yaml:"filteredMayastorPodCheck" env-default:"0"`
 	} `yaml:"platform"`
 	Product struct {
-		Name                      string `yaml:"name" env-default:"mayastor"`
-		Namespace                 string `yaml:"namespace" env-default:"mayastor"`
+		ProductName               string `yaml:"productName" env-default:"mayastor"`
+		ProductNamespace          string `yaml:"productNamespace" env-default:"mayastor"`
 		DeploymentName            string `yaml:"deploymentName" env-default:"mayastor"`
 		PodName                   string `yaml:"podName" env-default:"mayastor"`
 		ContainerName             string `yaml:"containerName" env-default:"mayastor"`

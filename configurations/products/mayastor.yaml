@@ -1,6 +1,6 @@
 product:
-  name: mayastor
-  namespace: mayastor
+  productName: mayastor
+  productNamespace: mayastor
   deploymentName: mayastor
   podName: mayastor
   containerName: mayastor

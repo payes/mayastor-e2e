@@ -1,6 +1,6 @@
 product:
-  name: bolt
-  namespace: mayastor
+  productName: bolt
+  productNamespace: mayastor
   deploymentName: mayastor
   podName: mayastor
   containerName: mayastor
