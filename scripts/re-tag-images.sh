@@ -48,6 +48,24 @@ while [ "$#" -gt 0 ]; do
       ALIAS_TAG=$1
       shift
       ;;
+    --product)
+      shift
+      case $1 in
+          mayastor)
+              regroot='mayadata'
+              RESTFUL_IMAGES="mayastor mayastor-csi-node mayastor-client install-images mayastor-core mayastor-rest mayastor-csi-controller mayastor-msp-operator"
+             ;;
+          bolt)
+             regroot='datacore'
+             RESTFUL_IMAGES="bolt bolt-csi-node bolt-client install-images bolt-core bolt-rest bolt-csi-controller bolt-msp-operator"
+             ;;
+          *)
+              echo "Unknown product: $1"
+              exit 1
+              ;;
+      esac
+      shift
+      ;;
     *)
       echo "Unknown option: $1"
       exit 1
@@ -71,18 +89,18 @@ fi
 images=$RESTFUL_IMAGES
 
 for name in $images; do
-  input_image="${REGISTRY}/mayadata/${name}:${SRC_TAG}"
+  input_image="${REGISTRY}/$regroot/${name}:${SRC_TAG}"
 
   docker pull "${input_image}"
 
   if [ "$DESTINATION_REGISTRY" == "dockerhub" ]; then
-    output_image="mayadata/${name}:${ALIAS_TAG}"
+    output_image="$regroot/${name}:${ALIAS_TAG}"
     # do not upload install-images to dockerhub
     if [ "$name" == "install-images" ]; then
         continue
     fi
   else
-    output_image="${DESTINATION_REGISTRY}/mayadata/${name}:${ALIAS_TAG}"
+    output_image="${DESTINATION_REGISTRY}/$regroot/${name}:${ALIAS_TAG}"
   fi
 
   docker tag "${input_image}" "${output_image}"

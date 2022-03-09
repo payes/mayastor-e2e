@@ -6,8 +6,8 @@ set -euo pipefail
 
 REGISTRY="ci-registry.mayastor-ci.mayadata.io"
 TAG=""
-SCRIPTDIR=$(dirname "$(realpath "$0")")
-E2EROOT=$(realpath "$SCRIPTDIR/..")
+#SCRIPTDIR=$(dirname "$(realpath "$0")")
+#E2EROOT=$(realpath "$SCRIPTDIR/..")
 INSTALLROOT=""
 
 
@@ -16,7 +16,7 @@ help() {
 This script extracts the templates and files required for E2E to install mayastor
 from a mayastor install image.
 
-Usage: $(basename $0) [OPTIONS]
+Usage: $(basename "$0") [OPTIONS]
 
 Options:
   -h, --help                 Display this text.
@@ -24,9 +24,10 @@ Options:
                              default is ${REGISTRY}
   --alias-tag                Tag of install image to use, default is ${TAG}
   --installroot              install root directory
+  --product                  Product key [mayastor, bolt]
 
 Examples:
-  $(basename $0) --registry 127.0.0.1:5000 --alias-tag customized-tag --installroot <path>
+  $(basename "$0") --registry 127.0.0.1:5000 --alias-tag customized-tag --installroot <path> --product bolt
 EOF
 }
 
@@ -55,6 +56,22 @@ while [ "$#" -gt 0 ]; do
       fi
       shift
       ;;
+    --product)
+      shift
+      case $1 in
+          mayastor)
+             regroot='mayadata'
+             ;;
+          bolt)
+             regroot='datacore'
+             ;;
+          *)
+              echo "Unknown product: $1"
+              exit 1
+              ;;
+      esac
+      shift
+      ;;
     *)
       echo "Unknown option: $1"
       exit 1
@@ -72,7 +89,7 @@ if [ -z "$INSTALLROOT" ] ; then
     help
 fi
 
-image=${REGISTRY}/mayadata/install-images:${TAG}
+image=${REGISTRY}/$regroot/install-images:${TAG}
 docker pull "${image}"
 
 # if the install bundle directory exists, we should

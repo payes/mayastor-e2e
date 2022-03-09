@@ -55,7 +55,8 @@ def e2e_params = [
 
     datacore_bolt: false,
 
-    build_flags: ''
+    build_flags: '',
+    product: ''
 ]
 
 def max_parallel_stages = 0
@@ -122,8 +123,13 @@ pipeline {
                 error('Unhandled: both test_profile and list_of_tests are set')
             }
 
-            if (params.datacore_bolt == true && params.push2dockerhub == true) {
-                error('Bolt images cannot be pushed to dockerhub')
+            if (params.datacore_bolt == true) {
+                e2e_params['product'] = 'bolt'
+                if (params.push2dockerhub == true) {
+                    error('Bolt images cannot be pushed to dockerhub')
+                }
+            } else {
+                e2e_params['product'] = 'mayastor'
             }
 
             for (element in common.GetE2ESettings()) {
@@ -234,16 +240,17 @@ pipeline {
       }
       steps {
           println("push images to docker with tag ${dockerhub_tag}")
-        catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+          catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
             script{
                 def src_tag = e2e_params['e2e_image_tag']
                 def dockerhub_tag = e2e_params['dockerhub_tag']
+                def product = e2e_params['product']
                 withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
                     sh 'echo $PASSWORD | docker login -u $USERNAME --password-stdin'
                 }
-                sh "./scripts/re-tag-images.sh --src-tag ${src_tag} --alias-tag ${dockerhub_tag} --registry dockerhub"
+                sh "./scripts/re-tag-images.sh --src-tag ${src_tag} --alias-tag ${dockerhub_tag} --registry dockerhub --product ${product}"
             }
-        }
+         }
       }
       post {
           always {
