@@ -43,8 +43,6 @@ def e2e_params = [
     // Xray: test plan
     xray_test_plan : '',
 
-    dockerhub_tag: '',
-
     dataplaneBranch: '',
     controlplaneBranch: '',
     e2eBranch: 'develop',
@@ -92,11 +90,12 @@ pipeline {
     string(defaultValue: '', name: 'list_of_tests', description: 'explicit list of tests, separated by spaces. Do not use if test_profile is set')
     booleanParam(defaultValue: false, name: 'xray_send_report', description: 'send xray_report')
     string(defaultValue: e2e_params["xray_test_plan"], name: 'xray_test_plan', trim: true, description: 'name of the testplan in xray for e.g. MQ-2184')
-    booleanParam(defaultValue: false, name: 'push2dockerhub', description: 'push images to dockerhub')
-    string(defaultValue: e2e_params["dockerhub_tag"], name: 'dockerhub_tag', trim: true, description: 'tag for push images to dockerhub')
-    booleanParam(defaultValue: false, name: 'xrayhtmlreport', description: 'if true, run xray html report stage')
     string(defaultValue: e2e_params["e2eBranch"], name: 'e2eBranch', trim: true, description: 'mayastor e2e branch')
     string(defaultValue: e2e_params["e2eCommitOrTag"], name: 'e2eCommitOrTag', trim: true, description: 'mayastor e2e  branch git commit id or tag, if empty branch HEAD is used.')
+    string(defaultValue: "", name: 'pushTag', trim: true, description: 'tag for push, to CI/docker hub')
+    booleanParam(defaultValue: false, name: 'push2CI', description: 'if true, push to CI registry with pushTag ')
+    booleanParam(defaultValue: false, name: 'push2dockerhub', description: 'push images to dockerhub')
+    booleanParam(defaultValue: false, name: 'xrayhtmlreport', description: 'if true, run xray html report stage')
   }
   stages {
     stage('validate parameters') {
@@ -146,7 +145,6 @@ pipeline {
             e2e_params['dataplaneCommitOrTag'] = params.dataplaneCommitOrTag
             e2e_params['controlplaneBranch'] = params.controlplaneBranch
             e2e_params['controlplaneCommitOrTag'] = params.controlplaneCommitOrTag
-            e2e_params['dockerhub_tag'] = params.dockerhub_tag
             e2e_params['xray_send_report'] = params.xray_send_report
             e2e_params['xray_test_plan'] = params.xray_test_plan
             e2e_params['kubernetes_version'] = params.kubernetes_version
@@ -169,16 +167,20 @@ pipeline {
 
             // KISS: only push images to dockerhub built as part of this job
             if (params.build_images == false && params.push2dockerhub == true) {
-                println("Will not publish images to dockerhub not built as part of this job")
+                println("Will not push images to dockerhub not built as part of this job")
                 params.push2dockerhub = false
             }
-            // can only push images to dockerhub if publish tag is specified
-            if (params.push2dockerhub == true && e2e_params['dockerhub_tag'] == "" ) {
-                error("Cannot push to docker hub with empty dockerhub_tag")
+            // can only push images to dockerhub if push tag is specified
+            if (params.push2dockerhub == true && params.pushTag == "" ) {
+                error("Cannot push to docker hub with empty pushTag")
             }
-            // publish tag is specified but no publish action
-            if (params.dockerhub_tag != "" && params.push2dockerhub == false) {
-                error('dockerhub tag specified but push2dockerhub is false')
+            // can only push images if push tag is specified
+            if (params.push2CI == true && params.pushTag == "" ) {
+                error("Cannot push to CI registry with empty pushTag")
+            }
+            // push tag is specified but no push action
+            if (params.pushTag != "" && params.push2dockerhub == false && params.push2CI == false) {
+                error('pushTag specified but push2dockerhub and push2CI are false')
             }
 
             // can only build mayastor if branch/commit/tag is specified
@@ -233,34 +235,6 @@ pipeline {
         }
       }
     }//stage build docker images
-    stage('push images to Docker Hub') {
-      agent { label 'nixos-mayastor' }
-      when {
-            expression { params.push2dockerhub == true && params.datacore_bolt == false }
-      }
-      steps {
-          println("push images to docker with tag ${dockerhub_tag}")
-          catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
-            script{
-                def src_tag = e2e_params['e2e_image_tag']
-                def dockerhub_tag = e2e_params['dockerhub_tag']
-                def product = e2e_params['product']
-                withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
-                    sh 'echo $PASSWORD | docker login -u $USERNAME --password-stdin'
-                }
-                sh "./scripts/re-tag-images.sh --src-tag ${src_tag} --alias-tag ${dockerhub_tag} --registry dockerhub --product ${product}"
-            }
-         }
-      }
-      post {
-          always {
-              catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
-                sh 'docker logout'
-                sh 'docker image prune --all --force'
-              }
-          }
-      }
-    }//stage 'push images'
     stage('build tests queue')  {
         agent { label 'nixos' }
         steps {
@@ -564,6 +538,51 @@ pipeline {
         steps {
             script{
                 Common().ParallelArchiveArtefacts(e2e_params)
+            }
+        }
+    }
+    stage('push images to Docker Hub') {
+      agent { label 'nixos-mayastor' }
+      when {
+            // if tests were run then only push if there were no failures
+            expression { return params.push2dockerhub == true && params.datacore_bolt == false && e2e_params.failed_test_queue.size() == 0;}
+      }
+      steps {
+          catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+            script{
+                def src_tag = e2e_params['e2e_image_tag']
+                def push_tag = params.pushTag
+                def product = e2e_params['product']
+                println("push images to docker with tag ${push_tag}")
+                withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
+                    sh 'echo $PASSWORD | docker login -u $USERNAME --password-stdin'
+                }
+                sh "./scripts/re-tag-images.sh --src-tag ${src_tag} --alias-tag ${push_tag} --registry dockerhub --product ${product}"
+            }
+         }
+      }
+      post {
+          always {
+              catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                sh 'docker logout'
+                sh 'docker image prune --all --force'
+              }
+          }
+      }
+    }//stage 'push images'
+    stage('push images to CI regsitry') {
+        agent { label 'nixos-mayastor' }
+        when {
+            // if tests were run then only push if there were no failures
+            expression { return params.push2CI == true && e2e_params.failed_tests_queue.size() == 0; }
+        }
+        steps {
+            script {
+                def image_tag = e2e_params['e2e_image_tag']
+                def push_tag = params.pushTag
+                def product = e2e_params['product']
+                // on success re-tag images and push to CI registry
+                sh "./scripts/re-tag-images.sh --src-tag $image_tag --alias-tag ${push_tag} --product ${product}"
             }
         }
     }
