@@ -44,8 +44,9 @@ Options:
   --mcp                      Path to root Mayastor control plane directory
   --coverage                 Build is a coverage build
   --debug                    Build is debug build
+  --product                  Product key [mayastor, bolt]
 Examples:
-  $(basename "$0") --registry 127.0.0.1:5000 --alias-tag customized-tag
+  $(basename "$0") --registry 127.0.0.1:5000 --alias-tag customized-tag --product bolt
 EOF
 }
 
@@ -85,6 +86,22 @@ while [ "$#" -gt 0 ]; do
       shift
       build_info+=('"debug": true')
       ;;
+    --product)
+      shift
+      case $1 in
+          mayastor)
+             registry_subdir='mayadata'
+             ;;
+          bolt)
+             registry_subdir='datacore'
+             ;;
+          *)
+              echo "Unknown product: $1"
+              exit 1
+              ;;
+      esac
+      shift
+      ;;
     *)
       echo "Unknown option: $1"
       exit 1
@@ -102,7 +119,7 @@ if [ -z "$MCP_DIR" ]; then
     exit 127
 fi
 
-image="mayadata/install-images:${OUTPUT_TAG}"
+image="$registry_subdir/install-images:${OUTPUT_TAG}"
 reg_image="${REGISTRY}/${image}"
 
 DockerfileTxt="FROM scratch
