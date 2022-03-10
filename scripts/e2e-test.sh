@@ -48,6 +48,7 @@ profile_test_list=""
 ssh_identity=""
 grpc_code_gen=
 crd_code_gen=
+product=
 
 declare -A profiles
 # List and Sequence of tests.
