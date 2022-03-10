@@ -28,10 +28,10 @@ pipeline {
                 script {
                     image_tag = 'develop-' + Common().GetTestTag()
                     def job_params = [
-                        [ $class: 'StringParameterValue',  name: "mayastorBranch", value: "develop" ],
-                        [ $class: 'StringParameterValue',  name: "mcpBranch",      value: "develop" ],
-                        [ $class: 'BooleanParameterValue', name: "build_images",   value: true ],
-                        [ $class: 'StringParameterValue',  name: "image_tag",      value: image_tag ]
+                        [ $class: 'StringParameterValue',  name: "dataplaneBranch",    value: "develop" ],
+                        [ $class: 'StringParameterValue',  name: "controlplaneBranch", value: "develop" ],
+                        [ $class: 'BooleanParameterValue', name: "build_images",       value: true ],
+                        [ $class: 'StringParameterValue',  name: "image_tag",          value: image_tag ]
                     ]
                     build(
                        job: "generic-system-test/develop",

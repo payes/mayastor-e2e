@@ -6,6 +6,7 @@ import (
 
 	"mayastor-e2e/common"
 	v1alpha12 "mayastor-e2e/common/custom_resources/api/types/v1alpha1"
+	"mayastor-e2e/common/e2e_config"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
@@ -33,7 +34,7 @@ func (c *msnClient) Get(ctxt context.Context, name string, opts metav1.GetOption
 	err := c.restClient.
 		Get().
 		Namespace(common.NSMayastor()).
-		Resource(common.CRDNodesResourceName).
+		Resource(e2e_config.GetConfig().Product.CrdNodesResourceName).
 		Name(name).
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Do(ctxt).
@@ -48,7 +49,7 @@ func (c *msnClient) List(ctxt context.Context, opts metav1.ListOptions) (*v1alph
 	err := c.restClient.
 		Get().
 		Namespace(common.NSMayastor()).
-		Resource(common.CRDNodesResourceName).
+		Resource(e2e_config.GetConfig().Product.CrdNodesResourceName).
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Do(ctxt).
 		Into(&result)
@@ -61,7 +62,7 @@ func (c *msnClient) Delete(ctxt context.Context, name string, opts metav1.Delete
 	return c.restClient.
 		Delete().
 		Namespace(common.NSMayastor()).
-		Resource(common.CRDNodesResourceName).
+		Resource(e2e_config.GetConfig().Product.CrdNodesResourceName).
 		Name(name).
 		Body(&opts).
 		Do(ctxt).
@@ -78,7 +79,7 @@ func (c *msnClient) Watch(ctxt context.Context, opts metav1.ListOptions) (watch.
 	return c.restClient.
 		Get().
 		Namespace(common.NSMayastor()).
-		Resource(common.CRDNodesResourceName).
+		Resource(e2e_config.GetConfig().Product.CrdNodesResourceName).
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
 		Watch(ctxt)
