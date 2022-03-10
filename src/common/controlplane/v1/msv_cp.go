@@ -98,7 +98,7 @@ type children struct {
 func GetMayastorCpVolume(uuid string) (*MayastorCpVolume, error) {
 	pluginpath := fmt.Sprintf("%s/%s",
 		e2e_config.GetConfig().KubectlPluginDir,
-		common.KubectlMayastorPlugin)
+		e2e_config.GetConfig().Product.KubectlPluginName)
 
 	var jsonInput []byte
 	var err error
@@ -125,7 +125,7 @@ func GetMayastorCpVolume(uuid string) (*MayastorCpVolume, error) {
 func ListMayastorCpVolumes() ([]MayastorCpVolume, error) {
 	pluginpath := fmt.Sprintf("%s/%s",
 		e2e_config.GetConfig().KubectlPluginDir,
-		common.KubectlMayastorPlugin)
+		e2e_config.GetConfig().Product.KubectlPluginName)
 
 	var jsonInput []byte
 	var err error
@@ -150,7 +150,7 @@ func ListMayastorCpVolumes() ([]MayastorCpVolume, error) {
 func scaleMayastorVolume(uuid string, replicaCount int) error {
 	pluginpath := fmt.Sprintf("%s/%s",
 		e2e_config.GetConfig().KubectlPluginDir,
-		common.KubectlMayastorPlugin)
+		e2e_config.GetConfig().Product.KubectlPluginName)
 
 	var err error
 	var jsonInput []byte

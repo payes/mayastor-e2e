@@ -2,21 +2,28 @@ package xray
 
 import (
 	"fmt"
+	"test-director/models"
+	"time"
+
 	"github.com/go-openapi/strfmt"
 	log "github.com/sirupsen/logrus"
 	"github.com/tidwall/gjson"
-	"test-director/models"
-	"time"
 )
 
-func UpdateTestRun(testRun models.TestRun) {
-	testRunId := getTestRun(testRun.TestID, testRun.TestExecIssueID)
+func UpdateTestRun(testRun models.TestRun) error {
+	var err error
+	testRunId, err := getTestRun(testRun.TestID, testRun.TestExecIssueID)
+	if err != nil {
+		return err
+	}
 	s := fmt.Sprintf(
 		`mutation{updateTestRunStatus( id: "%s", status: "%s")}`,
 		testRunId,
 		testRun.TestRunSpec.Status,
 	)
-	sendXrayQuery(s)
+	if _, err = sendXrayQuery(s); err != nil {
+		return err
+	}
 	s = fmt.Sprintf(
 		`mutation{updateTestRun( id: "%s", comment: "%s", startedOn: "%s", finishedOn: "%s") {warnings}}`,
 		testRunId,
@@ -24,17 +31,21 @@ func UpdateTestRun(testRun models.TestRun) {
 		getRFC3339Format(testRun.StartDateTime),
 		getRFC3339Format(testRun.EndDateTime),
 	)
-	sendXrayQuery(s)
+	_, err = sendXrayQuery(s)
+	return err
 }
 
-func getTestRun(testId, testExecutionId string) string {
+func getTestRun(testId, testExecutionId string) (string, error) {
 	s := fmt.Sprintf(
 		`{getTestRun( testIssueId: "%s", testExecIssueId: "%s") {id status {name color description}}}`,
 		testId,
 		testExecutionId,
 	)
-	json := sendXrayQuery(s)
-	return gjson.Get(json, "data.getTestRun.id").Str
+	json, err := sendXrayQuery(s)
+	if err != nil {
+		return "", err
+	}
+	return gjson.Get(json, "data.getTestRun.id").Str, nil
 }
 
 func getRFC3339Format(t strfmt.DateTime) string {

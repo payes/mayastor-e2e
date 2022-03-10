@@ -1,7 +1,7 @@
 package v1alpha1
 
 import (
-	"mayastor-e2e/common"
+	"mayastor-e2e/common/e2e_config"
 
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -20,7 +20,8 @@ type MayastorPoolV1Alpha1Client struct {
 
 func MspNewForConfig(c *rest.Config) (*MayastorPoolV1Alpha1Client, error) {
 	config := *c
-	config.ContentConfig.GroupVersion = &schema.GroupVersion{Group: common.CRDGroupName, Version: common.CRDPoolGroupVersion}
+	config.ContentConfig.GroupVersion = &schema.GroupVersion{Group: e2e_config.GetConfig().Product.CrdGroupName,
+		Version: e2e_config.GetConfig().Product.CrdPoolGroupVersion}
 	config.APIPath = "/apis"
 	config.NegotiatedSerializer = scheme.Codecs.WithoutConversion()
 	config.UserAgent = rest.DefaultKubernetesUserAgent()
