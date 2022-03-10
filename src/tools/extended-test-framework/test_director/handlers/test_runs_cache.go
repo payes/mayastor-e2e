@@ -2,10 +2,11 @@ package handlers
 
 import (
 	"encoding/json"
+	"test-director/models"
+
 	"github.com/go-openapi/errors"
 	"github.com/patrickmn/go-cache"
 	log "github.com/sirupsen/logrus"
-	"test-director/models"
 )
 
 var runInterface TestRunInterface
@@ -33,6 +34,7 @@ func (r *TestRunCache) Delete(key string) error {
 func (r *TestRunCache) Get(key string) *models.TestRun {
 	tp, exist := r.client.Get(key)
 	if !exist {
+		log.Error("Failed to get test plan.")
 		return nil
 	}
 

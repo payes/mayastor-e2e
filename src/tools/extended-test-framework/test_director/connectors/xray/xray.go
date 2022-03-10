@@ -109,7 +109,7 @@ func sendRequest(s string) (string, error) {
 	if auth_ptr == nil {
 		return "", errors.New("authorization failed")
 	}
-	request.Header.Add("Authorization", "Bearer "+*authorize())
+	request.Header.Add("Authorization", "Bearer "+*auth_ptr)
 	request.Header.Add("Content-Type", "application/json")
 	client := &http.Client{Timeout: time.Second * 10}
 	response, err := client.Do(request)

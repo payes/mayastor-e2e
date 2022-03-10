@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"strings"
 	"test-director/config"
@@ -56,6 +57,9 @@ func (r *EventCache) Set(key string, data models.Event) error {
 	var tr *models.TestRun
 	if *data.Class != models.EventClassEnumINFO {
 		tr = runInterface.Get(*data.SourceInstance)
+		if tr == nil {
+			return errors.New("could not find test run")
+		}
 		if tr.Data != "" {
 			tr.Data += ": "
 		}
