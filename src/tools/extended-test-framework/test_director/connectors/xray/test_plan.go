@@ -3,13 +3,17 @@ package xray
 import (
 	"errors"
 	"fmt"
-	"github.com/tidwall/gjson"
 	"test-director/models"
+
+	"github.com/tidwall/gjson"
 )
 
 func GetTestPlan(testPlanId string) ([]*models.Test, error) {
 	s := fmt.Sprintf(`{getTestPlan(issueId: "%s") {tests(limit: 50) {results {issueId}}}}`, testPlanId)
-	json := sendXrayQuery(s)
+	json, err := sendXrayQuery(s)
+	if err != nil {
+		return nil, err
+	}
 	if json == "" {
 		return nil, errors.New("unable to fetch xray data")
 	}
