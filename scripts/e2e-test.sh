@@ -6,7 +6,7 @@ SCRIPTDIR=$(dirname "$(realpath "$0")")
 E2EROOT=$(realpath "$SCRIPTDIR/..")
 TESTDIR=$(realpath "$SCRIPTDIR/../src")
 ARTIFACTSDIR=$(realpath "$SCRIPTDIR/../artifacts")
-CONFIGSDIR=$(realpath "$SCRIPTDIR/../configurations/products/")
+#reportsdir=$(realpath "$SCRIPTDIR/..")
 
 # removed: pvc_stress_fio temporarily mayastor bugs
 
@@ -16,7 +16,7 @@ EXITV_INVALID_OPTION=1
 EXITV_MISSING_OPTION=2
 EXITV_FAILED=4
 EXITV_FILE_MISMATCH=5
-#EXITV_CRD_GO_GEN=6
+EXITV_CRD_GO_GEN=6
 EXITV_VERSION_MISMATCH=7
 EXITV_MISSING_KUBECTL_PLUGIN=8
 EXITV_FAILED_CLUSTER_OK=255
@@ -48,7 +48,6 @@ profile_test_list=""
 ssh_identity=""
 grpc_code_gen=
 crd_code_gen=
-product=
 
 declare -A profiles
 # List and Sequence of tests.
@@ -96,9 +95,8 @@ Options:
   --crd_code_gen <true|false>
                             On true, custom resource clinet code will be generated
                             On false, custom resource clinet code will not be generated
-  --product                  Product key [mayastor, bolt]
 Examples:
-  $0 --device /dev/nvme0n1 --registry 127.0.0.1:5000 --tag a80ce0c --product bolt
+  $0 --device /dev/nvme0n1 --registry 127.0.0.1:5000 --tag a80ce0c
 EOF
 }
 
@@ -260,21 +258,6 @@ while [ "$#" -gt 0 ]; do
                     ;;
             esac
         ;;
-    --product)
-      shift
-      case $1 in
-          mayastor)
-             product="$1"
-             ;;
-          bolt)
-             product="$1"
-             ;;
-          *)
-              echo "Unknown product: $1"
-              exit 1
-              ;;
-      esac
-      ;;
     *)
       echo "Unknown option: $1"
       help
@@ -286,19 +269,6 @@ done
 
 export loki_run_id="$loki_run_id" # can be empty string
 export loki_test_label="$loki_test_label"
-
-if [ -z "$product" ]; then
-    echo "defaulting product to mayastor"
-    product="mayastor"
-fi
-
-if [ -e "$CONFIGSDIR/${product}.yaml" ]; then
-    export e2e_product_config_yaml="$CONFIGSDIR/${product}.yaml"
-else
-    echo "Failed to find product config file $CONFIGSDIR/${product}.yaml"
-    help
-    exit $EXITV_FILE_MISMATCH
-fi
 
 if [ -z "$session" ]; then
     sessiondir="$ARTIFACTSDIR"
@@ -313,7 +283,7 @@ if [ -z "$mayastor_root_dir" ]; then
     mkdir -p "$sessiondir"
     export mayastor_root_dir="$ARTIFACTSDIR/install-bundle/$tag"
     mkdir -p "$mayastor_root_dir"
-    if ! "$SCRIPTDIR/extract-install-image.sh" --alias-tag "$tag" --installroot "$mayastor_root_dir" --product "$product"
+    if ! "$SCRIPTDIR/extract-install-image.sh" --alias-tag "$tag" --installroot "$mayastor_root_dir"
     then
         echo "Unable to extract install files for $tag"
         exit $EXITV_INVALID_OPTION
@@ -387,7 +357,7 @@ kubectl get nodes -o yaml > "$reportsdir/k8s_nodes.yaml"
 test_failed=0
 
 # Generate gRPC server and client code from mayastor.proto file
-if [ -n "$grpc_code_gen" ] && [ "$grpc_code_gen" == "true" ]; then
+if [ -n "$grpc_code_gen" -a "$grpc_code_gen"="true" ]; then
   echo "Generating gRPC client and server code: $PWD"
   #Update mayastor.proto file with option go_package = "github.com/openebs/mayastor-api/protobuf";
   path="$mayastor_root_dir/rpc/mayastor-api/protobuf"
@@ -400,7 +370,7 @@ if [ -n "$grpc_code_gen" ] && [ "$grpc_code_gen" == "true" ]; then
 fi
 
 # Generate CR client code from mayastorpoolcrd.yaml file
-if [ -n "$crd_code_gen" ] && [ "$crd_code_gen" == "true" ]; then
+if [ -n "$crd_code_gen" -a "$crd_code_gen"="true" ]; then
   echo "Generating CR client code: $PWD"
   path="$mayastor_root_dir/mcp/chart/templates/mayastorpoolcrd.yaml"
   cmd="./scripts/genGoCrdTypes.py $path"
@@ -477,7 +447,6 @@ echo "    loki_run_id=$loki_run_id"
 echo "    loki_test_label=$loki_test_label"
 echo "    e2e_root_dir=$e2e_root_dir"
 echo "    e2e_pool_device=$e2e_pool_device"
-echo "    e2e_product_config_yaml=$e2e_product_config_yaml"
 echo "    e2e_image_tag=$e2e_image_tag"
 echo "    e2e_docker_registry=$e2e_docker_registry"
 echo "    e2e_reports_dir=$e2e_reports_dir"
@@ -505,7 +474,7 @@ fi
 for testname in $tests; do
   # defer uninstall till after other tests have been run.
   if [ "$testname" != "uninstall" ] ;  then
-      if ! runGoTest "tests/$testname" ; then
+      if ! runGoTest "$testname" ; then
           echo "Test \"$testname\" FAILED!"
           test_failed=1
           emitLogs "$testname"
@@ -519,11 +488,11 @@ for testname in $tests; do
               elif [ "$on_fail" == "reinstall" ] ; then
                   echo "Attempting to continue by cleaning up and re-installing........"
                   runGoTest "tools/cleanup"
-                  if ! runGoTest "tests/uninstall"; then
+                  if ! runGoTest "uninstall"; then
                       echo "uninstall failed, abandoning attempt to continue"
                       exit $EXITV_FAILED
                   fi
-                  if ! runGoTest "tests/install"; then
+                  if ! runGoTest "install"; then
                       echo "(re)install failed, abandoning attempt to continue"
                       exit $EXITV_FAILED
                   fi
@@ -546,7 +515,7 @@ fi
 
 # Always run uninstall test if specified
 if contains "$tests" "uninstall" ; then
-    if ! runGoTest "tests/uninstall" ; then
+    if ! runGoTest "uninstall" ; then
         echo "Test \"uninstall\" FAILED!"
         test_failed=1
         emitLogs "uninstall"

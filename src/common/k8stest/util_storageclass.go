@@ -3,10 +3,8 @@ package k8stest
 import (
 	"context"
 	"mayastor-e2e/common"
-	"mayastor-e2e/common/e2e_config"
-	"strconv"
-
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"strconv"
 
 	"github.com/pkg/errors"
 	storagev1 "k8s.io/api/storage/v1"
@@ -27,7 +25,7 @@ type ScBuilder struct {
 func NewScBuilder() *ScBuilder {
 	obj := ScBuilder{sc: &StorageClass{object: &storagev1.StorageClass{}}}
 	// set default mayastor csi provisioner
-	scObject := obj.WithProvisioner(e2e_config.GetConfig().Product.CsiProvisioner)
+	scObject := obj.WithProvisioner(common.CSIProvisioner)
 
 	// set default replicas value i.e 1
 	scObject = scObject.WithReplicas(common.DefaultReplicaCount)

@@ -1,15 +1,13 @@
 package v1alpha1
 
 import (
-	"mayastor-e2e/common/e2e_config"
-
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"mayastor-e2e/common"
 )
 
-var PoolSchemeGroupVersion = schema.GroupVersion{Group: e2e_config.GetConfig().Product.CrdGroupName,
-	Version: e2e_config.GetConfig().Product.CrdPoolGroupVersion}
+var PoolSchemeGroupVersion = schema.GroupVersion{Group: common.CRDGroupName, Version: common.CRDPoolGroupVersion}
 
 var (
 	PoolSchemeBuilder = runtime.NewSchemeBuilder(poolAddKnownTypes)
@@ -26,8 +24,7 @@ func poolAddKnownTypes(scheme *runtime.Scheme) error {
 	return nil
 }
 
-var NodeSchemeGroupVersion = schema.GroupVersion{Group: e2e_config.GetConfig().Product.CrdGroupName,
-	Version: e2e_config.GetConfig().Product.CrdNodeGroupVersion}
+var NodeSchemeGroupVersion = schema.GroupVersion{Group: common.CRDGroupName, Version: common.CRDNodeGroupVersion}
 
 var (
 	NodeSchemeBuilder = runtime.NewSchemeBuilder(nodeAddKnownTypes)
@@ -44,8 +41,8 @@ func nodeAddKnownTypes(scheme *runtime.Scheme) error {
 	return nil
 }
 
-var VolumeSchemeGroupVersion = schema.GroupVersion{Group: e2e_config.GetConfig().Product.CrdGroupName,
-	Version: e2e_config.GetConfig().Product.CrdVolumeGroupVersion}
+var VolumeSchemeGroupVersion = schema.GroupVersion{Group: common.CRDGroupName, Version: common.CRDVolumeGroupVersion}
+
 var (
 	VolumeSchemeBuilder = runtime.NewSchemeBuilder(volumeAddKnownTypes)
 	VolumeAddToScheme   = VolumeSchemeBuilder.AddToScheme

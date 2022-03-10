@@ -10,35 +10,6 @@ def unwrap(Map params, key) {
     error("value not defined for ${key}")
 }
 
-def GetProductSettings (datacore_bolt) {
-    if (datacore_bolt == true) {
-        return [
-            dataplane_dir: "bolt-data-plane",
-            dataplane_repo_url: "https://github.com/datacoresoftware/bolt-data-plane",
-            controlplane_dir: "bolt-control-plane",
-            controlplane_repo_url: "https://github.com/datacoresoftware/bolt-control-plane",
-            github_credentials: 'github-datacore-pw',
-        ]
-    }
-    return [
-        dataplane_dir: "Mayastor",
-        dataplane_repo_url: "https://github.com/openebs/Mayastor",
-        controlplane_dir: "mayastor-control-plane",
-        controlplane_repo_url: "https://github.com/openebs/mayastor-control-plane",
-        github_credentials: 'github-checkout',
-    ]
-}
-
-def GetE2ESettings() {
-    def e2e_dir = "mayastor-e2e"
-    return [
-        e2e_dir: e2e_dir,
-        e2e_repo_url: "https://github.com/mayadata-io/mayastor-e2e.git",
-        e2e_reports_dir: "${e2e_dir}/artifacts/reports/",
-        e2e_artifacts_dir: "${e2e_dir}/artifacts/"
-    ]
-}
-
 // In the case of multi-branch pipelines, the pipeline
 // name a.k.a. job base name, will be the
 // 2nd-to-last item of env.JOB_NAME which
@@ -56,76 +27,40 @@ def GetLokiRunId() {
   return job_base_name + "-" + env.BRANCH_NAME + "-" + env.BUILD_NUMBER
 }
 
-def CheckoutRepo(branch, relativeTargetDir, url, credentials, commitOrTag) {
-  sh """
-    rm -rf ${relativeTargetDir}
-    """
-  bct = "*/${branch}"
-  if ( commitOrTag != "" ) {
-    bct = commitOrTag
-  }
-  println("branches name = $bct")
+// Checks out the specified branch of Mayastor to the current repo
+def GetMayastor(branch) {
   checkout([
     $class: 'GitSCM',
-    branches: [[name: "${bct}"]],
+    branches: [[name: "*/${branch}"]],
     doGenerateSubmoduleConfigurations: false,
-    extensions: [
-        [
-            $class: 'CloneOption',
-            noTags: false,
-        ],
-        [
-            $class: 'RelativeTargetDirectory',
-            relativeTargetDir: relativeTargetDir
-        ],
-        [
-            $class: 'SubmoduleOption',
-            disableSubmodules: false,
-            parentCredentials: true,
-            recursiveSubmodules: true,
-            reference: '',
-            trackingSubmodules: false
-        ]
-    ],
+    extensions: [[
+        $class: 'RelativeTargetDirectory',
+        relativeTargetDir: "Mayastor"
+      ]],
     submoduleCfg: [],
     userRemoteConfigs: [[
-        url: url,
-        credentialsId: credentials
+        url: "https://github.com/openebs/Mayastor",
+        credentialsId: "github-checkout"
       ]]
     ])
 }
 
-// Checks out the specified branch of E2E repo
-def CheckoutE2E(params) {
-  def branch = unwrap(params,'e2eBranch')
-  def relativeTargetDir = unwrap(params,'e2e_dir')
-  def url = unwrap(params,'e2e_repo_url')
-  def credentials = unwrap(params,'github_credentials')
-  def commitOrTag = unwrap(params, 'e2eCommitOrTag')
 
-  CheckoutRepo(branch, relativeTargetDir, url, credentials, commitOrTag)
-}
-
-// Checks out the specified branch of the data plane repo
-def CheckoutDataPlane(params) {
-  def branch = unwrap(params,'dataplaneBranch')
-  def relativeTargetDir = unwrap(params,'dataplane_dir')
-  def url = unwrap(params,'dataplane_repo_url')
-  def credentials = unwrap(params,'github_credentials')
-  def commitOrTag = unwrap(params, 'dataplaneCommitOrTag')
-
-  CheckoutRepo(branch, relativeTargetDir, url, credentials, commitOrTag)
-}
-
-// Checks out the specified branch of the control plane repo
-def CheckoutControlPlane(params) {
-  def branch = unwrap(params,'controlplaneBranch')
-  def relativeTargetDir = unwrap(params,'controlplane_dir')
-  def url = unwrap(params,'controlplane_repo_url')
-  def credentials = unwrap(params,'github_credentials')
-  def commitOrTag = unwrap(params, 'controlplaneCommitOrTag')
-
-  CheckoutRepo(branch, relativeTargetDir, url, credentials, commitOrTag)
+def GetMCP(branch) {
+  checkout([
+    $class: 'GitSCM',
+    branches: [[name: "*/${branch}"]],
+    doGenerateSubmoduleConfigurations: false,
+    extensions: [[
+        $class: 'RelativeTargetDirectory',
+        relativeTargetDir: "mayastor-control-plane"
+      ]],
+    submoduleCfg: [],
+    userRemoteConfigs: [[
+        url: "https://github.com/openebs/mayastor-control-plane",
+        credentialsId: "github-checkout"
+      ]]
+    ])
 }
 
 def GetTestTag() {
@@ -136,48 +71,59 @@ def GetTestTag() {
   return tag
 }
 
+
 def BuildImages2(Map params) {
-  def dataplaneCommitOrTag = unwrap(params,'dataplaneCommitOrTag')
-  def controlplaneCommitOrTag = unwrap(params,'controlplaneCommitOrTag')
+  def mayastorBranch = unwrap(params,'mayastorBranch')
+  def mayastorCommitOrTag = unwrap(params,'mayastorCommitOrTag')
+  def mcpBranch = unwrap(params,'mcpBranch')
+  def mcpCommitOrTag = unwrap(params,'mcpCommitOrTag')
   def test_tag = unwrap(params,'test_tag')
-  def dataplane_dir = unwrap(params,'dataplane_dir')
-  def controlplane_dir = unwrap(params,'controlplane_dir')
-  def product = unwrap(params,'product')
   def build_flags = ""
   if (params.containsKey('build_flags')) {
         build_flags = params['build_flags']
   }
 
-  PrettyPrintMap("BuildImages2 params", params)
+  PrettyPrintMap("BuildMCPImages params", params)
 
-  CheckoutDataPlane(params)
+//  if (!mayastorBranch?.trim() || !mcpBranch?.trim()) {
+//    throw new Exception("Empty branch parameters: mayastor branch is ${mayastorBranch}, mcp branch is ${mcpBranch}")
+//  }
+
+  GetMayastor(mayastorBranch)
 
   // e2e tests are the most demanding step for space on the disk so we
   // test the free space here rather than repeating the same code in all
   // stages.
-  sh "cd ${dataplane_dir} && ./scripts/reclaim-space.sh 10"
-  sh "cd ${dataplane_dir} && git status"
+  sh "cd Mayastor && ./scripts/reclaim-space.sh 10"
+  if (mayastorCommitOrTag?.trim()) {
+      sh "cd Mayastor && git checkout ${mayastorCommitOrTag}"
+  }
+  sh "cd Mayastor && git submodule update --init --recursive"
+  sh "cd Mayastor && git status"
 
   // Build images (REGISTRY is set in jenkin's global configuration).
   // Note: We might want to build and test dev images that have more
   // assertions instead but that complicates e2e tests a bit.
   // Build mayastor and mayastor-csi
-  sh "cd ${dataplane_dir} && ./scripts/release.sh $build_flags --registry \"${env.REGISTRY}\" --alias-tag \"$test_tag\" "
+  sh "cd Mayastor && ./scripts/release.sh $build_flags --registry \"${env.REGISTRY}\" --alias-tag \"$test_tag\" "
 
   // Build mayastor control plane
-  CheckoutControlPlane(params)
-  sh "cd ${controlplane_dir} && git status"
-  sh "cd ${controlplane_dir} && ./scripts/release.sh $build_flags --registry \"${env.REGISTRY}\" --alias-tag \"$test_tag\" "
+  GetMCP(mcpBranch)
+  if (mcpCommitOrTag?.trim()) {
+      sh "cd mayastor-control-plane && git checkout ${mcpCommitOrTag}"
+  }
+  sh "cd mayastor-control-plane && git submodule update --init --recursive"
+  sh "cd mayastor-control-plane && git status"
+  sh "cd mayastor-control-plane && ./scripts/release.sh $build_flags --registry \"${env.REGISTRY}\" --alias-tag \"$test_tag\" "
 
-  // NOTE: create-install-image.sh should be part of the Jenkins repo
-  // not mayastor-e2e
   // Build the install image
-  sh "./scripts/create-install-image.sh $build_flags --alias-tag \"$test_tag\" --mayastor ${dataplane_dir} --mcp ${controlplane_dir} --registry \"${env.REGISTRY}\" --product \"${product}\" "
+  sh "./scripts/create-install-image.sh $build_flags --alias-tag \"$test_tag\" --mayastor Mayastor --mcp mayastor-control-plane --registry \"${env.REGISTRY}\""
 
   // Limit any side-effects
-  sh "rm -Rf ${dataplane_dir}/"
-  sh "rm -Rf ${controlplane_dir}/"
+  sh "rm -Rf Mayastor/"
+  sh "rm -Rf mayastor-control-plane/"
 }
+
 
 def BuildCluster(e2e_build_cluster_job, e2e_environment) {
   def uuid = UUID.randomUUID()
@@ -371,10 +317,8 @@ def RunOneTestPerCluster(e2e_test, loki_run_id, params) {
     def e2e_destroy_cluster_job = unwrap(params,'e2e_destroy_cluster_job')
     def e2e_environment = unwrap(params,'e2e_environment')
     def e2e_reports_dir = unwrap(params,'e2e_reports_dir')
-    def e2e_dir = unwrap(params,'e2e_dir')
     def kubernetes_version = unwrap(params,'kubernetes_version')
     def test_platform = unwrap(params,'test_platform')
-    def product = unwrap(params,'product')
 
     def failed_tests=""
     def k8s_job=""
@@ -424,7 +368,7 @@ def RunOneTestPerCluster(e2e_test, loki_run_id, params) {
         nix-shell --run './scripts/get_cluster_env.py --platform "${test_platform}" --oxray  "${envs_txt_file}" --oyaml "${envs_yaml_file}"'
     """
 
-    def cmd = "cd ${e2e_dir} && ./scripts/e2e-test.sh --device /dev/sdb --tag \"${e2e_image_tag}\"  --onfail stop --tests \"${testset}\" --loki_run_id \"${loki_run_id}\" --loki_test_label \"${e2e_test}\" --reportsdir \"${env.WORKSPACE}/${e2e_reports_dir}\" --registry \"${env.REGISTRY}\" --session \"${session_id}\" --ssh_identity \"${env.WORKSPACE}/${e2e_environment}/id_rsa\" --product \"${product}\" "
+    def cmd = "./scripts/e2e-test.sh --device /dev/sdb --tag \"${e2e_image_tag}\"  --onfail stop --tests \"${testset}\" --loki_run_id \"${loki_run_id}\" --loki_test_label \"${e2e_test}\" --reportsdir \"${env.WORKSPACE}/${e2e_reports_dir}\" --registry \"${env.REGISTRY}\" --session \"${session_id}\" --ssh_identity \"${env.WORKSPACE}/${e2e_environment}/id_rsa\" "
     withCredentials([
       usernamePassword(credentialsId: 'GRAFANA_API', usernameVariable: 'grafana_api_user', passwordVariable: 'grafana_api_pw'),
       string(credentialsId: 'HCLOUD_TOKEN', variable: 'HCLOUD_TOKEN')
@@ -519,7 +463,6 @@ def AlterUninstallReports(e2e_reports_dir, e2e_test) {
     junit = junit.trim()
     if (junit != "") {
         sh "sed -i 's/classname=\"Basic Teardown Suite\"/classname=\"${e2e_test}\"/g' ${junit_full_find_path}"
-        // FIXME: bolt
         sh "sed -i 's/<testcase name=\"Mayastor setup should teardown using yamls\"/<testcase name=\"${e2e_test} should teardown using yamls\"/g' ${junit_full_find_path}"
     } else {
         println("no uninstall junit files found")
@@ -570,7 +513,6 @@ def RunParallelStage(Map params) {
     def passed_tests_queue = unwrap(params,'passed_tests_queue')
     def loki_run_id = GetLokiRunId()
 
-    CheckoutE2E(params)
     while (tests_queue.size() > 0) {
         def e2e_test = tests_queue.poll(60L, TimeUnit.SECONDS)
         if (e2e_test != "" && e2e_test != null){
@@ -599,7 +541,6 @@ def PostParallelStage(Map params, run_uuid) {
     def junit_stash_queue = unwrap(params,'junit_stash_queue')
     def artefacts_stash_queue = unwrap(params,'artefacts_stash_queue')
     def e2e_reports_dir =  unwrap(params,'e2e_reports_dir')
-    def e2e_artifacts_dir = unwrap(params,'e2e_artifacts_dir')
 
     try {
         files = sh(script: "find ${e2e_reports_dir} -name *.xml", returnStdout: true).split()
@@ -614,10 +555,10 @@ def PostParallelStage(Map params, run_uuid) {
     }
 
     try {
-        files = sh(script: "find ${e2e_artifacts_dir}/ -type f", returnStdout: true).split()
+        files = sh(script: "find artifacts/ -type f", returnStdout: true).split()
         if (files.size() != 0) {
             stash_name = "arts-${run_uuid}"
-            stash includes: "${e2e_artifacts_dir}/**/**", name: stash_name
+            stash includes: 'artifacts/**/**', name: stash_name
             artefacts_stash_queue.add(stash_name)
         } else {
             println "no files to archive"
@@ -633,15 +574,6 @@ def ParallelArchiveArtefacts(Map params) {
     def artefacts_stash_queue = unwrap(params,'artefacts_stash_queue')
     def passed_tests_queue = unwrap(params,'passed_tests_queue')
     def failed_tests_queue = unwrap(params,'failed_tests_queue')
-    def e2e_artifacts_dir = unwrap(params,'e2e_artifacts_dir')
-    def artifacts_dir ='artifacts'
-
-    sh """
-        rm -rf ${e2e_artifacts_dir}
-        rm -rf ${artifacts_dir}
-        mkdir -p ${e2e_artifacts_dir}
-        mkdir -p ${artifacts_dir}
-    """
 
     if (artefacts_stash_queue.size() > 0) {
         while (artefacts_stash_queue.size() > 0) {
@@ -654,10 +586,10 @@ def ParallelArchiveArtefacts(Map params) {
 
     def passed = "${passed_tests_queue}"
     def failed = "${failed_tests_queue}"
-    writeFile(file: "${artifacts_dir}/passed_tests.txt", text: passed)
-    writeFile(file: "${artifacts_dir}/failed_tests.txt", text: failed)
+    writeFile(file: "artifacts/passed_tests.txt", text: passed)
+    writeFile(file: "artifacts/failed_tests.txt", text: failed)
 
-    archiveArtifacts    artifacts: "${e2e_artifacts_dir}/**/**,${artifacts_dir}/**/**",
+    archiveArtifacts    artifacts: 'artifacts/**/**',
                         fingerprint: true,
                         allowEmptyArchive: true
 }
@@ -709,21 +641,15 @@ def PopulateTestQueue(Map params) {
   def tests_queue = unwrap(params,'tests_queue')
   def e2e_test_profile = unwrap(params,'e2e_test_profile')
   def e2e_tests = unwrap(params,'e2e_tests')
-//  def e2e_artifacts_dir = unwrap(params,'e2e_artifacts_dir')
   def artefacts_stash_queue = unwrap(params,'artefacts_stash_queue')
   def tests=[]
-  def artifacts_dir = 'artifacts'
 
   sh """
-    mkdir -p ${artifacts_dir}
+    mkdir -p ./artifacts
   """
-
   if (e2e_test_profile != "") {
-    CheckoutE2E(params)
-    def e2e_dir = unwrap(params,'e2e_dir')
-    def listsfile = "${e2e_dir}/configurations/testlists.yaml"
-    def lstfile = "${artifacts_dir}/testlist"
-    def cmdx = "./scripts/testlists.py --profile '${e2e_test_profile}' --lists ${listsfile} --output '${lstfile}' --sort_duration"
+    def lstfile = './artifacts/testlist'
+    def cmdx = "./scripts/testlists.py --profile '${e2e_test_profile}' --output '${lstfile}' --sort_duration"
     sh(
         script: """
             nix-shell --run '${cmdx}'
@@ -742,54 +668,53 @@ def PopulateTestQueue(Map params) {
   for (int i = 0; i < tests.size(); i++) {
       tests_queue.add(tests[i])
   }
-  writeFile(file: "${artifacts_dir}/tests.txt", text: "$tests_queue")
+  writeFile(file: "artifacts/tests.txt", text: "$tests_queue")
 
   def stash_name = 'arts-test-list'
-  stash includes: "${artifacts_dir}/**/**", name: stash_name
+  stash includes: 'artifacts/**/**', name: stash_name
   artefacts_stash_queue.add(stash_name)
 }
 
 def StashMayastorBinaries(Map params) {
-    def e2e_artifacts_dir = unwrap(params,'e2e_artifacts_dir')
     def artefacts_stash_queue = unwrap(params,'artefacts_stash_queue')
     def test_tag = unwrap(params,'e2e_image_tag')
-    def bin_dir = "./${e2e_artifacts_dir}/binaries/${test_tag}"
+    def bin_dir = "./artifacts/binaries/${test_tag}"
 
     sh "./scripts/get-mayastor-binaries.py --tag ${test_tag} --registry ${env.REGISTRY} --outputdir ${bin_dir}"
     def stash_name = 'arts-bin'
-    stash includes: "${e2e_artifacts_dir}/**/**", name: stash_name
+    stash includes: 'artifacts/**/**', name: stash_name
     artefacts_stash_queue.add(stash_name)
 }
 
 def CoverageReport(Map params) {
-    def e2e_artifacts_dir = unwrap(params,'e2e_artifacts_dir')
     def artefacts_stash_queue = unwrap(params,'artefacts_stash_queue')
     def test_tag = unwrap(params,'e2e_image_tag')
-    def dataplane_dir = unwrap(params['dataplane_dir'])
-    def controlplane_dir = unwrap(params['controlplane_dir'])
+    def mayastorBranch = unwrap(params,'mayastorBranch')
+    def mcpBranch = unwrap(params,'mcpBranch')
 
-    CheckoutDataPlane(params)
-    CheckoutControlPlane(params)
+    GetMayastor(mayastorBranch)
+    GetMCP(mcpBranch)
 
     while (artefacts_stash_queue.size() > 0) {
         def stash_name = artefacts_stash_queue.poll()
         unstash name: stash_name
     }
 
-    def dataplane_srcs = "${env.WORKSPACE}/${dataplane_dir}"
-    def controlplane_srcs = "${env.WORKSPACE}/${controlplane_dir}"
-    def data_dir = "${env.WORKSPACE}/${e2e_artifacts_dir}/coverage/data"
-    def bin_dir = "${env.WORKSPACE}/${e2e_artifacts_dir}/binaries/${test_tag}"
-    def report_dir = "${env.WORKSPACE}/${e2e_artifacts_dir}/coverage/report"
+    def mayastor_dir = "${env.WORKSPACE}/Mayastor"
+    def mcp_dir = "${env.WORKSPACE}/mayastor-control-plane"
+    def data_dir = "${env.WORKSPACE}/artifacts/coverage/data"
+    def bin_dir = "${env.WORKSPACE}/artifacts/binaries/${test_tag}"
+    def report_dir = "${env.WORKSPACE}/artifacts/coverage/report"
 
     sh "./scripts/get-mayastor-binaries.py --tag ${test_tag} --registry ${env.REGISTRY} --outputdir ${bin_dir}"
 
-    sh "./scripts/coverage-report.sh -d ${data_dir} -b ${bin_dir} -M ${dataplane_srcs} -C ${controlplane_srcs} -r ${report_dir}"
+    sh "./scripts/coverage-report.sh -d ${data_dir} -b ${bin_dir} -M ${mayastor_dir} -C ${mcp_dir} -r ${report_dir}"
 
-    stash_name = 'artefacts-with-coverage-report'
-    stash includes: "${e2e_artifacts_dir}/**/**", name: stash_name
+    stash_name = 'artefcats-with-coverage-report'
+    stash includes: 'artifacts/**/**', name: stash_name
     artefacts_stash_queue.add(stash_name)
 }
+
 
 def PrettyPrintMap(hmapname, hmap) {
     def smap = hmap.sort()
@@ -801,17 +726,10 @@ def PrettyPrintMap(hmapname, hmap) {
 }
 
 def RunTestJob(job_params, job_branch) {
-   def artifacts_dir = 'artifacts'
-   def e2e_artifacts_dir = 'mayastor-e2e/artifacts'
-
    println(job_params)
 
-   sh """
-        rm -rf ${artifacts_dir}
-        rm -rf ${e2e_artifacts_dir}
-        mkdir -p ${artifacts_dir}
-        mkdir -p ${e2e_artifacts_dir}
-    """
+   sh "mkdir -p artifacts"
+   sh "rm -rf artifacts/*"
 
    def built = build(
        job: "generic-system-test/${job_branch}",
@@ -828,10 +746,7 @@ def RunTestJob(job_params, job_branch) {
         for (int ix=0; ix < 3; ix++) {
             try {
                 def console_url = base_url + "consoleText"
-                sh """
-                    cd ${artifacts_dir}
-                    wget --auth-no-challenge --user $JANC_US --password=$JANC_PW '${console_url}' -O consoleText
-                """
+                sh "wget --auth-no-challenge --user $JANC_US --password=$JANC_PW '${console_url}' -O artifacts/consoleText"
                 break
             } catch(err) {
                 println("Get consoleText failed.")
@@ -840,12 +755,7 @@ def RunTestJob(job_params, job_branch) {
         }
         try {
              def console_url = base_url + "consoleFull"
-             sh """
-                cd ${artifacts_dir}
-                wget --auth-no-challenge --user $JANC_US --password=$JANC_PW '${console_url}' -O consoleFull
-                tar czf consoleFull.tgz consoleFull
-                rm consoleFull
-                """
+             sh "wget --auth-no-challenge --user $JANC_US --password=$JANC_PW '${console_url}' -O artifacts/consoleFull && cd artifacts && tar czf consoleFull.tgz consoleFull && rm consoleFull"
          } catch(err) {
              println("Get consoleFull failed.")
          }
@@ -862,35 +772,34 @@ def RunTestJob(job_params, job_branch) {
        println("Failed to copy artificats ${err}")
    }
 
-   archiveArtifacts    artifacts: "${artifacts_dir}/**/**, ${e2e_artifacts_dir}/**/**",
+   archiveArtifacts    artifacts: 'artifacts/**/**',
        fingerprint: true,
        allowEmptyArchive: true
 
    try {
-       def testlist = readFile(file: "${artifacts_dir}/tests.txt")
+       def testlist = readFile(file: 'artifacts/tests.txt')
        testlist.trim()
 
        if (testlist != "[]") {
            // Processing passed_tests.txt is not critical
            try {
-               def passed = readFile(file: "${artifacts_dir}/passed_tests.txt")
+               def passed = readFile(file: 'artifacts/passed_tests.txt')
                passed.trim()
                println("Passed: ${passed}")
            } catch(err) {
-               println("Failed to read ${artifacts_dir}/passed_tests.txt : $err")
+               println("Failed to read artifacts/passed_tests.txt : $err")
            }
 
            // Must be able to process failed.txt for visual consistency
-           def failed = readFile(file: "${artifacts_dir}/failed_tests.txt")
+           def failed = readFile(file: 'artifacts/failed_tests.txt')
            failed.trim()
            if (failed != "[]") {
                error("Failed tests: ${failed}")
            }
         }
    } catch(err) {
-       println("Failed to read ${artifacts_dir}/tests.txt : $err")
+       println("Failed to read artifacts/tests.txt : $err")
    }
-
    if (built.getCurrentResult() != "SUCCESS") {
         error(built.getCurrentResult())
    }

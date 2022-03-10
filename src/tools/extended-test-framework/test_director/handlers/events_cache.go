@@ -67,9 +67,7 @@ func (r *EventCache) Set(key string, data models.Event) error {
 	}
 	if *data.Class == models.EventClassEnumFAIL && *data.SourceClass != models.EventSourceClassEnumLogDashMonitor {
 		tr.Status = models.TestRunStatusEnumFAILED
-		if err = UpdateTestRun(tr); err != nil {
-			return err
-		}
+		UpdateTestRun(tr)
 	}
 	// -1 means that the item never expires
 	r.client.Set(key, b, -1)

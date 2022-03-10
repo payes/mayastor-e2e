@@ -100,7 +100,7 @@ pipeline {
       agent { label 'nixos-mayastor' }
       steps {
         // on success re-tag images as "selfci", push to CI registry
-        sh "./scripts/re-tag-images.sh --src-tag $test_tag --alias-tag ${e2e_selfci_image_tag} --product mayastor"
+        sh "./scripts/re-tag-images.sh --src-tag $test_tag --alias-tag ${e2e_selfci_image_tag}"
       }
       post {
         always {

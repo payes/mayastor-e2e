@@ -6,7 +6,6 @@ import (
 
 	"mayastor-e2e/common"
 	v1alpha12 "mayastor-e2e/common/custom_resources/api/types/v1alpha1"
-	"mayastor-e2e/common/e2e_config"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
@@ -36,7 +35,7 @@ func (c *mspClient) Create(ctxt context.Context, mayastorpool *v1alpha12.Mayasto
 	err := c.restClient.
 		Post().
 		Namespace(common.NSMayastor()).
-		Resource(e2e_config.GetConfig().Product.CrdPoolsResourceName).
+		Resource(common.CRDPoolsResourceName).
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(mayastorpool).
 		Do(ctxt).
@@ -51,7 +50,7 @@ func (c *mspClient) Get(ctxt context.Context, name string, opts metav1.GetOption
 	err := c.restClient.
 		Get().
 		Namespace(common.NSMayastor()).
-		Resource(e2e_config.GetConfig().Product.CrdPoolsResourceName).
+		Resource(common.CRDPoolsResourceName).
 		Name(name).
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Do(ctxt).
@@ -66,7 +65,7 @@ func (c *mspClient) List(ctxt context.Context, opts metav1.ListOptions) (*v1alph
 	err := c.restClient.
 		Get().
 		Namespace(common.NSMayastor()).
-		Resource(e2e_config.GetConfig().Product.CrdPoolsResourceName).
+		Resource(common.CRDPoolsResourceName).
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Do(ctxt).
 		Into(&result)
@@ -80,7 +79,7 @@ func (c *mspClient) Update(ctxt context.Context, mayastorpool *v1alpha12.Mayasto
 	err := c.restClient.
 		Put().
 		Namespace(common.NSMayastor()).
-		Resource(e2e_config.GetConfig().Product.CrdPoolsResourceName).
+		Resource(common.CRDPoolsResourceName).
 		Name(mayastorpool.Name).
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(mayastorpool).
@@ -95,7 +94,7 @@ func (c *mspClient) Delete(ctxt context.Context, name string, opts metav1.Delete
 	return c.restClient.
 		Delete().
 		Namespace(common.NSMayastor()).
-		Resource(e2e_config.GetConfig().Product.CrdPoolsResourceName).
+		Resource(common.CRDPoolsResourceName).
 		Name(name).
 		Body(&opts).
 		Do(ctxt).
@@ -112,7 +111,7 @@ func (c *mspClient) Watch(ctxt context.Context, opts metav1.ListOptions) (watch.
 	return c.restClient.
 		Get().
 		Namespace(common.NSMayastor()).
-		Resource(e2e_config.GetConfig().Product.CrdPoolsResourceName).
+		Resource(common.CRDPoolsResourceName).
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
 		Watch(ctxt)

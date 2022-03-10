@@ -3,7 +3,6 @@ package xray
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -95,7 +94,7 @@ func authorize() *string {
 	return &s
 }
 
-func sendRequest(s string) (string, error) {
+func sendRequest(s string) string {
 	jsonData := map[string]string{
 		"query": s,
 	}
@@ -103,11 +102,7 @@ func sendRequest(s string) (string, error) {
 	request, err := http.NewRequest(http.MethodPost, graphqlUrl, bytes.NewBuffer(jsonValue))
 	if err != nil {
 		log.Errorf("The HTTP request failed with error %s", err)
-		return "", err
-	}
-	auth_ptr := authorize()
-	if auth_ptr == nil {
-		return "", errors.New("authorization failed")
+		return ""
 	}
 	request.Header.Add("Authorization", "Bearer "+*authorize())
 	request.Header.Add("Content-Type", "application/json")
@@ -116,28 +111,27 @@ func sendRequest(s string) (string, error) {
 	defer response.Body.Close()
 	if err != nil {
 		log.Errorf("The HTTP request failed with error %s\n", err)
-		return "", err
+		return ""
 	}
 	data, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		log.Error(err.Error())
-		return "", err
+		return ""
 	}
 	if response.StatusCode >= 300 {
 		log.Warn(string(data))
-		return "", err
+		return ""
 	}
-	return string(data), err
+	return string(data)
 }
 
-func sendXrayQuery(query string) (string, error) {
-	var err error
+func sendXrayQuery(query string) string {
 	r := 5
 	response := ""
 	for response == "" && r > 0 {
-		response, err = sendRequest(query)
+		response = sendRequest(query)
 		time.Sleep(time.Duration(5/r) * time.Second)
 		r--
 	}
-	return response, err
+	return response
 }

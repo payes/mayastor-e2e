@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"mayastor-e2e/common/controlplane"
-	"mayastor-e2e/common/e2e_config"
 	"mayastor-e2e/common/mayastorclient"
 	"strings"
 	"sync"
@@ -437,7 +436,7 @@ func getMayastorScMap() (map[string]bool, error) {
 	scs, err := ScApi().List(context.TODO(), metaV1.ListOptions{})
 	if err == nil {
 		for _, sc := range scs.Items {
-			if sc.Provisioner == e2e_config.GetConfig().Product.CsiProvisioner {
+			if sc.Provisioner == common.CSIProvisioner {
 				mayastorStorageClasses[sc.Name] = true
 			}
 		}

@@ -74,7 +74,7 @@ func CheckForStorageClasses() (bool, error) {
 	ScApi := gTestEnv.KubeInt.StorageV1().StorageClasses
 	scs, err := ScApi().List(context.TODO(), metaV1.ListOptions{})
 	for _, sc := range scs.Items {
-		if sc.Provisioner == e2e_config.GetConfig().Product.CsiProvisioner {
+		if sc.Provisioner == common.CSIProvisioner {
 			found = true
 		}
 	}
@@ -405,7 +405,7 @@ func msnOnlineCount() int {
 
 func mayastorCSIReadyPodCount() int {
 	var mayastorCsiDaemonSet appsV1.DaemonSet
-	if gTestEnv.K8sClient.Get(context.TODO(), types.NamespacedName{Name: e2e_config.GetConfig().Product.CsiDaemonsetName, Namespace: common.NSMayastor()}, &mayastorCsiDaemonSet) != nil {
+	if gTestEnv.K8sClient.Get(context.TODO(), types.NamespacedName{Name: "mayastor-csi", Namespace: common.NSMayastor()}, &mayastorCsiDaemonSet) != nil {
 		logf.Log.Info("Failed to get mayastor-csi DaemonSet")
 		return -1
 	}
@@ -461,11 +461,7 @@ func ControlPlaneReady(sleepTime int, duration int) bool {
 	count := (duration + sleepTime - 1) / sleepTime
 
 	if controlplane.MajorVersion() == 1 {
-		nonControlPlaneComponents := []string{
-			e2e_config.GetConfig().Product.DataPlaneName,
-			e2e_config.GetConfig().Product.DataPlaneCsi,
-			e2e_config.GetConfig().Product.DataPlaneNats,
-		}
+		nonControlPlaneComponents := []string{"mayastor", "mayastor-csi", "nats"}
 
 		for ix := 0; ix < count && !ready; ix++ {
 			time.Sleep(time.Duration(sleepTime) * time.Second)
@@ -770,11 +766,11 @@ func CheckAndSetControlPlane() error {
 
 	// Check for core-agents either as deployment or statefulset to correctly handle older builds of control plane
 	// which use core-agents deployment and newer builds which use core-agents statefulset
-	if err = gTestEnv.K8sClient.Get(context.TODO(), types.NamespacedName{Name: e2e_config.GetConfig().Product.ControlPlaneAgent, Namespace: common.NSMayastor()}, &deployment); err == nil {
+	if err = gTestEnv.K8sClient.Get(context.TODO(), types.NamespacedName{Name: "core-agents", Namespace: common.NSMayastor()}, &deployment); err == nil {
 		foundCoreAgents = true
 	}
 
-	if err = gTestEnv.K8sClient.Get(context.TODO(), types.NamespacedName{Name: e2e_config.GetConfig().Product.ControlPlaneAgent, Namespace: common.NSMayastor()}, &statefulSet); err == nil {
+	if err = gTestEnv.K8sClient.Get(context.TODO(), types.NamespacedName{Name: "core-agents", Namespace: common.NSMayastor()}, &statefulSet); err == nil {
 		foundCoreAgents = true
 	}
 
@@ -794,6 +790,7 @@ func CheckAndSetControlPlane() error {
 // Checks if the requisite number of mayastor node are online.
 func MayastorNodeReady(sleepTime int, duration int) (bool, error) {
 	ready := false
+	msReadyPodCount := mayastorReadyPodCount()
 	count := (duration + sleepTime - 1) / sleepTime
 	for ix := 0; ix < count && !ready; ix++ {
 		time.Sleep(time.Duration(sleepTime) * time.Second)
@@ -811,7 +808,6 @@ func MayastorNodeReady(sleepTime int, duration int) (bool, error) {
 				logf.Log.Info("Not ready node", "node", node.Name, "status", node.State.Status)
 			}
 		}
-		msReadyPodCount := mayastorReadyPodCount()
 		ready = msReadyPodCount == len(nodeList) && readyCount == msReadyPodCount
 		logf.Log.Info("mayastor node status",
 			"MayastorReadyPodCount", msReadyPodCount,
