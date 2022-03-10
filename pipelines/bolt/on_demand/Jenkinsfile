@@ -21,9 +21,11 @@ pipeline {
     parameters {
         string(defaultValue: 'develop', name: 'dataplaneBranch', trim: true, description: 'data plane branch')
         string(defaultValue: 'develop', name: 'controlplaneBranch', trim: true, description: 'control plane branch')
+        string(defaultValue: 'develop', name: 'licenseBranch', trim: true, description: 'license branch')
 
-        string(defaultValue: '', name: 'dataplaneCommitOrTag', trim: true, description: 'mayastor source branch git commit id or tag, if empty branch HEAD is used.')
-        string(defaultValue: '', name: 'controlplaneCommitOrTag', trim: true, description: 'mayastor control plane source branch git commit id or tag, if empty branch HEAD is used.')
+        string(defaultValue: '', name: 'dataplaneCommitOrTag', trim: true, description: 'data plane source branch git commit id or tag, if empty branch HEAD is used.')
+        string(defaultValue: '', name: 'controlplaneCommitOrTag', trim: true, description: 'control plane source branch git commit id or tag, if empty branch HEAD is used.')
+        string(defaultValue: '', name: 'licenseCommitOrTag', trim: true, description: 'license source branch git commit id or tag, if empty branch HEAD is used.')
 
         booleanParam(defaultValue: false, name: 'publishImages', description: 'publish images')
     }
@@ -39,6 +41,9 @@ pipeline {
 
                         [ $class: 'StringParameterValue',  name: "controlplaneBranch",      value: params.controlplaneBranch ],
                         [ $class: 'StringParameterValue',  name: "controlplaneCommitOrTag", value: params.controlplaneCommitOrTag ],
+
+                        [ $class: 'StringParameterValue',  name: "licenseBranch",      value: params.licenseBranch ],
+                        [ $class: 'StringParameterValue',  name: "licenseCommitOrTag", value: params.licenseCommitOrTag ],
 
                         [ $class: 'BooleanParameterValue', name: "build_images",       value: true ],
                         [ $class: 'StringParameterValue',  name: "image_tag",          value: image_tag ],

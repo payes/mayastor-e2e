@@ -17,6 +17,8 @@ def GetProductSettings (datacore_bolt) {
             dataplane_repo_url: "git@github.com:DataCoreSoftware/bolt-data-plane.git",
             controlplane_dir: "bolt-control-plane",
             controlplane_repo_url: "git@github.com:DataCoreSoftware/bolt-control-plane.git",
+            license_dir: "bolt-license",
+            license_repo_url: "https://github.com/datacoresoftware/bolt-licensing",
             github_credentials: 'BOLT_CICD_GITHUB_SSH_KEY',
         ]
     }
@@ -128,6 +130,17 @@ def CheckoutControlPlane(params) {
   CheckoutRepo(branch, relativeTargetDir, url, credentials, commitOrTag)
 }
 
+// Checks out the specified branch of the bolt-licensing repo
+def CheckoutLicensing(params) {
+  def branch = unwrap(params,'licenseBranch')
+  def relativeTargetDir = unwrap(params,'license_dir')
+  def url = unwrap(params,'license_repo_url')
+  def credentials = unwrap(params,'github_credentials')
+  def commitOrTag = unwrap(params, 'licenseCommitOrTag')
+
+  CheckoutRepo(branch, relativeTargetDir, url, credentials, commitOrTag)
+}
+
 def GetTestTag() {
   def tag = sh(
     script: 'printf $(date +"%Y-%m-%d-%H-%M-%S")',
@@ -169,6 +182,7 @@ def BuildImages2(Map params) {
   sh "cd ${controlplane_dir} && git status"
   sh "cd ${controlplane_dir} && ./scripts/release.sh $build_flags --registry \"${env.REGISTRY}\" --alias-tag \"$test_tag\" "
 
+  CheckoutLicense(params)
   // NOTE: create-install-image.sh should be part of the Jenkins repo
   // not mayastor-e2e
   // Build the install image
