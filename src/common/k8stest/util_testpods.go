@@ -458,7 +458,7 @@ func collectNatsPodNames() ([]string, error) {
 		return podNames, err
 	}
 	for _, pod := range pods.Items {
-		if strings.HasPrefix(pod.Name, "nats") {
+		if strings.HasPrefix(pod.Name, e2e_config.GetConfig().Product.DataPlaneNats) {
 			podNames = append(podNames, pod.Name)
 		}
 	}

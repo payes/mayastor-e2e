@@ -6,6 +6,7 @@ import (
 
 	"mayastor-e2e/common"
 	v1alpha12 "mayastor-e2e/common/custom_resources/api/types/v1alpha1"
+	"mayastor-e2e/common/e2e_config"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
@@ -52,7 +53,7 @@ func (c *msvClient) Get(ctxt context.Context, name string, opts metav1.GetOption
 	err := c.restClient.
 		Get().
 		Namespace(common.NSMayastor()).
-		Resource(common.CRDVolumesResourceName).
+		Resource(e2e_config.GetConfig().Product.CrdVolumesResourceName).
 		Name(name).
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Do(ctxt).
@@ -67,7 +68,7 @@ func (c *msvClient) List(ctxt context.Context, opts metav1.ListOptions) (*v1alph
 	err := c.restClient.
 		Get().
 		Namespace(common.NSMayastor()).
-		Resource(common.CRDVolumesResourceName).
+		Resource(e2e_config.GetConfig().Product.CrdVolumesResourceName).
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Do(ctxt).
 		Into(&result)
@@ -81,7 +82,7 @@ func (c *msvClient) Update(ctxt context.Context, mayastorvolume *v1alpha12.Mayas
 	err := c.restClient.
 		Put().
 		Namespace(common.NSMayastor()).
-		Resource(common.CRDVolumesResourceName).
+		Resource(e2e_config.GetConfig().Product.CrdVolumesResourceName).
 		Name(mayastorvolume.Name).
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(mayastorvolume).
@@ -96,7 +97,7 @@ func (c *msvClient) Delete(ctxt context.Context, name string, opts metav1.Delete
 	return c.restClient.
 		Delete().
 		Namespace(common.NSMayastor()).
-		Resource(common.CRDVolumesResourceName).
+		Resource(e2e_config.GetConfig().Product.CrdVolumesResourceName).
 		Name(name).
 		Body(&opts).
 		Do(ctxt).
@@ -113,7 +114,7 @@ func (c *msvClient) Watch(ctxt context.Context, opts metav1.ListOptions) (watch.
 	return c.restClient.
 		Get().
 		Namespace(common.NSMayastor()).
-		Resource(common.CRDVolumesResourceName).
+		Resource(e2e_config.GetConfig().Product.CrdVolumesResourceName).
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
 		Watch(ctxt)

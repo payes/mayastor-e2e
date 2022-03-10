@@ -162,7 +162,7 @@ func setup(pvcName string, storageClassName string, fioPodName string) Disruptio
 	podObj := k8stest.CreateFioPodDef(fioPodName, pvcName, common.VolRawBlock, common.NSDefault)
 	// add node selector to fio pod
 	podObj.Spec.NodeSelector = map[string]string{
-		common.MayastorEngineLabel: common.MayastorEngineLabelValue,
+		e2e_config.GetConfig().Product.EngineLabel: e2e_config.GetConfig().Product.EngineLabelValue,
 	}
 	_, err = k8stest.CreatePod(podObj, common.NSDefault)
 	Expect(err).ToNot(HaveOccurred(), "%v", err)

@@ -31,7 +31,7 @@ type msnState struct {
 func GetMayastorCpNode(nodeName string) (*MayastorCpNode, error) {
 	pluginpath := fmt.Sprintf("%s/%s",
 		e2e_config.GetConfig().KubectlPluginDir,
-		common.KubectlMayastorPlugin)
+		e2e_config.GetConfig().Product.KubectlPluginName)
 
 	var jsonInput []byte
 	var err error
@@ -58,7 +58,7 @@ func GetMayastorCpNode(nodeName string) (*MayastorCpNode, error) {
 func ListMayastorCpNodes() ([]MayastorCpNode, error) {
 	pluginpath := fmt.Sprintf("%s/%s",
 		e2e_config.GetConfig().KubectlPluginDir,
-		common.KubectlMayastorPlugin)
+		e2e_config.GetConfig().Product.KubectlPluginName)
 
 	var jsonInput []byte
 	var err error

@@ -33,6 +33,42 @@ type E2EConfig struct {
 		// Some deployments use a different namespace
 		FilteredMayastorPodCheck int `yaml:"filteredMayastorPodCheck" env-default:"0"`
 	} `yaml:"platform"`
+	Product struct {
+		ProductName               string `yaml:"productName" env-default:"mayastor"`
+		ProductNamespace          string `yaml:"productNamespace" env-default:"mayastor"`
+		DeploymentName            string `yaml:"deploymentName" env-default:"mayastor"`
+		PodName                   string `yaml:"podName" env-default:"mayastor"`
+		ContainerName             string `yaml:"containerName" env-default:"mayastor"`
+		DaemonsetName             string `yaml:"daemonsetName" env-default:"mayastor"`
+		CsiDaemonsetName          string `yaml:"csiDaemonsetName" env-default:"mayastor-csi"`
+		CrdGroupName              string `yaml:"crdGroupName" env-default:"openebs.io"`
+		CrdPoolGroupVersion       string `yaml:"crdPoolGroupVersion" env-default:"v1alpha1"`
+		CrdPoolsResourceName      string `yaml:"crdPoolsResourceName" env-default:"mayastorpools"`
+		CrdVolumeGroupVersion     string `yaml:"crdVolumeGroupVersion" env-default:"v1alpha1"`
+		CrdVolumesResourceName    string `yaml:"crdVolumesResourceName" env-default:"mayastorvolumes"`
+		CrdNodeGroupVersion       string `yaml:"crdNodeGroupVersion" env-default:"v1alpha1"`
+		CrdNodesResourceName      string `yaml:"crdNodesResourceName" env-default:"mayastornodes"`
+		EngineLabel               string `yaml:"engineLabel" env-default:"openebs.io/engine"`
+		EngineLabelValue          string `yaml:"engineLabelValue" env-default:"mayastor"`
+		KubectlPluginName         string `yaml:"kubectlPluginName" env-default:"kubectl-mayastor"`
+		KubectlPluginPort         string `yaml:"kubectlPluginPort" env-default:"30011"`
+		CsiProvisioner            string `yaml:"csiProvisioner" env-default:"io.openebs.csi-mayastor"`
+		EtcdYaml                  string `yaml:"etcdYaml" env-default:"etcd"`
+		NatsDeploymentYaml        string `yaml:"natsDeploymentYaml" env-default:"nats-deployment.yaml"`
+		CsiDaemonsetYaml          string `yaml:"csiDaemonsetYaml" env-default:"csi-daemonset.yaml"`
+		DaemonsetYaml             string `yaml:"daemonsetYaml" env-default:"mayastor-daemonset.yaml"`
+		DockerOrganisation        string `yaml:"dockerOrganisation" env-default:"mayadata"`
+		ImageName                 string `yaml:"imageName" env-default:"mayadata/mayastor"`
+		CsiImageName              string `yaml:"csiImageName" env-default:"mayadata/mayastor-csi"`
+		ControlPlaneAgent         string `yaml:"controlPlaneAgent" env-default:"core-agents"`
+		ControlPlaneEtcd          string `yaml:"controlPlaneEtcd" env-default:"mayastor-etcd"`
+		ControlPlaneCsiController string `yaml:"controlPlaneCsiController" env-default:"csi-controller"`
+		ControlPlanePoolOperator  string `yaml:"controlPlanePoolOperator" env-default:"msp-operator"`
+		ControlPlaneRestServer    string `yaml:"controlPlaneRestServer" env-default:"rest"`
+		DataPlaneName             string `yaml:"dataPlaneName" env-default:"mayastor"`
+		DataPlaneCsi              string `yaml:"dataPlaneCsi" env-default:"mayastor-csi"`
+		DataPlaneNats             string `yaml:"dataPlaneNats" env-default:"nats"`
+	} `yaml:"product"`
 
 	// gRPC connection to the mayastor is mandatory for the test run
 	// With few exceptions, all CI configurations MUST set this to true
@@ -385,6 +421,26 @@ func GetConfig() E2EConfig {
 			if err != nil {
 				panic(fmt.Sprintf("%v", err))
 			}
+		}
+		productConfigFile := os.Getenv("e2e_product_config_yaml")
+		if productConfigFile == "" {
+			fmt.Println("Product configuration file not specified")
+			fmt.Println("Use environment variable \"e2e_product_config_yaml\" to specify product configuration.")
+		} else {
+			var productCfg string = path.Clean(productConfigFile)
+			info, err = os.Stat(productCfg)
+			if os.IsNotExist(err) {
+				panic(fmt.Sprintf("%v file not not found", productCfg))
+			}
+			if info.IsDir() {
+				panic(fmt.Sprintf("%v is not a file", productCfg))
+			}
+			fmt.Printf("Using product configuration file %s\n", productCfg)
+			err = cleanenv.ReadConfig(productCfg, &e2eConfig)
+			if err != nil {
+				panic(fmt.Sprintf("%v", err))
+			}
+			fmt.Printf("E2E config after parsing product config yaml %v\n", e2eConfig.Product)
 		}
 
 		// MayastorRootDir is either set from the environment variable

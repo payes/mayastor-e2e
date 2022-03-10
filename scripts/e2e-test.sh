@@ -6,7 +6,7 @@ SCRIPTDIR=$(dirname "$(realpath "$0")")
 E2EROOT=$(realpath "$SCRIPTDIR/..")
 TESTDIR=$(realpath "$SCRIPTDIR/../src")
 ARTIFACTSDIR=$(realpath "$SCRIPTDIR/../artifacts")
-#reportsdir=$(realpath "$SCRIPTDIR/..")
+CONFIGSDIR=$(realpath "$SCRIPTDIR/../configurations/products/")
 
 # removed: pvc_stress_fio temporarily mayastor bugs
 
@@ -15,7 +15,7 @@ EXITV_OK=0
 EXITV_INVALID_OPTION=1
 EXITV_MISSING_OPTION=2
 EXITV_FAILED=4
-#EXITV_FILE_MISMATCH=5
+EXITV_FILE_MISMATCH=5
 #EXITV_CRD_GO_GEN=6
 EXITV_VERSION_MISMATCH=7
 EXITV_MISSING_KUBECTL_PLUGIN=8
@@ -278,6 +278,14 @@ if [ -z "$product" ]; then
     product="mayastor"
 fi
 
+if [ -e "$CONFIGSDIR/${product}.yaml" ]; then
+    export e2e_product_config_yaml="$CONFIGSDIR/${product}.yaml"
+else
+    echo "Failed to locate product config file $CONFIGSDIR/${product}.yaml"
+    help
+    exit $EXITV_FILE_MISMATCH
+fi
+
 if [ -z "$session" ]; then
     sessiondir="$ARTIFACTSDIR"
 else
@@ -450,6 +458,7 @@ echo "    loki_run_id=$loki_run_id"
 echo "    loki_test_label=$loki_test_label"
 echo "    e2e_root_dir=$e2e_root_dir"
 echo "    e2e_pool_device=$e2e_pool_device"
+echo "    e2e_product_config_yaml=$e2e_product_config_yaml"
 echo "    e2e_image_tag=$e2e_image_tag"
 echo "    e2e_docker_registry=$e2e_docker_registry"
 echo "    e2e_reports_dir=$e2e_reports_dir"
