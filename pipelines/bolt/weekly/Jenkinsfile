@@ -28,7 +28,7 @@ pipeline {
         stage('build image') {
             steps {
                 script {
-                    image_tag = 'develop-' + Common().GetTestTag()
+                    image_tag = 'bolt-develop-' + Common().GetTestTag()
                     def job_params = [
                         [ $class: 'StringParameterValue',  name: "dataplaneBranch",    value: "develop" ],
                         [ $class: 'StringParameterValue',  name: "controlplaneBranch", value: "develop" ],

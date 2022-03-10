@@ -48,7 +48,7 @@ profile_test_list=""
 ssh_identity=""
 grpc_code_gen=
 crd_code_gen=
-product_key=""
+product=
 
 declare -A profiles
 # List and Sequence of tests.
@@ -63,7 +63,6 @@ Options:
   --loki_run_id <Loki run id>  ID string, for use when sending Loki markers
   --loki_test_label <Loki custom test label> Test label value, for use when sending Loki markers
   --device <path>           Device path to use for storage pools.
-  --product                 Product key [mayastor, bolt]
   --registry <host[:port]>  Registry to pull the mayastor images from. (default: "ci-registry.mayastor-ci.mayadata.io")
                             'dockerhub' means use DockerHub
   --tests <list of tests>   Lists of tests to run, delimited by spaces (default: "$tests")
@@ -97,8 +96,9 @@ Options:
   --crd_code_gen <true|false>
                             On true, custom resource clinet code will be generated
                             On false, custom resource clinet code will not be generated
+  --product                  Product key [mayastor, bolt]
 Examples:
-  $0 --device /dev/nvme0n1 --registry 127.0.0.1:5000 --tag a80ce0c
+  $0 --device /dev/nvme0n1 --registry 127.0.0.1:5000 --tag a80ce0c --product bolt
 EOF
 }
 
@@ -239,22 +239,6 @@ while [ "$#" -gt 0 ]; do
         shift
         platform_config_file="$1"
         ;;
-    -p|--product)
-        shift
-            case "$1" in
-                mayastor)
-                    product_key=$1
-                    ;;
-                bolt)
-                    product_key=$1
-                    ;;
-                *)
-                    echo "Unknown product: $1"
-                    help
-                    exit $EXITV_INVALID_OPTION
-                    ;;
-            esac
-        ;;
     --session)
         shift
         session="$1"
@@ -276,6 +260,21 @@ while [ "$#" -gt 0 ]; do
                     ;;
             esac
         ;;
+    --product)
+      shift
+      case $1 in
+          mayastor)
+             product="$1"
+             ;;
+          bolt)
+             product="$1"
+             ;;
+          *)
+              echo "Unknown product: $1"
+              exit 1
+              ;;
+      esac
+      ;;
     *)
       echo "Unknown option: $1"
       help
@@ -287,6 +286,19 @@ done
 
 export loki_run_id="$loki_run_id" # can be empty string
 export loki_test_label="$loki_test_label"
+
+if [ -z "$product" ]; then
+    echo "defaulting product to mayastor"
+    product="mayastor"
+fi
+
+if [ -e "$CONFIGSDIR/${product}.yaml" ]; then
+    export e2e_product_config_yaml="$CONFIGSDIR/${product}.yaml"
+else
+    echo "Failed to locate product config file $CONFIGSDIR/${product}.yaml"
+    help
+    exit $EXITV_FILE_MISMATCH
+fi
 
 if [ -z "$session" ]; then
     sessiondir="$ARTIFACTSDIR"
@@ -301,7 +313,7 @@ if [ -z "$mayastor_root_dir" ]; then
     mkdir -p "$sessiondir"
     export mayastor_root_dir="$ARTIFACTSDIR/install-bundle/$tag"
     mkdir -p "$mayastor_root_dir"
-    if ! "$SCRIPTDIR/extract-install-image.sh" --alias-tag "$tag" --installroot "$mayastor_root_dir"
+    if ! "$SCRIPTDIR/extract-install-image.sh" --alias-tag "$tag" --installroot "$mayastor_root_dir" --product "$product"
     then
         echo "Unable to extract install files for $tag"
         exit $EXITV_INVALID_OPTION
@@ -326,20 +338,6 @@ if [ -z "$device" ]; then
   exit $EXITV_MISSING_OPTION
 fi
 export e2e_pool_device=$device
-
-if [ -z "$product_key" ]; then
-  echo "Product [mayastor/bolt] must be specified"
-  help
-  exit $EXITV_MISSING_OPTION
-fi
-
-if [ -e "$CONFIGSDIR/${product_key}.yaml" ]; then
-    export e2e_product_config_yaml="$CONFIGSDIR/${product_key}.yaml"
-else
-    echo "Failed to locate product config file $CONFIGSDIR/${product_key}.yaml"
-    help
-    exit $EXITV_FILE_MISMATCH
-fi
 
 if [ -n "$tag" ]; then
   export e2e_image_tag="$tag"

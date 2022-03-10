@@ -13,10 +13,10 @@ def unwrap(Map params, key) {
 def GetProductSettings (datacore_bolt) {
     if (datacore_bolt == true) {
         return [
-            dataplane_dir: "bolt-data-plane-2",
-            dataplane_repo_url: "https://github.com/datacoresoftware/bolt-data-plane-test-2",
-            controlplane_dir: "bolt-control-plane-2",
-            controlplane_repo_url: "https://github.com/datacoresoftware/bolt-control-plane-test-2",
+            dataplane_dir: "bolt-data-plane",
+            dataplane_repo_url: "https://github.com/datacoresoftware/bolt-data-plane",
+            controlplane_dir: "bolt-control-plane",
+            controlplane_repo_url: "https://github.com/datacoresoftware/bolt-control-plane",
             github_credentials: 'github-datacore-pw',
         ]
     }
@@ -142,6 +142,7 @@ def BuildImages2(Map params) {
   def test_tag = unwrap(params,'test_tag')
   def dataplane_dir = unwrap(params,'dataplane_dir')
   def controlplane_dir = unwrap(params,'controlplane_dir')
+  def product = unwrap(params,'product')
   def build_flags = ""
   if (params.containsKey('build_flags')) {
         build_flags = params['build_flags']
@@ -171,7 +172,7 @@ def BuildImages2(Map params) {
   // NOTE: create-install-image.sh should be part of the Jenkins repo
   // not mayastor-e2e
   // Build the install image
-  sh "./scripts/create-install-image.sh $build_flags --alias-tag \"$test_tag\" --mayastor ${dataplane_dir} --mcp ${controlplane_dir} --registry \"${env.REGISTRY}\""
+  sh "./scripts/create-install-image.sh $build_flags --alias-tag \"$test_tag\" --mayastor ${dataplane_dir} --mcp ${controlplane_dir} --registry \"${env.REGISTRY}\" --product \"${product}\" "
 
   // Limit any side-effects
   sh "rm -Rf ${dataplane_dir}/"
@@ -373,20 +374,14 @@ def RunOneTestPerCluster(e2e_test, loki_run_id, params) {
     def e2e_dir = unwrap(params,'e2e_dir')
     def kubernetes_version = unwrap(params,'kubernetes_version')
     def test_platform = unwrap(params,'test_platform')
-    def datacore_bolt = unwrap(params, 'datacore_bolt')
+    def product = unwrap(params,'product')
 
     def failed_tests=""
     def k8s_job=""
-    def product_key=""
     def testset = "install ${e2e_test} uninstall"
 
     if (kubernetes_version == "" || kubernetes_version == null) {
         error("kubernetes version is not specified")
-    }
-    if (datacore_bolt == true) {
-        product_key = "bolt"
-    } else {
-        product_key = "mayastor"
     }
 
     println("RunOneTestPerCluster ${e2e_test}")
@@ -428,8 +423,8 @@ def RunOneTestPerCluster(e2e_test, loki_run_id, params) {
         mkdir -p "${reports_dir}"
         nix-shell --run './scripts/get_cluster_env.py --platform "${test_platform}" --oxray  "${envs_txt_file}" --oyaml "${envs_yaml_file}"'
     """
-
-    def cmd = "cd ${e2e_dir} && ./scripts/e2e-test.sh --device /dev/sdb --tag \"${e2e_image_tag}\"  --onfail stop --tests \"${testset}\" --loki_run_id \"${loki_run_id}\" --loki_test_label \"${e2e_test}\" --reportsdir \"${env.WORKSPACE}/${e2e_reports_dir}\" --registry \"${env.REGISTRY}\" --session \"${session_id}\" --ssh_identity \"${env.WORKSPACE}/${e2e_environment}/id_rsa\" --product \"${product_key}\" "
+    
+    def cmd = "cd ${e2e_dir} && ./scripts/e2e-test.sh --device /dev/sdb --tag \"${e2e_image_tag}\"  --onfail stop --tests \"${testset}\" --loki_run_id \"${loki_run_id}\" --loki_test_label \"${e2e_test}\" --reportsdir \"${env.WORKSPACE}/${e2e_reports_dir}\" --registry \"${env.REGISTRY}\" --session \"${session_id}\" --ssh_identity \"${env.WORKSPACE}/${e2e_environment}/id_rsa\" --product \"${product}\" "
     withCredentials([
       usernamePassword(credentialsId: 'GRAFANA_API', usernameVariable: 'grafana_api_user', passwordVariable: 'grafana_api_pw'),
       string(credentialsId: 'HCLOUD_TOKEN', variable: 'HCLOUD_TOKEN')
