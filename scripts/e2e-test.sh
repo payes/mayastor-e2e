@@ -44,15 +44,11 @@ reportsdir="$ARTIFACTSDIR/reports"
 coveragedir="$ARTIFACTSDIR/coverage/data"
 mayastor_root_dir=""
 policy_cleanup_before="${e2e_policy_cleanup_before:-false}"
-profile_test_list=""
+test_list=""
 ssh_identity=""
 grpc_code_gen=
 crd_code_gen=
 product=
-
-declare -A profiles
-# List and Sequence of tests.
-source "$SCRIPTDIR/test_lists.sh"
 
 help() {
   cat <<EOF
@@ -100,16 +96,6 @@ Options:
 Examples:
   $0 --device /dev/nvme0n1 --registry 127.0.0.1:5000 --tag a80ce0c --product bolt
 EOF
-}
-
-function setup_profile_testlist {
-    for key in "${!profiles[@]}"; do
-        if [ "$key" == "$1" ] ; then
-            profile_test_list="${profiles[$1]}"
-            return 0
-        fi
-    done
-    return 1
 }
 
 function set_profile {
@@ -160,7 +146,7 @@ while [ "$#" -gt 0 ]; do
     -T|--tests)
       shift
       set_profile "custom"
-      profiles[custom]="$1"
+      test_list="$1"
       ;;
     -R|--reportsdir)
       shift
@@ -350,16 +336,11 @@ case "$profile" in
     ;;
 esac
 
-if ! setup_profile_testlist "$profile" ; then
-    echo "Unknown profile: $profile"
-    help
-    exit $EXITV_INVALID_OPTION
-fi
-
 if [ "$profile" != "custom" ] ; then
-    tests="install $profile_test_list uninstall"
+    test_list=$("$SCRIPTDIR/testlists.py" --profile="$profile" --lists="$E2EROOT/configurations/testlists.yaml")
+    tests="install $test_list uninstall"
 else
-    tests="$profile_test_list"
+    tests="$test_list"
 fi
 
 export e2e_reports_dir="$reportsdir"
