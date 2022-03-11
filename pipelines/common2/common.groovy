@@ -17,7 +17,7 @@ def GetProductSettings (datacore_bolt) {
             dataplane_repo_url: "https://github.com/datacoresoftware/bolt-data-plane",
             controlplane_dir: "bolt-control-plane",
             controlplane_repo_url: "https://github.com/datacoresoftware/bolt-control-plane",
-            github_credentials: 'github-datacore-pw',
+            github_credentials: 'datacore-bolt-ci',
         ]
     }
     return [
