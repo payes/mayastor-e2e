@@ -50,7 +50,7 @@ pipeline {
                         [ $class: 'BooleanParameterValue', name: "datacore_bolt",      value: datacore_bolt ],
                     ]
                     build(
-                       job: "generic-system-test/develop",
+                       job: "generic-system-test/${env.BRANCH_name}",
                        propagate: true,
                        wait: true,
                        parameters: job_params

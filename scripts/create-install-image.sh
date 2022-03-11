@@ -10,6 +10,8 @@ OUTPUT_TAG="nightly-stable"
 #E2EROOT=$(realpath "$SCRIPTDIR/..")
 MAYASTOR_DIR=""
 MCP_DIR=""
+LICENSE_DIR=""
+
 declare -a build_info
 
 # render build_info as a json file
@@ -44,6 +46,7 @@ Options:
   --mcp                      Path to root Mayastor control plane directory
   --coverage                 Build is a coverage build
   --debug                    Build is debug build
+  --license                  Path to root of licensing repo
   --product                  Product key [mayastor, bolt]
 Examples:
   $(basename "$0") --registry 127.0.0.1:5000 --alias-tag customized-tag --product bolt
@@ -85,6 +88,11 @@ while [ "$#" -gt 0 ]; do
     --debug)
       shift
       build_info+=('"debug": true')
+      ;;
+    --license)
+      shift
+      LICENSE_DIR=$1
+      shift
       ;;
     --product)
       shift
@@ -172,6 +180,12 @@ if [ -n "$MCP_DIR" ]; then
     pushd "$workdir" \
         && rm -f chart/crds/* \
         && popd
+fi
+
+if [ -n "$LICENSE_DIR" ]; then
+    mkdir -p "$workdir/license/bin" || exit 1
+    nix-shell --run "cd $LICENSE_DIR && cargo build"
+    cp $LICENSE_DIR/target/debug/license-generator "$workdir/license/bin/"
 fi
 
 build_info_to_json > "$workdir/build_info.json"

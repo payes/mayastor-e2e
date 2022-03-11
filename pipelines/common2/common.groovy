@@ -18,7 +18,7 @@ def GetProductSettings (datacore_bolt) {
             controlplane_dir: "bolt-control-plane",
             controlplane_repo_url: "git@github.com:DataCoreSoftware/bolt-control-plane.git",
             license_dir: "bolt-license",
-            license_repo_url: "https://github.com/datacoresoftware/bolt-licensing",
+            license_repo_url: "git@github.com:DataCoreSoftware/bolt-licensing.git",
             github_credentials: 'BOLT_CICD_GITHUB_SSH_KEY',
         ]
     }
@@ -131,7 +131,7 @@ def CheckoutControlPlane(params) {
 }
 
 // Checks out the specified branch of the bolt-licensing repo
-def CheckoutLicensing(params) {
+def CheckoutLicense(params) {
   def branch = unwrap(params,'licenseBranch')
   def relativeTargetDir = unwrap(params,'license_dir')
   def url = unwrap(params,'license_repo_url')
@@ -155,6 +155,7 @@ def BuildImages2(Map params) {
   def test_tag = unwrap(params,'test_tag')
   def dataplane_dir = unwrap(params,'dataplane_dir')
   def controlplane_dir = unwrap(params,'controlplane_dir')
+  def license_dir = unwrap(params,'license_dir')
   def product = unwrap(params,'product')
   def build_flags = ""
   if (params.containsKey('build_flags')) {
@@ -186,7 +187,13 @@ def BuildImages2(Map params) {
   // NOTE: create-install-image.sh should be part of the Jenkins repo
   // not mayastor-e2e
   // Build the install image
-  sh "./scripts/create-install-image.sh $build_flags --alias-tag \"$test_tag\" --mayastor ${dataplane_dir} --mcp ${controlplane_dir} --registry \"${env.REGISTRY}\" --product \"${product}\" "
+  sh "./scripts/create-install-image.sh $build_flags \
+    --alias-tag \"$test_tag\" \
+    --mayastor ${dataplane_dir} \
+    --mcp ${controlplane_dir} \
+    --registry \"${env.REGISTRY}\" \
+    --product \"${product}\" \
+    --license \"${license_dir}\" "
 
   // Limit any side-effects
   sh "rm -Rf ${dataplane_dir}/"
@@ -437,7 +444,7 @@ def RunOneTestPerCluster(e2e_test, loki_run_id, params) {
         mkdir -p "${reports_dir}"
         nix-shell --run './scripts/get_cluster_env.py --platform "${test_platform}" --oxray  "${envs_txt_file}" --oyaml "${envs_yaml_file}"'
     """
-    
+
     def cmd = "cd ${e2e_dir} && ./scripts/e2e-test.sh --device /dev/sdb --tag \"${e2e_image_tag}\"  --onfail stop --tests \"${testset}\" --loki_run_id \"${loki_run_id}\" --loki_test_label \"${e2e_test}\" --reportsdir \"${env.WORKSPACE}/${e2e_reports_dir}\" --registry \"${env.REGISTRY}\" --session \"${session_id}\" --ssh_identity \"${env.WORKSPACE}/${e2e_environment}/id_rsa\" --product \"${product}\" "
     withCredentials([
       usernamePassword(credentialsId: 'GRAFANA_API', usernameVariable: 'grafana_api_user', passwordVariable: 'grafana_api_pw'),

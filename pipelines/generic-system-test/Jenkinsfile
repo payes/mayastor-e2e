@@ -85,6 +85,8 @@ pipeline {
     string(defaultValue: e2e_params["dataplaneCommitOrTag"], name: 'dataplaneCommitOrTag', trim: true, description: 'mayastor source branch git commit id or tag, if empty branch HEAD is used.')
     string(defaultValue: e2e_params["controlplaneBranch"], name: 'controlplaneBranch', trim: true, description: 'mayastor control plane source branch')
     string(defaultValue: e2e_params["controlplaneCommitOrTag"], name: 'controlplaneCommitOrTag', trim: true, description: 'mayastor control plane source branch git commit id or tag, if empty branch HEAD is used.')
+    string(defaultValue: e2e_params["licenseBranch"], name: 'licenseBranch', trim: true, description: 'license source branch')
+    string(defaultValue: e2e_params["licenseCommitOrTag"], name: 'licenseCommitOrTag', trim: true, description: 'license source branch git commit id or tag, if empty branch HEAD is used.')
     string(defaultValue: e2e_params["kubernetes_version"], name: 'kubernetes_version', trim: true, description: 'kubernetes version')
     choice(choices: ['hcloud'], name: 'test_platform', description: 'test platform')
     choice(choices: ['1','2','3','4', '5', '6', '7', '8', '9', '10'], name: 'parallelism', description: 'number of parallel testing stages')
@@ -146,6 +148,8 @@ pipeline {
             e2e_params['dataplaneCommitOrTag'] = params.dataplaneCommitOrTag
             e2e_params['controlplaneBranch'] = params.controlplaneBranch
             e2e_params['controlplaneCommitOrTag'] = params.controlplaneCommitOrTag
+            e2e_params['licenseBranch'] = params.licenseBranch
+            e2e_params['licenseCommitOrTag'] = params.licenseCommitOrTag
             e2e_params['dockerhub_tag'] = params.dockerhub_tag
             e2e_params['xray_send_report'] = params.xray_send_report
             e2e_params['xray_test_plan'] = params.xray_test_plan
