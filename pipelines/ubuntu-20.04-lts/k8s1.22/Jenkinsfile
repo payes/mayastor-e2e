@@ -20,13 +20,14 @@ pipeline {
         booleanParam(defaultValue: false, name: 'build_images', description: 'build images and then test.')
         string(defaultValue: '', name: 'image_tag', trim: true, description: 'image tag, auto-generated if build_images is set and this field is empty')
         booleanParam(defaultValue: false, name: 'datacore_bolt', description: 'Build and test Datacore Bolt and not mayastor')
+        string(defaultValue: "", name: 'xray_test_plan', trim: true, description: 'name of the testplan in xray for e.g. MQ-2184')
     }
     stages {
         stage('RunTestJob') {
             steps {
                 script {
                     // k8s version, build_images flag, image_tag
-                    def job_params = Ubuntu().GetDefaultJobParameters( "1.22.3", params.build_images, params.image_tag, params.datacore_bolt)
+                    def job_params = Ubuntu().GetDefaultJobParameters( "1.22.3", params)
                     Common().RunTestJob(job_params, "develop")
                 }
             }
