@@ -32,7 +32,7 @@ pipeline {
             agent { label 'nixos' }
             steps {
                 script {
-                    image_tag = 'bolt-develop-' + Common().GetTestTag()
+                    image_tag = 'develop-' + Common().GetTestTag()
                     def job_params = [
                         [ $class: 'StringParameterValue',  name: "dataplaneBranch",         value: params.dataplaneBranch ],
                         [ $class: 'StringParameterValue',  name: "dataplaneCommitOrTag",    value: params.dataplaneCommitOrTag ],
