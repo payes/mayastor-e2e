@@ -1,0 +1,69 @@
+#!/usr/bin/env groovy
+
+// On-demand E2E infra configuration
+// https://mayadata.atlassian.net/wiki/spaces/MS/pages/247332965/Test+infrastructure#On-Demand-E2E-K8S-Clusters
+
+def e2e_build_cluster_job='k8s-build-cluster' // Jenkins job to build cluster
+def e2e_destroy_cluster_job='k8s-destroy-cluster' // Jenkins job to destroy cluster
+// Environment to run e2e test in (job param of $e2e_build_cluster_job)
+def e2e_environment="hcloud-kubeadm"
+// Global variable to pass current k8s job between stages
+def k8s_job=""
+def test_tag=""
+
+e2e_selfci_image_tag='selfci'
+e2e_reports_dir='artifacts/reports/'
+e2e_selfci_test_profile = 'selfci'
+
+def Common() {
+    def common = load "./pipelines/common2/common.groovy"
+    return common
+}
+
+pipeline {
+  agent any
+  options {
+    timeout(time: 180, unit: 'MINUTES')
+    buildDiscarder(logRotator(numToKeepStr: '365', artifactNumToKeepStr: '365'))
+  }
+  parameters {
+    string(defaultValue: '', name: 'image_tag', trim: true, description: 'image tag, auto-generated if build_images is set and this field is empty')
+    booleanParam(defaultValue: false, name: 'build_images', description: 'build mayastor images, one of dataplaneBranch or dataplaneCommitOrTag and one of controlplaneBranch or controlplaneCommitOrTag must be set.')
+    choice(choices: ['10','1','2','3','4','5','6','7','8','9'], name: 'parallelism', description: 'number of parallel testing stages')
+  }
+  stages {
+    stage('validate parameters') {
+      agent any
+      steps {
+        script {
+            if (params.build_images == false) {
+                if (params.image_tag == '') {
+                    error("build_images is set to false, and image_tag is empty")
+                }
+            }
+        }
+      }
+    }
+    stage('RunTestJob') {
+      steps {
+          script {
+            // k8s version, build_images flag, image_tag
+            def job_params = [
+                [ $class: 'BooleanParameterValue', name: "datacore_bolt",      value: true ],
+                [ $class: 'StringParameterValue',  name: "build_prefix",       value: "develop" ],
+                [ $class: 'StringParameterValue',  name: "dataplaneBranch",    value: "develop" ],
+                [ $class: 'StringParameterValue',  name: "controlplaneBranch", value: "develop" ],
+                [ $class: 'StringParameterValue',  name: "kubernetes_version", value: "1.21.8" ],
+                [ $class: 'StringParameterValue',  name: "image_tag",          value: params.image_tag ],
+                [ $class: 'BooleanParameterValue', name: "build_images",       value: params.build_images ],
+                [ $class: 'StringParameterValue',  name: "parallelism",        value: params.parallelism ],
+                [ $class: 'StringParameterValue',  name: "test_profile",       value: "selfci" ],
+                [ $class: 'BooleanParameterValue', name: "push2CI",            value: true ],
+                [ $class: 'StringParameterValue',  name: "pushTag",            value: "selfci" ],
+            ]
+            Common().RunTestJob(job_params, "develop")
+          }
+        }
+    }
+  }
+}

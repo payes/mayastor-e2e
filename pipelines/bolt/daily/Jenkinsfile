@@ -44,6 +44,21 @@ pipeline {
                 }
             }
         }
+        stage('selfci image') {
+            steps {
+                script {
+                    def selfci_job_params = [
+                        [ $class: 'StringParameterValue',  name: "image_tag", value: image_tag ],
+                    ]
+                    build(
+                       job: "bolt-selfci-image/develop",
+                       propagate: false,
+                       wait: true,
+                       parameters: selfci_job_params
+                   )
+                }
+            }
+        }
         stage('test image on k8s-1.21') {
             steps {
                 script {
