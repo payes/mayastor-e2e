@@ -423,8 +423,17 @@ def RunOneTestPerCluster(e2e_test, loki_run_id, params) {
         mkdir -p "${reports_dir}"
         nix-shell --run './scripts/get_cluster_env.py --platform "${test_platform}" --oxray  "${envs_txt_file}" --oyaml "${envs_yaml_file}"'
     """
-    
-    def cmd = "cd ${e2e_dir} && ./scripts/e2e-test.sh --device /dev/sdb --tag \"${e2e_image_tag}\"  --onfail stop --tests \"${testset}\" --loki_run_id \"${loki_run_id}\" --loki_test_label \"${e2e_test}\" --reportsdir \"${env.WORKSPACE}/${e2e_reports_dir}\" --registry \"${env.REGISTRY}\" --session \"${session_id}\" --ssh_identity \"${env.WORKSPACE}/${e2e_environment}/id_rsa\" --product \"${product}\" "
+
+    // compose optional command line options
+    def opts = ''
+    try {
+        if (params.e2e_config_file != null && params.e2e_config_file != '') {
+            opts = "--config \"${params.e2e_config_file}\" "
+        }
+    } catch (err) {
+    }
+
+    def cmd = "cd ${e2e_dir} && ./scripts/e2e-test.sh --device /dev/sdb --tag \"${e2e_image_tag}\"  --onfail stop --tests \"${testset}\" --loki_run_id \"${loki_run_id}\" --loki_test_label \"${e2e_test}\" --reportsdir \"${env.WORKSPACE}/${e2e_reports_dir}\" --registry \"${env.REGISTRY}\" --session \"${session_id}\" --ssh_identity \"${env.WORKSPACE}/${e2e_environment}/id_rsa\" --product \"${product}\" ${opts} "
     withCredentials([
       usernamePassword(credentialsId: 'GRAFANA_API', usernameVariable: 'grafana_api_user', passwordVariable: 'grafana_api_pw'),
       string(credentialsId: 'HCLOUD_TOKEN', variable: 'HCLOUD_TOKEN')
@@ -713,6 +722,13 @@ def PopulateTestQueue(Map params) {
   def artefacts_stash_queue = unwrap(params,'artefacts_stash_queue')
   def tests=[]
   def artifacts_dir = 'artifacts'
+  def single_cluster = false
+  def single_list = ''
+  try {
+    single_cluster = params.single_cluster
+  } catch (err) {
+  }
+
 
   sh """
     mkdir -p ${artifacts_dir}
@@ -729,14 +745,17 @@ def PopulateTestQueue(Map params) {
             nix-shell --run '${cmdx}'
         """
     )
-    list = readFile(lstfile).trim()
-    tests = list.split()
+    single_list = readFile(lstfile).trim()
+  } else {
+    single_list = e2e_tests
   }
 
-  if (e2e_tests != "") {
-    tests = e2e_tests.split()
+  if (single_cluster == true) {
+    println("Running tests in a single cluster")
+    tests = [single_list]
+  } else {
+    tests = single_list.split()
   }
-
   println("List of tests: ${tests}")
   //loop over list
   for (int i = 0; i < tests.size(); i++) {

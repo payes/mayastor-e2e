@@ -85,9 +85,11 @@ pipeline {
     string(defaultValue: e2e_params["controlplaneCommitOrTag"], name: 'controlplaneCommitOrTag', trim: true, description: 'mayastor control plane source branch git commit id or tag, if empty branch HEAD is used.')
     string(defaultValue: e2e_params["kubernetes_version"], name: 'kubernetes_version', trim: true, description: 'kubernetes version')
     choice(choices: ['hcloud'], name: 'test_platform', description: 'test platform')
+    booleanParam(defaultValue: false, name: 'single_cluster', description: 'run tests in single cluster')
     choice(choices: ['1','2','3','4', '5', '6', '7', '8', '9', '10'], name: 'parallelism', description: 'number of parallel testing stages')
     string(defaultValue: '', name: 'test_profile', description: 'test profile')
     string(defaultValue: '', name: 'list_of_tests', description: 'explicit list of tests, separated by spaces. Do not use if test_profile is set')
+    string(defaultValue: '', name: 'e2e_config_file', description: 'name of test configuration file configurations directory - blank for default (hcloudci_config.yaml), selfci_config.yaml, ...')
     booleanParam(defaultValue: false, name: 'xray_send_report', description: 'send xray_report')
     string(defaultValue: e2e_params["xray_test_plan"], name: 'xray_test_plan', trim: true, description: 'name of the testplan in xray for e.g. MQ-2184')
     string(defaultValue: e2e_params["e2eBranch"], name: 'e2eBranch', trim: true, description: 'mayastor e2e branch')
@@ -151,6 +153,8 @@ pipeline {
             e2e_params['test_platform'] = test_platform
             e2e_params['e2eBranch'] = params.e2eBranch
             e2e_params['e2eCommitOrTag'] = params.e2eCommitOrTag
+            e2e_params['single_cluster'] = params.single_cluster
+            e2e_params['e2e_config_file'] = params.e2e_config_file
 
             if (e2e_params['xray_test_plan'] == "" &&  params.xrayhtmlreport == true ) {
                 // no xray test plan for html report to off
