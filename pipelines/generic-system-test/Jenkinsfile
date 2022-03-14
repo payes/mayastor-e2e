@@ -153,6 +153,8 @@ pipeline {
             e2e_params['test_platform'] = test_platform
             e2e_params['e2eBranch'] = params.e2eBranch
             e2e_params['e2eCommitOrTag'] = params.e2eCommitOrTag
+            e2e_params['single_cluster'] = params.single_cluster
+            e2e_params['e2e_config_file'] = params.e2e_config_file
 
             if (e2e_params['xray_test_plan'] == "" &&  params.xrayhtmlreport == true ) {
                 // no xray test plan for html report to off
