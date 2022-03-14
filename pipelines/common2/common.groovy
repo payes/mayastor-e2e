@@ -750,7 +750,8 @@ def PopulateTestQueue(Map params) {
     single_list = e2e_tests
   }
 
-  if (single_cluster) {
+  if (single_cluster == true) {
+    println("Running tests in a single cluster")
     tests = [single_list]
   } else {
     tests = single_list.split()
