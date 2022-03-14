@@ -182,12 +182,6 @@ if [ -n "$MCP_DIR" ]; then
         && popd
 fi
 
-if [ -n "$LICENSE_DIR" ]; then
-    mkdir -p "$workdir/license/bin" || exit 1
-    nix-shell --run "cd $LICENSE_DIR && cargo build"
-    cp $LICENSE_DIR/target/debug/license-generator "$workdir/license/bin/"
-fi
-
 build_info_to_json > "$workdir/build_info.json"
 
 pushd "$workdir" \

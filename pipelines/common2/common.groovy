@@ -17,7 +17,7 @@ def GetProductSettings (datacore_bolt) {
             dataplane_repo_url: "git@github.com:DataCoreSoftware/bolt-data-plane.git",
             controlplane_dir: "bolt-control-plane",
             controlplane_repo_url: "git@github.com:DataCoreSoftware/bolt-control-plane.git",
-            license_dir: "bolt-license",
+            license_dir: "bolt-licensing",
             license_repo_url: "git@github.com:DataCoreSoftware/bolt-licensing.git",
             github_credentials: 'BOLT_CICD_GITHUB_SSH_KEY',
         ]
@@ -184,9 +184,12 @@ def BuildImages2(Map params) {
   sh "cd ${controlplane_dir} && ./scripts/release.sh $build_flags --registry \"${env.REGISTRY}\" --alias-tag \"$test_tag\" "
 
   CheckoutLicense(params)
+  sh "nix-shell -p pkg-config rustup openssl --run 'rustup toolchain install stable && cd bolt-license && cargo build'"
+
   // NOTE: create-install-image.sh should be part of the Jenkins repo
   // not mayastor-e2e
   // Build the install image
+
   sh "./scripts/create-install-image.sh $build_flags \
     --alias-tag \"$test_tag\" \
     --mayastor ${dataplane_dir} \
